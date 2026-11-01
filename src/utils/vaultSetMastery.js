@@ -592,6 +592,51 @@ export function searchSetsByName(query = "", setRows = [], options = {}) {
     .map((entry) => entry.row);
 }
 
+// #20: when the catalog does not hold a full checklist but the set's printed
+// size is known, list the missing card numbers so the person can see which
+// cards they still need instead of a "partial" shrug. Names come from the
+// catalog where known; otherwise the row is "Card #045".
+export function cardNumberOrdinal(value = "") {
+  const match = String(value || "").match(/\d+/);
+  if (!match) return null;
+  const number = Number.parseInt(match[0], 10);
+  return Number.isFinite(number) && number > 0 ? number : null;
+}
+
+export function buildMissingNumberCards(setRow = {}, { ownedCardItems = [], catalogCards = [], totalCards = 0 } = {}) {
+  const total = Number(totalCards) || 0;
+  if (!total || total > 1000) return [];
+  const owned = new Set(ownedCardItems.map((item) => cardNumberOrdinal(getCardNumber(item))).filter(Boolean));
+  const catalogByOrdinal = new Map();
+  catalogCards.forEach((product) => {
+    const ordinal = cardNumberOrdinal(getCardNumber(product));
+    if (ordinal && !catalogByOrdinal.has(ordinal)) catalogByOrdinal.set(ordinal, product);
+  });
+  const setName = getSetDisplayName(setRow) || setRow.name || "";
+  const width = String(total).length;
+  const missing = [];
+  for (let ordinal = 1; ordinal <= total; ordinal += 1) {
+    if (owned.has(ordinal)) continue;
+    const known = catalogByOrdinal.get(ordinal);
+    const cardNumber = `${String(ordinal).padStart(width, "0")}/${total}`;
+    missing.push(known
+      ? { ...known, synthetic: false }
+      : {
+        id: `missing-${compactKey(setName)}-${ordinal}`,
+        name: `Card #${String(ordinal).padStart(width, "0")}`,
+        cardName: `Card #${String(ordinal).padStart(width, "0")}`,
+        cardNumber,
+        setName,
+        expansion: setName,
+        catalogType: "card",
+        productType: "Card",
+        synthetic: true,
+        nameUnknown: true,
+      });
+  }
+  return missing;
+}
+
 export function buildSetCardRows(setRow = {}, options = {}) {
   const sortMode = options.sortMode || "cardNumber";
   const groups = new Map();
@@ -625,13 +670,17 @@ export function buildSetCardRows(setRow = {}, options = {}) {
   };
 
   (setRow.catalogCards || []).forEach((record) => addSetCardRecord(ensureGroup(record), record, "catalog"));
+  if (setRow.missingBasis === "numbers") {
+    (setRow.missingCards || []).filter((record) => record.synthetic).forEach((record) => addSetCardRecord(ensureGroup(record), record, "catalog"));
+  }
   (setRow.ownedCardItems || []).forEach((record) => addSetCardRecord(ensureGroup(record), record, "owned"));
   (setRow.wishlistItems || [])
     .filter((record) => classifyItemAsSingleOrSealed(record) !== "sealed")
     .forEach((record) => addSetCardRecord(ensureGroup(record), record, "wishlist"));
 
   return [...groups.values()].map((group) => {
-    const missing = Boolean(setRow.checklistAvailable && !group.ownedRecords.length);
+    const missing = !group.ownedRecords.length
+      && (Boolean(setRow.checklistAvailable) || (setRow.missingBasis === "numbers" && group.catalogRecords.length > 0));
     const variantOwnedCount = group.variants.filter((variant) => variant.ownedQuantity > 0).length;
     const variantWishlistCount = group.variants.filter((variant) => variant.wishlistQuantity > 0).length;
     return {
@@ -728,14 +777,20 @@ export function deriveSetCompletionSummary({ items = [], wishlistItems = [], cat
     const catalogCards = uniqueBy(row.catalogCards, cardIdentityKey).sort((a, b) => compareSetMasteryRows(a, b, "cardNumber"));
     const catalogSealedProducts = uniqueBy(row.catalogSealedProducts, explicitProductKey).sort((a, b) => compareSetMasteryRows(a, b, "name"));
     const checklistAvailable = Boolean(row.checklistAvailable || (row.totalCards > 0 && catalogCards.length >= row.totalCards));
-    const missingCards = checklistAvailable ? catalogCards.filter((product) => {
+    const checklistMissingCards = checklistAvailable ? catalogCards.filter((product) => {
       const productKey = cardIdentityKey(product);
       const cardNumber = getCardNumber(product);
       return !ownedCardKeys.has(productKey) && !(cardNumber && ownedCardNumberKeys.has(compactKey(cardNumber)));
     }) : [];
+    const numberMissingCards = !checklistAvailable && row.totalCards > 0 && row.ownedCardItems.length > 0
+      ? buildMissingNumberCards(row, { ownedCardItems: row.ownedCardItems, catalogCards, totalCards: row.totalCards })
+      : [];
+    const missingBasis = checklistAvailable ? "checklist" : numberMissingCards.length || (row.totalCards > 0 && row.ownedCardItems.length > 0) ? "numbers" : "none";
+    const missingCards = missingBasis === "checklist" ? checklistMissingCards : numberMissingCards;
+    const missingSupported = missingBasis !== "none";
     const ownedCount = ownedCardGroups.length;
     const ownedQuantity = getOwnedQuantity(row.ownedCardItems);
-    const missingCount = checklistAvailable ? missingCards.length : null;
+    const missingCount = missingSupported ? missingCards.length : null;
     const hasCompletionBasis = row.totalCards > 0 && (ownedCount > 0 || catalogCards.length > 0);
     const percent = hasCompletionBasis ? Math.min(100, Math.round((ownedCount / row.totalCards) * 100)) : null;
     const trackedItemCount = row.ownedItems.length + row.wishlistItems.length;
@@ -745,11 +800,16 @@ export function deriveSetCompletionSummary({ items = [], wishlistItems = [], cat
       catalogSealedProducts,
       sealedProducts: catalogSealedProducts,
       missingCards,
-      missingSupported: checklistAvailable,
+      missingBasis,
+      missingSupported,
       missingCount,
-      missingCountLabel: checklistAvailable ? String(missingCount) : "Missing count needs checklist data.",
+      missingCountLabel: missingSupported ? String(missingCount) : "Missing count needs checklist data.",
       checklistAvailable,
-      checklistStatus: checklistAvailable ? "Full checklist available" : "Set checklist unavailable",
+      checklistStatus: checklistAvailable
+        ? "Full checklist available"
+        : missingBasis === "numbers"
+          ? `Missing list by card number (${row.totalCards} in set); names fill in as the catalog grows`
+          : "Set checklist unavailable",
       ownedCount,
       ownedQuantity,
       trackedItemCount,
@@ -764,9 +824,11 @@ export function deriveSetCompletionSummary({ items = [], wishlistItems = [], cat
           : `${percent}% completion estimate`,
       progressCopy: checklistAvailable
         ? `${ownedCount} owned of ${row.totalCards || catalogCards.length} cards.`
-        : row.totalCards > 0
-          ? `${ownedCount} owned cards. Missing count needs checklist data.`
-          : `${trackedItemCount} tracked items. Missing count needs checklist data.`,
+        : missingBasis === "numbers"
+          ? `${ownedCount} owned of ${row.totalCards} card numbers; ${missingCount} still missing by number.`
+          : row.totalCards > 0
+            ? `${ownedCount} owned cards. Missing count needs checklist data.`
+            : `${trackedItemCount} tracked items. Missing count needs checklist data.`,
     };
   })
     .filter((row) => row.trackedItemCount > 0 || row.catalogCards.length || row.sealedProducts.length || (includeEmptyKnownSets && !row.unknownSet))

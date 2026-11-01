@@ -5,8 +5,17 @@ import { BACKUP_SOURCE_REGISTRY } from "./backupSourceRegistry.js";
 import { resolveSourceSchemaVersion, validateBackupCrossSourceRelationships, validateBackupSourceData } from "./backupValidation.js";
 import { captureRecoverySources, WORKSPACE_LOCAL_SOURCES, WorkspaceRecoveryError } from "./workspaceRecovery.js";
 import { projectSourceData } from "./sourceProjection.js";
+import { describeCompatibilityFailure, summarizeRestoreDryRun } from "./restoreCompatibility.js";
 
-function fail(code, message) { throw new WorkspaceRecoveryError(code, message); }
+const RESTORABLE_SOURCE_IDS = Object.freeze(WORKSPACE_LOCAL_SOURCES.map((source) => source.sourceId));
+
+function fail(code, message, review) {
+  const error = new WorkspaceRecoveryError(code, message);
+  // #80: a blocked plan still carries the compatibility review so the panel can
+  // show which source or version stopped it, instead of a one-line message.
+  if (review) error.review = review;
+  throw error;
+}
 function same(left, right) { return canonicalStringify(left) === canonicalStringify(right); }
 function idOf(record) {
   if (!record || typeof record !== "object" || Array.isArray(record)) return null;
@@ -23,14 +32,22 @@ function mergeMissing(current, incoming, findings, path) {
   if (Array.isArray(current) && Array.isArray(incoming)) {
     const result = current.slice();
     const indexed = new Map(current.map((record) => [idOf(record), record]).filter(([id]) => id !== null));
+    // Exact-duplicate detection is a set lookup on the canonical form, not a
+    // rescan of every accepted record. The simulated beta measured the previous
+    // `result.some(same(...))` at ~2 minutes for a 7,000-record restore; this keeps
+    // the identical outcome (same records added, same conflicts) in linear time.
+    const seen = new Set(current.map((record) => canonicalStringify(record)));
     for (const record of incoming) {
       const id = idOf(record);
       if (id !== null && indexed.has(id)) {
         if (!same(indexed.get(id), record)) findings.conflicts.push({ path, id });
-      } else if (!result.some((existing) => same(existing, record))) {
-        result.push(structuredClone(record));
-        if (id !== null) indexed.set(id, record);
+        continue;
       }
+      const canonical = canonicalStringify(record);
+      if (seen.has(canonical)) continue;
+      seen.add(canonical);
+      result.push(structuredClone(record));
+      if (id !== null) indexed.set(id, record);
     }
     return result;
   }
@@ -43,11 +60,22 @@ function mergeMissing(current, incoming, findings, path) {
   return current;
 }
 
-export async function planWorkspaceRestore(raw, { storage, projectUrl } = {}) {
-  const preview = await previewBackupRestore(raw, { projectUrl });
-  if (!["READY_FOR_FUTURE_RESTORE", "READY_WITH_WARNINGS"].includes(preview.result)) fail("BACKUP_NOT_READY", preview.errors?.[0] || "The backup did not pass integrity, schema, and record validation.");
+export async function planWorkspaceRestore(raw, { storage, projectUrl, currentApplicationVersion = "unknown" } = {}) {
+  const preview = await previewBackupRestore(raw, { projectUrl, restorableSourceIds: RESTORABLE_SOURCE_IDS, currentApplicationVersion });
+  const compatibility = preview.compatibility;
+  if (!["READY_FOR_FUTURE_RESTORE", "READY_WITH_WARNINGS"].includes(preview.result)) {
+    const message = preview.result === "UNSUPPORTED" && compatibility
+      ? describeCompatibilityFailure(compatibility)
+      : preview.errors?.[0] || "The backup did not pass integrity, schema, and record validation.";
+    fail("BACKUP_NOT_READY", message, compatibility ? { compatibility, dryRun: null, previewResult: preview.result } : undefined);
+  }
   const backup = parseUntrustedBackupJson(raw);
   const expectedSources = captureRecoverySources(storage, { projectUrl });
+  const dryRun = summarizeRestoreDryRun(backup.sections, {
+    sourceRegistry: WORKSPACE_LOCAL_SOURCES,
+    restorableSourceIds: RESTORABLE_SOURCE_IDS,
+    currentSources: Object.fromEntries(Object.entries(expectedSources).map(([sourceId, section]) => [sourceId, section.data])),
+  });
   const nextSources = {};
   const skippedSources = [];
   const findings = { conflicts: [], retainedSettings: 0 };
@@ -78,7 +106,9 @@ export async function planWorkspaceRestore(raw, { storage, projectUrl } = {}) {
     fileReferencesNotIncluded: Math.max(0, Number(backup.coverageSummary?.fileReferences?.total || 0) - Number(backup.coverageSummary?.fileReferences?.embedded || 0)),
     warnings: preview.warnings, conflicts: findings.conflicts.slice(0, 100),
   };
-  return { plan: { ...payload, planHash: await hashCanonicalJson(payload) }, expectedSources, nextSources };
+  // `review` is display-only and deliberately kept out of the hashed plan payload
+  // so the host's exact-plan recheck is unchanged.
+  return { plan: { ...payload, planHash: await hashCanonicalJson(payload) }, expectedSources, nextSources, review: { compatibility, dryRun, previewResult: preview.result } };
 }
 
 // A cloud revision or conflict recovery copy contains source envelopes, not a

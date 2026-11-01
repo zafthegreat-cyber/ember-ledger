@@ -46,6 +46,16 @@ export const TIDEPOOL_FAMILY_SAFE_RULES = [
 ];
 
 export const TIDEPOOL_DEFAULT_POST_STATUS = "Pending Review";
+// #27/#28: set expectations for the review queue instead of a bare "Pending".
+export const TIDEPOOL_REVIEW_EXPECTATION =
+  "A person reviews every community post before it goes public, usually within a day (longer on weekends). Posts that pass the automatic safety check go to the quick queue. You can edit or delete your post while it waits, and you get an in-app alert either way.";
+
+export function tidepoolPendingReviewCopy(post = {}) {
+  const flagged = Boolean(post.safetyReviewReason || post.needsSafetyReview || post.flagReason);
+  return flagged
+    ? `Pending review: this post was held for a closer look (${post.safetyReviewReason || post.flagReason || "safety check"}). ${TIDEPOOL_REVIEW_EXPECTATION}`
+    : `Pending review: it passed the automatic safety check and is in the quick queue. ${TIDEPOOL_REVIEW_EXPECTATION}`;
+}
 export const TIDEPOOL_PUBLIC_POST_STATUS = "Published";
 
 const CATEGORY_ALIASES = new Map([

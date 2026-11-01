@@ -124,7 +124,7 @@ export function recommendSmartSetup(input = {}, { adminAllowed = false } = {}) {
   let planType = SMART_SETUP_PLAN_TYPES.COLLECTOR_FAMILY;
   let label = "Collector / Family";
   let summary = "Best for parents, kids, and casual collectors.";
-  let why = "It keeps Hearth, Vault, Scout, Market Watch, The Spark, and community tools visible while keeping seller records out of the way.";
+  let why = "It keeps Home, Vault, Restocks, Market Watch, The Spark, and community tools visible while keeping seller records out of the way.";
 
   if (adminAllowed && flags.wantsAdminTools) {
     planType = SMART_SETUP_PLAN_TYPES.ADMIN;
@@ -139,52 +139,52 @@ export function recommendSmartSetup(input = {}, { adminAllowed = false } = {}) {
   } else if (flags.wantsSellerTools || setup.primaryMode === "casual_seller") {
     planType = SMART_SETUP_PLAN_TYPES.SELLER;
     label = "Seller";
-    summary = "Best for occasional sellers who need Forge without full business overhead.";
+    summary = "Best for occasional sellers who need Business without full business overhead.";
     why = "You want inventory, sale, planned price, and basic receipt tracking.";
   } else if (flags.wantsPartnerTools) {
     planType = SMART_SETUP_PLAN_TYPES.PARTNER_SHOP;
     label = "Partner Shop";
     summary = "Future mode for card shops and family-friendly partners.";
-    why = "Partner tools are noted for future setup. Collector and Scout tools stay available for now.";
+    why = "Partner tools are noted for future setup. Collector and restock tools stay available for now.";
   } else if (flags.wantsScoutTools && !flags.wantsFamilyTools) {
     planType = SMART_SETUP_PLAN_TYPES.SCOUT_HELPER;
-    label = "Scout Helper";
+    label = "Restocks Helper";
     summary = "Best for people who mainly report and confirm store stock.";
-    why = "You prioritized Scout reports, favorite stores, report confirmations, and local signals.";
+    why = "You prioritized restock reports, favorite stores, report confirmations, and local signals.";
   }
 
   if (planType === SMART_SETUP_PLAN_TYPES.ADMIN) {
     includes.push("Admin Command Center", "Beta approvals", "Invites", "Report review", "Missing catalog requests", "Feedback inbox", "Moderation");
     hides.push("Admin tools stay out of normal pages unless needed");
   } else if (planType === SMART_SETUP_PLAN_TYPES.BUSINESS_SELLER) {
-    includes.push("Forge", "Sales", "Receipts", "Mileage", "Expenses", "Profit", "Year-end/tax support", "Market Watch comparisons");
+    includes.push("Business", "Sales", "Receipts", "Mileage", "Expenses", "Profit", "Year-end/tax support", "Market Watch comparisons");
     hides.push("Admin tools", "Partner shop tools until supported");
   } else if (planType === SMART_SETUP_PLAN_TYPES.SELLER) {
-    includes.push("Vault", "Forge", "Market Watch", "Sales", "Planned sale price", "Basic receipts");
+    includes.push("Vault", "Business", "Market Watch", "Sales", "Planned sale price", "Basic receipts");
     hides.push("Mileage and tax tools unless business tools are enabled", "Admin tools");
   } else if (planType === SMART_SETUP_PLAN_TYPES.SCOUT_HELPER) {
-    includes.push("Scout", "Home area", "Favorite stores", "Tide Score", "Report confirmations", "Market Watch/Vault basics");
-    hides.push("Forge", "Sales", "Mileage", "Receipts", "Tax tools", "Admin tools");
+    includes.push("Restocks", "Home area", "Favorite stores", "Trust Score", "Report confirmations", "Market Watch/Vault basics");
+    hides.push("Business", "Sales", "Mileage", "Receipts", "Tax tools", "Admin tools");
   } else if (planType === SMART_SETUP_PLAN_TYPES.PARTNER_SHOP) {
-    includes.push("Scout", "Market Watch", "Tidepool Community", "Help & Support", "Partner Shop Mode later");
+    includes.push("Restocks", "Market Watch", "Community", "Help & Support", "Partner Shop Mode later");
     hides.push("Payment/shop tools until built", "Admin tools unless approved");
   } else {
-    includes.push("Hearth", "Vault", "Scout", "Market Watch", "The Spark", "Tidepool Community");
-    hides.push("Forge", "Sales", "Mileage", "Receipts", "Tax tools", "Admin tools");
+    includes.push("Hearth", "Vault", "Restocks", "Market Watch", "The Spark", "Community");
+    hides.push("Business", "Sales", "Mileage", "Receipts", "Tax tools", "Admin tools");
   }
 
   if (toolsets.has("market_price_checks") && !includes.includes("Market Watch")) includes.push("Market Watch");
-  if (toolsets.has("tidepool_community") && !includes.includes("Tidepool Community")) includes.push("Tidepool Community");
+  if (toolsets.has("tidepool_community") && !includes.includes("Community")) includes.push("Community");
 
   return { planType, label, summary, why, includes, hides };
 }
 
 export function resolveSmartRouteContext(activeRoute = "") {
   const route = normalizedKey(activeRoute || "dashboard");
-  if (["dashboard", "home", "hearth"].includes(route)) return { key: "hearth", label: "Hearth" };
-  if (route.includes("scout") || route === "stores" || route === "daily_tide") return { key: "scout", label: "Scout" };
+  if (["dashboard", "home", "hearth"].includes(route)) return { key: "hearth", label: "Home" };
+  if (route.includes("scout") || route === "stores" || route === "daily_tide") return { key: "scout", label: "Restocks" };
   if (route.includes("vault") || route.includes("collection")) return { key: "vault", label: "Vault" };
-  if (["inventory", "forge", "sales", "expenses", "mileage", "reports"].includes(route)) return { key: "forge", label: "Forge" };
+  if (["inventory", "forge", "sales", "expenses", "mileage", "reports"].includes(route)) return { key: "forge", label: "Business" };
   if (["market", "tidetradr", "tide_tradr"].includes(route)) return { key: "market", label: "Market Watch" };
   if (["kids_program", "kidsprogram", "spark", "thespark"].includes(route)) return { key: "spark", label: "The Spark" };
   if (route.includes("admin") || route.includes("moderator")) return { key: "admin", label: "Admin" };
@@ -454,14 +454,14 @@ export function selectAdaptiveHearthQuickActionKeys(state = {}) {
 
 export function adaptiveForgeAccessMessage(state = {}) {
   if (state.showSellerTools) return "";
-  return "Forge is for seller and business tracking. Turn on seller tools to use inventory, expenses, mileage, and sales.";
+  return "Business is for seller and business tracking. Turn on seller tools to use inventory, expenses, mileage, and sales.";
 }
 
 export function smartLockedFeatureMessage(featureKey = "") {
   const key = normalizedKey(featureKey);
   const messages = {
-    forge: "Seller tools are available in Forge mode.",
-    seller_tools: "Seller tools are available in Forge mode.",
+    forge: "Seller tools are available in Business mode.",
+    seller_tools: "Seller tools are available in Business mode.",
     mileage: "Mileage tracking is part of business tools.",
     receipts: "Receipt tracking is part of business tools.",
     tax_center: "Tax support is part of business tools.",
@@ -489,10 +489,10 @@ export function resolveHearthSmartNextAction(state = {}, data = {}) {
   if (state.showSellerTools) {
     return {
       key: "seller_progress",
-      badge: "Forge",
+      badge: "Business",
       title: "Track today's progress",
-      reason: "Open Forge for inventory, sale, receipt, mileage, and seller records.",
-      primaryLabel: "Open Forge",
+      reason: "Open Business for inventory, sale, receipt, mileage, and seller records.",
+      primaryLabel: "Open Business",
       secondaryLabel: "Quick Add",
     };
   }
@@ -514,21 +514,21 @@ export function resolveHearthSmartNextAction(state = {}, data = {}) {
   if (state.scoutMode && scoutCount <= 0) {
     return {
       key: "first_scout_report",
-      badge: "Scout",
-      title: "Submit your first Scout report",
-      reason: "You chose Scout-heavy tools. Start with one honest store report or confirmation.",
-      primaryLabel: "Submit Scout Report",
-      secondaryLabel: "Open Scout",
+      badge: "Restocks",
+      title: "Submit your first restock report",
+      reason: "You chose Restocks-heavy tools. Start with one honest store report or confirmation.",
+      primaryLabel: "Submit Restocks Report",
+      secondaryLabel: "Open Restocks",
     };
   }
   if (state.scoutMode && freshScoutCount <= 0) {
     return {
       key: "scout_helper",
-      badge: "Scout",
+      badge: "Restocks",
       title: "Help refresh local signals",
       reason: "No fresh reports are available yet. A clear store report helps the next family.",
-      primaryLabel: "Submit Scout Report",
-      secondaryLabel: "Open Scout",
+      primaryLabel: "Submit Restocks Report",
+      secondaryLabel: "Open Restocks",
     };
   }
   if (vaultCount <= 0) {
@@ -544,20 +544,20 @@ export function resolveHearthSmartNextAction(state = {}, data = {}) {
   if (scoutCount <= 0) {
     return {
       key: "first_scout_report",
-      badge: "Scout",
-      title: "Submit your first Scout report",
+      badge: "Restocks",
+      title: "Submit your first restock report",
       reason: "Your report can help another family and build better local history.",
-      primaryLabel: "Submit Scout Report",
-      secondaryLabel: "Open Scout",
+      primaryLabel: "Submit Restocks Report",
+      secondaryLabel: "Open Restocks",
     };
   }
   if (freshScoutCount > 0 || data.hasTrustedScoutSignal) {
     return {
       key: "fresh_scout_signals",
-      badge: "Scout",
+      badge: "Restocks",
       title: "Fresh signals nearby",
       reason: "Recent community reports are available. Review freshness before heading out.",
-      primaryLabel: "Open Scout",
+      primaryLabel: "Open Restocks",
       secondaryLabel: "Submit Report",
     };
   }
@@ -566,9 +566,9 @@ export function resolveHearthSmartNextAction(state = {}, data = {}) {
     key: "default_collection",
     badge: "Vault",
     title: "Start your collection",
-    reason: "Add to Vault when you are ready. Scout and Market stay close by.",
+    reason: "Add to Vault when you are ready. Restocks and Market stay close by.",
     primaryLabel: "Add to Vault",
-    secondaryLabel: "Open Scout",
+    secondaryLabel: "Open Restocks",
   };
 }
 
@@ -631,7 +631,7 @@ export function buildAdminPendingTaskPrompts(counts = {}) {
   return [
     { key: "beta", label: "Beta requests", count: countValue(counts.betaRequests) },
     { key: "invites", label: "Invite issues", count: countValue(counts.inviteIssues) },
-    { key: "scout", label: "Scout review", count: countValue(counts.scoutReports) },
+    { key: "scout", label: "Restocks review", count: countValue(counts.scoutReports) },
     { key: "catalog", label: "Missing catalog", count: countValue(counts.missingCatalog) },
     { key: "feedback", label: "Feedback inbox", count: countValue(counts.feedback) },
     { key: "moderation", label: "Flagged content", count: countValue(counts.flaggedContent) },

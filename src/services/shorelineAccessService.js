@@ -3,7 +3,7 @@ import {
   accessStateFromAreaAnswer,
   accountSetupTierLabel,
   formatBetaAccessAreaAnswer,
-  isVirginiaAccessState,
+  isOpenAccessState,
   normalizeAccessState,
 } from "../utils/onboardingGuidance.js";
 import {
@@ -306,12 +306,12 @@ export async function submitBetaAccessRequest(user, payload) {
     reason: tierLabel ? `${reason}\n\nStarting path: ${tierLabel}` : reason,
     local_area_answer: formatBetaAccessAreaAnswer({
       state,
-      localAreaAnswer: isVirginiaAccessState(state) ? String(payload.localAreaAnswer || "").trim() : "not_local",
+      localAreaAnswer: isOpenAccessState(state) ? String(payload.localAreaAnswer || "").trim() : "not_local",
       tierInterest: payload.tierInterest,
     }),
     social_handle: String(payload.socialHandle || "").trim(),
     rules_agreed: Boolean(payload.rulesAgreed),
-    status: isVirginiaAccessState(state) ? "pending" : "waitlist",
+    status: isOpenAccessState(state) ? "pending" : "waitlist",
     updated_at: new Date().toISOString(),
   };
 

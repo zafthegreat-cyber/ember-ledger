@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { isSupabaseConfigured, supabase } from "../supabaseClient";
 import MarketSourceComparison from "./MarketSourceComparison.jsx";
+import MarketHistoryTable from "./MarketHistoryTable.jsx";
 
 const EMPTY_ITEM = Object.freeze({});
 
@@ -113,7 +114,8 @@ function buildChartPath(points, valueKey, width, height, padding, minPrice, maxP
     .join(" ");
 }
 
-function PriceChart({ points }) {
+function PriceChart({ points, productName }) {
+  const chartId = useId();
   const width = 640;
   const height = 220;
   const padding = 28;
@@ -134,7 +136,9 @@ function PriceChart({ points }) {
 
   return (
     <div className="market-history-chart">
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Market price history chart">
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-labelledby={`${chartId}-title`} aria-describedby={`${chartId}-description`}>
+        <title id={`${chartId}-title`}>Market price history for {productName}</title>
+        <desc id={`${chartId}-description`}>{points.length} snapshots. Lines show market, mid price, and quoted low/high values. Exact values are available in the price history table.</desc>
         <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} />
         <line x1={padding} y1={padding} x2={padding} y2={height - padding} />
         {lowPath ? <path className="market-history-low" d={lowPath} /> : null}
@@ -319,6 +323,8 @@ function MarketPriceHistorySession({
               key={option.key}
               type="button"
               className={windowKey === option.key ? "chip active" : "chip"}
+              aria-pressed={windowKey === option.key}
+              aria-label={option.key === "all" ? "All price history" : option.key === "1y" ? "Last year" : option.key === "3m" ? "Last three months" : "Last six months"}
               onClick={() => setWindowKey(option.key)}
             >
               {option.label}
@@ -327,7 +333,8 @@ function MarketPriceHistorySession({
         </div>
       </div>
 
-      <PriceChart points={selectedPoints} />
+      <PriceChart points={selectedPoints} productName={productName} />
+      <MarketHistoryTable points={selectedPoints} productName={productName} money={money} />
 
       {error ? <p className="compact-subtitle error-text">Could not load history: {error}</p> : null}
       {!error && !historyPoints.length ? <p className="compact-subtitle">No historical snapshots yet. Current pricing is shown as the first point.</p> : null}

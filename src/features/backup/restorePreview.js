@@ -13,6 +13,7 @@ import {
   validateBackupCrossSourceRelationships,
   validateBackupSourceData,
 } from "./backupValidation.js";
+import { summarizeBackupCompatibility, summarizeRestoreDryRun } from "./restoreCompatibility.js";
 
 export const RESTORE_PREVIEW_RESULTS = Object.freeze({
   READY_FOR_FUTURE_RESTORE: "READY_FOR_FUTURE_RESTORE",
@@ -82,9 +83,22 @@ function emptyPreview(result, overrides = {}) {
     prohibitedFields: [],
     warnings: [],
     errors: [],
+    // #80: per-source schema/version compatibility and dry-run summary, filled in
+    // once the file parses. Null means the file could not be read at all.
+    compatibility: null,
+    dryRun: null,
+    sourceSummaries: [],
     activity: null,
     writesPerformed: 0,
     ...overrides,
+  };
+}
+
+function compatibilityOptions(options) {
+  return {
+    sourceRegistry: options.sourceRegistry || BACKUP_SOURCE_REGISTRY,
+    restorableSourceIds: options.restorableSourceIds || null,
+    currentApplicationVersion: options.currentApplicationVersion || "unknown",
   };
 }
 
@@ -458,7 +472,13 @@ function inspectMoney(records) {
   }
 
   const currencyMismatches = currencies.size > 1 ? [{ currencies: [...currencies].sort() }] : [];
-  return { invalidMoney, unsupportedPrecision, missingCurrency, currencyMismatches };
+  // A backup that declares one currency (or none at all) is a single-currency
+  // workspace; the app treats undeclared money as that currency (USD by default).
+  // Only a file that mixes currencies and also leaves some undeclared needs the
+  // person's attention, so the missing-currency list is kept for the report but
+  // no longer raises a warning on every legacy backup.
+  const assumedCurrency = currencies.size === 1 ? [...currencies][0] : currencies.size === 0 ? "USD" : "";
+  return { invalidMoney, unsupportedPrecision, missingCurrency, currencyMismatches, assumedCurrency };
 }
 
 function dedupeByJson(values) {
@@ -490,10 +510,12 @@ export async function previewBackupRestore(raw, options = {}) {
   }
 
   const formatRecognized = backup.format === CODE3_BACKUP_FORMAT;
+  const compatibility = summarizeBackupCompatibility(backup, compatibilityOptions(options));
   if (!formatRecognized || backup.formatVersion !== CODE3_BACKUP_FORMAT_VERSION) {
     return emptyPreview(RESTORE_PREVIEW_RESULTS.UNSUPPORTED, {
       formatRecognized,
       formatVersion: backup.formatVersion ?? null,
+      compatibility,
       errors: [formatRecognized ? "Backup format version is unsupported." : "Backup format is unsupported."],
       activity: { type: "RESTORE_PREVIEW_COMPLETED", startedAt, result: RESTORE_PREVIEW_RESULTS.UNSUPPORTED, warningCount: 0, errorCount: 1 },
     });
@@ -508,6 +530,7 @@ export async function previewBackupRestore(raw, options = {}) {
     return emptyPreview(RESTORE_PREVIEW_RESULTS.CORRUPTED, {
       formatRecognized: true,
       formatVersion: backup.formatVersion,
+      compatibility,
       manifestIntegrity: integrity.errors.some((error) => /manifest/i.test(error)) ? "FAILED" : "UNKNOWN",
       sectionIntegrity: integrity.errors.some((error) => /section/i.test(error)) ? "FAILED" : "UNKNOWN",
       prohibitedFields: earlyProhibitedFields,
@@ -522,6 +545,7 @@ export async function previewBackupRestore(raw, options = {}) {
     manifestIntegrity: "VALID",
     sectionIntegrity: "VALID",
     schemaCompatibility: "COMPATIBLE",
+    compatibility,
     includedSources: backup.manifest.includedSources || [],
     excludedSources: backup.manifest.excludedSources || [],
   });
@@ -563,12 +587,30 @@ export async function previewBackupRestore(raw, options = {}) {
   if (preview.prohibitedFields.length) preview.errors.push("Backup contains prohibited security or session fields.");
 
   Object.assign(preview, inspectDuplicates(records));
+  // A73: name the record so "some records do not have a stable ID" points at
+  // something the person recognises, not just an index.
+  const recordLabel = (record) => {
+    if (!record || typeof record !== "object") return "";
+    const candidate = record.name || record.itemName || record.item_name || record.title || record.productName || record.displayName || record.storeName || record.vendor || record.purpose || "";
+    return typeof candidate === "string" ? candidate.slice(0, 80) : "";
+  };
   preview.missingFields = records
     .filter((row) => !recordId(row.record))
-    .map((row) => ({ path: `${row.sourceId}.${row.collection}[${row.index}]`, field: "stable ID" }));
+    .map((row) => ({
+      path: `${row.sourceId}.${row.collection}[${row.index}]`,
+      field: "stable ID",
+      recordName: recordLabel(row.record) || "(unnamed record)",
+      message: `${recordLabel(row.record) || "An unnamed record"} in ${row.collection} has no stable ID. It will still restore; it just cannot be matched to an existing copy, so a future restore may add it twice.`,
+    }));
   preview.brokenReferences = inspectReferences(records);
   Object.assign(preview, inspectMoney(records));
   Object.assign(preview, compareWithCurrent(backup.sections, sourceRegistry, options.currentSources));
+  preview.dryRun = summarizeRestoreDryRun(backup.sections, {
+    sourceRegistry,
+    currentSources: options.currentSources,
+    restorableSourceIds: options.restorableSourceIds || null,
+  });
+  preview.sourceSummaries = preview.dryRun.sources;
 
   preview.duplicateIds = dedupeByJson(preview.duplicateIds);
   preview.idCollisions = dedupeByJson(preview.idCollisions);
@@ -585,12 +627,20 @@ export async function previewBackupRestore(raw, options = {}) {
   if (preview.invalidMoney.length) preview.errors.push("Invalid money values were found.");
   if (preview.brokenReferences.some((issue) => issue.severity === "ERROR")) preview.errors.push("Broken record references were found.");
   if (preview.idCollisions.length) preview.warnings.push("Stable IDs collide across different record collections.");
-  if (preview.missingFields.length) preview.warnings.push("Some records do not have a stable ID and require review before a future restore.");
+  if (preview.missingFields.length) {
+    const names = [...new Set(preview.missingFields.map((finding) => finding.recordName).filter((name) => name && name !== "(unnamed record)"))].slice(0, 3);
+    preview.warnings.push(`${preview.missingFields.length} record${preview.missingFields.length === 1 ? " has" : "s have"} no stable ID${names.length ? ` (for example ${names.join(", ")})` : ""}. They still restore, but a future restore could add them twice. See "Missing fields" below for the full list.`);
+  }
   if (preview.brokenReferences.some((issue) => issue.severity === "WARNING")) preview.warnings.push("Some references target sources that are not present in this backup.");
   if (preview.unsupportedPrecision.length) preview.warnings.push("Some money values need future conversion to integer minor units; no values were rounded.");
-  if (preview.missingCurrency.length) preview.warnings.push("Some records with money values do not declare a currency.");
+  if (preview.missingCurrency.length && !preview.assumedCurrency) preview.warnings.push("Some records with money values do not declare a currency and this backup mixes currencies.");
   if (preview.currencyMismatches.length) preview.warnings.push("Multiple currencies are present and require explicit migration handling.");
-  if (backup.coverageStatus !== BACKUP_COVERAGE.COMPLETE) preview.warnings.push(`Backup coverage is ${backup.coverageStatus || "unknown"}.`);
+  if (backup.coverageStatus !== BACKUP_COVERAGE.COMPLETE) {
+    const excluded = (backup.manifest?.excludedSources || []).filter((source) => source.affectsCoverage).map((source) => source.displayName).filter(Boolean);
+    preview.warnings.push(excluded.length
+      ? `This backup does not include: ${excluded.slice(0, 4).join(", ")}${excluded.length > 4 ? ` and ${excluded.length - 4} more` : ""}. Export those separately (private files have their own export) and keep the files together.`
+      : `Backup coverage is ${String(backup.coverageStatus || "unknown").toLowerCase()}: part of your data was not included. Check the exclusions list below.`);
+  }
   if (preview.unknownSources.length) preview.schemaCompatibility = "UNKNOWN_SOURCES";
 
   if (preview.unsupportedSchemas.length) preview.result = RESTORE_PREVIEW_RESULTS.UNSUPPORTED;

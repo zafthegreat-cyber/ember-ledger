@@ -1,4 +1,7 @@
 import { PrivateStorageImage } from "../components/PrivateReceipt.jsx";
+import { useId, useRef, useState } from "react";
+import "./market-search-results.css";
+import { buildManualMarketDraft, formatMarketQuoteValue, getMarketQuoteContext, getMarketResultMatchLabel } from "../utils/marketSearchPresentation.mjs";
 import {
   CommandMetricGrid,
   CommandBoardV4,
@@ -9,10 +12,11 @@ export default function MarketPage(props) {
     catalogImage,
     catalogSearch,
     catalogSearchHasRun,
+    submittedCatalogSearch = catalogSearch,
     catalogTitle,
     destinationDefaults,
     getTideTradrMarketInfo,
-    money,
+    goToCatalogPage,
     openBeaconCenter,
     openCatalogDetails,
     openCompassSearch,
@@ -29,11 +33,16 @@ export default function MarketPage(props) {
     applyCatalogProductToDeal,
     workspaceWatchlist,
   } = props;
-  const marketResultCount = Number(supabaseCatalogStatus.totalCount ?? tideTradrCatalogResults.length ?? 0);
+  const searchInputRef = useRef(null);
+  const searchStatusId = useId();
+  const marketResultCount = Math.max(0, Number(supabaseCatalogStatus.totalCount ?? tideTradrCatalogResults.length) || 0);
+  const submittedQuery = String(submittedCatalogSearch || "").trim();
+  const currentPage = Math.max(1, Number(supabaseCatalogStatus.page) || 1);
+  const resultKey = JSON.stringify([catalogSearchHasRun, submittedQuery, currentPage]);
+  const [preview, setPreview] = useState({ key: "", count: 4 });
+  const visibleResultCount = preview.key === resultKey ? preview.count : 4;
   const marketFocusSearch = () => {
-    if (typeof document !== "undefined") {
-      document.querySelector(".market-v4-search-form input, .market-smart-search input, .market-search-form input")?.focus?.();
-    }
+    searchInputRef.current?.focus();
   };
   const marketCommandStatus = [
     {
@@ -86,11 +95,11 @@ export default function MarketPage(props) {
     { key: "watch", icon: "bell", label: "Watch", title: "Watch Center", detail: `${workspaceWatchlist.length} targets`, action: () => setTideTradrSubTab("watch") },
     { key: "compare", icon: "data", label: "Compare", title: "Product Compare", detail: "Hold, buy, sell", action: openDealFinderModal },
     { key: "harbor", icon: "exchange", label: "Harbor", title: "Selling desk", detail: "Listings and proof", action: () => openExchangeSection?.("harbor") },
-    { key: "forge", icon: "forge", label: "Forge", title: "Trade decisions", detail: "Fairness and records", action: () => openExchangeSection?.("forge") },
+    { key: "forge", icon: "forge", label: "Business", title: "Trade decisions", detail: "Fairness and records", action: () => openExchangeSection?.("forge") },
     { key: "vault", icon: "vault", label: "Vault", title: "Save item", detail: "Track ownership", action: () => openProductAddFlow({ source: "market-route-vault", seed: { destinations: destinationDefaults({ vault: true }) } }) },
   ];
-  const marketResultSource = tideTradrCatalogResults.length ? tideTradrCatalogResults : workspaceWatchlist;
-  const marketPreviewItems = marketResultSource.slice(0, 4);
+  const marketResultSource = catalogSearchHasRun ? tideTradrCatalogResults : workspaceWatchlist;
+  const marketPreviewItems = marketResultSource.slice(0, visibleResultCount);
   const marketMetricItems = [
     { key: "watch", label: "Watch targets", value: workspaceWatchlist.length || "Ready", detail: "Price and restock signals" },
     { key: "results", label: "Search results", value: catalogSearchHasRun ? marketResultCount : "Search first", detail: catalogSearchHasRun ? "Current catalog query" : "Cards, sets, sealed, UPC" },
@@ -138,9 +147,7 @@ export default function MarketPage(props) {
     "Weak or fallback data is labeled before decisions",
   ];
   const formatMarketValue = (product) => {
-    const info = getTideTradrMarketInfo(product);
-    const value = info?.currentMarketValue ?? product.marketValue ?? product.marketPrice;
-    return Number.isFinite(Number(value)) && Number(value) > 0 ? money(value) : "Value unknown";
+    return formatMarketQuoteValue(product, getTideTradrMarketInfo(product));
   };
   const marketProductTitle = (product) => {
     try {
@@ -194,6 +201,8 @@ export default function MarketPage(props) {
 
             <form
               className="market-v4-search-form"
+              aria-label="Search the Market catalog"
+              aria-busy={Boolean(supabaseCatalogStatus.loading)}
               onSubmit={(event) => {
                 event.preventDefault();
                 submitCatalogSearch();
@@ -202,14 +211,23 @@ export default function MarketPage(props) {
               <label>
                 <span>Product, set, UPC, or SKU</span>
                 <input
+                  ref={searchInputRef}
                   value={catalogSearch}
                   onChange={(event) => setCatalogSearch(event.target.value)}
                   placeholder="Prismatic Evolutions Booster Bundle"
                   aria-label="Search Market"
+                  aria-describedby={searchStatusId}
+                  maxLength={140}
+                  enterKeyHint="search"
+                  autoCapitalize="none"
+                  spellCheck={false}
                 />
               </label>
-              <button type="submit">Search Market</button>
+              <button type="submit" disabled={Boolean(supabaseCatalogStatus.loading) || !String(catalogSearch || "").trim()}>{supabaseCatalogStatus.loading ? "Searching…" : "Search Market"}</button>
             </form>
+            <p id={searchStatusId} role="status" aria-live="polite" aria-atomic="true">
+              {supabaseCatalogStatus.loading ? "Searching the catalog…" : catalogSearchHasRun ? `${marketResultCount} catalog result${marketResultCount === 1 ? "" : "s"}${submittedQuery ? ` for “${submittedQuery}”` : ""}.` : "Search by card name and number, set, UPC or SKU."}
+            </p>
 
             <div className="market-v4-result-list" aria-label="Market result preview">
               {supabaseCatalogStatus.loading ? (
@@ -222,8 +240,16 @@ export default function MarketPage(props) {
                   </div>
                   <b>Loading</b>
                 </article>
+              ) : supabaseCatalogStatus.error ? (
+                <article className="market-v4-empty-state" role="alert">
+                  <strong>Catalog search could not finish.</strong>
+                  <p>Your search is preserved. Try again or edit the search before continuing.</p>
+                  <button type="button" onClick={() => submitCatalogSearch()}>Retry search</button>
+                </article>
               ) : marketPreviewItems.length ? (
-                marketPreviewItems.map((product, index) => (
+                marketPreviewItems.map((product, index) => {
+                  const context = getMarketQuoteContext(product, getTideTradrMarketInfo(product));
+                  return (
                   <article className="market-v4-result-row" key={product.id || product.productId || product.name || `market-product-${index}`}>
                     <div className="market-v4-thumb">
                       {catalogImage(product) ? (
@@ -233,13 +259,17 @@ export default function MarketPage(props) {
                       )}
                     </div>
                     <div>
-                      <span>{index === 0 ? "Top match" : "Research item"}</span>
+                      <span>{catalogSearchHasRun ? getMarketResultMatchLabel(submittedQuery, product) : "Watched item"}</span>
                       <strong>{marketProductTitle(product)}</strong>
                       <small>{marketProductSubtitle(product)}</small>
+                      {catalogSearchHasRun ? <small>Confirm the set, language, condition and printing before using a price.</small> : null}
                     </div>
                     <div className="market-v4-result-value">
                       <b>{formatMarketValue(product)}</b>
-                      <small>{product.marketStatus || product.sourceName || "Confidence labeled"}</small>
+                      <small>{context.source}</small>
+                      <small>{context.asOf ? `As of ${new Date(context.asOf).toLocaleString()}` : "Price date not supplied"}</small>
+                      <small>{context.currency || "Currency not supplied"} · {context.condition} · {context.printing}</small>
+                      {formatMarketValue(product) === "Value unknown" ? <small>Open Details to review sources or enter a manual value.</small> : null}
                     </div>
                     <div className="market-v4-result-actions">
                       <button type="button" onClick={() => openCatalogDetails(product.id || product.productId)}>Details</button>
@@ -247,7 +277,15 @@ export default function MarketPage(props) {
                       <button type="button" onClick={() => openMarketProductAddFlow(product, "market-result", { defaultDestination: "vault" })}>Add to Vault</button>
                     </div>
                   </article>
-                ))
+                  );
+                })
+              ) : catalogSearchHasRun ? (
+                <article className="market-v4-empty-state">
+                  <strong>{submittedQuery ? `No catalog matches for “${submittedQuery}”.` : "No items match these filters."}</strong>
+                  <p>Try a card name and collector number, a set name, UPC or SKU. Fewer words may help. You can also start a manual item without creating a catalog match or price.</p>
+                  <button type="button" onClick={marketFocusSearch}>Edit search</button>
+                  <button type="button" onClick={() => openProductAddFlow({ source: "market-no-results", seed: { ...buildManualMarketDraft(catalogSearch), manualEntry: true, destinations: destinationDefaults({ vault: true }) } })}>Add item manually</button>
+                </article>
               ) : (
                 <article className="market-v4-empty-state">
                   <strong>Search first, then decide.</strong>
@@ -256,6 +294,17 @@ export default function MarketPage(props) {
                 </article>
               )}
             </div>
+
+            {!supabaseCatalogStatus.loading && !supabaseCatalogStatus.error && marketPreviewItems.length ? (
+              <nav className="market-result-navigation" aria-label="Market result navigation">
+                <p>Showing {marketPreviewItems.length} of {marketResultSource.length} loaded {catalogSearchHasRun ? "results" : "watched items"}{catalogSearchHasRun ? ` on page ${currentPage}` : ""}.</p>
+                {marketResultSource.length > 4 ? <button type="button" onClick={() => setPreview({ key: resultKey, count: visibleResultCount >= marketResultSource.length ? 4 : Math.min(marketResultSource.length, visibleResultCount + 12) })}>{marketPreviewItems.length < marketResultSource.length ? "Show more results" : "Show fewer results"}</button> : null}
+                {catalogSearchHasRun && goToCatalogPage && (currentPage > 1 || supabaseCatalogStatus.hasMore) ? <>
+                  <button type="button" disabled={currentPage <= 1} onClick={() => goToCatalogPage(currentPage - 1)}>Previous result page</button>
+                  <button type="button" disabled={!supabaseCatalogStatus.hasMore} onClick={() => goToCatalogPage(currentPage + 1)}>Next result page</button>
+                </> : null}
+              </nav>
+            ) : null}
 
             <div className="market-v4-value-ribbon" aria-label="Value range ribbon">
               <span>Low: Unknown</span>

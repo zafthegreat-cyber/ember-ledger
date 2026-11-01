@@ -106,8 +106,8 @@ export function matchCardNumberToCard(cardNumber, setCode, catalog = []) {
     .map((item) => ({ item, score: normalizedSet ? 980 : 880, matchType: "card-number", confidence: normalizedSet ? 0.97 : 0.82 }));
 }
 
-export function matchProductByAlias(input, catalog = []) {
-  return searchCatalog(input, catalog, 12).map((result) => ({
+export function matchProductByAlias(input, catalog = [], limit = 12) {
+  return searchCatalog(input, catalog, limit).map((result) => ({
     item: result.item,
     score: result.score,
     matchType: "alias",
@@ -130,14 +130,14 @@ export function explainCatalogMatch(match) {
   return match.reason || "Best alias/name match.";
 }
 
-export function getBestCatalogMatches(input, catalog = []) {
+export function getBestCatalogMatches(input, catalog = [], limit = 12) {
   const normalized = normalizeScanInput(input);
   const cardNumberLike = /[a-z]*\d+[a-z]*\/?[a-z]*\d*/i.test(String(input || ""));
   const matches = [
     ...matchUpcToProduct(normalized, catalog),
     ...matchSkuToProduct(normalized, catalog),
     ...(cardNumberLike ? matchCardNumberToCard(input, "", catalog) : []),
-    ...matchProductByAlias(input, catalog),
+    ...matchProductByAlias(input, catalog, limit),
   ];
   const seen = new Set();
   return matches

@@ -11,7 +11,7 @@ export function quickAddDestinationNames(destinations = {}) {
   const labels = {
     vault: "Vault",
     wishlist: "Wishlist",
-    forge: "Forge",
+    forge: "Business",
     tidetradr: "Market",
   };
   return QUICK_ADD_DESTINATIONS

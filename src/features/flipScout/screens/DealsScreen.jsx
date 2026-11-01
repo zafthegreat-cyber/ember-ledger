@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import ExternalWebLink from "../../../components/ExternalWebLink.jsx";
 import {
   CONFIDENCE_LEVELS,
   DEAL_STATUSES,
@@ -168,7 +169,7 @@ export default function DealsScreen({ deals, initialMode = "", navigation = null
         { label: "Projected ROI", value: selectedDeal.projectedRoi || selectedDeal.expectedRoi ? formatPercent(selectedDeal.projectedRoi || selectedDeal.expectedRoi) : "Not entered", numeric: true },
       ]}
       primaryAction={<PrimaryButton disabled={saving} onClick={() => onAnalyze({ ...selectedDeal, purchasePrice: selectedDeal.askingPrice, purchaseTax: selectedDeal.estimatedTax })}>Analyze Deal</PrimaryButton>}
-      secondaryActions={<>{selectedDeal.listingUrl ? <a className="ops-button ops-button--secondary" href={selectedDeal.listingUrl} target="_blank" rel="noreferrer">Open Listing</a> : null}<QuietButton disabled={saving} onClick={() => { edit(selectedDeal); setSelectedDeal(null); }}>Edit</QuietButton><QuietButton className="ops-button--danger" disabled={saving} onClick={async () => { if (saveInFlightRef.current) return; if (await onDelete("deals", selectedDeal.id, selectedDeal.title)) setSelectedDeal(null); }}>Delete</QuietButton></>}
+      secondaryActions={<>{selectedDeal.listingUrl ? <ExternalWebLink className="ops-button ops-button--secondary" href={selectedDeal.listingUrl}>Open Listing</ExternalWebLink> : null}<QuietButton disabled={saving} onClick={() => { edit(selectedDeal); setSelectedDeal(null); }}>Edit</QuietButton><QuietButton className="ops-button--danger" disabled={saving} onClick={async () => { if (saveInFlightRef.current) return; if (await onDelete("deals", selectedDeal.id, selectedDeal.title)) setSelectedDeal(null); }}>Delete</QuietButton></>}
       sections={[
         { title: "Decision", description: "Update the saved review status.", children: <div className="flip-detail-actions"><QuietButton disabled={saving} onClick={() => updateStatus(selectedDeal, "Watching")}>Save to Watching</QuietButton><QuietButton disabled={saving} onClick={() => updateStatus(selectedDeal, "Passed")}>Pass</QuietButton></div> },
         { title: "Listing", description: "Source-provided and manually entered details.", children: <DetailList items={[{ label: "Source", value: selectedDeal.marketplace }, { label: "External listing ID", value: selectedDeal.externalListingId }, { label: "Seller", value: selectedDeal.sellerName }, { label: "Seller rating", value: selectedDeal.sellerRating }, { label: "Listing type", value: selectedDeal.listingType }, { label: "Location", value: selectedDeal.location }, { label: "Distance", value: selectedDeal.distance ? `${selectedDeal.distance} mi` : "" }, { label: "Description", value: selectedDeal.description }]} /> },

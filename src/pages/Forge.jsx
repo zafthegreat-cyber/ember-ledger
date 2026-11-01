@@ -118,7 +118,7 @@ export default function ForgePage(props) {
     },
     {
       key: "forge",
-      title: "Forge",
+      title: "Business",
       label: "Trade and value decisions",
       value: forgeInventoryItems.length,
       detail: `${workspaceTradeRecords.length} trade ${workspaceTradeRecords.length === 1 ? "memory" : "memories"} | ${formatExchangeMoney(forgeMarketValue)} tracked`,
@@ -145,7 +145,7 @@ export default function ForgePage(props) {
       key: "fairness",
       label: "Fairness review",
       value: workspaceTradeRecords.length ? `${workspaceTradeRecords.length} trades` : "Compass",
-      detail: "Forge answers whether a trade is fair, risky, or worth saving.",
+      detail: "Business answers whether a trade is fair, risky, or worth saving.",
       percent: Math.min(100, Math.max(16, workspaceTradeRecords.length * 22)),
     },
   ];
@@ -154,28 +154,28 @@ export default function ForgePage(props) {
       label: "Review Needed",
       title: `${exchangeReviewCount} Exchange item${exchangeReviewCount === 1 ? "" : "s"} need attention.`,
       detail: "Start with stale prices, missing sale prices, or open offer context before moving anything forward.",
-      cta: needsMarketCheckItems.length ? "Open Market" : "Open Forge",
+      cta: needsMarketCheckItems.length ? "Open Market" : "Open Business",
       action: () => needsMarketCheckItems.length ? openExchangeSection("market") : openExchangeSection("forge"),
     }
     : forgeInventoryItems.length
       ? {
         label: "Recommendation: Compare",
         title: "Check value before the next move.",
-        detail: "Your Forge records have saved local context. Use Product Compare or Trade Compass before listing or trading.",
+        detail: "Your Business records have saved local context. Use Product Compare or Trade Compass before listing or trading.",
         cta: "Trade Compass",
         action: () => openTradeCompassFlow({ source: "exchange-command-center" }),
       }
       : {
         label: "Recommendation: Start",
         title: "Search, compare, then decide.",
-        detail: "No fake commerce: begin with Market Intelligence or add one Forge item. Exchange stays review-first and payment-free.",
+        detail: "No fake commerce: begin with Market Intelligence or add one Business item. Exchange stays review-first and payment-free.",
         cta: "Search Market",
         action: () => openExchangeSection("market"),
       };
   const forgeNextAction = missingSalePriceItems.length
     ? {
       label: "Record Health",
-      title: `${missingSalePriceItems.length} Forge item${missingSalePriceItems.length === 1 ? "" : "s"} need sale price context.`,
+      title: `${missingSalePriceItems.length} Business item${missingSalePriceItems.length === 1 ? "" : "s"} need sale price context.`,
       detail: "Add market, cost, and planned sale details before trusting listing or profit decisions.",
       cta: "Review Prices",
       action: () => openExchangeSection("forge"),
@@ -237,7 +237,7 @@ export default function ForgePage(props) {
     },
     forge: {
       kicker: "Private ledger",
-      title: "Forge",
+      title: "Business",
         body: "Keep inventory, trades, receipts, and sales planning private and separate from Vault.",
     },
   }[activeExchangeSection];
@@ -268,7 +268,7 @@ export default function ForgePage(props) {
     {
       key: "forge",
       icon: "forge",
-      label: "Forge",
+      label: "Business",
       value: forgeInventoryItems.length,
       detail: `${workspaceTradeRecords.length} trade records`,
       action: () => openExchangeSection("forge"),
@@ -337,7 +337,7 @@ export default function ForgePage(props) {
   const exchangeHubCards = exchangeSummaryCards.map((card) => ({
     ...card,
     icon: card.key === "market" ? "market" : card.key === "harbor" ? "trade" : "forge",
-    cta: card.key === "market" ? "Open Market" : card.key === "harbor" ? "Open Harbor" : "Open Forge",
+    cta: card.key === "market" ? "Open Market" : card.key === "harbor" ? "Open Harbor" : "Open Business",
   }));
   const forgeHubCards = [
     {
@@ -457,7 +457,7 @@ export default function ForgePage(props) {
       label: "Trade Fairness",
       value: workspaceTradeRecords.length || 0,
       title: "Fair, caution, risky, not enough data",
-      detail: "Forge should answer whether the trade is worth saving.",
+      detail: "Business should answer whether the trade is worth saving.",
       icon: "forge",
       action: () => openTradeCompassFlow({ source: "exchange-v4-fairness" }),
     },
@@ -495,7 +495,7 @@ export default function ForgePage(props) {
       label: "Trade Fairness",
       value: workspaceTradeRecords.length || 0,
       title: "Fair, caution, risky, not enough data",
-      detail: "Forge should answer whether the trade is worth saving.",
+      detail: "Business should answer whether the trade is worth saving.",
       icon: "forge",
       action: () => openTradeCompassFlow({ source: "forge-v4-fairness" }),
     },
@@ -572,7 +572,7 @@ export default function ForgePage(props) {
   ];
   const forgeLeadInventory = forgeInventoryItems[0] || null;
   const forgeLeadInventoryName = forgeLeadInventory
-    ? forgeLeadInventory.productName || forgeLeadInventory.name || forgeLeadInventory.itemName || forgeLeadInventory.title || "Forge inventory record"
+    ? forgeLeadInventory.productName || forgeLeadInventory.name || forgeLeadInventory.itemName || forgeLeadInventory.title || "Business inventory record"
     : "";
   const forgePriorityQueue = [
     ...(forgeLeadInventory ? [{
@@ -704,7 +704,7 @@ export default function ForgePage(props) {
         primaryAction: { label: "Create Listing", icon: "plus", onClick: () => openMarketplaceCreate?.("manual", {}) },
         secondaryActions: [
           { label: "Sell from Vault", icon: "vault", onClick: () => openMarketplaceCreate?.("vault", {}) },
-          { label: "Open Forge", icon: "forge", onClick: () => openExchangeSection("forge") },
+          { label: "Open Business", icon: "forge", onClick: () => openExchangeSection("forge") },
         ],
       }
       : {
@@ -735,7 +735,7 @@ export default function ForgePage(props) {
         ]}
         statusItems={isHarborSection ? harborCommandStatus : exchangeCommandStatus}
         plan={{
-          label: isForgeSection ? "Forge Plan" : isHarborSection ? "Harbor Plan" : "Exchange Plan",
+          label: isForgeSection ? "Business Plan" : isHarborSection ? "Harbor Plan" : "Exchange Plan",
           title: isForgeSection ? "Record, prove, decide, then act" : isHarborSection ? "Build, prove, review, then publish" : "Decide with value, proof, and safety",
           items: isHarborSection ? harborCommandPlan : exchangeCommandPlan,
           actions: [
@@ -748,7 +748,7 @@ export default function ForgePage(props) {
               ? { label: "Business Ledger", icon: "clipboard", onClick: () => setForgeSubTab("ledger") }
               : isHarborSection
                 ? { label: "Open Market", icon: "market", onClick: () => openExchangeSection("market") }
-                : { label: "Open Forge", icon: "forge", onClick: () => openExchangeSection("forge") },
+                : { label: "Open Business", icon: "forge", onClick: () => openExchangeSection("forge") },
           ],
         }}
         routes={exchangeCommandRoutes}
@@ -818,7 +818,7 @@ export default function ForgePage(props) {
         </div>
 
         {isForgeSection ? (
-          <div className="forge-v4-operations-strip" aria-label="Forge operations summary">
+          <div className="forge-v4-operations-strip" aria-label="Business operations summary">
             {forgeOperationsStrip.map((item) => (
               <article className={`is-${item.tone}`} key={item.key}>
                 <span>{item.label}</span>
@@ -830,8 +830,8 @@ export default function ForgePage(props) {
         ) : null}
 
         {isForgeSection ? (
-          <div className="forge-v4-command-matrix" aria-label="Forge command matrix">
-            <section className="forge-v4-priority-panel" aria-label="Forge priority queue">
+          <div className="forge-v4-command-matrix" aria-label="Business command matrix">
+            <section className="forge-v4-priority-panel" aria-label="Business priority queue">
               <div className="forge-v4-matrix-heading">
                 <span>Priority Queue</span>
                 <h3>What needs attention first.</h3>
@@ -848,7 +848,7 @@ export default function ForgePage(props) {
               </div>
             </section>
 
-            <section className="forge-v4-decision-cockpit" aria-label="Forge decision cockpit">
+            <section className="forge-v4-decision-cockpit" aria-label="Business decision cockpit">
               <div className="forge-v4-matrix-heading">
                 <span>Decision Cockpit</span>
                 <h3>Value, liquidity, and proof.</h3>
@@ -867,7 +867,7 @@ export default function ForgePage(props) {
               </div>
             </section>
 
-            <section className="forge-v4-proof-panel" aria-label="Forge proof checklist">
+            <section className="forge-v4-proof-panel" aria-label="Business proof checklist">
               <div className="forge-v4-matrix-heading">
                 <span>Proof Checklist</span>
                 <h3>Records before action.</h3>
@@ -880,14 +880,14 @@ export default function ForgePage(props) {
                   </article>
                 ))}
               </div>
-              <div className="forge-v4-range-ribbon" aria-label="Forge value range">
+              <div className="forge-v4-range-ribbon" aria-label="Business value range">
                 <span>Cost {formatExchangeMoney(forgeCostBasis)}</span>
                 <b>Market {formatExchangeMoney(forgeMarketValue)}</b>
                 <span>Sold {formatExchangeMoney(soldRevenue)}</span>
               </div>
             </section>
 
-            <section className="forge-v4-guardrail-panel" aria-label="Forge seller guardrails">
+            <section className="forge-v4-guardrail-panel" aria-label="Business seller guardrails">
               <div className="forge-v4-matrix-heading">
                 <span>Seller Guardrails</span>
                 <h3>Private, proof-first selling.</h3>

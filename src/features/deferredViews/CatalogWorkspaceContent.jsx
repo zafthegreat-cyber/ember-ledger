@@ -97,7 +97,7 @@ export default function CatalogWorkspaceContent({ scope }) {
             <section className="panel">
               <h2>Shared Pokemon Product Catalog</h2>
               <p>
-                Market Watch Catalog is the shared product and value system for Forge, Scout, Vault, and Deal Finder.
+                Market Watch Catalog is the shared product and value system for Business, Restocks, Vault, and Deal Finder.
               </p>
               <p>
                 Market values are labeled Live, Cached, Manual, or Estimated. Estimated values stay labeled until live or cached sources are connected.
@@ -136,7 +136,7 @@ export default function CatalogWorkspaceContent({ scope }) {
             ) : (
             <section className="panel">
               <h2>Catalog Status</h2>
-              <p className="compact-subtitle">Catalog import and data-control tools are admin-only. Search and add-to-Vault/Forge stay available based on tier access.</p>
+              <p className="compact-subtitle">Catalog import and data-control tools are admin-only. Search and add-to-Vault/Business stay available based on tier access.</p>
               <div className="cards mini-cards">
                 <div className="card"><p>Set Records</p><h2>{POKEMON_SETS.length}</h2></div>
                 <div className="card"><p>Catalog Rows</p><h2>{catalogProducts.length}</h2></div>

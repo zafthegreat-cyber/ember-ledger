@@ -175,12 +175,12 @@ export default function DailyOverviewContent({ scope }) {
       adminToolsVisible && scoutNeedsReviewReports.length ? {
         key: "admin_scout_review",
         priority: "urgent",
-        area: "Scout",
-        title: "Verify Scout reports",
+        area: "Restocks",
+        title: "Verify restock reports",
         reason: `${scoutNeedsReviewReports.length} report${scoutNeedsReviewReports.length === 1 ? "" : "s"} need moderation before they shape trust signals.`,
-        actionLabel: "Open Scout Review",
+        actionLabel: "Open Restocks Review",
         onAction: () => {
-          setAdminReviewFilter("Scout Report Review");
+          setAdminReviewFilter("Restocks Report Review");
           setActiveTab("adminReview");
         },
         badge: "scout_verified",
@@ -188,7 +188,7 @@ export default function DailyOverviewContent({ scope }) {
       sellerAccessVisible && receiptsNeedingReviewCount ? {
         key: "forge_receipts",
         priority: "urgent",
-        area: "Forge",
+        area: "Business",
         title: "Review receipts",
         reason: `${receiptsNeedingReviewCount} receipt${receiptsNeedingReviewCount === 1 ? "" : "s"} need review before profit reports are accurate.`,
         actionLabel: "Review Receipts",
@@ -198,19 +198,19 @@ export default function DailyOverviewContent({ scope }) {
       latestScoutReport ? {
         key: "scout",
         priority: tideMode === "seller" ? "optional" : "today",
-        area: "Scout",
-        title: `${latestScoutStoreName} has a Scout signal`,
+        area: "Restocks",
+        title: `${latestScoutStoreName} has a restock signal`,
         reason: `${latestScoutItem}${latestScoutTime ? ` reported ${latestScoutTime}` : " reported recently"}.`,
-        actionLabel: "Open Scout",
+        actionLabel: "Open Restocks",
         onAction: openScoutToday,
         badge: "restock_reporter",
       } : {
         key: "scout",
         priority: "today",
-        area: "Scout",
-        title: "Follow stores to improve Scout Signals",
+        area: "Restocks",
+        title: "Follow stores to improve Restocks Signals",
         reason: "Store history gets more useful after you follow stores or submit a report.",
-        actionLabel: "Open Scout",
+        actionLabel: "Open Restocks",
         onAction: openScoutToday,
         badge: "restock_reporter",
       },
@@ -258,18 +258,18 @@ export default function DailyOverviewContent({ scope }) {
       sellerAccessVisible && forgePricingTaskCount ? {
         key: "forge_pricing",
         priority: "today",
-        area: "Forge",
-        title: "Update Forge pricing",
+        area: "Business",
+        title: "Update Business pricing",
         reason: `${forgePricingTaskCount} item${forgePricingTaskCount === 1 ? "" : "s"} need market or planned sale values.`,
-        actionLabel: "Open Forge",
+        actionLabel: "Open Business",
         onAction: () => setActiveTab("inventory"),
         badge: "forge_starter",
       } : null,
       sellerAccessVisible && !workspaceExpenses.length && !forgeReceiptRecords.length ? {
         key: "forge_receipt_start",
         priority: "optional",
-        area: "Forge",
-        title: "Add a receipt to start Forge tracking",
+        area: "Business",
+        title: "Add a receipt to start Business tracking",
         reason: "Receipts keep cost basis and profit reports honest.",
         actionLabel: "Add Receipt",
         onAction: () => openQuickAddAction("receipt"),
@@ -278,7 +278,7 @@ export default function DailyOverviewContent({ scope }) {
       sellerAccessVisible && !workspaceMileageTrips.length ? {
         key: "forge_mileage",
         priority: "optional",
-        area: "Forge",
+        area: "Business",
         title: "Log mileage if you made a store trip",
         reason: "Mileage reminders keep seller records complete without crowding collection tools.",
         actionLabel: "Open Mileage",
@@ -300,8 +300,8 @@ export default function DailyOverviewContent({ scope }) {
         priority: "optional",
         area: "Tidepool",
         title: "Community highlight",
-        reason: filteredTidepoolPosts[0].title || filteredTidepoolPosts[0].body || "A Tidepool post is ready to review.",
-        actionLabel: "Open Tidepool",
+        reason: filteredTidepoolPosts[0].title || filteredTidepoolPosts[0].body || "A Community post is ready to review.",
+        actionLabel: "Open Community",
         onAction: () => setActiveTab("tidepool"),
         badge: "tidepool_helper",
       } : null,
@@ -342,10 +342,10 @@ export default function DailyOverviewContent({ scope }) {
     const completedChecklistItems = sortedChecklistItems.filter((item) => dailyTideToday.completedActions?.[item.key]);
     const bestActionItem = incompleteChecklistItems[0] || {
       key: "calm",
-      area: "Scout",
+      area: "Restocks",
       title: "No urgent actions today",
-      reason: "Check Scout Signals or add the next useful item when you have time.",
-      actionLabel: "Check Scout Signals",
+      reason: "Check Restocks Signals or add the next useful item when you have time.",
+      actionLabel: "Check Restocks Signals",
       onAction: openScoutToday,
       badge: "market_watcher",
     };
@@ -357,11 +357,11 @@ export default function DailyOverviewContent({ scope }) {
     const tideSummaryCards = [
       {
         key: "scout",
-        area: "Scout Signals",
+        area: "Restocks Signals",
         title: latestScoutReport ? latestScoutStoreName : "No verified signals nearby yet",
         value: followedStores.length ? `${followedStores.length} followed` : scoutReportRows.length || 0,
         detail: latestScoutReport ? `${latestScoutItem}${latestScoutTime ? ` | ${latestScoutTime}` : ""}` : "Follow stores or submit the first signal.",
-        actionLabel: "Open Scout",
+        actionLabel: "Open Restocks",
         onClick: openScoutToday,
         accent: "scout",
       },
@@ -387,11 +387,11 @@ export default function DailyOverviewContent({ scope }) {
       },
       sellerAccessVisible ? {
         key: "forge",
-        area: "Forge Tasks",
-        title: forgePricingTaskCount || receiptsNeedingReviewCount ? "Seller tasks need attention" : "Forge is steady",
+        area: "Business Tasks",
+        title: forgePricingTaskCount || receiptsNeedingReviewCount ? "Seller tasks need attention" : "Business is steady",
         value: forgePricingTaskCount + receiptsNeedingReviewCount,
         detail: `${forgeInventoryItems.length} inventory item${forgeInventoryItems.length === 1 ? "" : "s"}, ${workspaceSales.length} sale${workspaceSales.length === 1 ? "" : "s"}, ${workspaceExpenses.length} expense${workspaceExpenses.length === 1 ? "" : "s"}.`,
-        actionLabel: "Open Forge",
+        actionLabel: "Open Business",
         onClick: () => setActiveTab("inventory"),
         accent: "forge",
       } : null,
@@ -411,7 +411,7 @@ export default function DailyOverviewContent({ scope }) {
         title: filteredTidepoolPosts[0].title || "Community activity",
         value: filteredTidepoolPosts.length,
         detail: filteredTidepoolPosts[0].body || "Open community highlights.",
-        actionLabel: "Open Tidepool",
+        actionLabel: "Open Community",
         onClick: () => setActiveTab("tidepool"),
         accent: "tide",
       } : null,
@@ -455,7 +455,7 @@ export default function DailyOverviewContent({ scope }) {
           )}
         />
 
-        <section className={`panel todays-tide-best-action todays-tide-best-${tideMode}`} aria-label="Today's best action">
+        <section className={`panel todays-tide-best-action todays-tide-best-${tideMode}${bestActionItem.key === "calm" ? " todays-tide-best-calm" : ""}`} aria-label="Today's best action">
           <div className="todays-tide-best-copy">
             <div className="hearth-card-kicker-row">
               <p className="section-kicker">Today&apos;s Best Action</p>
@@ -507,8 +507,8 @@ export default function DailyOverviewContent({ scope }) {
           )) : (
             <div className="small-empty-state todays-tide-empty-state">
               <strong>No urgent actions today.</strong>
-              <p>Check Scout Signals, add to your Vault, or make a market alert when you are ready.</p>
-              <button type="button" className="secondary-button" onClick={openScoutToday}>Check Scout Signals</button>
+              <p>Check Restocks Signals, add to your Vault, or make a market alert when you are ready.</p>
+              <button type="button" className="secondary-button" onClick={openScoutToday}>Check Restocks Signals</button>
             </div>
           )}
         </section>

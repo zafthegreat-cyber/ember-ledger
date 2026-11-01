@@ -174,7 +174,7 @@ export function createCloudWorkspaceSync({ storage, client, ownerId, applySource
     reviews.clear();
     reviews.set(reviewId, { local, remote, merge });
     return {
-      reviewId, revision: remote.revision,
+      reviewId, revision: remote.revision, cloudSavedAt: remote.updatedAt,
       conflicts: merge.conflicts.map((sourceId) => {
         const source = WORKSPACE_SYNC_SOURCES.find((entry) => entry.sourceId === sourceId);
         return { sourceId, displayName: source.displayName,

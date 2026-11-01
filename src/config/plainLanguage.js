@@ -38,11 +38,9 @@ const VISIBLE_PHRASE_REPLACEMENTS = [
   [/Scout Command Center/gi, "Restock Intelligence"],
   [/Scout Signals/gi, "Restock Signals"],
   [/Scout Report Review/gi, "Restock Report Review"],
-  [/Scout reports?/gi, (match) => match.endsWith("s") ? "restock reports" : "restock report"],
   [/Scout protections/gi, "Sourcing protections"],
   [/Scout privacy/gi, "Sourcing privacy"],
   [/Scout fairness/gi, "Sourcing fairness"],
-  [/Scout points/gi, "Report points"],
   [/Open Scout/gi, "Open Restocks"],
   [/Add Scout report/gi, "Add restock report"],
   [/Save Scout Report/gi, "Save restock report"],
@@ -79,11 +77,69 @@ const VISIBLE_PHRASE_REPLACEMENTS = [
   [/Spark status/gi, "Kids & Community status"],
 ];
 
+// 2026-10-30: the names "Forge" and "Scout" are retired from everything a
+// person reads. Routes, storage keys, database names and code symbols keep the
+// old words (see the backlog branding rule); these rules only touch copy.
+// Order matters: people-phrases first, then noun phrases, then the bare words.
+function sentenceCase(word, offset, source) {
+  const before = String(source || "").slice(0, offset).replace(/\s+$/, "");
+  const startsSentence = !before || /[.!?:]$/.test(before) || /\n$/.test(String(source || "").slice(0, offset));
+  return startsSentence ? word.charAt(0).toUpperCase() + word.slice(1) : word;
+}
+const nounPhrase = (noun) => (match, ...rest) => {
+  const source = rest[rest.length - 1];
+  const offset = rest[rest.length - 2];
+  const plural = /s$/i.test(match) && !/\b(details|history|data|context|signals|patterns|protections|privacy|fairness|access|tools|routes|map|feed|notifications|status)$/i.test(noun) ? "s" : "";
+  const word = `${noun}${plural}`;
+  return match.charAt(0) === match.charAt(0).toUpperCase() && /[A-Z]/.test(match.charAt(0)) ? sentenceCase(word, offset, source) : word;
+};
+export const LEGACY_NAME_REPLACEMENTS = [
+  [/\bFlip Scout\b/g, "Deal Finder"],
+  [/\bRestock Scout\b/g, "Restock Intelligence"],
+  [/\bTrusted Scouts?\b/g, (m) => m.endsWith("s") ? "Trusted Reporters" : "Trusted Reporter"],
+  [/\bActive Scouts?\b/g, (m) => m.endsWith("s") ? "Active Reporters" : "Active Reporter"],
+  [/\bNew Scouts?\b/g, (m) => m.endsWith("s") ? "New Reporters" : "New Reporter"],
+  [/\b[Ss]cout points?\b/g, nounPhrase("restock point")],
+  [/\b[Ss]cout reports?\b/g, nounPhrase("restock report")],
+  [/\b[Ss]cout stores?\b/g, nounPhrase("watched store")],
+  [/\b[Ss]cout alerts?\b/g, nounPhrase("restock alert")],
+  [/\b[Ss]cout helpers?\b/g, nounPhrase("restock helper")],
+  [/\b[Ss]cout (details|history|data|context|signals?|patterns?|protections?|privacy|fairness|access|tools?|routes?|map|feed|notifications?|status)\b/g, (m, noun, offset, source) => (/^S/.test(m) ? sentenceCase(`restock ${noun}`, offset, source) : `restock ${noun}`)],
+  [/\bScout Command Center\b/g, "Restock Intelligence"],
+  [/\bScouts\b/g, "restock reporters"],
+  [/\bScout(?:'|’)s\b/g, "reporter's"],
+  [/\bScouting\b/g, "Restock reporting"],
+  [/\bScout\b/g, "Restocks"],
+  [/\bForge [Bb]usiness\b/g, "Business"],
+  [/\bBusiness Forge\b/g, "Business Workspace"],
+  [/\bPersonal Forge\b/g, "Personal Business Workspace"],
+  [/\bForge\b/g, "Business"],
+  // Old brand feature names (tester reactions A41/A42: "Is it Ember & Tide or Code 3?").
+  [/\bAsk Ember(?: Assist)?\b/g, "Business Assistant"],
+  [/\bEmber Assist\b/g, "Business Assistant"],
+  [/\bEmber Watch\b/g, "Watch Center"],
+  [/\bEmber ID\b/g, "Public Profile"],
+  [/\bEmber Points?\b/g, (m) => m.endsWith("s") ? "Daily Points" : "Daily Point"],
+  [/\bTide Watch\b/g, "Watch Center"],
+  [/\bTide Score\b/g, "Trust Score"],
+  [/\bTide Points?\b/g, (m) => m.endsWith("s") ? "Daily Points" : "Daily Point"],
+  [/\bTide Forecast\b/g, "Restock Forecast"],
+  [/\bTide Refresh\b/g, "Refresh"],
+  [/\bTidepool Community\b/g, "Community"],
+  [/\bTidepool\b/g, "Community"],
+  [/\bHearth\b/g, "Home"],
+];
+
+export function renameLegacyProductNames(value = "") {
+  return LEGACY_NAME_REPLACEMENTS.reduce((result, [pattern, replacement]) => result.replace(pattern, replacement), String(value ?? ""));
+}
+
 export function plainLanguageText(value = "") {
   const source = String(value ?? "");
   const exact = EXACT_VISIBLE_LABELS.get(source.trim());
   if (exact && source.trim() === source) return exact;
-  return VISIBLE_PHRASE_REPLACEMENTS.reduce((result, [pattern, replacement]) => result.replace(pattern, replacement), formatBrandText(source));
+  const phrased = VISIBLE_PHRASE_REPLACEMENTS.reduce((result, [pattern, replacement]) => result.replace(pattern, replacement), formatBrandText(source));
+  return renameLegacyProductNames(phrased);
 }
 
 const VISIBLE_ATTRIBUTES = ["aria-label", "title", "placeholder", "alt"];

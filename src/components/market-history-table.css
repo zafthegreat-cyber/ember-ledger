@@ -1,0 +1,8 @@
+.market-history-data { margin-block: 16px; min-width: 0; }
+.market-history-data > summary { display: flex; align-items: center; min-height: 44px; padding: 10px 12px; cursor: pointer; font-weight: 650; }
+.market-history-data__scroll { max-width: 100%; max-height: 360px; overflow: auto; overscroll-behavior: contain; border: 1px solid var(--border-subtle, #d9cdbc); border-radius: 10px; }
+.market-history-data table { width: 100%; min-width: 580px; border-collapse: collapse; text-align: start; }
+.market-history-data caption { padding: 12px; font-weight: 600; text-align: start; color: var(--text-secondary, #665b4e); }
+.market-history-data :is(th, td) { padding: 10px 12px; border-bottom: 1px solid var(--border-subtle, #d9cdbc); vertical-align: top; }
+.market-history-data thead th { position: sticky; top: 0; background: var(--surface-secondary, #f5ecdf); }
+.market-history-data :is(summary, [role="region"]):focus-visible { outline: 3px solid var(--focus-ring, #247080); outline-offset: 2px; }

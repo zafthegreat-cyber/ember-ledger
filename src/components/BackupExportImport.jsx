@@ -1,3 +1,5 @@
+import ExportDisclosure from "./ExportDisclosure.jsx";
+
 export default function BackupExportImport({
   storageStatus,
   importPreview,
@@ -15,7 +17,7 @@ export default function BackupExportImport({
       </div>
 
       <div className="backup-actions">
-        <button type="button" className="drawer-link" onClick={onExport}>
+        <button type="button" className="drawer-link" aria-describedby="beta-backup-export-disclosure" onClick={onExport}>
           Export Beta Data
         </button>
         <label className="drawer-link backup-file-label">
@@ -26,6 +28,8 @@ export default function BackupExportImport({
           Clear Private Beta Data
         </button>
       </div>
+
+      <ExportDisclosure id="beta-backup-export-disclosure" kind="beta-backup" format="json" />
 
       <details className="storage-status-card">
         <summary>Storage Status</summary>

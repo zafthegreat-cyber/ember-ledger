@@ -89,6 +89,8 @@
 .app.app-command-shell[data-theme] .collection-portfolio-photo-fallback { display: grid; place-items: center; color: var(--text-secondary); }
 .app.app-command-shell[data-theme] .collection-portfolio-photo-fallback svg { width: 32px; height: 32px; }
 .app.app-command-shell[data-theme] .collection-portfolio-item-copy { display: grid; align-content: start; gap: 5px; min-width: 0; padding: 14px; }
+.app.app-command-shell[data-theme] .collection-portfolio-copy-details { display: grid; gap: 4px; min-width: 0; color: var(--text-secondary); font: 400 14px/1.5 var(--font-ui); overflow-wrap: anywhere; }
+.app.app-command-shell[data-theme] .collection-portfolio-copy-note { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; white-space: pre-wrap; }
 .app.app-command-shell[data-theme] .collection-portfolio-item-name { color: var(--text-primary); font: 600 .9375rem/1.4 var(--font-display); overflow-wrap: anywhere; }
 .app.app-command-shell[data-theme] :is(.collection-portfolio-item-meta, .collection-portfolio-item-quantity) { color: var(--text-secondary); font: 400 .75rem/1.5 var(--font-ui); overflow-wrap: anywhere; }
 .app.app-command-shell[data-theme] .collection-portfolio-item-value { margin-top: 5px; color: var(--text-primary); font: 600 1rem/1.5 var(--font-display); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }

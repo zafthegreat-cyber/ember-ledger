@@ -24,16 +24,25 @@ const OFFICIAL_CLAIM_PATTERNS = [
   "tideadmin",
 ];
 
+// #31/#32: replica/counterfeit wording and off-platform "friends and family"
+// payment pushes, in the spellings people actually use (F&F, FF, f/f, "no
+// goods and services", Zelle/Cash App/Venmo "only"), not just one phrasing.
 const UNSAFE_COMMUNITY_PATTERNS = [
   /no\s+parents/i,
   /private\s+(kid|child|minor)\s+(dm|message|chat)/i,
   /(dm|message|chat)\s+(kid|child|minor)\s+privately/i,
   /wire\s+transfer\s+only/i,
-  /gift\s+card\s+only/i,
-  /cashapp\s+only/i,
-  /venmo\s+friends\s+and\s+family/i,
-  /paypal\s+friends\s+and\s+family/i,
+  /gift\s+cards?\s+only/i,
+  /\b(cash\s*app|cashapp|zelle|venmo|paypal|apple\s*cash|chime)\b[^.\n]{0,24}\bonly\b/i,
+  /\bonly\b[^.\n]{0,16}\b(cash\s*app|cashapp|zelle|venmo|paypal|apple\s*cash|chime)\b/i,
+  /\b(venmo|paypal|pay\s*pal|pp)\b[^.\n]{0,20}\b(friends?\s*(and|&|\+|n)\s*family|f\s*&\s*f|f\s*\/\s*f|\bff\b|fnf)\b/i,
+  /\b(friends?\s*(and|&|\+|n)\s*family|f\s*&\s*f|fnf)\b[^.\n]{0,20}\b(only|please|pls|preferred|or\s+no\s+deal)\b/i,
+  /\bno\s+(goods?\s*(and|&)\s*services?|g\s*&\s*s|gns)\b/i,
+  /\b(goods?\s*(and|&)\s*services?|g\s*&\s*s)\b[^.\n]{0,12}\b(not accepted|adds? fee|extra\s+\d)/i,
   /off[-\s]?platform\s+only/i,
+  /\b(replica|replicas|counterfeit|counterfeits|fake|fakes|proxy|proxies|bootleg|knock[-\s]?off|unofficial print|custom print)\b[^.\n]{0,40}\b(cards?|packs?|box(es)?|etb|booster|slabs?|psa|cgc|bgs)\b/i,
+  /\b(cards?|packs?|box(es)?|etb|booster|slabs?)\b[^.\n]{0,40}\b(replica|replicas|counterfeit|counterfeits|fake|fakes|proxy|proxies|bootleg|knock[-\s]?off)\b/i,
+  /\b(resealed|reseal|re-sealed|weighed\s+packs?|light\s+packs?)\b/i,
 ];
 
 export function isMarketplaceClosedStatus(status = "") {
@@ -80,6 +89,15 @@ export function validateMarketplaceListingDraft(form = {}, options = {}) {
     form.tags,
   ], options);
   if (safetyError) return safetyError;
+  // #30/#31: listings run the same contact/address/counterfeit detector as posts.
+  if (!options.allowSafetyReview) {
+    const reviewReason = detectTidepoolSafetyReviewReason({
+      title: form.title,
+      body: [form.description, form.sellerNotes, form.tags].filter(Boolean).join(" "),
+      locationName: form.meetupLocation || form.locationName || form.pickupArea,
+    });
+    if (reviewReason) return `${reviewReason} Public listings cannot include private contact details, exact addresses, or replica/counterfeit items.`;
+  }
 
   if (options.requirePublicFields) {
     const listingType = String(form.listingType || "");
@@ -117,7 +135,22 @@ export function validateTidepoolPostDraft(form = {}, options = {}) {
 export function validateTidepoolCommentDraft(body = "", options = {}) {
   const text = String(body || "").trim();
   if (!text) return "Add a comment before posting.";
-  return validateCommunityCopy([text], options);
+  const copyError = validateCommunityCopy([text], options);
+  if (copyError) return copyError;
+  // #29: comments run the same contact/address/child-safety detector as posts.
+  if (!options.allowSafetyReview && detectTidepoolSafetyReviewReason({ body: text })) {
+    return "Comments cannot include phone numbers, emails, exact addresses, or private family details. Keep it in the app so everyone stays safe.";
+  }
+  return "";
+}
+
+/** One place to ask "would this public text be blocked, and why" for UI hints. */
+export function describeCommunitySafetyIssue(text = "", options = {}) {
+  const value = String(text || "");
+  if (!value.trim()) return "";
+  const copyError = validateCommunityCopy([value], options);
+  if (copyError) return copyError;
+  return detectTidepoolSafetyReviewReason({ body: value }) || "";
 }
 
 export function isOfficialCommunityUsername(username = "") {

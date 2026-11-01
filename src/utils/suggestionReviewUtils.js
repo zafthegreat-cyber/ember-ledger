@@ -49,8 +49,8 @@ export const SUGGESTION_TYPE_LABELS = {
   [SUGGESTION_TYPES.CORRECT_PRODUCT_METADATA]: "Correct Product Info",
   [SUGGESTION_TYPES.SUGGEST_RESTOCK_PATTERN]: "Suggest Restock Pattern",
   [SUGGESTION_TYPES.SUGGEST_PURCHASE_LIMIT]: "Suggest Purchase Limit",
-  [SUGGESTION_TYPES.SCOUT_REPORT_REVIEW]: "Scout Report Review",
-  [SUGGESTION_TYPES.EMBER_ASSIST_ADMIN_MESSAGE]: "Ember Assist Message",
+  [SUGGESTION_TYPES.SCOUT_REPORT_REVIEW]: "Restocks Report Review",
+  [SUGGESTION_TYPES.EMBER_ASSIST_ADMIN_MESSAGE]: "Business Assistant Message",
 };
 
 export const REVIEW_SECTION_LABELS = {
@@ -58,10 +58,10 @@ export const REVIEW_SECTION_LABELS = {
   catalog: "Catalog Suggestions",
   sku: "SKU / UPC Suggestions",
   bestBuy: "Best Buy Product Suggestions",
-  reports: "Scout Report Review",
+  reports: "Restocks Report Review",
   intelligence: "Store Intelligence Suggestions",
   flagged: "Duplicate / Closed Store Reports",
-  assist: "Ember Assist Inbox",
+  assist: "Business Assistant Inbox",
 };
 
 function safeParse(value, fallback) {
@@ -216,7 +216,7 @@ export function getSuggestionReviewSection(suggestion = {}) {
 export function suggestionTitle(suggestion = {}) {
   const data = suggestion.submittedData || {};
   if (suggestion.suggestionType === SUGGESTION_TYPES.EMBER_ASSIST_ADMIN_MESSAGE || suggestion.targetTable === "ember_assist_messages") {
-    return data.question || data.category || "Ember Assist message";
+    return data.question || data.category || "Business Assistant message";
   }
   return (
     data.name ||

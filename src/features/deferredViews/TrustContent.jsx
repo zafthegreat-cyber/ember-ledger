@@ -25,13 +25,13 @@ export default function TrustContent({ scope }) {
         status: "Protected",
       },
       {
-        title: "Scout protections",
-        body: "Scout shares current signals and proof context, not raw restock history, vendor schedules, employee names, or pattern windows.",
+        title: "Restock protections",
+        body: "Restocks shares current signals and proof context, not raw restock history, vendor schedules, employee names, or pattern windows.",
         status: "Anti-scalper",
       },
       {
         title: "Community moderation",
-        body: "Tidepool and public surfaces are built around family-safe posts, proof labels, and reporting instead of unmoderated feeds.",
+        body: "Community and public surfaces are built around family-safe posts, proof labels, and reporting instead of unmoderated feeds.",
         status: "Moderated",
       },
       {
@@ -41,7 +41,7 @@ export default function TrustContent({ scope }) {
       },
     ];
     const lanternStats = [
-      { label: "Safety paths", value: "6", helper: "care, trade, selling, Scout, meetup, links" },
+      { label: "Safety paths", value: "6", helper: "care, trade, selling, Restocks, meetup, links" },
       { label: "Kid context", value: "On", helper: "parent-guided and private" },
       { label: "Risk posture", value: "Review", helper: "slow down before action" },
     ];
@@ -72,7 +72,7 @@ export default function TrustContent({ scope }) {
         status: "Public place",
       },
       {
-        title: "Scout privacy",
+        title: "Restock privacy",
         body: "Use current store signals without exposing exact restock patterns, vendor schedules, or private location.",
         status: "Area only",
       },
@@ -108,8 +108,8 @@ export default function TrustContent({ scope }) {
     ];
     const lanternRouteRows = [
       { title: "Open Nest", body: "Review parent approvals, permissions, and family activity.", action: "Parent Center", onClick: () => setActiveTab("parentCenter") },
-      { title: "Open Exchange", body: "Compare Market, Harbor, and Forge decisions before trading or selling.", action: "Exchange", onClick: () => setActiveTab("exchange") },
-      { title: "Open Scout", body: "Use current local signals without unsafe restock-pattern details.", action: "Scout", onClick: () => setActiveTab("scout") },
+      { title: "Open Exchange", body: "Compare Market, Harbor, and Business decisions before trading or selling.", action: "Exchange", onClick: () => setActiveTab("exchange") },
+      { title: "Open Restocks", body: "Use current local signals without unsafe restock-pattern details.", action: "Restocks", onClick: () => setActiveTab("scout") },
       { title: "Open Spark", body: "Review kid-pack, donation, and family participation requests.", action: "The Spark", onClick: () => setActiveTab("kidsProgram") },
     ];
     return (
@@ -122,15 +122,15 @@ export default function TrustContent({ scope }) {
           ariaLabel="Trust and Safety Command Center"
           label="Lantern"
           title="Trust & Safety Command Center"
-          description="Family privacy, Scout fairness, safe meetups, trade/sell friction, report education, and legal foundations in one protected control surface."
-          primaryAction={{ label: "Back to Hearth", icon: "home", onClick: () => setActiveTab("dashboard") }}
+          description="Family privacy, restock fairness, safe meetups, trade/sell friction, report education, and legal foundations in one protected control surface."
+          primaryAction={{ label: "Back to Home", icon: "home", onClick: () => setActiveTab("dashboard") }}
           secondaryActions={[
             adminToolsVisible ? { label: "Review clarity", icon: "help", onClick: () => void runTrustCopyAiAssist("legal") } : null,
             { label: "New Stuff", icon: "bell", onClick: () => setActiveTab("whatsNew") },
           ].filter(Boolean)}
           statusItems={[
             { key: "privacy", icon: "community", label: "Child privacy", value: "Protected", detail: "Private by default" },
-            { key: "scout", icon: "scout", label: "Scout fairness", value: "Current", detail: "No raw patterns" },
+            { key: "scout", icon: "scout", label: "Restock fairness", value: "Current", detail: "No raw patterns" },
             { key: "meetup", icon: "store", label: "Meetups", value: "Public", detail: "No private child location" },
             { key: "proof", icon: "data", label: "Proof", value: "Required", detail: "Photos, receipts, records" },
             { key: "links", icon: "help", label: "External links", value: "Gated", detail: "Warning first" },
@@ -151,7 +151,7 @@ export default function TrustContent({ scope }) {
           }}
           routes={[
             { key: "nest", icon: "community", label: "Nest", title: "Family controls", detail: "Approvals and permissions", action: () => setActiveTab("parentCenter") },
-            { key: "scout", icon: "scout", label: "Scout", title: "Local intel", detail: "Privacy-safe reports", action: () => setActiveTab("scout") },
+            { key: "scout", icon: "scout", label: "Restocks", title: "Local intel", detail: "Privacy-safe reports", action: () => setActiveTab("scout") },
             { key: "exchange", icon: "market", label: "Exchange", title: "Trade and sell", detail: "Safety decisions", action: () => setActiveTab("exchange") },
             { key: "spark", icon: "spark", label: "Spark", title: "Family support", detail: "Kid-pack review", action: () => setActiveTab("kidsProgram") },
             { key: "archive", icon: "data", label: "Archive", title: "Proof records", detail: "Receipts and history", action: () => openUtilityPage("dataBackup") },
@@ -162,7 +162,7 @@ export default function TrustContent({ scope }) {
             className="trust-v4-guardrails"
             kicker="Privacy and safety"
             title="Family-first guardrails before growth"
-            detail="Code 3 TCG keeps collecting useful without exposing private child details, harmful Scout patterns, or admin-only moderation data."
+            detail="Code 3 TCG keeps collecting useful without exposing private child details, harmful restock patterns, or admin-only moderation data."
             action={<span className="status-badge">Protected</span>}
           >
             <div className="trust-v4-guardrail-grid">
@@ -180,7 +180,7 @@ export default function TrustContent({ scope }) {
             className="trust-v4-lantern"
             kicker="Lantern Safety Center"
             title="Practical safety tools, not vague warnings"
-            detail="Lantern turns safety into checklists for card care, trades, scam prevention, selling, safe meetups, Scout privacy, external links, and kid or teen collecting."
+            detail="Lantern turns safety into checklists for card care, trades, scam prevention, selling, safe meetups, restock privacy, external links, and kid or teen collecting."
             action={<span className="status-badge">Role-aware</span>}
           >
             <CommandMetricGrid className="trust-v4-lantern-metrics" items={lanternStats.map((stat) => ({ key: stat.label, label: stat.label, value: stat.value, detail: stat.helper }))} />
@@ -297,7 +297,7 @@ export default function TrustContent({ scope }) {
               className="trust-v4-routes"
               kicker="Safe routes"
               title="Move to the right protected surface"
-              detail="Trust should guide the user into Nest, Scout, Exchange, or Spark at the right moment."
+              detail="Trust should guide the user into Nest, Restocks, Exchange, or Spark at the right moment."
               action={<span className="status-badge">Connected</span>}
             >
               <div className="trust-v4-route-list">

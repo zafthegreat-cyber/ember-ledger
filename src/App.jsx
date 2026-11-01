@@ -1,6 +1,7 @@
 import DeferredModalBoundary from "./features/deferredViews/DeferredModalBoundary";
+import { catalogCardQueryMatchesRow, getCatalogCollectorQuery, getCatalogPageProducts } from "./utils/catalogResultIdentity.mjs";
 import { isNativePlatform, getNativeAuthRedirect } from "./native/nativeRuntime.js";
-import { exportFile } from "./native/nativeFiles.js";
+import { exportFile, exportFileStatus, exportFileError } from "./native/nativeFiles.js";
 import CloudSyncPanel from "./features/persistence/CloudSyncPanel.jsx";
 import AccountDeletionPage from "./features/privacy/AccountDeletionPage.jsx";
 import { PublicSupportPage } from "./features/privacy/PrivacyCenter.jsx";
@@ -107,11 +108,15 @@ import {
   dropRadarRecordKind,
   dropRadarRecordLabel,
   getScoutPoints,
+  describeScoutPointsProgress,
   isDropRadarCommunityGuess,
   isDropRadarConfirmedTrainingEntry,
   isDropRadarPlaceholderForecast,
   shouldUseDropRadarSeed,
 } from "./utils/dropRadarUtils.mjs";
+import { announceNewNotifications, deviceNotificationSupport, requestDeviceNotifications } from "./utils/deviceNotifications.js";
+import { isKidSafeProfile, KID_SAFE_COPY } from "./utils/kidSafeView.js";
+import { storageQuotaStatus } from "./utils/storageQuota.js";
 import {
   cleanupBrowserBetaStorage,
   emptyTidepoolData,
@@ -130,6 +135,11 @@ import {
   pathFromActiveTab,
   routeStateFromPath,
 } from "./utils/appRouteState";
+import { readMarketSearchRoute, writeMarketSearchRoute } from "./utils/marketRouteState.mjs";
+import ExternalWebLink from "./components/ExternalWebLink.jsx";
+import ExportDisclosure from "./components/ExportDisclosure.jsx";
+import { fieldsFromRows } from "./utils/exportDisclosure.mjs";
+import { buildRejectedImportCsv, importCatalogCandidateMatches, importMoneyDraft, importQuantityDraft, importRowIssues, inferImportColumnFields, isImportHeaderRecord, parseImportRecords, possibleImportDuplicate, sameImportCopy, readImportSavedDetails, withImportSavedDetails } from "./utils/importReviewSafety.mjs";
 import {
   REVIEW_SECTION_LABELS,
   SUGGESTION_STATUSES,
@@ -250,6 +260,7 @@ import {
   buildTidepoolPost,
   canUserCreateTidepoolPost,
   canViewTidepoolPost,
+  detectTidepoolSafetyReviewReason,
   flagTidepoolPost,
   moderateTidepoolPost,
   normalizeTidepoolFlagReason,
@@ -347,7 +358,7 @@ import { STORE_LOCATION_TYPES, buildStoreProfileSummary, matchesStoreDirectoryFi
 import { normalizeStoreAreaFields } from "./utils/regionalBrowsingUtils";
 import { ADMIN_STORE_DRAFT_DEFAULTS, ADMIN_STORE_PERSISTENCE_NOTE, STORE_PARTNER_NO_GUARANTEE_COPY, adminStoreDraftToApprovedStore, applyAdminStoreDraftToStores, filterStoresForScoutPicker, getAdminStoreManagementSummary, normalizeAdminStoreDraft, validateAdminStoreDraft } from "./utils/adminStoreTools";
 import { normalizeStoreSearch, storeMatchesSearch } from "./utils/storeSearchUtils";
-import {
+import { normalizeSparkAgeRange,
   SPARK_PROGRAM_STATUS_OPTIONS,
   normalizeSparkProgramStatus,
   sparkProgramStatusLabel,
@@ -368,6 +379,12 @@ import {
   workspaceDeleteBlockReason,
 } from "./utils/settingsWorkspaceSafety";
 import {
+  stripPrivateSaleFields,
+  stripPrivateTripFields,
+  estimateChannelFees,
+  getSalesChannelDefaults,
+  SHIP_STATUS_OPTIONS,
+  SALE_STATUS_OPTIONS,
   SALES_PLATFORM_OPTIONS,
   buildSalesExportRows,
   buildSalesReviewView,
@@ -435,6 +452,10 @@ import {
   buildOnboardingChecklist,
   getEmptyStateGuidance,
   isVirginiaAccessState,
+  isOpenAccessState,
+  openAccessStatesLabel,
+  betaAccessPendingMessage,
+  BETA_REVIEW_EXPLANATION,
   normalizeAccessState,
   normalizeOnboardingGoalKeys,
   normalizeOnboardingState,
@@ -546,7 +567,7 @@ const EMPTY_CATALOG_IMPORT_STATUS = {
 const EMPTY_CALENDAR_SYNC_STATUS = {
   releaseEvents: 0,
   dropSeedEvents: 0,
-  scheduling: "Calendar data loads when Scout calendar opens.",
+  scheduling: "Calendar data loads when Restocks calendar opens.",
 };
 const EMPTY_CALENDAR_DATA_BUNDLE = {
   generatedReleaseCalendar: [],
@@ -920,9 +941,9 @@ const PUBLIC_BETA_REASON_OPTIONS = [
 ];
 const PUBLIC_BETA_INTEREST_OPTIONS = [
   "Vault collection tracking",
-  "Scout restock alerts",
+  "Restocks restock alerts",
   "Market fair value",
-  "Forge trades/sales",
+  "Business trades/sales",
   "The Spark kids program",
   "Shop partnership",
   "Family safety tools",
@@ -971,24 +992,35 @@ function getThemeInspectionChoice() {
   return inspectionTheme === "light" || inspectionTheme === "dark" ? inspectionTheme : "";
 }
 
+// A45 (2026-10-31): with no saved choice, follow the device's light/dark
+// setting instead of forcing light. A saved choice still wins.
+function systemAppTheme() {
+  try {
+    return typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  } catch {
+    return "light";
+  }
+}
+
 function loadStoredAppThemeChoice() {
   const inspectionTheme = getThemeInspectionChoice();
   if (inspectionTheme) return inspectionTheme;
-  if (typeof localStorage === "undefined") return "light";
+  if (typeof localStorage === "undefined") return systemAppTheme();
   try {
     const directPreference = localStorage.getItem(APP_THEME_STORAGE_KEY);
     if (directPreference) return normalizeAppThemeChoice(directPreference);
     const saved = safeReadBrowserJson(localStorage, LOCAL_STORAGE_KEY, {});
-    return normalizeAppThemeChoice(saved.appThemeChoice || saved.themeChoice || saved.settings?.appThemeChoice);
+    const savedChoice = saved.appThemeChoice || saved.themeChoice || saved.settings?.appThemeChoice;
+    return savedChoice ? normalizeAppThemeChoice(savedChoice) : systemAppTheme();
   } catch {
-    return "light";
+    return systemAppTheme();
   }
 }
 
 function toastTypeFromMessage(message = "") {
   const text = String(message || "").toLowerCase();
   if (/\b(error|failed|failure|could not|couldn't|unable|denied|invalid|unavailable|not configured|not created|blocked|permission|try again)\b/.test(text)) return "error";
-  if (/\b(warning|review|pending|confirm|unavailable|missing|staged|needs|not connected|local only)\b/.test(text)) return "warning";
+  if (/\b(warning|review|pending|confirm|unavailable|missing|staged|needs|not connected|local only|saved on this device)\b/.test(text)) return "warning";
   if (/\b(saved|submitted|complete|completed|success|synced|added|updated|created|copied|sent|approved|restored|archived|deleted|removed|logged|exported|imported|claimed|revoked)\b/.test(text)) return "success";
   return "info";
 }
@@ -1090,7 +1122,7 @@ const DAILY_TIDE_BADGES = [
   { key: "deal_finder", label: "Deal Finder" },
   { key: "restock_reporter", label: "Restock Reporter" },
   { key: "market_watcher", label: "Market Watcher" },
-  { key: "tidepool_helper", label: "Tidepool Helper" },
+  { key: "tidepool_helper", label: "Community Helper" },
   { key: "set_completionist", label: "Set Completionist" },
   { key: "budget_boss", label: "Budget Boss" },
 ];
@@ -1114,7 +1146,7 @@ const SCOUT_QUICK_REPORT_TYPES = [
   { value: "customer_service", label: "Customer service", helper: "Staff directed shoppers to customer service or a desk.", reportType: "Store Intel", stockStatus: "customer_service", sourceType: "user_report", confidence: "possible" },
   { value: "unsure", label: "Unsure", helper: "Useful store signal, but stock status was unclear.", reportType: "Store Intel", stockStatus: "unknown", sourceType: "user_report", confidence: "possible" },
   { value: "employee_restock_coming", label: "Employee said restock coming", helper: "Needs review", reportType: "Restock Pattern Suggestion", stockStatus: "unknown", sourceType: "employee_tip", confidence: "likely", needsReview: true },
-  { value: "restock_guess", label: "Community guess / pattern", helper: "Requires Scout points; never counts as confirmed stock.", reportType: "Store Guess", stockStatus: "unknown", sourceType: "manual_prediction", confidence: "guess", isGuess: true },
+  { value: "restock_guess", label: "Community guess / pattern", helper: "Requires restock points; never counts as confirmed stock.", reportType: "Store Guess", stockStatus: "unknown", sourceType: "manual_prediction", confidence: "guess", isGuess: true },
   { value: "truck_vendor_seen", label: "Truck/vendor seen", helper: "Possible restock", reportType: "Restock Pattern Suggestion", stockStatus: "vendor_stocking", sourceType: "user_report", confidence: "possible", needsReview: true },
   { value: "shelf_tag_only", label: "Recently stocked / signs of restock", helper: "Shelf tag, limit sign, display reset, or other sign.", reportType: "Store Intel", stockStatus: "limit_posted", sourceType: "user_report", confidence: "possible" },
   { value: "line_queue_seen", label: "Line or crowd", helper: "Line, crowd, or demand signal.", reportType: "Store Intel", stockStatus: "unknown", sourceType: "user_report", confidence: "possible" },
@@ -1177,7 +1209,7 @@ const WATCH_CALENDAR_AREAS = [
 ];
 const WORKSPACE_TYPES = [
   { value: "personal", label: "Personal", description: "Only your user account." },
-  { value: "business", label: "Business", description: "Shared Forge inventory, sales, expenses, mileage, and reports." },
+  { value: "business", label: "Business", description: "Shared Business inventory, sales, expenses, mileage, and reports." },
   { value: "personal_shared", label: "Personal Shared", description: "A partner or household collection space." },
   { value: "family", label: "Family", description: "Family collection space." },
   { value: "card_shop_partner", label: "Card Shop Partner", description: "Partner workspace for future shop/vendor access." },
@@ -1247,7 +1279,7 @@ const COMING_SOON_GROUPS = [
   },
   {
     key: "learning",
-    title: "Tidepool & Learning",
+    title: "Community & Learning",
     description: "Learning and community activities should help families collect wisely without turning the app into a game loop.",
     defaultStatus: "Future Phase",
     tone: "planned",
@@ -1259,7 +1291,7 @@ const COMING_SOON_GROUPS = [
       { name: "Learn to Play Lessons", description: "Beginner-friendly lessons for learning the game side of collecting.", status: "Future Phase", userType: "Families" },
       { name: "Parent Pokemon 101", description: "Plain-language guidance for parents who want to understand sets, rarity, and value.", status: "Planned", userType: "Parents" },
       { name: "Community Highlights", description: "Curated, moderated highlights from safe local collecting activity.", status: "Future Phase", userType: "Community" },
-      { name: "Tidepool Activities", description: "Structured community prompts that avoid open child messaging or public child profiles.", status: "Safety Review", userType: "Community" },
+      { name: "Community Activities", description: "Structured community prompts that avoid open child messaging or public child profiles.", status: "Safety Review", userType: "Community" },
       { name: "Local Events", description: "A family-safe event surface for shops, Spark days, and learning sessions.", status: "Needs Partner", userType: "Families and shops" },
     ],
   },
@@ -1273,7 +1305,7 @@ const COMING_SOON_GROUPS = [
       { name: "Duplicate/Bulk Manager", description: "Tools for reviewing duplicate cards and larger collection batches.", status: "Planned", userType: "Collectors" },
       { name: "Donate Pile", description: "A simple way to stage cards and supplies for Spark donation review.", status: "Planned", userType: "Families" },
       { name: "Trade Pile", description: "A future holding area for cards that may be available for safe trades.", status: "Safety Review", userType: "Collectors" },
-      { name: "Sell Pile", description: "A staging area for items that may move into Forge or selling workflows.", status: "Future Phase", userType: "Sellers" },
+      { name: "Sell Pile", description: "A staging area for items that may move into Business or selling workflows.", status: "Future Phase", userType: "Sellers" },
       { name: "Keep Pile", description: "A clearer way to protect favorites and long-term collection items.", status: "Planned", userType: "Collectors" },
       { name: "Kid Pack Pile", description: "A staging area for items that could become child-safe Spark packs.", status: "Planned", userType: "Families" },
       { name: "Deck Builder", description: "Tools for building and tracking playable decks from owned cards.", status: "Future Phase", userType: "Players" },
@@ -1287,7 +1319,7 @@ const COMING_SOON_GROUPS = [
   },
   {
     key: "market-forge",
-    title: "Market & Forge Expansion",
+    title: "Market & Business Expansion",
     description: "Market and business tools will stay practical, manual-review first, and honest about data confidence.",
     defaultStatus: "Future Phase",
     tone: "planned",
@@ -1297,7 +1329,7 @@ const COMING_SOON_GROUPS = [
       { name: "Seller Trust Signals", description: "Future signals that help buyers understand seller reliability without fake guarantees.", status: "Future Phase", userType: "Buyers and sellers" },
       { name: "Market Listing Tools", description: "Listing preparation tools after the core app and safety model are ready.", status: "Future Phase", userType: "Sellers" },
       { name: "Shop/Seller Profiles", description: "Profiles for approved shops or sellers when partner rules are in place.", status: "Needs Partner", userType: "Shops and sellers" },
-      { name: "Advanced Forge Reports", description: "More detailed business summaries for sales, expenses, inventory, and readiness.", status: "Planned", userType: "Sellers" },
+      { name: "Advanced Business Reports", description: "More detailed business summaries for sales, expenses, inventory, and readiness.", status: "Planned", userType: "Sellers" },
       { name: "Mileage/Fee/Tax Helpers", description: "Clearer support tools for business record organization, not tax advice.", status: "Planned", userType: "Sellers" },
       { name: "Inventory Import", description: "Safer bulk import flows with review before records are saved.", status: "Planned", userType: "Collectors and sellers" },
     ],
@@ -1335,7 +1367,7 @@ const COMING_SOON_GROUPS = [
       { name: "Data Cleanup Tools", description: "Safe repair tools for stale, duplicate, or test records.", status: "Planned", userType: "Admin" },
       { name: "Merge Duplicate Stores/Products/Cards", description: "Careful merge tools that preserve history and avoid data loss.", status: "Planned", userType: "Admin" },
       { name: "Delete Fake/Test Users", description: "A controlled cleanup flow for test accounts and fake users.", status: "Safety Review", userType: "Admin" },
-      { name: "State Expansion Dashboard", description: "Internal readiness tracking before Scout expands beyond current regions.", status: "Future Phase", userType: "Admin" },
+      { name: "State Expansion Dashboard", description: "Internal readiness tracking before Restocks expands beyond current regions.", status: "Future Phase", userType: "Admin" },
       { name: "Built-In Beta Feedback", description: "A more structured feedback inbox connected to app context.", status: "Planned", userType: "Beta users" },
       { name: "App-Wide Search", description: "Search across safe app records without exposing private data.", status: "Future Phase", userType: "All users" },
       { name: "Help/Safety Center", description: "A polished help hub for rules, safety, privacy, and support.", status: "Planned", userType: "All users" },
@@ -1354,7 +1386,7 @@ const COMING_SOON_GROUPS = [
       { name: "Open Messaging", description: "Open direct messaging is not appropriate for the current family safety model.", status: "Delayed", userType: "Community" },
       { name: "Public Shop Reviews", description: "Reviews require careful moderation, dispute handling, and fairness rules.", status: "Delayed", userType: "Shops" },
       { name: "Full Vault Play Battle Engine", description: "A full battle system is outside the current core app stabilization work.", status: "Delayed", userType: "Players" },
-      { name: "Nationwide Scout", description: "Scout expansion will wait until local data quality and moderation are reliable.", status: "Delayed", userType: "Scout users" },
+      { name: "Nationwide Restocks", description: "Restocks expansion will wait until local data quality and moderation are reliable.", status: "Delayed", userType: "Restocks users" },
       { name: "Real-Money Wallet", description: "Wallets introduce payment, compliance, and risk concerns that are not planned now.", status: "Delayed", userType: "Marketplace users" },
       { name: "Complex Shipping System", description: "Shipping support is delayed until selling workflows are mature and safe.", status: "Delayed", userType: "Sellers" },
     ],
@@ -1523,18 +1555,18 @@ const VAULT_STATUS_OPTIONS = [
   { value: "gift_donation", label: "Gift / donation", description: "Set aside for gifting or donation." },
   { value: "sealed", label: "Sealed / Holding", description: "Unopened or held product." },
   { value: "wishlist", label: "Wishlist", description: "Wanted but not owned yet." },
-  { value: "ready_for_forge", label: "Ready for Forge", description: "May sell later." },
+  { value: "ready_for_forge", label: "Ready for Business", description: "May sell later." },
   { value: "archived", label: "Archived", description: "No longer active." },
   { value: "held", label: "Held", description: "Legacy held status." },
   { value: "ripped_opened", label: "Ripped / Opened" },
-  { value: "moved_to_forge", label: "Moved to Forge" },
+  { value: "moved_to_forge", label: "Moved to Business" },
   { value: "traded", label: "Traded" },
 ];
 const VAULT_FILTER_OPTIONS = [
   { value: "all", label: "All" },
   { value: "personal_collection", label: "Personal Collection" },
   { value: "sealed", label: "Sealed / Holding" },
-  { value: "moved_to_forge", label: "Moved to Forge" },
+  { value: "moved_to_forge", label: "Moved to Business" },
   { value: "wishlist", label: "Held" },
   { value: "sold_archived", label: "Sold / Archived" },
 ];
@@ -1575,7 +1607,7 @@ const IMPORT_SOURCE_GUIDES = [
     value: "seller_list",
     label: "eBay / Whatnot / Facebook seller list",
     mode: BATCH_INTAKE_MODES.TRANSFER,
-    instructions: "Paste or upload your seller list. We'll help convert it into Forge inventory or marketplace drafts after review.",
+    instructions: "Paste or upload your seller list. We'll help convert it into Business inventory or marketplace drafts after review.",
     bestFormat: "One item per line or CSV with title, quantity, price, source, and notes.",
   },
   {
@@ -1596,7 +1628,7 @@ const IMPORT_SOURCE_GUIDES = [
     value: "no_tracker",
     label: "No current tracker",
     mode: BATCH_INTAKE_MODES.TRANSFER,
-    instructions: "Start with Bulk Add, scanner, or manual add to build your Vault or Forge inventory.",
+    instructions: "Start with Bulk Add, scanner, or manual add to build your Vault or Business inventory.",
     bestFormat: "Use Bulk Add search, paste list, or manual rows.",
   },
   {
@@ -1629,8 +1661,11 @@ const IMPORT_FIELD_OPTIONS = [
   { value: "quantity", label: "Quantity", aliases: ["quantity", "qty", "count"] },
   { value: "destination", label: "Destination", aliases: ["destination"] },
   { value: "purchaserName", label: "Purchaser", aliases: ["purchaser", "buyer"] },
-  { value: "condition", label: "Condition", aliases: ["condition", "grade"] },
+  { value: "condition", label: "Condition", aliases: ["condition"] },
   { value: "variant", label: "Variant", aliases: ["variant", "finish", "printing"] },
+  { value: "language", label: "Language", aliases: ["language", "card language"] },
+  { value: "gradingCompany", label: "Grading company", aliases: ["grading company", "grader"] },
+  { value: "grade", label: "Grade", aliases: ["grade"] },
   { value: "costPaid", label: "Purchase price / cost basis", aliases: ["cost", "paid", "purchase", "price", "cost basis"] },
   { value: "marketValue", label: "Market value", aliases: ["market", "value"] },
   { value: "location", label: "Location", aliases: ["location", "box", "binder"] },
@@ -1642,9 +1677,9 @@ const IMPORT_FIELD_OPTIONS = [
 ];
 const IMPORT_DESTINATION_OPTIONS = [
   { value: "Vault", label: "Vault" },
-  { value: "Forge", label: "Forge Inventory" },
+  { value: "Forge", label: "Business Inventory" },
   { value: "Wishlist", label: "Wishlist" },
-  { value: "Both", label: "Vault + Forge" },
+  { value: "Both", label: "Vault + Business" },
   { value: "Skip", label: "Ignore / do not import" },
 ];
 const IMPORT_CONDITION_OPTIONS = ["Unknown", "Sealed", "Opened", "Damaged", "Near Mint", "Lightly Played", "Moderately Played", "Heavily Played"];
@@ -2247,7 +2282,7 @@ const BLANK_QUICK_FIND_FORM = {
 const SCAN_DESTINATIONS = [
   { value: "none", label: "Choose after review" },
   { value: "vault", label: "Vault" },
-  { value: "forge", label: "Forge" },
+  { value: "forge", label: "Business" },
   { value: "wishlist", label: "Wishlist" },
   { value: "expense_only", label: "Expense only" },
   { value: "ignore", label: "Ignore / do not save" },
@@ -2255,18 +2290,18 @@ const SCAN_DESTINATIONS = [
   { value: "deal_finder", label: "Deal Finder" },
   { value: "watchlist", label: "Watchlist" },
   { value: "pinned", label: "Pinned Market Watch" },
-  { value: "scout_report", label: "Scout Report" },
+  { value: "scout_report", label: "Restocks Report" },
 ];
 const RECEIPT_REVIEW_DESTINATIONS = [
   { value: "vault", label: "Vault" },
-  { value: "forge", label: "Forge" },
+  { value: "forge", label: "Business" },
   { value: "expense_only", label: "Expense Only" },
   { value: "wishlist", label: "Wishlist" },
 ];
 const RECEIPT_DESTINATION_LABELS = {
   expense_only: "Expense only",
   ignore: "Ignore",
-  forge: "Forge",
+  forge: "Business",
   vault: "Vault",
   wishlist: "Wishlist",
 };
@@ -2542,8 +2577,8 @@ const EMBER_ASSIST_COLLECTOR_GUIDE_TOPICS = [
     title: "Log a Trade",
     category: "Trade Help",
     description: "Record what you gave, what you got, and how the trade balance felt after the swap.",
-    where: "Forge",
-    nextStep: "Open Forge to log a completed trade in Trade Ledger.",
+    where: "Business",
+    nextStep: "Open Business to log a completed trade in Trade Ledger.",
     actionLabel: "Log a Trade",
     actionKey: "trade-ledger",
   },
@@ -2552,8 +2587,8 @@ const EMBER_ASSIST_COLLECTOR_GUIDE_TOPICS = [
     title: "Check a Trade",
     category: "Trade Help",
     description: "Compare estimated values before you decide, with condition and personal meaning still in view.",
-    where: "Forge",
-    nextStep: "Open Forge when you want to compare a trade.",
+    where: "Business",
+    nextStep: "Open Business when you want to compare a trade.",
     actionLabel: "Trade Compass",
     actionKey: "trade-compass",
   },
@@ -2570,11 +2605,11 @@ const EMBER_ASSIST_COLLECTOR_GUIDE_TOPICS = [
   {
     key: "watch-store",
     title: "Watch a Store",
-    category: "Scout Help",
-    description: "Choose where Scout should watch for useful current signals while keeping raw patterns protected.",
-    where: "Scout",
-    nextStep: "Open Scout to manage watched stores.",
-    actionLabel: "Open Scout Stores",
+    category: "Restocks Help",
+    description: "Choose where Restocks should watch for useful current signals while keeping raw patterns protected.",
+    where: "Restocks",
+    nextStep: "Open Restocks to manage watched stores.",
+    actionLabel: "Open Restocks Stores",
     actionKey: "scout-stores",
   },
   {
@@ -2601,9 +2636,9 @@ const EMBER_ASSIST_COLLECTOR_GUIDE_TOPICS = [
     key: "understand-tiers",
     title: "Understand Tiers",
     category: "Family Help",
-    description: "See what Free includes, why Scout limits exist, and how beta upgrades are handled.",
+    description: "See what Free includes, why Restocks limits exist, and how beta upgrades are handled.",
     where: "Plans & Features",
-    nextStep: "Open Plans & Features to understand tiers and Scout guardrails.",
+    nextStep: "Open Plans & Features to understand tiers and Restocks guardrails.",
     actionLabel: "Open Plans",
     actionKey: "membership",
   },
@@ -2615,14 +2650,14 @@ const UPGRADE_VALUE_PREVIEWS = {
   hearth: {
     title: "What upgrading unlocks next",
     detail: "A beta-safe preview of how higher plans add more tracking capacity and planning room without changing today's local-first tools.",
-    now: "Free keeps Hearth, Vault, Scout basics, Market search, The Spark, and helper guidance useful now.",
+    now: "Free keeps Home, Vault, Restocks basics, Market search, The Spark, and helper guidance useful now.",
     upgrade: "Plus and Family plans add more saved planning depth when enabled.",
     status: "Local beta preview. Coming with connected accounts for account-wide limits later.",
     bullets: ["More cross-page reminders", "Deeper saved history", "Family planning context"],
   },
   scout: {
-    title: "Scout upgrade preview",
-    detail: "Upgrade unlocks more tracking capacity while Scout keeps sensitive restock timing and raw patterns protected.",
+    title: "Restocks upgrade preview",
+    detail: "Upgrade unlocks more tracking capacity while Restocks keeps sensitive restock timing and raw patterns protected.",
     now: "Free Watch includes 3 watched stores and nearby public signals where available.",
     upgrade: "Plus, Family, Pro / Seller, and reviewed Shop Partner previews can support more watched stores when enabled.",
     status: "Available in upgraded plans when enabled. No stock guarantees or push notifications are promised.",
@@ -2637,7 +2672,7 @@ const UPGRADE_VALUE_PREVIEWS = {
     bullets: ["More set planning", "Deeper item profiles", "Family collection organization"],
   },
   forge: {
-    title: "Forge upgrade preview",
+    title: "Business upgrade preview",
     detail: "Trade and seller planning can scale while staying private, review-first, and separate from checkout.",
     now: "Free/local beta keeps Trade Ledger, Trade Compass, and safe manual trade review.",
     upgrade: "Pro / Seller and Plus previews can expand trade history, value comparison history, and private business planning when enabled.",
@@ -2661,7 +2696,7 @@ const UPGRADE_VALUE_PREVIEWS = {
     bullets: ["More kid-pack planning", "More support history", "Event support planning"],
   },
   tidepool: {
-    title: "Tidepool upgrade preview",
+    title: "Community upgrade preview",
     detail: "Community tools can become more useful while staying moderation-framed and private-data safe.",
     now: "Free keeps safe community browsing, reporting, and private Trusted Circle notes.",
     upgrade: "Family, Shop, and Partner previews can expand Trusted Circle capacity and future reviewed community tools when enabled.",
@@ -3005,25 +3040,25 @@ const HOME_STATS = [
   { key: "savings_vs_msrp", label: "Savings vs MSRP", group: "Collection & Spending" },
   { key: "wishlist_value", label: "Wishlist Value", group: "Collection & Spending" },
   { key: "missing_set_cards", label: "Missing Set Cards", group: "Collection & Spending" },
-  { key: "forge_inventory_value", label: "Forge Inventory Value", group: "Inventory & Sales" },
-  { key: "forge_planned_sales", label: "Forge Planned Sales", group: "Inventory & Sales" },
-  { key: "forge_sales_revenue", label: "Forge Sales Revenue", group: "Inventory & Sales" },
+  { key: "forge_inventory_value", label: "Business Inventory Value", group: "Inventory & Sales" },
+  { key: "forge_planned_sales", label: "Business Planned Sales", group: "Inventory & Sales" },
+  { key: "forge_sales_revenue", label: "Business Sales Revenue", group: "Inventory & Sales" },
   { key: "items_sold", label: "Items Sold", group: "Inventory & Sales" },
   { key: "active_listings", label: "Active Listings", group: "Inventory & Sales" },
   { key: "monthly_profit_loss", label: "Monthly Profit/Loss", group: "Profit & ROI" },
   { key: "market_roi", label: "Market ROI", group: "Profit & ROI" },
   { key: "planned_roi", label: "Planned ROI", group: "Profit & ROI" },
   { key: "planned_profit", label: "Planned Profit", group: "Profit & ROI" },
-  { key: "forge_profit", label: "Forge Profit", group: "Profit & ROI" },
+  { key: "forge_profit", label: "Business Profit", group: "Profit & ROI" },
   { key: "expenses", label: "Expenses", group: "Profit & ROI" },
   { key: "profit_after_expenses", label: "Profit After Expenses", group: "Profit & ROI" },
   { key: "market_vs_msrp_percent", label: "Market vs MSRP %", group: "MSRP / Deal Metrics" },
   { key: "market_over_msrp", label: "Market Over MSRP", group: "MSRP / Deal Metrics" },
   { key: "business_miles", label: "Business Miles", group: "Mileage & Vehicle" },
   { key: "total_vehicle_cost", label: "Total Vehicle Cost", group: "Mileage & Vehicle" },
-  { key: "store_alerts", label: "Store Watch Notes", group: "Scout & Community" },
-  { key: "upcoming_restocks", label: "Upcoming Restocks", group: "Scout & Community" },
-  { key: "kid_pack_budget", label: "Kid Pack Budget", group: "Scout & Community" },
+  { key: "store_alerts", label: "Store Watch Notes", group: "Restocks & Community" },
+  { key: "upcoming_restocks", label: "Upcoming Restocks", group: "Restocks & Community" },
+  { key: "kid_pack_budget", label: "Kid Pack Budget", group: "Restocks & Community" },
 ];
 const HOME_STAT_KEYS = HOME_STATS.map((stat) => stat.key);
 const CORE_HOME_STAT_KEYS = [
@@ -3062,7 +3097,7 @@ const HOME_VIEW_PRESETS = {
     stats: ["monthly_spending", "kid_pack_budget", "wishlist_value", "savings_vs_msrp"],
   },
   scout: {
-    label: "Restock Scout",
+    label: "Restock Intelligence",
     userType: "scout",
     dashboardPreset: "restock_scout",
     stats: ["store_alerts", "upcoming_restocks", "monthly_spending", "wishlist_value"],
@@ -3086,14 +3121,14 @@ const SMART_SETUP_PURPOSE_OPTIONS = [
 ];
 const SMART_SETUP_TOOL_OPTIONS = [
   { key: "vault_collection_tracking", label: "Vault collection tracking" },
-  { key: "scout_restock_reports", label: "Scout restock reports" },
+  { key: "scout_restock_reports", label: "Restocks restock reports" },
   { key: "market_price_checks", label: "Market Watch price checks" },
-  { key: "forge_seller_tools", label: "Forge seller tools" },
+  { key: "forge_seller_tools", label: "Business seller tools" },
   { key: "receipts_and_expenses", label: "Receipts and expenses" },
   { key: "mileage_tracking", label: "Mileage tracking" },
   { key: "sales_tracking", label: "Sales tracking" },
   { key: "the_spark_kids_program", label: "The Spark / Kids Program" },
-  { key: "tidepool_community", label: "Tidepool Community" },
+  { key: "tidepool_community", label: "Community" },
   { key: "admin_tools", label: "Admin tools" },
   { key: "family_friendly_shop_tools_later", label: "Family-friendly shop tools later" },
 ];
@@ -4843,11 +4878,11 @@ const INFO_TOOLTIP_COPY = {
   reimbursement: "Money someone may need back for expenses or mileage they covered.",
   payoutEstimate: "Estimated amount available to pay after costs, expenses, and reimbursements.",
   vehicle: "A reusable vehicle profile for mileage logs and business records.",
-  smartSetup: "Smart Setup shapes the app around your collecting, family, Scout, or seller needs. You can change this anytime.",
+  smartSetup: "Smart Setup shapes the app around your collecting, family, Restocks, or seller needs. You can change this anytime.",
   customizeMyApp: "Choose which sections each page shows first. This changes visibility only, not your saved data or permissions.",
   smartRecommendations: "Code 3 TCG can suggest layout changes based on app use, but it will not change your layout without confirmation.",
   resetRecommended: "Restore the recommended layout for your current setup mode.",
-  sellerTools: "Seller tools unlock Forge, receipts, mileage, expenses, sales, and planning summaries when you choose to use them.",
+  sellerTools: "Seller tools unlock Business, receipts, mileage, expenses, sales, and planning summaries when you choose to use them.",
   adminTools: "Admin tools are protected by account permissions. Visibility settings cannot grant admin access.",
   lockedTools: "Locked tools stay unavailable until your role, setup, or beta access allows them.",
 };
@@ -5267,7 +5302,7 @@ function PurchaserSelect({
   onCreatePurchaser,
   onManagePurchasers,
   help = "",
-  emptyCopy = "No purchasers yet. Add one to track who paid. People you add here are reusable across Vault, Forge, receipts, mileage, sales, and Payout Assist.",
+  emptyCopy = "No purchasers yet. Add one to track who paid. People you add here are reusable across Vault, Business, receipts, mileage, sales, and Payout Assist.",
   addLabel = "Add person",
   manageLabel = "Manage People",
 }) {
@@ -5640,8 +5675,8 @@ function featureHeroLabel(kind) {
     newstuff: "New Stuff",
     daily: "Daily report",
     stores: "Stores",
-    forecast: "Tide Forecast",
-    watch: "Ember Watch",
+    forecast: "Restock Forecast",
+    watch: "Watch Center",
     wishlist: "Wishlist",
     settings: "Controls",
     admin: "Admin",
@@ -6291,25 +6326,64 @@ function BarcodeScanner({
   const videoRef = useRef(null);
   const controlsRef = useRef(null);
   const [scannerError, setScannerError] = useState("");
+  const [scannerStatus, setScannerStatus] = useState("starting");
   const [retryKey, setRetryKey] = useState(0);
+  // #16/#17: the camera used to restart on every parent render because the
+  // inline onScan callback changed identity each time, so the preview never
+  // stayed up long enough to decode. Keep the latest callback in a ref and
+  // start the camera once per mount/retry.
+  const onScanRef = useRef(onScan);
+  useEffect(() => {
+    onScanRef.current = onScan;
+  }, [onScan]);
 
   useEffect(() => {
     let mounted = true;
+    let decoded = false;
 
     async function start() {
       try {
         setScannerError("");
+        setScannerStatus("starting");
+        if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+          throw new Error("Camera access is not available in this browser.");
+        }
+        if (typeof window !== "undefined" && window.isSecureContext === false) {
+          throw new Error("Camera scanning needs a secure (https) connection.");
+        }
         const { BrowserMultiFormatReader } = await import("@zxing/browser");
         if (!mounted) return;
-        const reader = new BrowserMultiFormatReader();
-        controlsRef.current = await reader.decodeFromVideoDevice(undefined, videoRef.current, (result) => {
-          if (result && mounted) {
-            onScan(result.getText());
-            controlsRef.current?.stop();
-          }
-        });
-      } catch {
-        setScannerError("Camera could not start. Check permissions or use the manual barcode field.");
+        const reader = new BrowserMultiFormatReader(undefined, { delayBetweenScanAttempts: 150, delayBetweenScanSuccess: 1500 });
+        const handleResult = (result) => {
+          if (!result || !mounted || decoded) return;
+          const text = String(result.getText() || "").trim();
+          if (!text) return;
+          decoded = true;
+          setScannerStatus("found");
+          if (typeof navigator.vibrate === "function") { try { navigator.vibrate(40); } catch { /* ignore */ } }
+          controlsRef.current?.stop();
+          onScanRef.current?.(text);
+        };
+        // Prefer the back camera on phones; fall back to any camera.
+        try {
+          controlsRef.current = await reader.decodeFromConstraints(
+            { audio: false, video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } } },
+            videoRef.current,
+            handleResult
+          );
+        } catch {
+          if (!mounted) return;
+          controlsRef.current = await reader.decodeFromVideoDevice(undefined, videoRef.current, handleResult);
+        }
+        if (mounted) setScannerStatus("scanning");
+      } catch (error) {
+        if (!mounted) return;
+        const message = String(error?.message || "");
+        const denied = /denied|permission|notallowed/i.test(message) || error?.name === "NotAllowedError";
+        setScannerError(denied
+          ? "Camera permission was declined. Allow the camera in your browser settings, or type the barcode number below."
+          : message || "Camera could not start. Check permissions or type the barcode number below.");
+        setScannerStatus("error");
       }
     }
 
@@ -6318,8 +6392,9 @@ function BarcodeScanner({
     return () => {
       mounted = false;
       controlsRef.current?.stop();
+      controlsRef.current = null;
     };
-  }, [onScan, retryKey]);
+  }, [retryKey]);
 
   return (
     <div className="panel scanner-camera-panel">
@@ -6335,7 +6410,9 @@ function BarcodeScanner({
         </div>
       ) : (
         <>
-          {readyLabel ? <strong className="scanner-ready-label">{readyLabel}</strong> : null}
+          <strong className="scanner-ready-label">
+            {scannerStatus === "starting" ? "Starting camera…" : scannerStatus === "found" ? "Barcode found. Looking it up…" : (readyLabel || "Camera on. Looking for a barcode…")}
+          </strong>
           <p>{helper}</p>
           <video ref={videoRef} autoPlay muted playsInline className="scanner-video" />
           <button type="button" className="secondary-button" onClick={onClose}>{manualLabel}</button>
@@ -6887,6 +6964,7 @@ export default function App() {
   const [smartSetupStep, setSmartSetupStep] = useState(SMART_SETUP_STEPS[0]);
   const [smartSetupDraft, setSmartSetupDraft] = useState(() => normalizeSmartSetupPreferences());
   const [appThemeChoice, setAppThemeChoice] = useState(() => loadStoredAppThemeChoice());
+  const appThemeChosenByUser = useRef(false);
   const resolvedAppTheme = normalizeAppThemeChoice(appThemeChoice);
   const [appSetupPanel, setAppSetupPanel] = useState("setup");
   const [appSetupPersonalization, setAppSetupPersonalization] = useState(() => normalizeAppPersonalizationPreferences());
@@ -7115,6 +7193,10 @@ export default function App() {
   const [authTermsAccepted, setAuthTermsAccepted] = useState(false);
   const [authBetaAcknowledged, setAuthBetaAcknowledged] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
+  // F20: synchronous in-flight guard. React state (authLoading) disables the
+  // button on the next render, but a second submit fired before that render
+  // would still reach the auth provider; this ref stops it immediately.
+  const authInFlightRef = useRef(false);
   const [authMessage, setAuthMessage] = useState("");
   const [authError, setAuthError] = useState("");
   const [shorelineState, setShorelineState] = useState({
@@ -7339,6 +7421,8 @@ export default function App() {
   const [scanSearchState, setScanSearchState] = useState("idle");
   const [scanMessage, setScanMessage] = useState("");
   const [scanInput, setScanInput] = useState("");
+  // #33-#35: business exports can leave out buyer/driver names and notes.
+  const [exportIncludePrivateFields, setExportIncludePrivateFields] = useState(true);
   const [scanManualDraft, setScanManualDraft] = useState({ itemType: "Sealed", quantity: 1, purchasePrice: "" });
   const [receiptScanOpen, setReceiptScanOpen] = useState(false);
   const [receiptScanStatus, setReceiptScanStatus] = useState("draft_extracted");
@@ -7488,6 +7572,8 @@ export default function App() {
   const [importColumnMapping, setImportColumnMapping] = useState({});
   const [importBatchMessage, setImportBatchMessage] = useState("");
   const [importLastBatchResult, setImportLastBatchResult] = useState(null);
+  const [importSaving, setImportSaving] = useState(false);
+  const importSavePending = useRef(false);
   const [importBulkApply, setImportBulkApply] = useState({
     destination: "",
     condition: "",
@@ -7561,7 +7647,7 @@ export default function App() {
     errors: [],
   });
   const [catalogSearchHasRun, setCatalogSearchHasRun] = useState(
-    Boolean((initialRouteState.activeTab === "market" || initialRouteState.activeTab === "catalog") && (initialRouteState.submittedCatalogSearch || initialRouteState.catalogSearch))
+    Boolean((initialRouteState.activeTab === "market" || initialRouteState.activeTab === "catalog") && (initialRouteState.submittedCatalogSearch || initialRouteState.catalogSearch || ["catalogKindFilter", "catalogSetFilter", "catalogTypeFilter", "catalogDataFilter"].some(key => initialRouteState[key] && initialRouteState[key] !== "All")))
   );
   const [catalogSuggestionCloseSignal, setCatalogSuggestionCloseSignal] = useState(0);
   const [supabaseCatalogStatus, setSupabaseCatalogStatus] = useState({
@@ -7661,13 +7747,18 @@ export default function App() {
   const blankSale = {
     itemId: "",
     manualItemName: "",
-    saleDate: "",
+    saleDate: new Date().toISOString().slice(0, 10),
     platform: "eBay",
     quantitySold: 1,
     finalSalePrice: "",
     shippingCharged: "",
     platformFees: "",
     paymentProcessingFees: "",
+    feesPrefilled: false,
+    shipCarrier: "",
+    trackingNumber: "",
+    shipStatus: "Not shipped",
+    saleStatus: "Completed",
     shippingCost: "",
     suppliesCost: "",
     discountsRefunds: "",
@@ -7832,7 +7923,7 @@ export default function App() {
     setMenuOpen(false);
     setMenuSectionsOpen({});
     if (nextTab === "moderator") {
-      setAdminReviewFilter((current) => current === "All" ? "Scout Report Review" : current);
+      setAdminReviewFilter((current) => current === "All" ? "Restocks Report Review" : current);
     }
     setActiveTab(nextTab);
   }
@@ -8091,7 +8182,7 @@ export default function App() {
         },
       },
     }));
-    setVaultToast("Seller tools are on. Forge, receipts, mileage, and Payout Assist are available.");
+    setVaultToast("Seller tools are on. Business, receipts, mileage, and Payout Assist are available.");
   }
 
   function turnOffSellerToolsFromPersonalization() {
@@ -8328,7 +8419,7 @@ export default function App() {
     admin: adaptiveAdminNavVisible ? { key: "admin", label: "Admin Command Center", helper: "Protected approvals, reviews, and roles.", icon: "settings", target: "adminReview" } : null,
     betaUsers: adaptiveAdminNavVisible ? { key: "betaUsers", label: "Beta Users", helper: "Track requests, invites, and joined users.", icon: "settings", action: () => { setAdminReviewFilter("Beta Access"); setActiveTab("adminReview"); } } : null,
     invites: adaptiveAdminNavVisible ? { key: "invites", label: "Invites", helper: "Invite tracking and copy-link fallback.", icon: "bell", action: () => { setAdminReviewFilter("Beta Access"); setActiveTab("adminReview"); } } : null,
-    reportReview: adaptiveModeratorNavVisible ? { key: "reportReview", label: "Report Review", helper: "Local reports, quality scores, and moderation queues.", icon: "find", action: () => { setAdminReviewFilter("Scout Report Review"); setActiveTab("adminReview"); } } : null,
+    reportReview: adaptiveModeratorNavVisible ? { key: "reportReview", label: "Report Review", helper: "Local reports, quality scores, and moderation queues.", icon: "find", action: () => { setAdminReviewFilter("Restocks Report Review"); setActiveTab("adminReview"); } } : null,
     missingCatalog: adaptiveAdminNavVisible ? { key: "missingCatalog", label: "Missing Catalog", helper: "Catalog corrections and SKU review.", icon: "search", action: () => { setAdminReviewFilter("Catalog Suggestions"); setActiveTab("adminReview"); } } : null,
     feedbackInbox: adaptiveAdminNavVisible ? { key: "feedbackInbox", label: "Feedback Inbox", helper: "Support messages and beta feedback.", icon: "bell", action: () => { setAdminReviewFilter("Beta Feedback"); setActiveTab("adminReview"); } } : null,
     moderation: adaptiveModeratorNavVisible ? { key: "moderation", label: "Moderation", helper: "Community and marketplace review.", icon: "settings", target: "adminReview" } : null,
@@ -8590,8 +8681,8 @@ export default function App() {
   const activeForgeIdentityMode = forgeIdentityModeFromSettings(forgeModeSettings, activeForgeWorkspace);
   const activeForgeTransferLabel = "Resale Inventory";
   const forgeWorkspaceUnavailableMessage = forgeModeSettings.lockToEmberTide && !emberTideForgeWorkspace
-    ? "Code 3 TCG Forge is unavailable. Create or request access to a Code 3 TCG workspace, or turn off Always use Code 3 TCG Forge."
-    : "No Forge workspace is available. Enable Personal Forge or create a business workspace.";
+    ? "Code 3 TCG Business is unavailable. Create or request access to a Code 3 TCG workspace, or turn off Always use Code 3 TCG Business."
+    : "No Business workspace is available. Enable Personal Business Workspace or create a business workspace.";
   const destinationWorkspaceOptions = useMemo(() => {
     const visible = visibleWorkspaceOptions;
     const personalish = visible.filter((workspace) => ["personal", "personal_shared", "shared_collection", "family", "team"].includes(workspace.type));
@@ -8718,7 +8809,7 @@ export default function App() {
     }));
     setWorkspaceIdentityForm(workspaceIdentityDraftFromState(nextWorkspace, normalizeForgeModeSettings({ ...forgeModeSettings, ...modePatch, updatedAt: now }), { activeForgeWorkspace: nextWorkspace }));
     setWorkspaceIdentityDirty(false);
-    setWorkspaceIdentityMessage("Workspace & Forge identity saved. Business notes are stored with beta workspace data where supported.");
+    setWorkspaceIdentityMessage("Workspace & Business identity saved. Business notes are stored with beta workspace data where supported.");
     setWorkspaceMessage(`${workspaceName} identity settings saved.`);
     setVaultToast("Workspace identity saved.");
   };
@@ -9454,7 +9545,7 @@ export default function App() {
             <p>Jump into Find, Collection, product research, or Business.</p>
           </div>
           <div className="phase2-sync-status tcg-command-sync">
-            <strong>{phase2SyncStatus.label || (phase2SyncStatus.source === "supabase" ? "Supabase connected" : "Local only mode")}</strong>
+            <strong>{phase2SyncStatus.label || (phase2SyncStatus.source === "supabase" ? "Cloud synced" : "Saved on this device")}</strong>
             <span>{phase2SyncStatus.message}</span>
             {phase2SyncStatus.source !== "supabase" ? (
               <button type="button" className="ghost-button" onClick={retryPhase2Sync}>Retry sync</button>
@@ -9921,24 +10012,32 @@ export default function App() {
     });
 
     const inventoryResults = items.map((item) => {
-      const setAliases = setAliasesFor(item.expansion);
+      const setAliases = setAliasesFor(item.expansion || item.setName);
+      // #18/#19: the person's own records now match on card number, set name,
+      // variant and catalog IDs, and rank at least as high as catalog rows so
+      // "the one I own with that number" shows up first.
+      const cardNumber = item.cardNumber || item.card_number || item.number || "";
       const candidate = {
-        fields: [item.name, item.expansion, item.setCode, setAliases, item.productType, item.store, item.barcode, item.sku, item.catalogProductName],
-        exactIds: [item.barcode, item.sku],
+        fields: [item.name, item.expansion, item.setName, item.setCode, setAliases, item.productType, item.store, item.barcode, item.sku, item.catalogProductName, cardNumber, item.variant, item.rarity, item.condition, item.location, item.folder, item.tags, item.notes],
+        exactIds: [item.barcode, item.sku, item.catalogProductId, item.externalProductId, item.tcgplayerProductId, item.certNumber, item.cert_number],
+        cardNumbers: [cardNumber],
         setCodes: [item.setCode],
         aliases: [...setAliases, ...productTypeAliasesFor(item.productType)],
         names: [item.name, item.catalogProductName],
         productTypeAliases: productTypeAliasesFor(item.productType),
       };
       const { score, reason } = scoreSearchCandidate(queryInfo, candidate);
-      const isVault = item.status === "Personal Collection" || item.status === "Held";
+      const destination = normalizeInventoryDestination(item);
+      const isVault = destination === "vault" || item.status === "Personal Collection" || item.status === "Held";
+      const isWishlist = destination === "wishlist";
+      const ownedLabel = isVault ? "In your collection" : isWishlist ? "On your wishlist" : "In your business inventory";
       return {
-        id: `${isVault ? "vault" : "inventory"}-${item.id}`,
-        category: isVault ? "Vault" : "Inventory",
+        id: `${isVault ? "vault" : isWishlist ? "wishlist" : "inventory"}-${item.id}`,
+        category: isVault ? "Vault" : isWishlist ? "Wishlist" : "Inventory",
         title: item.name,
-        subtitle: `${isVault ? item.status : `Qty ${item.quantity}`} • ${money(item.marketPrice || item.unitCost)}`,
+        subtitle: `${ownedLabel}${cardNumber ? ` • #${cardNumber}` : ""}${item.setName || item.expansion ? ` • ${item.setName || item.expansion}` : ""} • ${isVault || isWishlist ? (item.status || "Owned") : `Qty ${item.quantity}`} • ${money(item.marketPrice || item.unitCost)}`,
         source: item,
-        score: score * 0.82,
+        score: score * 1.05,
         reason,
       };
     });
@@ -10182,7 +10281,7 @@ export default function App() {
       guestPreviewActive,
       activeTabLocked,
     })) {
-      setVaultToast(guestPreviewActive ? "Create an account before posting to Tidepool." : "Tidepool posting is available after beta access is approved.");
+      setVaultToast(guestPreviewActive ? "Create an account before posting to Community." : "Community posting is available after beta access is approved.");
       return;
     }
     setActiveTab("tidepool");
@@ -10234,7 +10333,7 @@ export default function App() {
     } else if (result.category === "Inventory") {
       setInventorySearch(result.source.name || "");
       setActiveTab("inventory");
-    } else if (result.category === "Vault") {
+    } else if (result.category === "Vault" || result.category === "Wishlist") {
       setActiveTab("vault");
       setVaultSearch(result.source.name || appSearchQuery || "");
       setFeatureSectionsOpen((current) => ({ ...current, vault_collection_items: true }));
@@ -11071,7 +11170,7 @@ export default function App() {
           <span className="community-profile-avatar" aria-hidden="true">{profile.avatarInitial}</span>
           <span>
             <strong>{profile.publicUsernameLabel}</strong>
-            <small>{profile.scoutLevel.label} | {profile.scoutPoints} Scout points</small>
+            <small>{profile.scoutLevel.label} | {profile.scoutPoints} Restock points</small>
           </span>
         </div>
         {badges.length ? (
@@ -11088,7 +11187,7 @@ export default function App() {
             <p className="compact-subtitle">
               {profile.canSubmitCommunityGuesses
                 ? "Eligible to submit community guesses. Guesses still stay separate from confirmed restocks."
-                : `Needs ${profile.guessThreshold} Scout points before posting community guesses.`}
+                : describeScoutPointsProgress(profile.scoutPoints, profile.guessThreshold)}
             </p>
           </>
         ) : null}
@@ -11191,7 +11290,7 @@ export default function App() {
   function updateShorelineBetaField(field, value) {
     setShorelineBetaForm((current) => {
       const next = { ...current, [field]: value };
-      if (field === "state" && !isVirginiaAccessState(value)) {
+      if (field === "state" && !isOpenAccessState(value)) {
         next.localAreaAnswer = "";
       }
       return next;
@@ -11228,8 +11327,8 @@ export default function App() {
     setShorelineState((current) => ({ ...current, error: "", message: "" }));
     try {
       const request = await submitBetaAccessRequest(user, { ...shorelineBetaForm, state: accessState, email, fullName });
-      const accessMessage = isVirginiaAccessState(accessState)
-        ? "Beta access request submitted for review."
+      const accessMessage = isOpenAccessState(accessState)
+        ? `Beta access request submitted for review. ${BETA_REVIEW_EXPLANATION}`
         : betaAccessWaitlistMessage(accessState);
       setShorelineState((current) => ({ ...current, betaRequest: request, message: accessMessage }));
       setCurrentUserProfile((current) => ({
@@ -11242,7 +11341,7 @@ export default function App() {
         entityType: "beta_access_request",
         entityId: request.id,
       });
-      setVaultToast(isVirginiaAccessState(accessState) ? "Beta access request submitted." : `${accessStateLabel(accessState)} waitlist request submitted.`);
+      setVaultToast(isOpenAccessState(accessState) ? "Beta access request submitted." : `${accessStateLabel(accessState)} waitlist request submitted.`);
     } catch (error) {
       logAppError("shoreline_beta_submit", error, { userId: user?.id }, "normal");
       setShorelineState((current) => ({ ...current, error: error.message || "Could not submit beta access request." }));
@@ -11962,7 +12061,7 @@ export default function App() {
       parentName,
       email,
       childFirstName: String(kidsProgramForm.childFirstName || "").trim(),
-      childAgeRange: String(kidsProgramForm.childAgeRange || "").trim(),
+      childAgeRange: normalizeSparkAgeRange(kidsProgramForm.childAgeRange) || String(kidsProgramForm.childAgeRange || "").trim(),
       zipCode: String(kidsProgramForm.zipCode || "").trim(),
       favoritePokemon: String(kidsProgramForm.favoritePokemon || "").trim(),
       collectingInterest: String(kidsProgramForm.collectingInterest || "").trim(),
@@ -12382,7 +12481,7 @@ export default function App() {
     if (normalized === "forge") {
       if (!activeForgeWorkspace) {
         openMenuDrawer("settings");
-        setVaultToast("Choose a Forge workspace before adding Forge inventory.");
+        setVaultToast("Choose a Business workspace before adding Business inventory.");
         return;
       }
       openProductAddFlow({ source: "onboarding-forge", destinations: { forge: true } });
@@ -12405,7 +12504,7 @@ export default function App() {
     if (normalized === "scout_points") {
       markOnboardingChecklistItem("scout_points");
       setEmberAssistOpen(true);
-      sendEmberAssistMessage("How do Scout points work?");
+      sendEmberAssistMessage("How do restock points work?");
       return;
     }
     if (normalized === "kids_program") {
@@ -12756,53 +12855,33 @@ export default function App() {
         const bTitle = normalizeCatalogName(b.productName || b.name || "");
         const aExact = aTitle === normalizedQuery ? 0 : aTitle.includes(normalizedQuery) ? 1 : 2;
         const bExact = bTitle === normalizedQuery ? 0 : bTitle.includes(normalizedQuery) ? 1 : 2;
-        return aExact - bExact || compareCatalogProducts(mapCatalog(a), mapCatalog(b), "bestMatch");
+        return aExact - bExact || compareCatalogProducts(a, b, "bestMatch");
       });
   }
 
-  function getLocalCatalogSeedMatches(query = "", limit = 16, seedProducts = localCatalogSeedProductsRef.current) {
+  function getLocalCatalogSeedCandidates(query = "", limit = 16, seedProducts = localCatalogSeedProductsRef.current, preferExact = false) {
     const cleaned = String(query || "").trim();
     if (!cleaned) return [];
     const exactSeedMatches = getExactLocalCatalogSeedMatches(cleaned, seedProducts)
-      .slice(0, Math.max(8, limit))
-      .map(mapCatalog);
-    const fuzzySeedMatches = getBestCatalogMatches(cleaned, seedProducts || [])
-      .map((match) => mapCatalog(match.item));
-    return mergeCatalogProductLists(exactSeedMatches, fuzzySeedMatches).slice(0, limit);
+      .slice(0, Math.max(8, limit));
+    if (preferExact && exactSeedMatches.length) return exactSeedMatches.filter(product => catalogCardQueryMatchesRow(cleaned, product)).slice(0, limit);
+    const fuzzySeedMatches = getBestCatalogMatches(cleaned, seedProducts || [], limit)
+      .map((match) => match.item);
+    return mergeCatalogProductLists(exactSeedMatches, fuzzySeedMatches)
+      .filter((product) => catalogCardQueryMatchesRow(cleaned, product))
+      .slice(0, limit);
+  }
+
+  function getLocalCatalogSeedMatches(query = "", limit = 16, seedProducts = localCatalogSeedProductsRef.current) {
+    return getLocalCatalogSeedCandidates(query, limit, seedProducts).map(mapCatalog);
   }
 
   async function loadImportedPokemonCatalog(searchTerm = catalogSearch, options = {}) {
     const pageSize = clampPageSize(options.pageSize || catalogPageSize || supabaseCatalogStatus.pageSize, SUPABASE_CATALOG_PAGE_SIZE);
-    const effectiveProductGroup = options.productGroup || currentCatalogProductGroup();
     const effectiveProductType = options.productType ?? catalogTypeFilter;
     const effectiveSetName = options.setName ?? catalogSetFilter;
     const effectiveDataFilter = options.dataFilter ?? catalogDataFilter;
     const effectiveRarity = options.rarity ?? catalogRarityFilter;
-    const localHasCriteria = hasCatalogSearchCriteria({
-      query: searchTerm,
-      barcode: options.barcode ?? catalogBarcodeSearch,
-      productGroup: effectiveProductGroup,
-      productType: effectiveProductType,
-      setName: effectiveSetName,
-      dataFilter: effectiveDataFilter,
-      rarity: effectiveRarity,
-    });
-    if (!isSupabaseConfigured || !supabase) {
-      setCatalogSearchHasRun(localHasCriteria);
-      setCatalogPagedResultIds([]);
-      setSupabaseCatalogStatus({
-        loading: false,
-        loadedCount: 0,
-        page: 1,
-        pageSize,
-        totalCount: null,
-        hasMore: false,
-        message: localHasCriteria ? "Showing saved local catalog matches. Connect Supabase for the full catalog." : "",
-        error: "Supabase anon client is not configured. Imported catalog rows can still be loaded through server/import scripts later.",
-      });
-      return;
-    }
-
     const requestId = supabaseCatalogRequestId.current + 1;
     supabaseCatalogRequestId.current = requestId;
     supabaseCatalogAbortRef.current?.abort?.();
@@ -12856,20 +12935,30 @@ export default function App() {
       .then((seedProducts) => seedProducts || localCatalogSeedProductsRef.current || [])
       .catch(() => localCatalogSeedProductsRef.current || []);
 
-    if (BETA_LOCAL_MODE) {
+    if (BETA_LOCAL_MODE || !isSupabaseConfigured || !supabase) {
+      setSupabaseCatalogStatus((current) => ({ ...current, loading: true, error: "", page, pageSize }));
       const seedProductsForSearch = await localSeedPromise;
-      const searchValue = cleanedSearch || barcode || effectiveSetName || effectiveProductType || "";
+      if (requestId !== supabaseCatalogRequestId.current) return;
+      const searchValue = cleanedSearch || barcode || (effectiveSetName !== "All" ? effectiveSetName : "") || (effectiveProductType !== "All" ? effectiveProductType : "");
       const localMatches = searchValue
-        ? getLocalCatalogSeedMatches(searchValue, pageSize, seedProductsForSearch)
-        : (seedProductsForSearch || []).map(mapCatalog).slice(0, pageSize);
-      const filteredLocalMatches = localMatches
+        ? getLocalCatalogSeedCandidates(searchValue, seedProductsForSearch.length, seedProductsForSearch, true)
+        : seedProductsForSearch || [];
+      const matchingLocalProducts = localMatches
         .filter((product) => {
           if (productGroup === "Cards" && !isCatalogCardProduct(product)) return false;
           if (productGroup === "Sealed" && !isCatalogSealedProduct(product)) return false;
           if (productGroup === "Other" && (isCatalogCardProduct(product) || isCatalogSealedProduct(product))) return false;
+          if (effectiveSetName !== "All" && product.setName !== effectiveSetName && product.expansion !== effectiveSetName) return false;
+          if (effectiveProductType !== "All" && product.productType !== effectiveProductType) return false;
+          if (effectiveRarity !== "All" && product.rarity !== effectiveRarity) return false;
+          const hasPrice = Number(product.marketPrice || product.marketValue || 0) > 0;
+          if (effectiveDataFilter === "Has market price" && !hasPrice) return false;
+          if (effectiveDataFilter === "Missing price" && hasPrice) return false;
+          if (effectiveDataFilter === "Has image" && !catalogImage(product)) return false;
           return true;
-        })
-        .slice(0, pageSize);
+        });
+      // Count/filter normalized seed metadata, then enrich only the visible page.
+      const filteredLocalMatches = matchingLocalProducts.slice((page - 1) * pageSize, page * pageSize).map(mapCatalog);
       setCatalogSearchHasRun(true);
       setCatalogPagedResultIds(filteredLocalMatches.map((product) => String(product.id)));
       setCatalogProducts((current) => mergeCatalogProductLists(filteredLocalMatches, current.filter((product) => product.sourceType !== "supabase"), localCatalogSeedProducts));
@@ -12878,11 +12967,11 @@ export default function App() {
         loadedCount: filteredLocalMatches.length,
         page,
         pageSize,
-        totalCount: filteredLocalMatches.length,
-        hasMore: false,
+        totalCount: matchingLocalProducts.length,
+        hasMore: page * pageSize < matchingLocalProducts.length,
         message: filteredLocalMatches.length
-          ? `Showing ${filteredLocalMatches.length} local beta catalog match${filteredLocalMatches.length === 1 ? "" : "es"}.`
-          : "No local beta catalog matches found. Try a different name, set, barcode, or product type.",
+          ? `Showing ${filteredLocalMatches.length} of ${matchingLocalProducts.length} local catalog match${matchingLocalProducts.length === 1 ? "" : "es"}.`
+          : "No local catalog matches found. Try a different name, set, barcode, or product type.",
         error: "",
         exactMatchCount: 0,
         exactBarcodeMiss: Boolean(barcode && !filteredLocalMatches.length),
@@ -12935,16 +13024,21 @@ export default function App() {
       if (requestId !== supabaseCatalogRequestId.current) return;
       if (error?.name === "AbortError") return;
       if (catalogProducts.length) {
+        const cachedMatches = cleanedSearch || barcode
+          ? getLocalCatalogSeedMatches(cleanedSearch || barcode, pageSize, catalogProducts)
+          : catalogProducts.slice(0, pageSize);
         setCatalogSearchHasRun(true);
-        setCatalogPagedResultIds([]);
+        setCatalogPagedResultIds(cachedMatches.map((product) => String(product.id)));
         setSupabaseCatalogStatus({
           loading: false,
-          loadedCount: 0,
+          loadedCount: cachedMatches.length,
           page,
           pageSize,
-          totalCount: null,
+          totalCount: cachedMatches.length,
           hasMore: false,
-          message: `Search timed out. Showing cached local catalog matches for "${cleanedSearch || barcode}".`,
+          message: cachedMatches.length
+            ? `Catalog search is unavailable. Showing ${cachedMatches.length} matching cached item${cachedMatches.length === 1 ? "" : "s"} for "${cleanedSearch || barcode}".`
+            : `Catalog search is unavailable. No matching cached items were found for "${cleanedSearch || barcode}". Try again or adjust your search.`,
           error: "",
           exactMatchCount: 0,
           exactBarcodeMiss: false,
@@ -12996,15 +13090,19 @@ export default function App() {
 
     const importedProducts = (result.rows || []).map(mapCatalog);
     const seedProductsForSearch = await localSeedPromise;
-    const localSeedMatches = getLocalCatalogSeedMatches(cleanedSearch || barcode, pageSize, seedProductsForSearch);
-    const combinedProducts = mergeCatalogProductLists(importedProducts, localSeedMatches);
+    const localSeedMatches = page === 1 ? getLocalCatalogSeedMatches(cleanedSearch || barcode, pageSize, seedProductsForSearch) : [];
+    const combinedProducts = mergeCatalogProductLists(importedProducts, localSeedMatches)
+      .filter((product) => catalogCardQueryMatchesRow(cleanedSearch || barcode, product))
+      .slice(0, pageSize);
     setCatalogPagedResultIds(combinedProducts.map((product) => String(product.id)));
     setCatalogProducts((current) => {
       const baseline = options.append ? current : current.filter((product) => product.sourceType !== "supabase");
       return mergeCatalogProductLists(combinedProducts, baseline, localCatalogSeedProducts);
     });
     setCatalogSearchHasRun(true);
-    const totalCount = result.count ?? null;
+    const from = (page - 1) * pageSize;
+    const totalCount = result.count === null || result.count === undefined
+      ? null : Math.max(Number(result.count) || 0, from + combinedProducts.length);
     const coverageWarning = await buildCatalogSealedCoverageWarning({
       query: cleanedSearch || searchTerm,
       productGroup,
@@ -13012,7 +13110,6 @@ export default function App() {
       totalCount,
       result,
     });
-    const from = (page - 1) * pageSize;
     const visibleMatchCount = combinedProducts.length;
     const loadedEnd = totalCount === null ? from + visibleMatchCount : Math.min(from + visibleMatchCount, totalCount);
     const missText = result.exactMiss ? " No exact barcode match found." : "";
@@ -13338,7 +13435,22 @@ export default function App() {
   const updateExpenseForm = (field, value) => setExpenseForm((old) => ({ ...old, [field]: value }));
   const updateVehicleForm = (field, value) => setVehicleForm((old) => ({ ...old, [field]: value }));
   const updateTripForm = (field, value) => setTripForm((old) => ({ ...old, [field]: value }));
-  const updateSaleForm = (field, value) => setSaleForm((old) => ({ ...old, [field]: value }));
+  const updateSaleForm = (field, value) => setSaleForm((old) => {
+    const next = { ...old, [field]: value };
+    // A59: when the channel or price changes and the person has not typed fees
+    // themselves, pre-fill the channel's typical fees (always editable).
+    const feesUntouched = old.feesPrefilled !== "manual" && ((old.platformFees === "" && old.paymentProcessingFees === "") || old.feesPrefilled === true);
+    if ((field === "platform" || field === "finalSalePrice" || field === "quantitySold" || field === "shippingCharged") && feesUntouched) {
+      const gross = Number(next.finalSalePrice || 0) * Math.max(1, Number(next.quantitySold || 1)) + Number(next.shippingCharged || 0);
+      const estimate = estimateChannelFees(next.platform, gross);
+      next.platformFees = gross > 0 && estimate.platformFees ? String(estimate.platformFees) : "";
+      next.paymentProcessingFees = gross > 0 && estimate.paymentProcessingFees ? String(estimate.paymentProcessingFees) : "";
+      next.feesPrefilled = gross > 0 ? true : false;
+      if (field === "platform" && !estimate.shipsItems) next.shipStatus = "Not applicable";
+    }
+    if (field === "platformFees" || field === "paymentProcessingFees") next.feesPrefilled = "manual";
+    return next;
+  });
   const updateDealForm = (field, value) => setDealForm((old) => ({ ...old, [field]: value }));
   const phase2Context = useCallback((overrides = {}) => ({
     supabase,
@@ -13378,7 +13490,7 @@ export default function App() {
   }, [forgeReceiptRecords, phase2RecentReceipts, quickAddWizard.receiptSaved]);
   const phase2WorkflowSyncLabel = phase2SyncStatus.source === "supabase"
     ? "Cloud synced"
-    : phase2SyncStatus.label || "Local only mode";
+    : phase2SyncStatus.label || "Saved on this device";
   const phase2ReceiptLineItemCounts = (phase2Data.receiptLineItems || []).reduce((acc, item) => {
     if (item.receiptId) acc[item.receiptId] = (acc[item.receiptId] || 0) + 1;
     return acc;
@@ -13473,7 +13585,7 @@ export default function App() {
       source,
       kind: classified.kind,
       label: classified.label,
-      message: error ? classified.message : `Local only mode. ${fallbackMessage}`,
+      message: error ? classified.message : `Saved on this device only. ${fallbackMessage}`,
     });
   };
   async function logAiAssistEvent(featureArea, payload = {}) {
@@ -13607,11 +13719,12 @@ export default function App() {
       tidetradr,
       catalogSearchQuery,
       initialStep,
+      manualEntry = false,
       ...rest
     } = overrides;
 
     setMultiDestinationCatalogQuery(catalogSearchQuery || "");
-    setMultiDestinationMatchSearchOpen(!rest.catalogProductId);
+    setMultiDestinationMatchSearchOpen(!rest.catalogProductId && !manualEntry);
     const normalizedSeedDestinations = Object.entries(destinations || {}).reduce((acc, [key, enabled]) => {
       const normalizedKey = normalizeAddDestinationValue(key, "", { allowIgnore: false });
       if (normalizedKey && Object.prototype.hasOwnProperty.call(BLANK_MULTI_DESTINATION_FORM.destinations, normalizedKey)) {
@@ -13677,7 +13790,7 @@ export default function App() {
     if (!normalizedDestination || !Object.prototype.hasOwnProperty.call(current.destinations, normalizedDestination)) return current;
     if (checked && normalizedDestination === "forge" && !activeForgeWorkspace) {
       setMultiDestinationMessage(forgeWorkspaceUnavailableMessage);
-      setVaultToast("Forge workspace is unavailable.");
+      setVaultToast("Business workspace is unavailable.");
       return current;
     }
     const next = {
@@ -13706,7 +13819,7 @@ export default function App() {
   const multiDestinationDestinationLabel = (destination) => ({
     vault: "Vault",
     wishlist: "Wishlist",
-    forge: "Forge",
+    forge: "Business",
     tidetradr: "Market",
   }[destination] || destination);
 
@@ -13799,18 +13912,18 @@ export default function App() {
           push(multiDestinationValidationError({
             id: "forge-workspace",
             step: "destination",
-            label: "Forge workspace",
+            label: "Business workspace",
             message: forgeWorkspaceUnavailableMessage,
           }));
         }
-        push(requiredQuantityError("forge-quantity", "Forge quantity", form.forge?.quantity));
+        push(requiredQuantityError("forge-quantity", "Business quantity", form.forge?.quantity));
         push(optionalMoneyError("forge-unit-cost", "Paid cost", form.forge?.unitCost));
         push(optionalMoneyError("forge-planned-sell-price", "Planned sell price", form.forge?.plannedSellPrice));
         if (!String(form.forge?.physicalLocation || DEFAULT_FORGE_PHYSICAL_LOCATION || "").trim()) {
           push(multiDestinationValidationError({
             id: "forge-physical-location",
             step: "details",
-            label: "Forge location",
+            label: "Business location",
             message: "Choose where this inventory is located.",
           }));
         }
@@ -14530,20 +14643,14 @@ export default function App() {
   }
 
   function inferImportColumnMapping(headers = []) {
-    return headers.reduce((mapping, header, index) => {
-      const normalizedHeader = String(header || "").toLowerCase().trim();
-      const match = IMPORT_FIELD_OPTIONS.find((field) => field.aliases.some((alias) => normalizedHeader.includes(alias)));
-      if (match && !Object.values(mapping).includes(match.value)) {
-        return { ...mapping, [index]: match.value };
-      }
-      return mapping;
-    }, {});
+    return inferImportColumnFields(headers, IMPORT_FIELD_OPTIONS);
   }
 
   function readImportCell(row, headers, aliases, fallbackIndex = -1, mapping = importColumnMapping, fieldKey = "") {
     if (fieldKey && mapping) {
       const mappedIndex = Object.entries(mapping).find(([, value]) => value === fieldKey)?.[0];
       if (mappedIndex !== undefined && row[Number(mappedIndex)] !== undefined) return row[Number(mappedIndex)] || "";
+      return "";
     }
     const match = headers.findIndex((header) => aliases.some((alias) => header.includes(alias)));
     if (match >= 0) return row[match] || "";
@@ -14552,14 +14659,11 @@ export default function App() {
   }
 
   function normalizeImportNumber(value) {
-    const clean = String(value || "").replace(/[$,%]/g, "").trim();
-    const number = Number(clean);
-    return Number.isFinite(number) ? number : "";
+    return importMoneyDraft(value);
   }
 
   function normalizeImportQuantity(value) {
-    const number = Number(String(value || "").replace(/[^\d.]/g, ""));
-    return Number.isFinite(number) && number > 0 ? Math.max(1, Math.floor(number)) : 1;
+    return importQuantityDraft(value);
   }
 
   function normalizeImportIdentifier(value) {
@@ -14579,25 +14683,30 @@ export default function App() {
     if (!cleanName && !identifier) return { match: null, confidenceScore: 20, needsReview: true, alternateMatches: [] };
 
     if (identifier) {
-      const exactIdentifier = catalogProducts.find((product) => {
+      const exactIdentifiers = catalogProducts.filter((product) => {
         const values = catalogIdentifiersForProduct(product).map(normalizeImportIdentifier).filter(Boolean);
-        return values.includes(identifier);
+        return values.includes(identifier) && importCatalogCandidateMatches({ ...identifiers, itemName: name, setName }, product);
       });
+      const exactIdentifier = exactIdentifiers.length === 1 ? exactIdentifiers[0] : null;
+      if (exactIdentifiers.length > 1) return { match: null, confidenceScore: 35, needsReview: true, identityAmbiguous: true, alternateMatches: exactIdentifiers.slice(0, 50) };
       if (exactIdentifier) {
         return { match: exactIdentifier, confidenceScore: 98, needsReview: false, alternateMatches: [exactIdentifier] };
       }
     }
 
-    const exact = catalogProducts.find((product) => {
+    const exactMatches = catalogProducts.filter((product) => {
       const productName = String(product.name || product.productName || product.cardName || "").trim().toLowerCase();
       const productSet = String(product.setName || product.expansion || "").trim().toLowerCase();
-      return productName === cleanName && (!cleanSet || productSet === cleanSet);
+      return productName === cleanName && (!cleanSet || productSet === cleanSet) && importCatalogCandidateMatches({ ...identifiers, itemName: name, setName }, product);
     });
+    if (exactMatches.length > 1) return { match: null, confidenceScore: 35, needsReview: true, identityAmbiguous: true, alternateMatches: exactMatches.slice(0, 50) };
+    const exact = exactMatches[0];
     if (exact) return { match: exact, confidenceScore: 94, needsReview: false, alternateMatches: [exact] };
 
     const alternateMatches = getBestCatalogMatches([cleanName, cleanSet, identifiers.cardNumber, identifiers.productType].filter(Boolean).join(" "), catalogProducts)
       .slice(0, 3)
-      .map((candidate) => candidate.product || candidate);
+      .map((candidate) => candidate.item || candidate.product || candidate)
+      .filter(product => importCatalogCandidateMatches({ ...identifiers, itemName: name, setName }, product));
     if (alternateMatches.length) {
       const best = alternateMatches[0];
       const bestTitle = String(best.name || best.productName || best.cardName || "").trim().toLowerCase();
@@ -14612,6 +14721,7 @@ export default function App() {
 
     const tokens = cleanName.split(/\s+/).filter((token) => token.length > 2);
     const fuzzy = catalogProducts.find((product) => {
+      if (!importCatalogCandidateMatches({ ...identifiers, itemName: name, setName }, product)) return false;
       const productName = String(product.name || product.productName || product.cardName || "").trim().toLowerCase();
       const productSet = String(product.setName || product.expansion || "").trim().toLowerCase();
       const tokenHits = tokens.filter((token) => productName.includes(token)).length;
@@ -14628,7 +14738,7 @@ export default function App() {
       store: importBulkApply.store,
       purchaseDate: importBulkApply.purchaseDate,
     });
-    const itemName = normalizedRaw.itemName || raw.itemName || raw.name || raw.productName || raw.originalText || `Imported item ${index + 1}`;
+    const itemName = raw.structured ? String(raw.itemName || "").trim() : normalizedRaw.itemName || raw.itemName || raw.name || raw.productName || raw.originalText || `Imported item ${index + 1}`;
     const matchResult = findCatalogMatchForImport(itemName, raw.setName, { ...raw, upcSku: normalizedRaw.upcSku || raw.upcSku });
     const matched = matchResult.match;
     const marketInfo = matched ? getTideTradrMarketInfo(matched) : {};
@@ -14637,6 +14747,11 @@ export default function App() {
     return {
       importedItemId: makeId("import-row"),
       originalText: raw.originalText || itemName,
+      sourceLine: raw.sourceLine || index + 1,
+      parseError: raw.parseError || "",
+      referenceOnly: Boolean(raw.referenceOnly),
+      identityAmbiguous: Boolean(matchResult.identityAmbiguous),
+      manualIdentityConfirmed: false,
       matchedCatalogItemId: matched?.id || "",
       possibleMatchName: matched?.name || matched?.productName || matched?.cardName || "",
       alternateMatches: matchResult.alternateMatches || [],
@@ -14645,15 +14760,16 @@ export default function App() {
       productType: raw.productType || matched?.productType || "",
       setName: raw.setName || matched?.setName || matched?.expansion || "",
       cardNumber: raw.cardNumber || matched?.cardNumber || "",
-      quantity: normalizedRaw.quantity || normalizeImportQuantity(raw.quantity),
-      costPaid: normalizeImportNumber(raw.costPaid || normalizedRaw.unitCost),
-      msrp: normalizeImportNumber(raw.msrp || matched?.msrpPrice || matched?.msrp || ""),
-      marketValue: normalizeImportNumber(raw.marketValue || marketInfo.currentMarketValue || ""),
+      quantity: normalizeImportQuantity(raw.quantity ?? normalizedRaw.quantity),
+      costPaid: normalizeImportNumber(raw.costPaid ?? normalizedRaw.unitCost),
+      msrp: normalizeImportNumber(raw.msrp === "" || raw.msrp == null ? matched?.msrpPrice ?? matched?.msrp ?? "" : raw.msrp),
+      marketValue: normalizeImportNumber(raw.marketValue === "" || raw.marketValue == null ? marketInfo.currentMarketValue ?? "" : raw.marketValue),
       condition: raw.condition || matched?.condition || "Unknown",
       variant: raw.variant || matched?.variant || "",
       language: raw.language || matched?.language || "",
       graded: Boolean(raw.graded || matched?.graded),
       grade: raw.grade || matched?.grade || "",
+      gradingCompany: raw.gradingCompany || matched?.gradingCompany || "",
       location: raw.location || raw.store || raw.source || "",
       store: normalizedRaw.store || raw.store || raw.location || raw.source || "",
       purchaseDate: normalizedRaw.purchaseDate || raw.purchaseDate || "",
@@ -14672,23 +14788,24 @@ export default function App() {
     };
   }
 
-  function parseImportText(text, sourceType = importSourceType) {
-    const lines = String(text || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-    if (lines.length === 0) return [];
-    const firstLineCells = parseCsvLine(lines[0]);
-    const headerCellPattern = /^(name|item|item name|product|product name|card|title|quantity|qty|count|destination|purchaser|buyer|cost|cost paid|paid|purchase price|price|market|market value|value|msrp|retail|set|set name|collection|expansion|condition|variant|finish|printing|upc|sku|barcode|external id|note|notes|date|purchase date|purchased|store|source|vendor|card number|card #|card no)$/i;
-    const hasHeaders = firstLineCells.length > 1
-      ? firstLineCells.some((cell) => headerCellPattern.test(cell.trim()))
-      : headerCellPattern.test(firstLineCells[0]?.trim() || "");
+  function parseImportText(text, sourceType = importSourceType, explicitMapping) {
+    const records = parseImportRecords(text);
+    if (!records.length) return [];
+    const firstLineCells = records[0].cells;
+    const hasHeaders = isImportHeaderRecord(firstLineCells);
     const headers = hasHeaders ? firstLineCells.map((cell) => cell.toLowerCase().trim()) : [];
-    const dataLines = hasHeaders ? lines.slice(1) : lines;
-    const mapping = hasHeaders ? (Object.keys(importColumnMapping || {}).length ? importColumnMapping : inferImportColumnMapping(headers)) : {};
+    const dataRecords = hasHeaders ? records.slice(1) : records;
+    const sameHeaders = JSON.stringify(headers) === JSON.stringify(importColumnHeaders.map(header => header.toLowerCase().trim()));
+    const mapping = explicitMapping ?? (hasHeaders ? sameHeaders ? importColumnMapping : inferImportColumnMapping(headers) : {});
 
-    return dataLines.map((line, index) => {
-      const cells = line.includes(",") ? parseCsvLine(line) : line.split(/\t|\|/).map((cell) => cell.trim());
+    return dataRecords.map((record, index) => {
+      const { raw: line, cells, lineNumber: sourceLine, error: parseError } = record;
       if (headers.length) {
         return makeImportRow({
           originalText: line,
+          structured: true,
+          sourceLine,
+          parseError,
           itemName: readImportCell(cells, headers, ["name", "item", "product", "card", "title"], 0, mapping, "itemName"),
           quantity: readImportCell(cells, headers, ["quantity", "qty", "count"], 1, mapping, "quantity"),
           costPaid: readImportCell(cells, headers, ["cost", "paid", "purchase", "price"], 2, mapping, "costPaid"),
@@ -14700,6 +14817,9 @@ export default function App() {
           destination: readImportCell(cells, headers, ["destination"], -1, mapping, "destination"),
           purchaserName: readImportCell(cells, headers, ["purchaser", "buyer"], -1, mapping, "purchaserName"),
           variant: readImportCell(cells, headers, ["variant", "finish", "printing"], -1, mapping, "variant"),
+          language: readImportCell(cells, headers, ["language"], -1, mapping, "language"),
+          gradingCompany: readImportCell(cells, headers, ["grading company"], -1, mapping, "gradingCompany"),
+          grade: readImportCell(cells, headers, ["grade"], -1, mapping, "grade"),
           notes: readImportCell(cells, headers, ["note"], 8, mapping, "notes"),
           purchaseDate: readImportCell(cells, headers, ["date", "purchase date", "purchased"], -1, mapping, "purchaseDate"),
           upcSku: readImportCell(cells, headers, ["upc", "sku", "barcode", "external"], -1, mapping, "upcSku"),
@@ -14725,6 +14845,8 @@ export default function App() {
         .trim();
       return makeImportRow({
         originalText: line,
+        sourceLine,
+        parseError,
         itemName: cleanedName || cells[0] || line,
         quantity: quantityMatch?.[1] || 1,
         costPaid: prices[0] || "",
@@ -14750,17 +14872,17 @@ export default function App() {
       setImportRows([row]);
       return;
     }
-    const lines = String(importText || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-    if (lines.length) {
-      const headers = parseCsvLine(lines[0]);
-      if (headers.some((cell) => /name|item|product|quantity|qty|cost|market|msrp|set|condition|upc|sku|barcode|note|date/i.test(cell))) {
-        setImportColumnHeaders(headers);
-        setImportColumnMapping((current) => Object.keys(current || {}).length ? current : inferImportColumnMapping(headers));
-      }
-    }
-    const nextRows = parseImportText(importText, importSourceType);
-    setImportRows(nextRows);
-    setImportBatchMessage(nextRows.length ? `${nextRows.length} row${nextRows.length === 1 ? "" : "s"} staged for review. Nothing has been saved.` : "No rows found to review.");
+    try {
+      const records = parseImportRecords(importText);
+      const headers = records[0] && isImportHeaderRecord(records[0].cells) ? records[0].cells : [];
+      const sameHeaders = JSON.stringify(headers) === JSON.stringify(importColumnHeaders);
+      const mapping = sameHeaders ? importColumnMapping : inferImportColumnMapping(headers);
+      const nextRows = parseImportText(importText, importSourceType, mapping);
+      setImportColumnHeaders(headers);
+      setImportColumnMapping(mapping);
+      setImportRows(nextRows);
+      setImportBatchMessage(nextRows.length ? `${nextRows.length} row${nextRows.length === 1 ? "" : "s"} staged for review. Nothing has been saved.` : "No rows found to review.");
+    } catch (error) { setImportBatchMessage(error.message || "Import could not be parsed. The previous review is preserved."); }
   }
 
   function handleImportFileUpload(event) {
@@ -14774,6 +14896,7 @@ export default function App() {
         makeImportRow({
           originalText: file.name,
           itemName: "Image reference upload",
+          referenceOnly: true,
           notes: "Image/OCR import is coming later. Type the visible text into the paste box for beta matching.",
         }, "photo_reference", 0),
       ]);
@@ -14792,21 +14915,25 @@ export default function App() {
       setImportBatchMessage(`${extension?.toUpperCase()} selected for reference. Export to CSV or paste visible rows for beta parsing.`);
       return;
     }
+    if (file.size > 2 * 1024 * 1024) { setImportBatchMessage("Split this import into files smaller than 2 MB. Your previous review is preserved."); return; }
     const reader = new FileReader();
     reader.onload = () => {
       const content = String(reader.result || "");
+      try {
       setImportText(content);
       const sourceType = extension === "csv" ? "spreadsheet_csv" : "notes_list";
-      const lines = content.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-      const headers = lines.length ? parseCsvLine(lines[0]) : [];
-      const hasHeaders = headers.some((cell) => /name|item|product|quantity|qty|cost|market|msrp|set|condition|upc|sku|barcode|note|date/i.test(cell));
+      const records = parseImportRecords(content);
+      const headers = records[0]?.cells || [];
+      const hasHeaders = isImportHeaderRecord(headers);
       setImportSourceType(sourceType);
       setImportColumnHeaders(hasHeaders ? headers : []);
       setImportColumnMapping(hasHeaders ? inferImportColumnMapping(headers) : {});
-      const rows = parseImportText(content, sourceType);
+      const rows = parseImportText(content, sourceType, hasHeaders ? inferImportColumnMapping(headers) : {});
       setImportRows(rows);
       setImportBatchMessage(`${rows.length} row${rows.length === 1 ? "" : "s"} staged from ${file.name}. Review before saving.`);
+      } catch (error) { setImportBatchMessage(error.message || "The file could not be read. Your previous review is preserved."); }
     };
+    reader.onerror = () => setImportBatchMessage("The file could not be read. Try choosing it again; your previous review is preserved.");
     reader.readAsText(file);
   }
 
@@ -14914,8 +15041,9 @@ export default function App() {
   function updateImportRow(rowId, updates) {
     setImportRows((current) => current.map((row) => {
       if (row.importedItemId !== rowId) return row;
+      if (row.importStatus === "imported") return row;
       const next = { ...row, ...updates, updatedAt: new Date().toISOString() };
-      if (Object.prototype.hasOwnProperty.call(updates, "itemName") || Object.prototype.hasOwnProperty.call(updates, "setName") || Object.prototype.hasOwnProperty.call(updates, "upcSku") || Object.prototype.hasOwnProperty.call(updates, "cardNumber")) {
+      if (["itemName", "setName", "upcSku", "cardNumber", "variant", "language", "condition", "grade", "gradingCompany"].some(field => Object.hasOwn(updates, field))) {
         const matchResult = findCatalogMatchForImport(next.itemName, next.setName, next);
         next.matchedCatalogItemId = matchResult.match?.id || "";
         next.possibleMatchName = matchResult.match?.name || matchResult.match?.productName || matchResult.match?.cardName || "";
@@ -14923,6 +15051,9 @@ export default function App() {
         next.confidenceScore = matchResult.confidenceScore;
         next.confidenceLabel = importConfidenceLabel(matchResult.confidenceScore);
         next.needsReview = matchResult.needsReview;
+        next.identityAmbiguous = Boolean(matchResult.identityAmbiguous);
+        next.manualIdentityConfirmed = false;
+        if (matchResult.needsReview) next.importStatus = "pending";
       }
       return next;
     }));
@@ -14931,10 +15062,12 @@ export default function App() {
   function selectImportRowCatalogMatch(rowId, productId) {
     setImportRows((current) => current.map((row) => {
       if (row.importedItemId !== rowId) return row;
+      if (row.importStatus === "imported") return row;
       if (!productId) {
         return {
           ...row,
           matchedCatalogItemId: "",
+          manualIdentityConfirmed: true,
           possibleMatchName: "",
           confidenceScore: 35,
           confidenceLabel: "Low",
@@ -14947,9 +15080,16 @@ export default function App() {
       return {
         ...row,
         matchedCatalogItemId: productId,
+        identityAmbiguous: false,
         possibleMatchName: product ? catalogTitle(product) : row.possibleMatchName,
         productType: row.productType || product?.productType || "",
         setName: row.setName || product?.setName || product?.expansion || "",
+        variant: row.variant || product?.variant || "",
+        language: row.language || product?.language || "",
+        condition: row.condition && row.condition !== "Unknown" ? row.condition : product?.condition || row.condition || "Unknown",
+        cardNumber: row.cardNumber || product?.cardNumber || "",
+        grade: row.grade || product?.grade || "",
+        gradingCompany: row.gradingCompany || product?.gradingCompany || "",
         confidenceScore: Math.max(Number(row.confidenceScore || 0), 88),
         confidenceLabel: "High",
         needsReview: false,
@@ -14960,6 +15100,10 @@ export default function App() {
   }
 
   function createManualCatalogItemFromImport(row) {
+    if (importRowIssues(row).length) {
+      setImportBatchMessage("Correct this row and confirm its identity before creating a manual catalog item.");
+      return;
+    }
     const now = new Date().toISOString();
     const product = {
       id: makeId("catalog"),
@@ -14973,7 +15117,7 @@ export default function App() {
       productType: row.productType,
       barcode: "",
       sku: "",
-      marketPrice: Number(row.marketValue || 0),
+      marketPrice: Number(importMoneyDraft(row.marketValue) || 0),
       marketSource: "Manual",
       marketLastUpdated: now,
       marketConfidenceLevel: "Manual",
@@ -14983,11 +15127,14 @@ export default function App() {
       imageStatus: "placeholder",
       imageLastUpdated: now,
       imageNeedsReview: true,
-      msrpPrice: Number(row.msrp || 0),
+      msrpPrice: Number(importMoneyDraft(row.msrp) || 0),
       condition: row.condition || "",
       language: row.language || "English",
       graded: Boolean(row.graded),
       grade: row.grade || "",
+      gradingCompany: row.gradingCompany || "",
+      cardNumber: row.cardNumber || "",
+      variant: row.variant || "",
       notes: row.notes || "Created from Inventory Import Assistant.",
       createdAt: now,
       updatedAt: now,
@@ -15024,7 +15171,7 @@ export default function App() {
       category: "Pokemon",
       store: row.store || row.location || "",
       quantity: Number(row.quantity || 1),
-      unitCost: Number(row.costPaid || 0),
+      unitCost: Number(importMoneyDraft(row.costPaid) || 0),
       salePrice: "",
       barcode: matched?.barcode || matched?.upc || row.upcSku || "",
       catalogProductId: matched?.id || "",
@@ -15037,20 +15184,28 @@ export default function App() {
       itemImageSourceUrl: matched?.imageSourceUrl || "",
       itemImageLastUpdated: matched?.imageLastUpdated || "",
       itemImageNeedsReview: Boolean(matched?.imageNeedsReview),
-      marketPrice: Number(row.marketValue || matched?.marketPrice || 0),
+      marketPrice: Number(row.marketValue === "" || row.marketValue == null ? matched?.marketPrice ?? 0 : importMoneyDraft(row.marketValue)),
       lowPrice: Number(matched?.lowPrice || 0),
-      midPrice: Number(matched?.midPrice || row.marketValue || 0),
+      midPrice: Number(matched?.midPrice || importMoneyDraft(row.marketValue) || 0),
       highPrice: Number(matched?.highPrice || 0),
-      msrpPrice: Number(row.msrp || matched?.msrpPrice || 0),
+      msrpPrice: Number(row.msrp === "" || row.msrp == null ? matched?.msrpPrice ?? 0 : importMoneyDraft(row.msrp)),
       expansion: row.setName || matched?.setName || "",
       productType: row.productType || matched?.productType || "",
       variant: row.variant || "",
+      printing: row.variant || "",
+      condition: row.condition || "",
+      conditionName: row.condition || "",
+      language: row.language || "",
+      cardNumber: row.cardNumber || "",
+      gradingCompany: row.gradingCompany || "",
+      grade: row.grade || "",
+      graded: Boolean(row.grade || row.gradingCompany || row.graded),
       purchaseDate: row.purchaseDate || "",
       status,
       vaultStatus: isVaultDestination ? "personal_collection" : isWishlistDestination ? "wishlist" : "",
       physicalLocation: isForgeDestination ? DEFAULT_FORGE_PHYSICAL_LOCATION : "",
       physicalLocationNotes: "",
-      actionNotes: isVaultDestination ? "Imported collection item" : isWishlistDestination ? "Imported wishlist item" : "Imported Forge item",
+      actionNotes: isVaultDestination ? "Imported collection item" : isWishlistDestination ? "Imported wishlist item" : "Imported Business item",
       notes: [row.notes, `Imported from ${row.sourceType}. Original: ${row.originalText}`].filter(Boolean).join(" | "),
       createdAt: new Date().toISOString(),
       importStatus: "imported",
@@ -15135,9 +15290,9 @@ export default function App() {
       listed_price: Number(record.listedPrice || 0),
       physical_location: record.physicalLocation || record.physical_location || "",
       physical_location_notes: record.physicalLocationNotes || record.physical_location_notes || "",
-      action_notes: record.actionNotes || record.notes || "",
+      action_notes: withImportSavedDetails(record),
       condition_name: record.conditionName || record.condition || "Near Mint",
-      language: record.language || "English",
+      language: record.language || (record.importSourceType ? "Unknown" : "English"),
       finish: record.finish || "",
       printing: record.printing || "",
     });
@@ -15183,71 +15338,109 @@ export default function App() {
   }
 
   function findImportDuplicate(row, destination) {
+    const candidates = findImportDuplicateCandidates(row, destination).filter(item => sameImportCopy(row, item));
+    const chosen = row.duplicateTargetIds?.[destination];
+    return candidates.length === 1 ? candidates[0] : candidates.find(item => String(item.id) === String(chosen)) || null;
+  }
+
+  function findImportDuplicateCandidates(row, destination) {
     const scope = importDestinationScope(destination);
-    const normalizedName = normalizeSearchText(row.itemName);
-    const rowCatalogId = String(row.matchedCatalogItemId || "");
-    return items.find((item) => {
+    return items.filter((item) => {
       const scopeMatch =
         scope === "wishlist" ? isWishlistItemRecord(item) :
         scope === "vault" ? isVaultItemRecord(item) :
         isForgeInventoryItem(item);
       if (!scopeMatch) return false;
-      if (rowCatalogId && String(item.catalogProductId || "") === rowCatalogId) return true;
-      return normalizedName && normalizeSearchText(item.name) === normalizedName;
-    }) || null;
+      if (String(item.workspaceId || item.workspace_id || DEFAULT_PERSONAL_WORKSPACE_ID) !== String(activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID)) return false;
+      return possibleImportDuplicate(row, item);
+    });
   }
 
-  function applyImportedQuantityIncrease(duplicate, row) {
+  async function applyImportedQuantityIncrease(duplicate, row) {
+    if (!ensureWorkspaceEditor(duplicate.workspaceId || duplicate.workspace_id || activeWorkspace?.id)) throw new Error("You need editing access before changing this copy.");
+    const expected = Number(duplicate.quantity || 0);
+    const quantity = expected + Number(row.quantity);
+    if (!Number.isSafeInteger(quantity) || quantity < 1) throw new Error("The combined quantity is outside the supported range.");
+    const patch = { quantity, updatedAt: new Date().toISOString() };
+    if (!BETA_LOCAL_MODE) {
+      if (!supabase || !user?.id) throw new Error("Sign in before increasing a saved quantity.");
+      const { data, error } = await supabase.from("inventory_items").update({ quantity, updated_at: patch.updatedAt }).eq("id", duplicate.id).eq("quantity", expected).select().single();
+      if (error || !data) throw new Error("The saved quantity could not be confirmed. Refresh and review this copy before retrying.");
+    }
     setItems((current) => current.map((item) => {
       if (item.id !== duplicate.id) return item;
       return {
         ...item,
-        quantity: Number(item.quantity || 0) + Number(row.quantity || 1),
-        notes: [item.notes, `Quantity increased from batch intake: ${row.originalText}`].filter(Boolean).join(" | "),
-        updatedAt: new Date().toISOString(),
+        ...patch,
       };
     }));
   }
 
   async function confirmInventoryImport() {
-    const rowsToImport = importRows.filter((row) => row.importStatus !== "skipped" && row.destination !== "Skip");
+    if (importSavePending.current) return;
+    const rowsToImport = importRows.filter((row) => !["skipped", "imported"].includes(row.importStatus) && row.destination !== "Skip");
     if (rowsToImport.length === 0) return showAppMessage("No import rows selected.");
+    const invalidRows = rowsToImport.filter(row => importRowIssues(row).length);
+    if (invalidRows.length) { setImportBatchMessage(`Correct ${invalidRows.length} row${invalidRows.length === 1 ? "" : "s"} before saving. Each affected row lists the fields to fix.`); return; }
     const unreviewedRows = rowsToImport.filter((row) => row.needsReview && row.importStatus !== "reviewed");
     if (unreviewedRows.length) {
       setImportBatchMessage(`${unreviewedRows.length} low-confidence or unmatched row${unreviewedRows.length === 1 ? "" : "s"} still need review before saving.`);
       return;
     }
+    importSavePending.current = true;
+    setImportSaving(true);
+    try {
     const nextItems = [];
+    const rowIdByRecord = new Map();
+    const completed = new Map();
+    const remember = (row, destination) => {
+      const destinations = [...new Set([...(completed.get(row.importedItemId) || row.completedDestinations || []), destination])];
+      completed.set(row.importedItemId, destinations);
+      setImportRows(current => current.map(candidate => candidate.importedItemId === row.importedItemId ? { ...candidate, completedDestinations: destinations } : candidate));
+    };
+    const updatedQuantities = new Map();
     const failures = [];
     let skippedDuplicates = 0;
     let quantityIncreases = 0;
-    rowsToImport.forEach((row) => {
+    for (const row of rowsToImport) {
       const destinations = row.destination === "Both" ? ["Forge", "Vault"] : [row.destination || defaultImportDestination()];
-      destinations.forEach((destination) => {
-        if (destination === "Skip") return;
+      for (const destination of destinations) {
+        if (destination === "Skip" || row.completedDestinations?.includes(destination)) continue;
         try {
           const duplicate = findImportDuplicate(row, destination);
           const duplicateAction = row.duplicateAction || importOptions.duplicateAction || "add_separate";
           if (duplicate && duplicateAction === "skip_duplicate") {
             skippedDuplicates += 1;
-            return;
+            remember(row, destination);
+            continue;
           }
           if (duplicate && duplicateAction === "increase_quantity") {
-            applyImportedQuantityIncrease(duplicate, row);
+            const currentDuplicate = { ...duplicate, quantity: updatedQuantities.get(String(duplicate.id)) ?? duplicate.quantity };
+            await applyImportedQuantityIncrease(currentDuplicate, row);
+            updatedQuantities.set(String(duplicate.id), Number(currentDuplicate.quantity || 0) + Number(row.quantity));
             quantityIncreases += 1;
-            return;
+            remember(row, destination);
+            continue;
           }
-          nextItems.push(importedRowToItem(row, destination));
+          if (!duplicate && ["increase_quantity", "skip_duplicate"].includes(duplicateAction) && findImportDuplicateCandidates(row, destination).length) throw new Error("Choose a matching existing copy, or add a separate copy when set, printing, language, condition or grade differ.");
+          const record = importedRowToItem(row, destination);
+          nextItems.push(record);
+          rowIdByRecord.set(String(record.id), { row, destination });
         } catch (error) {
           failures.push({ rowId: row.importedItemId, itemName: row.itemName, error: error.message || "Unknown import failure" });
         }
-      });
-    });
+      }
+    }
     let savedItems = nextItems;
     if (nextItems.length) {
       const saveResult = await saveInventoryRecords(nextItems);
       savedItems = saveResult.saved;
-      failures.push(...saveResult.failures);
+      const failedIds = new Set(saveResult.failures.map(failure => String(failure.rowId)));
+      failures.push(...saveResult.failures.map(failure => ({ ...failure, rowId: rowIdByRecord.get(String(failure.rowId))?.row.importedItemId || failure.rowId })));
+      for (const record of nextItems) {
+        const source = rowIdByRecord.get(String(record.id));
+        if (!failedIds.has(String(record.id))) remember(source.row, source.destination);
+      }
       if (savedItems.length) setItems((current) => [...savedItems, ...current]);
     }
     if (importOptions.addToWatchlist || importOptions.pinHighValue) {
@@ -15258,7 +15451,8 @@ export default function App() {
         }
       });
     }
-    setImportRows((current) => current.map((row) => row.importStatus === "skipped" || row.destination === "Skip" ? row : { ...row, importStatus: failures.some((failure) => failure.rowId === row.importedItemId) ? "failed" : "imported", updatedAt: new Date().toISOString() }));
+    const attemptedIds = new Set(rowsToImport.map(row => row.importedItemId));
+    setImportRows((current) => current.map((row) => !attemptedIds.has(row.importedItemId) ? row : { ...row, completedDestinations: completed.get(row.importedItemId) || row.completedDestinations || [], importStatus: failures.some((failure) => failure.rowId === row.importedItemId) ? "failed" : "imported", updatedAt: new Date().toISOString() }));
     const result = {
       batchId: makeId("batch-intake"),
       saved: savedItems.length,
@@ -15275,6 +15469,8 @@ export default function App() {
       closeFlowModal({ force: true, reset: false });
       setActiveTab(savedScopes.has("forge") ? "inventory" : "vault");
     }
+    } catch (error) { setImportBatchMessage(error.message || "The batch stopped. Check saved records before retrying."); }
+    finally { importSavePending.current = false; setImportSaving(false); }
   }
 
   function addManualImportRow(event) {
@@ -15309,6 +15505,12 @@ export default function App() {
       marketValue: getTideTradrMarketInfo(product).currentMarketValue || "",
       msrp: product.msrpPrice || product.msrp || "",
       upcSku: product.barcode || product.upc || "",
+      variant: product.variant || product.printing || product.finish || "",
+      cardNumber: product.cardNumber || "",
+      language: product.language || "",
+      condition: product.condition || product.conditionName || "",
+      grade: product.grade || "",
+      gradingCompany: product.gradingCompany || "",
       destination,
     }, "bulk_search", importRows.length);
     setImportRows((current) => [
@@ -15327,20 +15529,23 @@ export default function App() {
     setImportBatchMessage(`${catalogTitle(product)} added to the review batch.`);
   }
 
-  function applyImportBulkUpdates() {
+  function applyImportBulkUpdates(overrides = null) {
+    // A67: `overrides` lets a one-tap "send every row to X" button apply a
+    // value directly instead of relying on the bulk form's state.
+    const source = overrides && typeof overrides === "object" && !overrides.nativeEvent ? { ...importBulkApply, ...overrides } : importBulkApply;
     const updates = {};
-    if (importBulkApply.destination) updates.destination = importBulkApply.destination;
-    if (importBulkApply.condition) updates.condition = importBulkApply.condition;
-    if (importBulkApply.store) {
-      updates.store = importBulkApply.store;
-      updates.location = importBulkApply.store;
+    if (source.destination) updates.destination = source.destination;
+    if (source.condition) updates.condition = source.condition;
+    if (source.store) {
+      updates.store = source.store;
+      updates.location = source.store;
     }
-    if (importBulkApply.purchaseDate) updates.purchaseDate = importBulkApply.purchaseDate;
+    if (source.purchaseDate) updates.purchaseDate = source.purchaseDate;
     if (!Object.keys(updates).length) {
       setImportBatchMessage("Choose a bulk value to apply first.");
       return;
     }
-    setImportRows((current) => current.map((row) => row.importStatus === "skipped" ? row : {
+    setImportRows((current) => current.map((row) => ["skipped", "imported"].includes(row.importStatus) || row.completedDestinations?.length ? row : {
       ...row,
       ...updates,
       importStatus: row.needsReview ? "reviewed" : row.importStatus,
@@ -15351,6 +15556,15 @@ export default function App() {
 
   function removeImportRow(rowId) {
     setImportRows((current) => current.filter((row) => row.importedItemId !== rowId));
+  }
+
+  async function exportRejectedImportRows() {
+    const rejected = buildRejectedImportCsv(importRows, importLastBatchResult?.failures || []);
+    if (!rejected.count) { setImportBatchMessage("No rejected rows to export."); return; }
+    try {
+      const saved = await exportFile({ blob: new Blob(["\uFEFF", rejected.csv], { type: "text/csv;charset=utf-8" }), filename: `code3-import-corrections-${new Date().toISOString().slice(0, 10)}.csv`, signal: fileExportScopeRef.current?.signal });
+      setImportBatchMessage(`${exportFileStatus(saved)} ${rejected.count} rows exported for correction. Your staged batch is unchanged.`);
+    } catch (error) { setImportBatchMessage(exportFileError(error)); }
   }
 
   const importCatalogSearchResults = useMemo(() => {
@@ -15385,6 +15599,8 @@ export default function App() {
         createManualCatalogItemFromImport,
         defaultImportDestination,
         findImportDuplicate,
+        findImportDuplicateCandidates,
+        exportRejectedImportRows,
         getImportSourceGuide,
         handleImportFileUpload,
         importAssistantOpen,
@@ -15401,6 +15617,7 @@ export default function App() {
         importManualRow,
         importOptions,
         importRows,
+        importSaving,
         importSourceType,
         importText,
         removeImportRow,
@@ -15462,7 +15679,7 @@ export default function App() {
           || (Object.hasOwn(saved, "alertSettings") && !isObject(saved.alertSettings))
           || Object.keys(sanitizeScoutLocalData({})).some((field) => Object.hasOwn(saved, field)
             && (!Array.isArray(saved[field]) || (field !== "storeAliases" && !saved[field].every(isObject))))) {
-          throw new Error("Saved Scout data could not be read.");
+          throw new Error("Saved restock data could not be read.");
         }
         return saved;
       };
@@ -15482,11 +15699,11 @@ export default function App() {
       const saved = readScoutTarget();
       localStorage.setItem(SCOUT_STORAGE_KEY, JSON.stringify({ ...saved, alertSettings: { ...(saved.alertSettings || {}), [key]: value } }));
       updatePhase2Status(result, "Alert preference saved locally.");
-      setVaultToast(result.source === "supabase" ? "Scout alert preference synced." : "Scout alert preference saved locally.");
+      setVaultToast(result.source === "supabase" ? "Restock alert preference synced." : "Restock alert preference saved locally.");
       return result;
     } catch {
       const message = result
-        ? "Notification preference saved, but the Scout copy was not updated. Existing Scout data was kept."
+        ? "Notification preference saved, but the Restocks copy was not updated. Existing restock data was kept."
         : "Alert preference was not saved. Existing settings were kept because local storage could not be read or written.";
       setPhase2SyncStatus({ source: result?.source || "local", kind: result ? "partial_save" : "storage_error", label: result ? "Partially saved" : "Local save failed", message });
       setVaultToast({ type: result ? "warning" : "error", title: message });
@@ -15949,7 +16166,7 @@ export default function App() {
       setScoutBackendSync({
         loaded: false,
         loading: false,
-        error: "Scout and Drop Radar cloud data is unavailable right now. Local/manual fallback remains available.",
+        error: "Restocks and Drop Radar cloud data is unavailable right now. Local/manual fallback remains available.",
         loadedAt: "",
       });
       return false;
@@ -16081,12 +16298,16 @@ export default function App() {
   function submitTidepoolPost(event) {
     event?.preventDefault?.();
     if (blockGuestSave()) return false;
+    if (kidSafeView) {
+      setVaultToast(KID_SAFE_COPY.postingBlocked);
+      return false;
+    }
     if (!canUserCreateTidepoolPost({
       betaAccessAllowed: betaAccessAllowed(),
       guestPreviewActive,
       activeTabLocked,
     })) {
-      setVaultToast("Tidepool posting is available after beta access is approved.");
+      setVaultToast("Community posting is available after beta access is approved.");
       return false;
     }
     const identity = publicIdentityForProfile(currentUserProfile);
@@ -16098,6 +16319,7 @@ export default function App() {
       setVaultToast(validationError);
       return false;
     }
+    const safetyReviewReason = detectTidepoolSafetyReviewReason(tidepoolPostForm);
     const post = makeTidepoolPost({
       ...tidepoolPostForm,
       displayName: publicProfileLabel(),
@@ -16109,6 +16331,8 @@ export default function App() {
       visibility: "author_admin",
       verificationStatus: "pending_review",
       sourceType: "user",
+      safetyReviewReason,
+      needsSafetyReview: Boolean(safetyReviewReason),
     });
     saveTidepoolCommunity({ posts: [post, ...tidepoolPosts] });
     setTidepoolPostForm(BLANK_TIDEPOOL_POST_FORM);
@@ -16116,7 +16340,9 @@ export default function App() {
     if (activeFlowModal?.type === "tidepoolCreatePost") {
       closeFlowModal({ force: true, reset: false });
     }
-    setVaultToast("Post saved for admin review before it appears publicly.");
+    setVaultToast(safetyReviewReason
+      ? "Post saved. It was held for a closer safety look before it appears publicly; you will get an alert either way."
+      : "Post saved. It passed the automatic safety check and is in the quick review queue, usually within a day.");
     return true;
   }
 
@@ -16215,7 +16441,7 @@ export default function App() {
 
   function runTidepoolAdminPostAction(post, label, updates, options = {}) {
     if (!adminEditModeActive) {
-      setVaultToast("Turn on Admin Edit Mode to moderate Tidepool posts.");
+      setVaultToast("Turn on Admin Edit Mode to moderate Community posts.");
       return;
     }
     const execute = () => {
@@ -16225,13 +16451,13 @@ export default function App() {
         reason: updates.moderationReason || updates.reason || "",
       });
       updateTidepoolPost(post.postId, moderated);
-      setVaultToast(`${label} applied to Tidepool post.`);
+      setVaultToast(`${label} applied to Community post.`);
     };
     if (options.confirm) {
       requestAdminActionConfirmation({
-        title: `${label} Tidepool post?`,
+        title: `${label} Community post?`,
         message: options.message || "This changes the post moderation state for beta users.",
-        targetName: post.title || post.topic || post.body?.slice?.(0, 64) || "Tidepool post",
+        targetName: post.title || post.topic || post.body?.slice?.(0, 64) || "Community post",
         confirmLabel: label,
         danger: Boolean(options.danger),
         onConfirm: execute,
@@ -16962,7 +17188,9 @@ export default function App() {
       document.documentElement.setAttribute("data-theme", resolvedAppTheme);
       document.body?.setAttribute("data-theme", resolvedAppTheme);
     }
-    if (typeof localStorage !== "undefined") {
+    // Only a choice the person made is saved; the system default keeps
+    // following the device setting (A45).
+    if (typeof localStorage !== "undefined" && (appThemeChosenByUser.current || localStorage.getItem(APP_THEME_STORAGE_KEY))) {
       localStorage.setItem(APP_THEME_STORAGE_KEY, resolvedAppTheme);
     }
   }, [resolvedAppTheme]);
@@ -17583,6 +17811,8 @@ export default function App() {
       }
     }
     const consentTimestamp = new Date().toISOString();
+    if (authInFlightRef.current) return;
+    authInFlightRef.current = true;
     setAuthLoading(true);
     try {
       if (authMode === "signup") {
@@ -17679,6 +17909,7 @@ export default function App() {
       setAuthError(message);
       setVaultToast(message);
     } finally {
+      authInFlightRef.current = false;
       setAuthLoading(false);
     }
   }
@@ -17885,7 +18116,7 @@ export default function App() {
     if (!workspace?.id) return;
     if (isProtectedWorkspace(workspace, { defaultWorkspaceId: DEFAULT_PERSONAL_WORKSPACE_ID })) {
       setWorkspaceMessage(workspace.id === DEFAULT_PERSONAL_WORKSPACE_ID
-        ? "The default personal workspace cannot be archived. Hide Personal Forge or archive another workspace instead."
+        ? "The default personal workspace cannot be archived. Hide Personal Business Workspace or archive another workspace instead."
         : "Protected system or Code 3 TCG workspaces cannot be archived from normal settings.");
       return;
     }
@@ -18272,7 +18503,7 @@ export default function App() {
   async function resetBetaLocalData() {
     const confirmed = await confirmDestructive({
       title: "Clear private beta data?",
-      message: "This clears saved beta records on this device, including local Vault, Forge, Scout, Tidepool, workspace, and suggestion data. This cannot be undone.",
+      message: "This clears saved beta records on this device, including local Vault, Business, Restocks, Community, workspace, and suggestion data. This cannot be undone.",
       confirmLabel: "Clear local data",
     });
 
@@ -18455,7 +18686,7 @@ export default function App() {
       };
     };
     const vaultMatch = qaCatalogMatch("QA Receipt Vault Item", "qa-receipt-vault-catalog");
-    const forgeMatch = qaCatalogMatch("QA Receipt Forge Item", "qa-receipt-forge-catalog");
+    const forgeMatch = qaCatalogMatch("QA Receipt Business Item", "qa-receipt-forge-catalog");
     setReceiptScanForm((current) => ({
       ...current,
       storeName: "QA Receipt Merchant 2026-05-10",
@@ -18467,7 +18698,7 @@ export default function App() {
       total: "40.04",
       paymentMethod: "QA test",
       transactionNumber: `QA-${Date.now()}`,
-      rawText: "QA Receipt Vault Item 11.35\nQA Receipt Forge Item 22.70\nQA Receipt Expense Item 5.00",
+      rawText: "QA Receipt Vault Item 11.35\nQA Receipt Business Item 22.70\nQA Receipt Expense Item 5.00",
       source: "manual",
     }));
     setReceiptScanDraft({
@@ -18507,8 +18738,8 @@ export default function App() {
         },
         {
           id: makeReceiptEntityId("receipt-line"),
-          rawText: "QA Receipt Forge Item 22.70",
-          itemName: "QA Receipt Forge Item",
+          rawText: "QA Receipt Business Item 22.70",
+          itemName: "QA Receipt Business Item",
           matchedCatalogId: forgeMatch.id,
           matchedCatalogItemId: forgeMatch.id,
           suggestedMatchName: forgeMatch.name,
@@ -18997,7 +19228,7 @@ export default function App() {
       ...receipt,
       workspaceId: receipt.workspaceId || receipt.workspace_id || activeForgeWorkspace?.id || activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
       workspace_id: receipt.workspace_id || receipt.workspaceId || activeForgeWorkspace?.id || activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
-      workspaceName: receipt.workspaceName || activeForgeWorkspace?.name || activeWorkspace?.name || "Forge",
+      workspaceName: receipt.workspaceName || activeForgeWorkspace?.name || activeWorkspace?.name || "Business",
     };
     const normalizedLines = (lines || []).map((line) => ({ ...line, receiptId: line.receiptId || line.receipt_id || receiptId }));
     return {
@@ -19360,7 +19591,7 @@ export default function App() {
       personalTotal: importableItems.filter((item) => receiptItemDbDestination(item) === "vault").reduce((sum, item) => sum + Number(item.totalCost || 0), 0),
       workspaceId: activeForgeWorkspace?.id || activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
       workspace_id: activeForgeWorkspace?.id || activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
-      workspaceName: activeForgeWorkspace?.name || activeWorkspace?.name || "Forge",
+      workspaceName: activeForgeWorkspace?.name || activeWorkspace?.name || "Business",
       notes: `Receipt scan report. Store location: ${receiptScanDraft.storeLocation || "not visible"}. Transaction: ${receiptScanDraft.transactionNumber || "not visible"}.`,
       rawOcrText: receiptScanForm.rawText,
       lines: receiptScanDraft.items.map((item) => ({
@@ -19398,7 +19629,7 @@ export default function App() {
       id: savedReceiptId,
       workspaceId: activeForgeWorkspace?.id || activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
       workspace_id: activeForgeWorkspace?.id || activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
-      workspaceName: activeForgeWorkspace?.name || activeWorkspace?.name || "Forge",
+      workspaceName: activeForgeWorkspace?.name || activeWorkspace?.name || "Business",
     };
     const savedReceiptLines = (result.lines?.length ? result.lines : receipt.lines.map((line) => ({ ...line, receiptId: savedReceiptId })));
     syncForgeReceiptWorkflowState(savedReceipt, savedReceiptLines);
@@ -19415,7 +19646,7 @@ export default function App() {
       }),
       workspaceId: activeForgeWorkspace?.id || activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
       workspace_id: activeForgeWorkspace?.id || activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
-      workspaceName: activeForgeWorkspace?.name || activeWorkspace?.name || "Forge",
+      workspaceName: activeForgeWorkspace?.name || activeWorkspace?.name || "Business",
     }));
     const savedReceiptExpenses = [];
     const receiptExpenseFailures = [];
@@ -19831,8 +20062,8 @@ export default function App() {
       if (!await persistScannerIntake(destination, destination === "ignore" ? "discarded" : "confirmed")) return;
       closeInventoryScanner();
       setVaultToast(destination === "ignore"
-        ? "Scanner result ignored. No Vault or Forge item was saved."
-        : "Scanner result saved as expense-only review. No Vault or Forge item was created.");
+        ? "Scanner result ignored. No Vault or Business item was saved."
+        : "Scanner result saved as expense-only review. No Vault or Business item was created.");
       return;
     }
     if (destination === "tidetradr") {
@@ -20800,7 +21031,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       updateQuickAddWizard({ message: validationError });
       return;
     }
-    setQuickAddWizard((current) => ({ ...current, scoutScanSaving: true, message: "Saving Scout report..." }));
+    setQuickAddWizard((current) => ({ ...current, scoutScanSaving: true, message: "Saving restock report..." }));
     const now = new Date().toISOString();
     const observedAt = quickAddWizard.scoutScanTimeUnknown
       ? now
@@ -20814,7 +21045,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     const report = {
       id,
       reportId: id,
-      reportType: "Scout Report",
+      reportType: "Restocks Report",
       quickReportType: "scan_review",
       quickReportLabel: "Scan Anything review",
       reportStatus: "manual_review",
@@ -20835,7 +21066,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       product_category: itemRows.length ? "Pokemon TCG" : "",
       itemsSeen: itemRows.map((productName) => ({ productName, category: "Pokemon TCG", source: "scan_anything_manual_review" })),
       reportText: [
-        "Scan Anything manual Scout review.",
+        "Scan Anything manual Restocks review.",
         sourceText ? `Source text: ${sourceText}` : "",
         itemRows.length ? `Items/products mentioned: ${itemRows.join(", ")}` : "",
         quickAddWizard.scoutScanNotes ? `Notes: ${quickAddWizard.scoutScanNotes}` : "",
@@ -20900,7 +21131,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       return;
     }
     setQuickAddWizard((current) => ({ ...current, scoutScanSaving: false, scoutScanSavedReport: report, screen: "scoutScanSuccess", path: "scoutScanSuccess", message: "Want to add proof or more details?" }));
-    showSuccessToast("Scout report saved.", { message: "Want to add proof or more details?" });
+    showSuccessToast("Restock report saved.", { message: "Want to add proof or more details?" });
     setScoutView("reports");
     setScoutReportFilter("Latest");
   }
@@ -21029,7 +21260,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
 
   function openProductAddFlow({ product = null, source = "quick-add", seed = {}, destinations = {} } = {}) {
     if ((destinations.forge || seed.destinations?.forge) && !activeForgeWorkspace) {
-      setVaultToast("Forge workspace is unavailable.");
+      setVaultToast("Business workspace is unavailable.");
       showAppMessage(forgeWorkspaceUnavailableMessage);
       return;
     }
@@ -21761,7 +21992,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       return {
         key: "community-confirmed",
         label: "Verified by community",
-        helper: "Multiple Scout signals support this report.",
+        helper: "Multiple restock signals support this report.",
         score: 82,
       };
     }
@@ -21865,10 +22096,10 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     }
     if (reporterScore >= 85 || reporterPoints >= MIN_SCOUT_POINTS_FOR_GUESS) {
       score += 18;
-      reasons.push("Reporter has Scout history");
+      reasons.push("Reporter has restock history");
     } else if (reporterPoints > 0) {
       score += 8;
-      reasons.push("Reporter has some Scout points");
+      reasons.push("Reporter has some restock points");
     }
     if (similarRecent.length) {
       score += Math.min(24, similarRecent.length * 12);
@@ -22042,7 +22273,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (stepKey === "details" && !currentType.isGuess && !quickScoutHasMeaningfulReportDetail()) return "Add a category, item name, or useful detail before saving this report.";
     if (stepKey === "product" && !quickScoutHasMeaningfulReportDetail() && !currentType.isGuess) return "Add a category, item name, or useful detail before continuing.";
     if (stepKey === "review" && !currentType.isGuess) return scoutWizardStepError("where") || scoutWizardStepError("status") || scoutWizardStepError("details");
-    if (stepKey === "review" && !quickScoutReportReady()) return scoutWizardStepError("where") || scoutWizardStepError("details") || "Complete the missing Scout report details before submitting.";
+    if (stepKey === "review" && !quickScoutReportReady()) return scoutWizardStepError("where") || scoutWizardStepError("details") || "Complete the missing restock report details before submitting.";
     if (stepKey === "review" && quickScoutStoreNeedsReviewConfirmation()) return "Confirm the manual store/location before saving.";
     if (["details", "review"].includes(stepKey) && !currentType.isGuess) {
       const visitValidation = validateScoutVisitDateTime(quickScoutReportForm, { allowFutureConfirmation: adminEditModeActive });
@@ -22317,7 +22548,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   async function submitQuickScoutReport(event) {
     event?.preventDefault?.();
     if (quickScoutReportSubmitLockRef.current) {
-      setQuickScoutReportMessage("Scout report is already saving. Please wait a moment.");
+      setQuickScoutReportMessage("Restock report is already saving. Please wait a moment.");
       return;
     }
     quickScoutReportSubmitLockRef.current = true;
@@ -22345,7 +22576,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (!visitValidation.ok) {
       setQuickScoutReportMessage(visitValidation.message || "Add a valid visit date and time before submitting.");
       setQuickScoutReportStep(currentType.isGuess ? "details" : "where");
-      showErrorToast("Couldn’t submit Scout report.", { message: visitValidation.message || "Add a valid visit date and time." });
+      showErrorToast("Couldn’t submit restock report.", { message: visitValidation.message || "Add a valid visit date and time." });
       return;
     }
     if (visitValidation.needsFutureConfirmation) {
@@ -22388,7 +22619,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       setQuickScoutReportStep("submitted");
       setQuickScoutReportMessage("Guess saved to the planner. Forecasts will treat it as a guess, not confirmed stock.");
       setScoutView("guesses");
-      setVaultToast("Guess saved to Scout Planner.");
+      setVaultToast("Guess saved to Restocks Planner.");
       flowModalBaselineRef.current.scoutSubmit = quickScoutReportForm;
       void trackBetaActivity("submitted_scout_report", {
         eventContext: "scout",
@@ -22446,22 +22677,22 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     const savedToCloud = Boolean(backendSaveResult?.ok);
     const savedLocallyOnly = !savedToCloud;
     const scoutSaveMessage = savedToCloud
-      ? (visitValidation.oldBackfill ? "Backfilled report saved." : "Scout report saved.")
-      : "Scout report saved locally. Cloud sync is unavailable right now.";
+      ? (visitValidation.oldBackfill ? "Backfilled report saved." : "Restock report saved.")
+      : "Restock report saved locally. Cloud sync is unavailable right now.";
     setQuickScoutReportSaved(savedReport);
     setQuickScoutReportStep("submitted");
     setQuickScoutReportMessage(savedToCloud
-      ? (visitValidation.oldBackfill ? "Backfilled report saved." : "Scout report saved. Want to add proof or more details?")
-      : "Report saved on this device and is visible in Scout. Cloud sync is unavailable right now.");
+      ? (visitValidation.oldBackfill ? "Backfilled report saved." : "Restock report saved. Want to add proof or more details?")
+      : "Report saved on this device and is visible in Restocks. Cloud sync is unavailable right now.");
     setScoutReportFilter("Latest");
     setScoutReportsPage(1);
     setScoutView("reports");
     completeDailyAction("store", { badge: "restock_reporter", points: Math.max(6, Number(savedReport.scoutPointsValue || savedReport.scout_points_value || report.scoutPointsValue || 6)) });
     if (savedLocallyOnly) {
-      showWarningToast("Scout report saved locally.", {
+      showWarningToast("Restock report saved locally.", {
         message: backendSaveResult?.reason === "backend_unavailable"
-          ? "Cloud sync is not available in this session, but the report is visible in Scout."
-          : "Cloud sync failed, but the report is visible in Scout on this device.",
+          ? "Cloud sync is not available in this session, but the report is visible in Restocks."
+          : "Cloud sync failed, but the report is visible in Restocks on this device.",
       });
     } else {
       setVaultToast(scoutSaveMessage, {
@@ -22580,12 +22811,12 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     }
     if (action === "confirmReport") {
       if (selectedScoutReport) return openScoutReportConfirmAction(selectedScoutReport);
-      showAppMessage("Open a Scout report first, then confirm it.");
+      showAppMessage("Open a restock report first, then confirm it.");
       return;
     }
     if (action === "addProofReport") {
       if (selectedScoutReport) return openScoutReportProofAction(selectedScoutReport);
-      showAppMessage("Open a Scout report first, then add proof.");
+      showAppMessage("Open a restock report first, then add proof.");
       return;
     }
     if (action === "buildKidsPack" || action === "addDonation" || action === "logSupplies" || action === "createGiveaway" || action === "addEventSupport") {
@@ -22598,7 +22829,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       return;
     }
     if (action === "mergeDuplicateReports") {
-      setAdminReviewFilter("Scout Report Review");
+      setAdminReviewFilter("Restocks Report Review");
       setActiveTab("adminReview");
       return;
     }
@@ -22976,11 +23207,11 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
           notes: [multiDestinationForm.forge.notes, shared.notes].filter(Boolean).join(" "),
           createdAt: now,
         }, forgeWorkspace);
-        pendingInventoryCreates.push({ record: forgeItem, successMessage: `Added to Forge inventory (${forgeWorkspace?.name || "Workspace"})` });
+        pendingInventoryCreates.push({ record: forgeItem, successMessage: `Added to Business inventory (${forgeWorkspace?.name || "Workspace"})` });
         saveConfirmationEntries.push({ destination: "Forge", quantity: forgeQuantity, purchaserName: forgePurchaser.purchaserName });
       }
     } catch (error) {
-      failures.push(`Forge failed: ${error.message || "Could not save"}`);
+      failures.push(`Business failed: ${error.message || "Could not save"}`);
     }
 
     try {
@@ -23153,6 +23384,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   }
 
   function mapItem(row) {
+    const imported = readImportSavedDetails(row.actionNotes || row.action_notes);
     return {
       id: row.id,
       itemName: row.itemName || row.item_name || row.name || "",
@@ -23202,12 +23434,12 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       msrp: Number(row.msrp ?? row.msrpPrice ?? row.msrp_price ?? 0),
       msrpSource: row.msrpSource || row.msrp_source || "",
       setCode: row.setCode || row.set_code || "",
-      expansion: row.expansion || row.setName || row.set_name || "",
-      setName: row.setName || row.set_name || row.expansion || "",
+      expansion: row.expansion || row.setName || row.set_name || imported.setName || "",
+      setName: row.setName || row.set_name || row.expansion || imported.setName || "",
       productLine: row.productLine || row.product_line || "",
       productType: row.productType || row.product_type || "",
       packCount: Number(row.packCount ?? row.pack_count ?? 0),
-      notes: row.notes || "",
+      notes: row.notes || imported.notes || "",
       status: row.status || "In Stock",
       listingPlatform: row.listingPlatform || row.listing_platform || "",
       listingUrl: row.listingUrl || row.listing_url || "",
@@ -23217,11 +23449,18 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       location: row.location || row.location_name || "",
       physicalLocation: row.physicalLocation || row.physical_location || "",
       physicalLocationNotes: row.physicalLocationNotes || row.physical_location_notes || "",
-      condition: row.condition || "",
-      conditionName: row.conditionName || row.condition_name || row.condition || "Near Mint",
-      language: row.language || "English",
+      condition: row.condition || imported.condition || "",
+      conditionName: row.conditionName || row.condition_name || row.condition || imported.condition || (imported.importSourceType ? "Unknown" : "Near Mint"),
+      language: row.language || imported.language || "English",
       finish: row.finish || "",
       printing: row.printing || "",
+      variant: row.variant || row.printing || row.finish || imported.variant || "",
+      cardNumber: row.cardNumber || row.card_number || imported.cardNumber || "",
+      grade: row.grade || imported.grade || "",
+      gradingCompany: row.gradingCompany || row.grading_company || imported.gradingCompany || "",
+      graded: Boolean(row.graded || imported.graded || row.grade || row.gradingCompany),
+      purchaseDate: row.purchaseDate || row.purchase_date || imported.purchaseDate || "",
+      importSourceType: row.importSourceType || imported.importSourceType || "",
       sealedCondition: row.sealedCondition || row.sealed_condition || "",
       conditionNotes: row.conditionNotes || row.condition_notes || "",
       storageCareNotes: row.storageCareNotes || row.storage_care_notes || "",
@@ -23438,6 +23677,7 @@ function mapCatalog(row) {
     })),
     identifierSearch: row.identifierSearch || row.identifier_search || "",
     marketSource,
+    marketCurrency: row.marketCurrency || row.market_currency || row.priceCurrency || row.price_currency || row.currency || "",
     externalProductId: row.externalProductId || row.external_product_id || "",
     tcgplayerProductId: row.tcgplayerProductId || row.tcgplayer_product_id || "",
     marketUrl: row.marketUrl || row.market_url || "",
@@ -24414,7 +24654,7 @@ function mapCatalog(row) {
       if (activeFlowModal?.type === "addInventory") closeFlowModal({ force: true, reset: false });
       const savedDestination = normalizeInventoryDestination(updatedItem);
       if (savedDestination === "vault") setVaultToast("Vault item saved.");
-      else if (savedDestination === "forge") showAppMessage("Forge item saved.");
+      else if (savedDestination === "forge") showAppMessage("Business item saved.");
       else showAppMessage("Item saved.");
       return;
     }
@@ -24474,7 +24714,7 @@ function mapCatalog(row) {
     setItemForm(blankItem);
     if (activeFlowModal?.type === "addInventory") closeFlowModal({ force: true, reset: false });
     if (editingVault) setVaultToast("Vault item saved.");
-    else showAppMessage("Forge item saved.");
+    else showAppMessage("Business item saved.");
   }
 
   function startEditingItem(item) {
@@ -24557,7 +24797,7 @@ function mapCatalog(row) {
       ? allEntrySummary
       : `${updateIds.length} unsold ${updateIds.length === 1 ? "entry" : "entries"}`;
     if (!updateIds.length) {
-      showAppMessage("No unsold Forge entries are available for a grouped planned price update. Edit sold records individually.");
+      showAppMessage("No unsold Business entries are available for a grouped planned price update. Edit sold records individually.");
       return;
     }
     const input = window.prompt(`Update planned sale price for ${item.name || "this item"} (${entrySummary})`, current ? current.toFixed(2) : "");
@@ -24570,7 +24810,7 @@ function mapCatalog(row) {
     if (updateIds.length > 1) {
       const confirmed = await requestConfirmation({
         title: "Apply grouped price update?",
-        message: `Apply ${money(nextPrice)} to ${entrySummary} in this grouped Forge item? Sold entries will not change.`,
+        message: `Apply ${money(nextPrice)} to ${entrySummary} in this grouped Business item? Sold entries will not change.`,
         confirmLabel: "Apply update",
         cancelLabel: "Cancel",
       });
@@ -24635,8 +24875,8 @@ function mapCatalog(row) {
       return {
         title: "Delete resale inventory item?",
         body: `This removes the resale inventory record for ${itemName}. Collection records are not removed.`,
-        toast: "Forge inventory item deleted.",
-        error: "Could not delete Forge inventory item: ",
+        toast: "Business inventory item deleted.",
+        error: "Could not delete Business inventory item: ",
       };
     }
     if (destination === "wishlist") {
@@ -24810,7 +25050,7 @@ function mapCatalog(row) {
   function openTradeValueFlow(item = {}, options = {}) {
     const sourceEntry = inventoryGroupEntries(item).find((entry) => Number(entry.quantity || 0) > 0) || item;
     if (!sourceEntry?.id) {
-      setVaultToast("Choose a saved Vault or Forge item before starting a trade.");
+      setVaultToast("Choose a saved Vault or Business item before starting a trade.");
       return;
     }
     const draft = createTradeDraft({
@@ -24891,7 +25131,7 @@ function mapCatalog(row) {
 
   function tradeSourceLabelForKind(sourceKind = "") {
     if (sourceKind === "vault") return "Vault";
-    if (sourceKind === "forge") return "Forge";
+    if (sourceKind === "forge") return "Business";
     if (sourceKind === "manual") return "Manual";
     return "Inventory";
   }
@@ -25501,7 +25741,7 @@ function mapCatalog(row) {
   function openVaultForgeTransfer(item, mode = "move") {
     if (!ensureWorkspaceEditor(item?.workspaceId || item?.workspace_id || activeWorkspace?.id)) return;
     if (!activeForgeWorkspace) {
-      setVaultToast("Forge workspace is unavailable.");
+      setVaultToast("Business workspace is unavailable.");
       showAppMessage(forgeWorkspaceUnavailableMessage);
       return;
     }
@@ -25607,7 +25847,7 @@ function mapCatalog(row) {
     const mode = modeOverride || vaultForgeTransfer.mode || "move";
     const targetForgeWorkspace = activeForgeWorkspace;
     if (!targetForgeWorkspace) {
-      setVaultToast("Forge workspace is unavailable.");
+      setVaultToast("Business workspace is unavailable.");
       showAppMessage(forgeWorkspaceUnavailableMessage);
       return;
     }
@@ -25615,8 +25855,8 @@ function mapCatalog(row) {
     const quantityAvailable = Math.max(0, Number(sourceItem.quantity || 0));
     const requestedQuantity = Number(quantityOverride ?? vaultForgeTransfer.quantityToMove ?? 1);
     if (quantityAvailable < 1) {
-      setVaultToast("Move to Forge is disabled because quantity is 0.");
-      showAppMessage("Move to Forge is disabled because quantity is 0.");
+      setVaultToast("Move to Business is disabled because quantity is 0.");
+      showAppMessage("Move to Business is disabled because quantity is 0.");
       return;
     }
     if (!Number.isInteger(requestedQuantity) || requestedQuantity < 1) {
@@ -25648,7 +25888,7 @@ function mapCatalog(row) {
       businessInventory: true,
       isWishlist: false,
       source: "vault",
-      sourceType: "Forge copy",
+      sourceType: "Business copy",
       sourceLocation: "vault",
       originalVaultItemId: sourceItem.id,
       originalVaultGroupId: groupedSourceItem.groupId || groupedSourceItem.id,
@@ -25695,7 +25935,7 @@ function mapCatalog(row) {
           return {
             ...item,
             quantity: Math.max(0, remainingQuantity),
-            status: remainingQuantity > 0 ? item.status : "Moved to Forge",
+            status: remainingQuantity > 0 ? item.status : "Moved to Business",
             vaultStatus: remainingQuantity > 0 ? normalizeVaultStatus(item) : "moved_to_forge",
             destinationScope: ["vault"],
             recordType: "vault_item",
@@ -26769,6 +27009,7 @@ function renderDealFinderContent() {
         <div>
           <h2>Deal Finder</h2>
           <p>Start with product, quantity, and asking price. Optional values stay tucked away.</p>
+          <p className="compact-subtitle">What it does: you enter a price someone is asking and Deal Finder compares it with the catalog's market value, MSRP and your cost to say whether it is a good buy. It does not search stores or the web for deals yet; your saved checks stay on this device.</p>
         </div>
         <span className="status-badge">{dealRecommendation}</span>
       </div>
@@ -26972,7 +27213,7 @@ function renderTideTradrHeader() {
           </div>
           <div className="market-mode-strip" aria-label="Market guidance">
             <span>{adaptiveSellerToolsVisible ? "Seller comps" : "Collector values"}</span>
-            <span>{adaptiveSellerToolsVisible ? "Forge ready" : "Vault ready"}</span>
+            <span>{adaptiveSellerToolsVisible ? "Business ready" : "Vault ready"}</span>
             <span>Honest labels</span>
             <button type="button" className="secondary-button" onClick={() => openDealFinderModal()}>Check Deal</button>
           </div>
@@ -27590,7 +27831,7 @@ function renderWishlistIsoPlanningSection({ compact = false, surface = "vault" }
   const surfaceHelper = surface === "market"
     ? "Save wants from Market research without creating seller offers or automatic matches."
     : surface === "forge"
-      ? "Keep trade wants visible before comparing values in Forge."
+      ? "Keep trade wants visible before comparing values in Business."
       : "Plan wanted cards, sealed products, supplies, set goals, and Kid Pack items separately from owned Vault records.";
   return (
     <EtMockupSectionCard
@@ -27660,7 +27901,7 @@ function renderWishlistIsoPlanningSection({ compact = false, surface = "vault" }
       <div className="wishlist-iso-route-row" aria-label="Wishlist ISO routes">
         {surface !== "vault" ? <EtMockupButton variant="secondary" onClick={openWishlistIsoSurface}>Open Vault Wishlist</EtMockupButton> : null}
         {surface !== "market" ? <EtMockupButton variant="secondary" onClick={() => setActiveTab("market")}>Check Market</EtMockupButton> : null}
-        {surface !== "forge" ? <EtMockupButton variant="secondary" onClick={() => setActiveTab("inventory")}>Review in Forge</EtMockupButton> : null}
+        {surface !== "forge" ? <EtMockupButton variant="secondary" onClick={() => setActiveTab("inventory")}>Review in Business</EtMockupButton> : null}
       </div>
     </EtMockupSectionCard>
   );
@@ -27950,7 +28191,7 @@ function renderVaultHeader() {
   if (adaptiveSellerToolsVisible && movedToForgeCount > 0) {
     vaultOverviewCards.push({
       key: "moved",
-      title: "Forge",
+      title: "Business",
       value: movedToForgeCount,
       helper: "Business inventory.",
       active: vaultFilter === "moved_to_forge",
@@ -28112,7 +28353,7 @@ function renderVaultHeader() {
 function renderForgeHeader() {
   const forgeReportRecordCount = workspaceSales.length + workspaceExpenses.length + workspaceMileageTrips.length;
   const forgeWorkspaceContextLabel = activeForgeWorkspace
-    ? `${activeForgeWorkspace.name || "Code 3 TCG"}${forgeModeSettings.lockToEmberTide ? " (locked)" : ""} | Private Forge`
+    ? `${activeForgeWorkspace.name || "Code 3 TCG"}${forgeModeSettings.lockToEmberTide ? " (locked)" : ""} | Private Business`
     : forgeWorkspaceUnavailableMessage;
   const forgeSummaryCards = [
     {
@@ -28196,7 +28437,7 @@ function renderForgeHeader() {
     },
   ];
   const sectionNavigation = (
-    <div className="forge-command-overview forge-section-tabs forge-mockup-section-tabs" aria-label="Forge sections">
+    <div className="forge-command-overview forge-section-tabs forge-mockup-section-tabs" aria-label="Business sections">
       {forgeSectionTabs.map((card) => (
         <button
           key={card.key}
@@ -28213,40 +28454,40 @@ function renderForgeHeader() {
   const businessOverview = (
     <div className="forge-mockup-header">
       <EtMockupHero
-        brand="Forge"
+        brand="Business"
         mark={BRAND_ASSETS.mark}
-        title="Forge Decision Desk"
+        title="Business Decision Desk"
         detail="Trade, listing, inventory, receipt, mileage, and sales records stay private, exact-copy aware, and separate from Vault."
         points={{ value: forgeTotalProductQuantity || 0, label: "Sellable items" }}
         pills={[
-          { label: "Private Forge", tone: "collector" },
+          { label: "Private Business", tone: "collector" },
           { label: "No checkout", tone: "gold" },
           { label: "Separate from Vault", tone: "beta" },
         ]}
         todayAction={{
           label: "Decision first",
-          title: activeForgeWorkspace ? "Prepare inventory with proof before any sale or trade action." : "Choose Forge workspace.",
+          title: activeForgeWorkspace ? "Prepare inventory with proof before any sale or trade action." : "Choose Business workspace.",
           cta: activeForgeWorkspace ? "Add inventory" : "Open settings",
           onClick: activeForgeWorkspace
             ? () => openProductAddFlow({ source: "forge-hero", destinations: { forge: true } })
             : () => setActiveTab("menu"),
         }}
         adminAction={<EtMockupButton variant="secondary" onClick={openForgeBusinessLedgerSurface}>Business Ledger</EtMockupButton>}
-        ariaLabel="Forge private exchange decision desk"
+        ariaLabel="Business private exchange decision desk"
       />
       <EtMockupSectionCard
-        title="Forge operations"
+        title="Business operations"
         detail={`${forgeWorkspaceContextLabel}. Business and trade tools are private, proof-first, and do not post listings or process checkout.`}
         className="forge-mockup-navigation"
         action={<EtMockupPill tone="gold">No posting behavior</EtMockupPill>}
       >
-        <div className="et-mockup-stat-grid forge-mockup-summary-grid" aria-label="Forge command summary">
+        <div className="et-mockup-stat-grid forge-mockup-summary-grid" aria-label="Business command summary">
           {forgeSummaryCards.map((card) => (
             <EtMockupStatCard key={card.key} label={card.title} value={card.value} detail={card.helper} tone="forge" />
           ))}
         </div>
         {activeTab !== "sales" ? sectionNavigation : null}
-        <div className="forge-mockup-guardrail-strip" aria-label="Forge business guardrails">
+        <div className="forge-mockup-guardrail-strip" aria-label="Business guardrails">
           <span>Business tools are private</span>
           <span>No checkout/posting behavior</span>
           <span>Exact variant/copy before sale</span>
@@ -28281,37 +28522,37 @@ function renderForgeAccessState() {
     <EtMockupPageShell
       accent="forge"
       className="forge-mockup-rebuild forge-mockup-access"
-      ariaLabel="Forge seller tools off"
+      ariaLabel="Business seller tools off"
     >
       <div className="et-mockup-main-column forge-mockup-main">
         <EtMockupHero
-          brand="Forge"
+          brand="Business"
           mark={BRAND_ASSETS.mark}
-          title="Forge tools are off."
-          detail={forgeAccessMessage || "Turn on Forge tools to use inventory, receipts, mileage, sales records, trade reviews, and private exchange planning."}
+          title="Business tools are off."
+          detail={forgeAccessMessage || "Turn on Business tools to use inventory, receipts, mileage, sales records, trade reviews, and private exchange planning."}
           points={{ value: "Off", label: "Seller tools" }}
           pills={[
-            { label: "Private Forge", tone: "collector" },
+            { label: "Private Business", tone: "collector" },
             { label: "Review-first", tone: "gold" },
             { label: "No checkout", tone: "beta" },
           ]}
           todayAction={{
-            label: "Private Forge",
-            title: "Turn on Forge decision tools.",
+            label: "Private Business",
+            title: "Turn on Business decision tools.",
             cta: "Open settings",
             onClick: () => openMenuDrawer("settings"),
           }}
-          adminAction={<EtMockupButton variant="secondary" onClick={() => setActiveTab("dashboard")}>Return to Hearth</EtMockupButton>}
-          ariaLabel="Forge decision tools off state"
+          adminAction={<EtMockupButton variant="secondary" onClick={() => setActiveTab("dashboard")}>Return to Home</EtMockupButton>}
+          ariaLabel="Business decision tools off state"
         />
 
         <EtMockupSectionCard
           title="Private exchange tools preview"
-          detail="Forge stays private and separate from Vault. It supports trade decisions, listing prep, proof, and recordkeeping without checkout or posting behavior."
+          detail="Business stays private and separate from Vault. It supports trade decisions, listing prep, proof, and recordkeeping without checkout or posting behavior."
           className="forge-access-preview-panel"
           action={<EtMockupPill tone="gold">Seller tools are off</EtMockupPill>}
         >
-          <div className="forge-intro-benefits" aria-label="Forge seller tools">
+          <div className="forge-intro-benefits" aria-label="Business seller tools">
             {[
               "Track inventory",
               "Choose exact copy",
@@ -28320,12 +28561,12 @@ function renderForgeAccessState() {
               "Prepare review summaries",
             ].map((label) => <span key={label}>{label}</span>)}
           </div>
-          <div className="forge-access-preview-grid" aria-label="Forge overview">
+          <div className="forge-access-preview-grid" aria-label="Business overview">
             {forgePreviewCards.map((card) => (
               <EtMockupActionCard key={card.title} title={card.title} detail={card.body} icon="forge" tone="forge" />
             ))}
           </div>
-          <div className="forge-access-action-row" aria-label="Forge trade compass preview">
+          <div className="forge-access-action-row" aria-label="Business trade compass preview">
             <div>
               <strong>Trade Compass</strong>
               <span>Check a possible trade with estimated values before any recordkeeping. No inventory changes, checkout, or live pricing.</span>
@@ -28338,7 +28579,7 @@ function renderForgeAccessState() {
 
         <EtMockupSectionCard
           title="Master card grouping"
-          detail="Forge selects the card identity first, then the exact raw, graded, sealed-related, promo, or duplicate copy for trade, listing, or sale review."
+          detail="Business selects the card identity first, then the exact raw, graded, sealed-related, promo, or duplicate copy for trade, listing, or sale review."
           className="forge-master-preview-panel"
           action={<EtMockupPill tone="collector">Preview model</EtMockupPill>}
         >
@@ -28348,21 +28589,21 @@ function renderForgeAccessState() {
 
       <EtMockupRightRail
         title="Business tools stay private"
-        detail="Forge is optional and private. For recordkeeping, confirm summaries with your tax professional."
+        detail="Business is optional and private. For recordkeeping, confirm summaries with your tax professional."
         className="forge-mockup-rail"
       >
-        <div className="forge-mockup-rail-rules" aria-label="Forge access guardrails">
+        <div className="forge-mockup-rail-rules" aria-label="Business access guardrails">
           <span>Seller tools are off</span>
-          <span>Private Forge</span>
+          <span>Private Business</span>
           <span>Turn on seller tools</span>
-          <span>Return to Hearth</span>
+          <span>Return to Home</span>
           <span>No checkout/posting behavior</span>
           <span>Business tools are private</span>
         </div>
         <EtMockupEmptyState
           title="Separate from Vault."
-          detail="Vault stays your protected collection. Forge is where optional seller records, receipts, mileage, and sales planning live."
-          action={<EtMockupButton variant="secondary" onClick={() => setActiveTab("dashboard")}>Return to Hearth</EtMockupButton>}
+          detail="Vault stays your protected collection. Business is where optional seller records, receipts, mileage, and sales planning live."
+          action={<EtMockupButton variant="secondary" onClick={() => setActiveTab("dashboard")}>Return to Home</EtMockupButton>}
         />
       </EtMockupRightRail>
     </EtMockupPageShell>
@@ -28491,9 +28732,9 @@ function renderForgeBusinessCommandPanel() {
       eyebrow: "Export Readiness",
       title: `${taxSummaryYear} summary stays review-first.`,
       summary: "Revenue, cost basis, expenses, fees, shipping, mileage, purchaser totals, and proof gaps are kept together.",
-      detail: `${yearEndTaxSummary.sales.count} sales | ${yearEndTaxSummary.expenses.count} expenses | ${yearEndTaxSummary.mileage.tripCount} trips`,
+      detail: `${yearEndTaxSummary.sales.count} sales | ${yearEndTaxSummary.expenses.count} expenses | ${yearEndTaxSummary.mileage.tripCount} trips${yearEndTaxSummary.undatedSaleCount ? ` | ${yearEndTaxSummary.undatedSaleCount} undated sale${yearEndTaxSummary.undatedSaleCount === 1 ? "" : "s"} left out` : ""}`,
       value: yearEndTaxSummary.disclaimer ? "Review" : "Draft",
-      note: "Exports organize records for review. They are not tax, payroll, or legal advice.",
+      note: yearEndTaxSummary.undatedSaleNote || "Exports organize records for review. They are not tax, payroll, or legal advice.",
       cta: "Business Ledger",
       onClick: openForgeBusinessLedgerSurface,
     },
@@ -28525,13 +28766,13 @@ function renderForgeBusinessCommandPanel() {
   return (
     <EtMockupSectionCard
       title="Inventory, sales, and profit in one workspace."
-      detail="Forge keeps sellable inventory separate from Vault, groups same items, and keeps cost basis, sale records, receipts, mileage, and item history easy to review."
+      detail="Business keeps sellable inventory separate from Vault, groups same items, and keeps cost basis, sale records, receipts, mileage, and item history easy to review."
       className="forge-main-command-panel forge-mockup-command-panel"
-      ariaLabel="Forge business dashboard"
+      ariaLabel="Business dashboard"
       action={<EtMockupPill tone="collector">Owner-safe tools</EtMockupPill>}
     >
 
-      <div className="forge-ledger-card-grid" aria-label="Forge ledger summary">
+      <div className="forge-ledger-card-grid" aria-label="Business ledger summary">
         {forgeLedgerCards.map((card) => (
           <div className="forge-ledger-card" key={card.key}>
             <span>{card.label}</span>
@@ -28541,7 +28782,7 @@ function renderForgeBusinessCommandPanel() {
         ))}
       </div>
 
-      <div className="forge-business-readiness-strip" aria-label="Forge business record readiness">
+      <div className="forge-business-readiness-strip" aria-label="Business record readiness">
         {forgeBusinessReadinessCards.map((card) => (
           <article className={`is-${card.tone}`} key={card.label}>
             <span>{card.label}</span>
@@ -28551,7 +28792,7 @@ function renderForgeBusinessCommandPanel() {
         ))}
       </div>
 
-      <div className="forge-business-action-grid" aria-label="Forge business record actions">
+      <div className="forge-business-action-grid" aria-label="Business record actions">
         {forgeBusinessActionCards.map((flow) => (
           <article className={`forge-business-action-card is-${flow.key}`} key={flow.key}>
             <div>
@@ -28613,7 +28854,7 @@ function renderForgeBusinessCommandPanel() {
             {topForgeGroups.length ? topForgeGroups.map(renderForgeGroupPreview) : (
               <div className="small-empty-state forge-start-empty-state">
                 <strong>Start tracking sales and resale inventory.</strong>
-                <span>Add your first Forge item to create grouped business inventory.</span>
+                <span>Add your first Business item to create grouped business inventory.</span>
               </div>
             )}
           </div>
@@ -28643,7 +28884,7 @@ function renderForgeBusinessCommandPanel() {
             )) : (
               <div className="small-empty-state forge-start-empty-state">
                 <strong>No sales records yet.</strong>
-                <span>Record your first sale when an item leaves Forge.</span>
+                <span>Record your first sale when an item leaves Business.</span>
                 <button type="button" className="secondary-button" onClick={() => openAddSaleFlow()}>Add Sale</button>
               </div>
             )}
@@ -28654,7 +28895,7 @@ function renderForgeBusinessCommandPanel() {
           <div className="compact-card-header">
             <div>
               <h4>Trade records</h4>
-              <p>Record what you gave, what you got, estimated values, proof, and notes. Saving a trade never changes Vault or Forge inventory counts.</p>
+              <p>Record what you gave, what you got, estimated values, proof, and notes. Saving a trade never changes Vault or Business inventory counts.</p>
             </div>
             <button type="button" className="secondary-button" onClick={() => openAddTradeFlow({ source: "forge-trade-history-card" })}>Log a Trade</button>
           </div>
@@ -28682,7 +28923,7 @@ function renderForgeBusinessCommandPanel() {
         <FlowNextActionCard
           eyebrow="Business guardrail"
           title="Keep business records private and proof-backed."
-          detail="Forge can organize sales, receipts, mileage, trade memories, and payout planning. It does not process checkout, payroll, tax filing, payments, or marketplace posting."
+          detail="Business can organize sales, receipts, mileage, trade memories, and payout planning. It does not process checkout, payroll, tax filing, payments, or marketplace posting."
           tone="forge"
           actions={[
             { label: "Business Ledger", onClick: openForgeBusinessLedgerSurface },
@@ -28695,7 +28936,7 @@ function renderForgeBusinessCommandPanel() {
           <div className="compact-card-header">
             <div>
               <h4>Recent activity</h4>
-              <p>Latest inventory, sale, expense, and mileage activity in this Forge workspace.</p>
+              <p>Latest inventory, sale, expense, and mileage activity in this Business workspace.</p>
             </div>
           </div>
           {forgeRecentActivity.length ? (
@@ -28711,7 +28952,7 @@ function renderForgeBusinessCommandPanel() {
             </div>
           ) : (
             <div className="small-empty-state forge-start-empty-state">
-              <strong>No Forge activity yet.</strong>
+              <strong>No Business activity yet.</strong>
               <span>Add inventory, a sale, receipt, or mileage trip to build your business record.</span>
             </div>
           )}
@@ -28726,14 +28967,14 @@ function renderForgeMockupRail() {
   return (
     <EtMockupRightRail
       title="Private business desk"
-      detail="Forge stays separate from Vault and does not post listings, process checkout, or move inventory without the existing review-first flows."
+      detail="Business stays separate from Vault and does not post listings, process checkout, or move inventory without the existing review-first flows."
       className="forge-mockup-rail"
     >
       <EtMockupSectionCard
         title="Business tools are private"
-        detail="Use Forge for seller records, not public marketplace behavior."
+        detail="Use Business for seller records, not public marketplace behavior."
         className="forge-mockup-rail-card"
-        action={<EtMockupPill tone="gold">Private Forge</EtMockupPill>}
+        action={<EtMockupPill tone="gold">Private Business</EtMockupPill>}
       >
         <div className="et-mockup-action-stack">
           <EtMockupActionCard title="Inventory groups" detail="Grouped seller inventory stays separate from Vault collection records." icon="forge" tone="forge" />
@@ -28744,11 +28985,11 @@ function renderForgeMockupRail() {
       </EtMockupSectionCard>
 
       <EtMockupSectionCard
-        title="What Forge avoids"
+        title="What Business avoids"
         detail="Seller tools stay private and planning-oriented."
         className="forge-mockup-rail-card"
       >
-        <div className="forge-mockup-rail-rules" aria-label="Forge business guardrails">
+        <div className="forge-mockup-rail-rules" aria-label="Business guardrails">
           <span>No checkout</span>
           <span>No payment processing</span>
           <span>No marketplace posting</span>
@@ -28898,10 +29139,10 @@ function renderForgeBusinessLedgerPanel() {
   );
 
   return (
-    <section className="panel forge-business-ledger-panel" aria-label="Forge Business Ledger planning tools">
+    <section className="panel forge-business-ledger-panel" aria-label="Business Ledger planning tools">
       <div className="forge-ledger-hero">
         <div>
-          <span className="section-kicker">Forge Business Ledger</span>
+          <span className="section-kicker">Business Ledger</span>
           <h2>Plan money, splits, payouts, and event records without moving real funds.</h2>
           <p>Use this surface to review seller records, assign profit buckets, and prepare exports for a professional review. Everything here is front-end planning only.</p>
         </div>
@@ -28917,7 +29158,7 @@ function renderForgeBusinessLedgerPanel() {
         <span>No payments, payroll, tax filing, checkout, live inventory, uploads, messaging, or financial integrations are connected.</span>
       </div>
 
-      <div className="forge-ledger-timeframes" role="group" aria-label="Forge Ledger time frame filters">
+      <div className="forge-ledger-timeframes" role="group" aria-label="Business Ledger time frame filters">
         {ledgerTimeframes.map((option) => (
           <button
             type="button"
@@ -28932,7 +29173,7 @@ function renderForgeBusinessLedgerPanel() {
         ))}
       </div>
 
-      <div className="forge-ledger-overview-grid" aria-label="Forge ledger overview">
+      <div className="forge-ledger-overview-grid" aria-label="Business ledger overview">
         <div><span>Money In</span><strong>{money(forgeLedgerTimeframe === "month" ? totalSalesRevenue : yearEndTaxSummary.sales.revenue)}</strong><small>{workspaceSales.length || 0} sale record{workspaceSales.length === 1 ? "" : "s"}</small></div>
         <div><span>Money Out</span><strong>{money(forgeLedgerTimeframe === "month" ? totalLedgerOutflow : yearEndTaxSummary.expenses.total + yearEndTaxSummary.mileage.totalValue)}</strong><small>{workspaceExpenses.length + workspaceMileageTrips.length} expense/travel record{workspaceExpenses.length + workspaceMileageTrips.length === 1 ? "" : "s"}</small></div>
         <div><span>Paid / Unpaid status</span><strong>{paidCount} / {unpaidCount}</strong><small>Planning status only</small></div>
@@ -29051,7 +29292,7 @@ function renderForgeBusinessLedgerPanel() {
             </div>
             <button type="button" className="secondary-button" onClick={() => setActiveTab("reports")}>Open Exports</button>
           </div>
-          <div className="forge-ledger-export-preview" aria-label="Forge Ledger export preview">
+          <div className="forge-ledger-export-preview" aria-label="Business Ledger export preview">
             {exportPreviewRows.map((row, index) => (
               <div className={index === 0 ? "is-heading" : ""} key={row.join("-")}>
                 <span>{row[0]}</span>
@@ -29093,7 +29334,7 @@ function renderForgeBusinessLedgerPanel() {
       personalTotal: Number(expense.receiptPersonalTotal || 0),
       workspaceId: activeForgeWorkspace?.id || activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
       workspace_id: activeForgeWorkspace?.id || activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
-      workspaceName: activeForgeWorkspace?.name || activeWorkspace?.name || "Forge",
+      workspaceName: activeForgeWorkspace?.name || activeWorkspace?.name || "Business",
       notes: expense.notes || "",
       rawOcrText: rawText,
       lines: parsedLines.length ? parsedLines : fallbackLine,
@@ -29165,7 +29406,7 @@ function renderForgeBusinessLedgerPanel() {
         expenseId: localId,
         workspaceId: targetForgeWorkspace.id,
         workspace_id: targetForgeWorkspace.id,
-        workspaceName: targetForgeWorkspace.name || "Forge",
+        workspaceName: targetForgeWorkspace.name || "Business",
         amount: Number(expenseForm.amount),
         receiptPhoto: expenseForm.receiptImage,
         createdAt: expenses.find((expense) => expense.id === editingExpenseId)?.createdAt || new Date().toISOString(),
@@ -29232,7 +29473,7 @@ function renderForgeBusinessLedgerPanel() {
     if (!ensureWorkspaceEditor(expense?.workspaceId || expense?.workspace_id || activeWorkspace?.id)) return;
     requestAdminActionConfirmation({
       title: "Delete expense?",
-      message: `This removes ${expense?.vendor || "this expense"} from Forge business expenses. This cannot be undone.`,
+      message: `This removes ${expense?.vendor || "this expense"} from Business expenses. This cannot be undone.`,
       confirmLabel: "Delete expense",
       danger: true,
       successMessage: "Expense deleted.",
@@ -29278,7 +29519,7 @@ function renderForgeBusinessLedgerPanel() {
 
   function expenseLinkedItemLabel(expense = {}) {
     if (!expense.linkedItemId) return "";
-    return forgeInventoryItems.find((item) => String(item.id) === String(expense.linkedItemId))?.name || "Linked Forge item";
+    return forgeInventoryItems.find((item) => String(item.id) === String(expense.linkedItemId))?.name || "Linked Business item";
   }
 
   function renderExpenseRecordCard(expense, options = {}) {
@@ -29459,7 +29700,7 @@ function renderForgeBusinessLedgerPanel() {
         id: editingTripId || makeId("trip"),
         workspaceId: targetForgeWorkspace.id,
         workspace_id: targetForgeWorkspace.id,
-        workspaceName: targetForgeWorkspace.name || "Forge",
+        workspaceName: targetForgeWorkspace.name || "Business",
         date: tripForm.date || String(mileageTrips.find((trip) => trip.id === editingTripId)?.date || "").slice(0, 10) || new Date().toISOString().slice(0, 10),
         purposeCategory: normalizeMileagePurpose(tripForm.purpose),
         created_at: mileageTrips.find((trip) => trip.id === editingTripId)?.createdAt || (tripForm.date ? `${tripForm.date}T12:00:00.000Z` : new Date().toISOString()),
@@ -29499,7 +29740,7 @@ function renderForgeBusinessLedgerPanel() {
     if (!ensureWorkspaceEditor(trip?.workspaceId || trip?.workspace_id || activeWorkspace?.id)) return;
     const confirmed = await confirmDestructive({
       title: "Delete mileage log?",
-      message: `This removes ${trip?.purpose || "this mileage trip"} from Forge mileage records. This cannot be undone.`,
+      message: `This removes ${trip?.purpose || "this mileage trip"} from Business mileage records. This cannot be undone.`,
       confirmLabel: "Delete mileage",
     });
     if (!confirmed) return;
@@ -29531,7 +29772,7 @@ function renderForgeBusinessLedgerPanel() {
     const saleBuild = buildSalesRecordFromDraft(saleForm, item || {}, {
       id: editingSaleId || makeId("sale"),
       workspaceId: targetWorkspaceId,
-      workspaceName: item?.workspaceName || activeForgeWorkspace?.name || activeWorkspace?.name || "Forge",
+      workspaceName: item?.workspaceName || activeForgeWorkspace?.name || activeWorkspace?.name || "Business",
       createdAt: sales.find((sale) => sale.id === editingSaleId)?.createdAt,
     });
     if (!saleBuild.valid) {
@@ -29583,7 +29824,7 @@ function renderForgeBusinessLedgerPanel() {
         id: editingSaleId || saleRecord.id || makeId("sale"),
         workspaceId: targetWorkspaceId || DEFAULT_PERSONAL_WORKSPACE_ID,
         workspace_id: targetWorkspaceId || DEFAULT_PERSONAL_WORKSPACE_ID,
-        workspaceName: saleRecord.workspaceName || activeForgeWorkspace?.name || activeWorkspace?.name || "Forge",
+        workspaceName: saleRecord.workspaceName || activeForgeWorkspace?.name || activeWorkspace?.name || "Business",
         notes: saleNotes,
         created_at: sales.find((sale) => sale.id === editingSaleId)?.createdAt || saleRecord.createdAt || new Date().toISOString(),
       };
@@ -29603,7 +29844,7 @@ function renderForgeBusinessLedgerPanel() {
           sale: mapped,
           itemName: mapped.itemName || saleRecord.itemName,
           quantity: mapped.quantitySold || qty || 1,
-          destination: "Forge sales",
+          destination: "Business sales",
           saleWasEditing,
         });
       } else {
@@ -29645,7 +29886,7 @@ function renderForgeBusinessLedgerPanel() {
         sale: mapped,
         itemName: mapped.itemName || saleRecord.itemName,
         quantity: mapped.quantitySold || qty || 1,
-        destination: "Forge sales",
+        destination: "Business sales",
         saleWasEditing,
       });
     } else {
@@ -29675,6 +29916,12 @@ function renderForgeBusinessLedgerPanel() {
       buyerName: sale.buyerName || "",
       referenceId: sale.referenceId || "",
       receiptImage: sale.receiptImage || sale.receiptImageUrl || "",
+      feesPrefilled: "manual",
+      shipCarrier: sale.shipCarrier || "",
+      trackingNumber: sale.trackingNumber || "",
+      shipStatus: sale.shipStatus || "Not shipped",
+      saleStatus: sale.saleStatus || "Completed",
+      returnDate: sale.returnDate || "",
       notes: sale.notes,
     });
     openFlowModal("addSale", { size: "medium", source: "edit" });
@@ -29857,33 +30104,42 @@ function renderForgeBusinessLedgerPanel() {
 
   function downloadMileageRecords(format = "csv") {
     if (!groupedMileageVehicles.length) return showAppMessage("No mileage records to export yet.");
+    const includePrivateFields = exportIncludePrivateFields;
+    const vehicles = includePrivateFields
+      ? groupedMileageVehicles
+      : groupedMileageVehicles.map((group) => ({ ...group, trips: (group.trips || []).map(stripPrivateTripFields) }));
     const payload = {
       generatedAt: new Date().toISOString(),
-      workspace: activeForgeWorkspace?.name || activeWorkspace?.name || "Forge",
+      workspace: activeForgeWorkspace?.name || activeWorkspace?.name || "Business",
       disclaimer: "Mileage records for review with your tax professional. Code 3 TCG does not provide tax advice.",
-      vehicles: groupedMileageVehicles,
+      privateFieldsIncluded: includePrivateFields,
+      vehicles,
     };
+    const suffix = includePrivateFields ? "" : "-no-names";
     if (format === "json") {
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-      return downloadRecordFile(`code3tcg-mileage-records-${new Date().toISOString().slice(0, 10)}.json`, blob, "Mileage records JSON exported for review.");
+      return downloadRecordFile(`code3tcg-mileage-records-${new Date().toISOString().slice(0, 10)}${suffix}.json`, blob, "Mileage records JSON exported for review.");
     }
-    return downloadCSV(`code3tcg-mileage-records-${new Date().toISOString().slice(0, 10)}.csv`, buildMileageExportRows(groupedMileageVehicles), "Mileage records CSV exported for review.");
+    return downloadCSV(`code3tcg-mileage-records-${new Date().toISOString().slice(0, 10)}${suffix}.csv`, buildMileageExportRows(groupedMileageVehicles, { includePrivateFields }), "Mileage records CSV exported for review.");
   }
 
   function downloadSalesRecords(format = "csv") {
     if (!workspaceSales.length) return showAppMessage("No sales records to export yet.");
+    const includePrivateFields = exportIncludePrivateFields;
     const payload = {
       generatedAt: new Date().toISOString(),
-      workspace: activeForgeWorkspace?.name || activeWorkspace?.name || "Forge",
+      workspace: activeForgeWorkspace?.name || activeWorkspace?.name || "Business",
       disclaimer: "Sales records are organized for year-end review with your tax professional. Code 3 TCG does not provide tax advice.",
+      privateFieldsIncluded: includePrivateFields,
       summary: salesSummary,
-      sales: workspaceSales,
+      sales: includePrivateFields ? workspaceSales : workspaceSales.map(stripPrivateSaleFields),
     };
+    const suffix = includePrivateFields ? "" : "-no-names";
     if (format === "json") {
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-      return downloadRecordFile(`code3tcg-sales-records-${new Date().toISOString().slice(0, 10)}.json`, blob, "Sales records JSON exported for review.");
+      return downloadRecordFile(`code3tcg-sales-records-${new Date().toISOString().slice(0, 10)}${suffix}.json`, blob, "Sales records JSON exported for review.");
     }
-    return downloadCSV(`code3tcg-sales-records-${new Date().toISOString().slice(0, 10)}.csv`, buildSalesExportRows(workspaceSales), "Sales records CSV exported for review.");
+    return downloadCSV(`code3tcg-sales-records-${new Date().toISOString().slice(0, 10)}${suffix}.csv`, buildSalesExportRows(workspaceSales, { includePrivateFields }), "Sales records CSV exported for review.");
   }
 
   function createBetaBackup() {
@@ -30001,15 +30257,15 @@ function renderForgeBusinessLedgerPanel() {
   function summarizeBackup(payload) {
     const data = normalizeBackupPayload(payload);
     return [
-      { label: "Forge inventory", value: countBackupItems(data.items) },
+      { label: "Business inventory", value: countBackupItems(data.items) },
       { label: "Sales", value: countBackupItems(data.sales) },
       { label: "Expenses", value: countBackupItems(data.expenses) },
       { label: "Workspaces", value: countBackupItems(data.workspaces) },
       { label: "Catalog items", value: countBackupItems(data.catalogProducts) },
-      { label: "Scout stores", value: countBackupItems(data.scout.stores) },
-      { label: "Scout reports", value: countBackupItems(data.scout.reports) },
+      { label: "Watched stores", value: countBackupItems(data.scout.stores) },
+      { label: "Restock reports", value: countBackupItems(data.scout.reports) },
       { label: "Shared data suggestions", value: countBackupItems(data.suggestions) },
-      { label: "Tidepool posts", value: countBackupItems(data.tidepoolCommunity.posts) },
+      { label: "Community posts", value: countBackupItems(data.tidepoolCommunity.posts) },
       { label: "Market Watch watchlist", value: countBackupItems(data.tideTradrWatchlist) },
       { label: "Price Memory", value: countBackupItems(data.marketPriceMemories) },
       { label: "Compare Table", value: countBackupItems(data.itemComparisons) },
@@ -30484,14 +30740,22 @@ function renderForgeBusinessLedgerPanel() {
     });
     return [...years].filter(Boolean).sort((a, b) => String(b).localeCompare(String(a)));
   }, [workspaceExpenses, workspaceMileageTrips, forgeInventoryItems, workspaceSales, taxSummaryYear]);
+  // #38: the year-end summary is the heaviest pure computation for big
+  // sellers (p99 139 ms, max 253 ms in the 100k rehearsal). Deferring its
+  // inputs lets React paint the keystroke or tap first and recompute the
+  // summary in a lower-priority render instead of freezing the phone.
+  const deferredWorkspaceExpenses = useDeferredValue(workspaceExpenses);
+  const deferredWorkspaceMileageTrips = useDeferredValue(workspaceMileageTrips);
+  const deferredForgeInventoryItems = useDeferredValue(forgeInventoryItems);
+  const deferredWorkspaceSales = useDeferredValue(workspaceSales);
   const yearEndTaxSummary = useMemo(() => buildYearEndTaxSummary({
     year: taxSummaryYear,
-    expenses: workspaceExpenses,
-    mileageTrips: workspaceMileageTrips,
+    expenses: deferredWorkspaceExpenses,
+    mileageTrips: deferredWorkspaceMileageTrips,
     vehicles,
-    inventoryItems: forgeInventoryItems,
-    sales: workspaceSales,
-  }), [taxSummaryYear, workspaceExpenses, workspaceMileageTrips, vehicles, forgeInventoryItems, workspaceSales]);
+    inventoryItems: deferredForgeInventoryItems,
+    sales: deferredWorkspaceSales,
+  }), [taxSummaryYear, deferredWorkspaceExpenses, deferredWorkspaceMileageTrips, vehicles, deferredForgeInventoryItems, deferredWorkspaceSales]);
   const yearEndRecordCount =
     (yearEndTaxSummary.expenses.count || 0) +
     (yearEndTaxSummary.mileage.tripCount || 0) +
@@ -30531,17 +30795,17 @@ function renderForgeBusinessLedgerPanel() {
   const storageStatus = useMemo(() => [
     { label: "Mode", value: BETA_LOCAL_MODE ? "Private beta mode" : "Cloud sync mode" },
     { label: "Cloud sync", value: cloudSyncPreference === "cloud" ? "Requested" : "Off" },
-    { label: "Forge inventory", value: forgeInventoryItems.length },
+    { label: "Business inventory", value: forgeInventoryItems.length },
     { label: "Workspace", value: activeWorkspace?.name || "My Personal Space" },
-    { label: "Forge workspace", value: activeForgeWorkspace?.name || "Unavailable" },
+    { label: "Business workspace", value: activeForgeWorkspace?.name || "Unavailable" },
     { label: "Vault items", value: workspaceItems.filter(isVaultItemRecord).length },
-    { label: "Scout stores", value: scoutSnapshot.stores?.length || 0 },
-    { label: "Scout reports", value: scoutSnapshot.reports?.length || 0 },
+    { label: "Watched stores", value: scoutSnapshot.stores?.length || 0 },
+    { label: "Restock reports", value: scoutSnapshot.reports?.length || 0 },
     { label: "Shared suggestions", value: suggestions.length },
     { label: "Market Watch watchlist", value: workspaceWatchlist.length },
     { label: "Marketplace listings", value: workspaceMarketplaceListings.length },
     { label: "App storage", value: storageSizeLabelForKey(LOCAL_STORAGE_KEY) },
-    { label: "Scout storage", value: storageSizeLabelForKey(SCOUT_STORAGE_KEY) },
+    { label: "Restocks storage", value: storageSizeLabelForKey(SCOUT_STORAGE_KEY) },
     { label: "Suggestion storage", value: storageSizeLabelForKey(SUGGESTION_STORAGE_KEY) },
   ], [
     cloudSyncPreference,
@@ -30951,14 +31215,14 @@ function renderForgeBusinessLedgerPanel() {
         addArchiveRow({
           key: `scout-${report.id || report.reportId || rows.length}`,
           group: "Scout",
-          title: report.itemName || report.productName || report.product_name || "Scout report",
+          title: report.itemName || report.productName || report.product_name || "Restock report",
           detail: [report.storeName || report.store_name || report.chain || "Store report", report.quantityEstimate || report.quantity_estimate ? `Qty ${report.quantityEstimate || report.quantity_estimate}` : ""].filter(Boolean).join(" | "),
           status: report.status || report.confidence || "Report saved",
           date: firstDate(report.observedAt, report.observed_at, report.createdAt, report.created_at, report.updatedAt, report.updated_at),
           proofLabel: photoCount ? `${photoCount} proof photo${photoCount === 1 ? "" : "s"}` : proofAttached ? "Proof source saved" : "No proof yet",
           proofAttached,
           confidence: proofAttached ? "Moderate data" : "Low data",
-          actionLabel: "Review Scout proof",
+          actionLabel: "Review Restocks proof",
           tone: proofAttached ? "complete" : "warning",
         });
       });
@@ -31060,7 +31324,7 @@ function renderForgeBusinessLedgerPanel() {
     ...forgeInventoryItems.map((item) => ({
       key: `inventory-${item.id}`,
       source: "Inventory",
-      title: item.name || "Forge item",
+      title: item.name || "Business item",
       detail: `Qty ${item.quantity || 0}${item.physicalLocation || item.physical_location ? ` | ${item.physicalLocation || item.physical_location}` : ""}`,
       date: item.updatedAt || item.updated_at || item.createdAt || item.created_at,
     })),
@@ -31361,19 +31625,23 @@ function renderForgeBusinessLedgerPanel() {
     { key: "duplicates", label: "Duplicates", value: activeVaultItems.filter((item) => Number(item.quantity || 0) > 1).length },
     { key: "trade", label: "Trade / Sell", value: activeVaultItems.filter((item) => ["trade_pile", "listed", "ready_for_forge"].includes(normalizeVaultStatus(item))).length },
   ], [vaultMarketValueDisplay, vaultCostBasis, vaultGainLoss, vaultMsrpValue, activeVaultItems]);
-  const vaultSetCompletionRows = useMemo(() => deriveSetCompletionSummary({
-    items: activeVaultItems,
-    wishlistItems,
-    catalogProducts,
-    knownSets: POKEMON_SETS,
-  }), [activeVaultItems, wishlistItems, catalogProducts]);
+  // #39: set completion used to run twice per change (once with empty known
+  // sets, once without) on the main thread. Compute the full library once from
+  // deferred inputs and derive the tracked-only rows by filtering it.
+  const deferredActiveVaultItems = useDeferredValue(activeVaultItems);
+  const deferredWishlistItems = useDeferredValue(wishlistItems);
+  const deferredCatalogProducts = useDeferredValue(catalogProducts);
   const vaultSetLibraryRows = useMemo(() => deriveSetCompletionSummary({
-    items: activeVaultItems,
-    wishlistItems,
-    catalogProducts,
+    items: deferredActiveVaultItems,
+    wishlistItems: deferredWishlistItems,
+    catalogProducts: deferredCatalogProducts,
     knownSets: POKEMON_SETS,
     includeEmptyKnownSets: true,
-  }), [activeVaultItems, wishlistItems, catalogProducts]);
+  }), [deferredActiveVaultItems, deferredWishlistItems, deferredCatalogProducts]);
+  const vaultSetCompletionRows = useMemo(
+    () => vaultSetLibraryRows.filter((row) => row.trackedItemCount > 0 || row.catalogCards.length || row.sealedProducts.length),
+    [vaultSetLibraryRows]
+  );
   const missingSetCardCount = useMemo(() => vaultSetCompletionRows.reduce((sum, row) => sum + Number(row.missingSupported ? row.missingCount || 0 : 0), 0), [vaultSetCompletionRows]);
   const selectedVaultSet = useMemo(
     () => vaultSetLibraryRows.find((set) => String(set.id) === String(selectedVaultSetId)) || null,
@@ -31448,11 +31716,18 @@ function renderForgeBusinessLedgerPanel() {
     const query = submittedCatalogSearch || catalogSearch || catalogSetFilter;
     return searchSetsByName(query, vaultSetLibraryRows, { limit: 4 });
   }, [catalogSearchHasRun, submittedCatalogSearch, catalogSearch, catalogSetFilter, vaultSetLibraryRows]);
+  // Kid-safe view (A48–A51): derived from the profile's declared collector/account type.
+  const kidSafeView = !adminViewingAsAdmin && isKidSafeProfile(currentUserProfile || {}, shorelineState.betaRequest || {});
+  // A50: kid profiles see "—" instead of dollar amounts on every page that takes `money` as a prop.
+  const displayMoney = kidSafeView ? () => "—" : money;
   const featureGateOptions = {
     admin: adminViewingAsAdmin && roleAdminUser,
     betaTester: !guestPreviewActive && !actualAdminUser && (BETA_LOCAL_MODE || currentUserProfile?.betaTester || currentUserProfile?.isBetaTester),
     localBeta: !tierPreviewActive && BETA_LOCAL_MODE,
     qaUnlock: !tierPreviewActive && QA_UNLOCK_PAID_FEATURES,
+    // Scout-earned unlock: reporters who reach the point threshold see current
+    // store details and alerts without a paid plan (see featureGates.js).
+    scoutPoints: tierPreviewActive ? 0 : getScoutPoints(currentUserProfile || {}, scoutSnapshot.scoutProfile || {}),
   };
   const featureAllowed = (featureKey) => canUseFeature(regularPreviewPlanProfile, featureKey, featureGateOptions);
   const tierAccess = getTierAccess(regularPreviewPlanProfile, {
@@ -32010,7 +32285,7 @@ function renderForgeBusinessLedgerPanel() {
       title: "Tester Notes",
       intro: "Save a local tester note about what confused you, what broke, or what you wanted to do next. Nothing is automatically sent.",
       label: "What were you trying to do?",
-      placeholder: "Example: I was trying to search Market, log a trade, or understand Scout.",
+      placeholder: "Example: I was trying to search Market, log a trade, or understand Restocks.",
       stepsLabel: "What confused you or felt broken?",
       stepsPlaceholder: "Optional: what page, button, or flow was involved?",
       submit: "Save Tester Note",
@@ -32026,7 +32301,7 @@ function renderForgeBusinessLedgerPanel() {
     },
     store_data: {
       title: "Report Bad Store Data",
-      intro: "Save a local note about what store, address, hours, retailer, or Scout information needs review.",
+      intro: "Save a local note about what store, address, hours, retailer, or Restocks information needs review.",
       label: "Store issue",
       placeholder: "Example: This store is closed, has the wrong address, or is missing a purchase limit.",
       stepsLabel: "Proof or context",
@@ -32437,7 +32712,7 @@ function renderForgeBusinessLedgerPanel() {
     }
     if (normalized.includes("admin") && adminToolsVisible) {
       setActiveTab("adminReview");
-      setAdminReviewFilter(REVIEW_SECTION_LABELS.assist || "Ember Assist Inbox");
+      setAdminReviewFilter(REVIEW_SECTION_LABELS.assist || "Business Assistant Inbox");
       return;
     }
   }
@@ -32478,7 +32753,7 @@ function renderForgeBusinessLedgerPanel() {
         createdAt: new Date().toISOString(),
       };
       setEmberAssistMessages((current) => saveEmberAssistThread([...current, userMessage, fallbackMessage]));
-      setEmberAssistError("Ember Assist could not load that answer. Nothing was changed or saved.");
+      setEmberAssistError("Business Assistant could not load that answer. Nothing was changed or saved.");
     } finally {
       setEmberAssistPending(false);
     }
@@ -32525,7 +32800,7 @@ function renderForgeBusinessLedgerPanel() {
 
   function updateEmberAssistAdminMessageStatus(message, status) {
     if (!adminEditModeActive) {
-      setVaultToast("Turn on Admin Edit Mode to update Ember Assist messages.");
+      setVaultToast("Turn on Admin Edit Mode to update Business Assistant messages.");
       return;
     }
     const patched = applyEmberAssistMessageStatus(message, status, { reviewer: adminReviewerName() });
@@ -32537,12 +32812,12 @@ function renderForgeBusinessLedgerPanel() {
       reviewedAt: patched.reviewedAt,
     }));
     appendAdminReviewLog({
-      action: `Ember Assist ${patched.status}`,
+      action: `Business Assistant ${patched.status}`,
       suggestionId: message.id,
       reviewedBy: adminReviewerName(),
       notes: "Updated from Admin Command Center.",
     });
-    setVaultToast(`Ember Assist message marked ${patched.status}.`);
+    setVaultToast(`Business Assistant message marked ${patched.status}.`);
   }
 
   function updateCommunityGuessModeration(guess, status) {
@@ -32630,13 +32905,13 @@ function renderForgeBusinessLedgerPanel() {
   function renderEmberAssistAdminInbox() {
     if (!adminToolsVisible) return null;
     const assistMessages = suggestions.filter(isEmberAssistSuggestion);
-    if (adminReviewFilter !== "All" && adminReviewFilter !== "Trust Command Center" && adminReviewFilter !== (REVIEW_SECTION_LABELS.assist || "Ember Assist Inbox")) return null;
+    if (adminReviewFilter !== "All" && adminReviewFilter !== "Trust Command Center" && adminReviewFilter !== (REVIEW_SECTION_LABELS.assist || "Business Assistant Inbox")) return null;
     return (
       <section className="settings-subsection ember-assist-admin-inbox">
         <div className="compact-card-header">
           <div>
-            <h3>Ember Assist Inbox</h3>
-            <p>User questions escalated from Ember Assist. Direct replies are not connected yet; this is an admin review inbox.</p>
+            <h3>Business Assistant Inbox</h3>
+            <p>User questions escalated from Business Assistant. Direct replies are not connected yet; this is an admin review inbox.</p>
           </div>
           <span className="status-badge">{assistMessages.length} messages</span>
         </div>
@@ -32648,7 +32923,7 @@ function renderForgeBusinessLedgerPanel() {
               <article className="inventory-card ember-assist-admin-card" key={message.id}>
                 <div className="compact-card-header">
                   <div>
-                    <h4>{data.category || "Ember Assist question"}</h4>
+                    <h4>{data.category || "Business Assistant question"}</h4>
                     <p>{data.page || data.activeTab || "App"} | {shortDate(message.createdAt || data.timestamp)}</p>
                   </div>
                   <span className="status-badge">{messageStatus}</span>
@@ -32722,8 +32997,8 @@ function renderForgeBusinessLedgerPanel() {
       { label: "Check trade fairness", helper: "Compare exact variants with parent-aware warnings.", action: () => { setEmberAssistOpen(false); setActiveTab("inventory"); openTradeCompassFlow({ source: "ember-assist-quick-action-trade-fairness" }); } },
       { label: "Help price listing", helper: "Use fair context; nothing posts or checks out.", action: () => { setEmberAssistOpen(false); setActiveTab("market"); } },
       { label: "Recommend kid-friendly set", helper: "Guided suggestions for safer family collecting.", action: () => { setEmberAssistOpen(false); setActiveTab("kidsProgram"); } },
-      { label: "Join beta / send feedback", helper: "Request a state, shop path, sponsor path, or beta fix.", action: () => { setEmberAssistOpen(false); openPublicBetaFeedback({ page: "Ember Assist", mainReason: "General feedback" }); } },
-      { label: "Report something unsafe", helper: "Send a safety note to review.", action: () => { setEmberAssistOpen(false); openFeedbackDialog("feedback", { page: "Ember Assist", topic: "Safety concern" }); } },
+      { label: "Join beta / send feedback", helper: "Request a state, shop path, sponsor path, or beta fix.", action: () => { setEmberAssistOpen(false); openPublicBetaFeedback({ page: "Business Assistant", mainReason: "General feedback" }); } },
+      { label: "Report something unsafe", helper: "Send a safety note to review.", action: () => { setEmberAssistOpen(false); openFeedbackDialog("feedback", { page: "Business Assistant", topic: "Safety concern" }); } },
     ];
     const emberAssistRecentHelp = [
       { title: "Card and product explanation", detail: "Explains a set, card number, variant, or sealed product without fetching new images or live inventory." },
@@ -33099,7 +33374,7 @@ function renderForgeBusinessLedgerPanel() {
     recentPurchases[0]
       ? {
           id: `home-forge-${recentPurchases[0].id}`,
-          label: "Forge",
+          label: "Business",
           title: recentPurchases[0].name,
           detail: `${shortDate(recentPurchases[0].createdAt)} | Qty ${recentPurchases[0].quantity || 1}`,
           action: () => setActiveTab("inventory"),
@@ -33117,7 +33392,7 @@ function renderForgeBusinessLedgerPanel() {
     scoutSnapshot.reports[0]
       ? {
           id: `home-scout-${scoutSnapshot.reports[0].id || scoutSnapshot.reports[0].reportId || "latest"}`,
-          label: "Scout",
+          label: "Restocks",
           title: scoutSnapshot.reports[0].itemName || scoutSnapshot.reports[0].productName || "Store report",
           detail: scoutSnapshot.reports[0].storeName || scoutSnapshot.reports[0].chain || "Latest report",
           action: () => {
@@ -33388,12 +33663,12 @@ function renderForgeBusinessLedgerPanel() {
       return (
         <div className="scout-report-detail-section-body scout-report-related-context scout-protected-context">
           <div className="scout-report-detail-row">
-            <strong>Scout history protected</strong>
+            <strong>Restock history protected</strong>
             <span>Users follow selected stores. They do not get the whole network.</span>
           </div>
           <div className="scout-report-detail-row">
-            <strong>Fair Scout rule</strong>
-            <span>Raw restock patterns are protected to keep Scout fair. Admin can review full history for moderation.</span>
+            <strong>Fair Restocks rule</strong>
+            <span>Raw restock patterns are protected to keep Restocks fair. Admin can review full history for moderation.</span>
           </div>
         </div>
       );
@@ -33471,7 +33746,7 @@ function renderForgeBusinessLedgerPanel() {
     const publicLabel = String(report.publicUsername || report.public_username || report.username || report.submittedByDisplay || report.submitted_by_display || report.displayName || report.display_name || "").trim();
     if (adminEditModeActive && publicLabel) return publicLabel;
     if (publicLabel && !publicLabel.includes("@")) return publicLabel;
-    return "Scout reporter";
+    return "Restocks reporter";
   }
 
   function scoutForecastConfidenceKey(value = "") {
@@ -33850,7 +34125,7 @@ function renderForgeBusinessLedgerPanel() {
     confidenceLabel: row.confidenceLabel,
     confidenceScore: row.confidenceKey === "high" ? 82 : row.confidenceKey === "medium" ? 62 : row.confidenceKey === "low" ? 38 : 15,
     sourceType: "manual_training_restock",
-    sourceLabel: row.sourceLabel || "Confirmed Scout/restock history",
+    sourceLabel: row.sourceLabel || "Confirmed Restocks/restock history",
     badges: ["Predicted", row.confidenceLabel, row.patternStrength === "strong" ? "Strong Pattern" : row.patternStrength === "developing" ? "Developing Pattern" : "Needs Data"],
     days: [row.commonDay].filter(Boolean),
     groupLabel: row.commonDay || "Needs more data",
@@ -34068,7 +34343,7 @@ function renderForgeBusinessLedgerPanel() {
         sourceLabel: scoutSourceTypeLabel(report.sourceType || report.source_type || "user_report"),
         products: items.map((item) => item.productName),
         reason: report.notes || report.note || "",
-        basisSummary: "Submitted Scout report",
+        basisSummary: "Submitted restock report",
         lastConfirmedReportLabel: confidenceKey === "confirmed" ? scoutReportDateTimeLabel(report) : "",
         supportingReportCount: 1,
         supportingGuessCount: 0,
@@ -34172,6 +34447,31 @@ function renderForgeBusinessLedgerPanel() {
     workspaceId: activeWorkspace?.id || "",
   });
   const notificationUnreadCount = unreadNotificationCount(notificationCenterRows);
+  // A79: estimate local storage use after saves and warn before a save fails.
+  const [storageQuota, setStorageQuota] = useState(() => ({ level: "ok", percent: 0, title: "", message: "" }));
+  const [storageQuotaDismissed, setStorageQuotaDismissed] = useState("");
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const handle = window.setTimeout(() => setStorageQuota(storageQuotaStatus()), 1500);
+    return () => window.clearTimeout(handle);
+  }, [items.length, workspaceSales.length, workspaceExpenses.length, scoutReportRows.length]);
+  // Device alerts (#12): mirror new unread alert rows to the browser's
+  // Notification API when the person has allowed it.
+  const deviceNotificationFirstRun = useRef(true);
+  const notificationRowSignature = notificationCenterRows.map((row) => `${row.id}:${row.readAt ? 1 : 0}`).join("|");
+  const latestNotificationRows = useRef(notificationCenterRows);
+  latestNotificationRows.current = notificationCenterRows;
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    announceNewNotifications(latestNotificationRows.current, { firstRun: deviceNotificationFirstRun.current });
+    deviceNotificationFirstRun.current = false;
+  }, [notificationRowSignature]);
+  const [deviceNotificationState, setDeviceNotificationState] = useState(() => deviceNotificationSupport());
+  async function enableDeviceNotifications() {
+    const next = await requestDeviceNotifications();
+    setDeviceNotificationState(next);
+    setVaultToast(next.permission === "granted" ? "Device alerts are on for this browser." : next.label);
+  }
 
 
 
@@ -34310,8 +34610,8 @@ function renderForgeBusinessLedgerPanel() {
     localStorage.setItem(APP_ROUTE_STORAGE_KEY, JSON.stringify(routeState));
 
     const params = new URLSearchParams(window.location.search);
-    ["q", "vaultQ", "filter"].forEach((key) => params.delete(key));
-    if ((activeTab === "market" || activeTab === "catalog" || (activeTab === "exchange" && exchangeSection === "market")) && catalogSearch) params.set("q", catalogSearch);
+    ["vaultQ", "filter"].forEach((key) => params.delete(key));
+    writeMarketSearchRoute(params, routeState, activeTab === "market" || activeTab === "catalog" || (activeTab === "exchange" && exchangeSection === "market"));
     if (activeTab === "vault" && vaultSearch) params.set("vaultQ", vaultSearch);
     if (activeTab === "vault" && vaultFilter !== "all") params.set("filter", vaultFilter);
     const nextPath = routePathForHistory;
@@ -34371,6 +34671,23 @@ function renderForgeBusinessLedgerPanel() {
       if (route.vaultSubTab) setVaultSubTab(route.vaultSubTab);
       if (route.exchangeSection) setExchangeSection(route.exchangeSection);
       if (route.forgeSubTab) setForgeSubTab(route.forgeSubTab);
+      if (route.tideTradrSubTab) setTideTradrSubTab(route.tideTradrSubTab);
+      if (route.activeTab === "market" || route.activeTab === "catalog") {
+        const searchRoute = readMarketSearchRoute(window.location.search);
+        supabaseCatalogRequestId.current += 1;
+        supabaseCatalogAbortRef.current?.abort?.();
+        setCatalogSearch(searchRoute.catalogSearch);
+        setSubmittedCatalogSearch(searchRoute.submittedCatalogSearch);
+        setCatalogBarcodeSearch("");
+        setSubmittedCatalogBarcodeSearch("");
+        setCatalogKindFilter(searchRoute.catalogKindFilter);
+        setCatalogSetFilter(searchRoute.catalogSetFilter);
+        setCatalogTypeFilter(searchRoute.catalogTypeFilter);
+        setCatalogDataFilter(searchRoute.catalogDataFilter);
+        setCatalogPagedResultIds([]);
+        setCatalogSearchHasRun(Boolean(searchRoute.catalogSearch || Object.keys(searchRoute).some(key => key.endsWith("Filter") && searchRoute[key] !== "All")));
+        setSupabaseCatalogStatus(current => ({ ...current, loading: false, page: 1, loadedCount: 0, totalCount: null, hasMore: false, error: "", message: "" }));
+      }
       if (route.sparkFlowView) setSparkFlowView(route.sparkFlowView);
       setTidepoolPostId(route.tidepoolPostId || "");
     };
@@ -34384,13 +34701,40 @@ function renderForgeBusinessLedgerPanel() {
       && businessWorkspaceView === "money" && document.activeElement?.matches('[data-workspace-tab][aria-selected="true"]');
     const key = `${window.location.pathname}${window.location.search}${window.location.hash || ""}`;
     const top = focusMode === "pop" ? routeScrollPositionsRef.current.get(key) || 0 : 0;
+    let headingObserver;
+    let headingTimeout;
+    let main;
+    const stopHeadingWait = () => {
+      headingObserver?.disconnect();
+      window.clearTimeout(headingTimeout);
+      document.removeEventListener("focusin", stopAfterInteraction);
+    };
+    const stopAfterInteraction = (event) => {
+      if (event.target !== main) stopHeadingWait();
+    };
+    const focusHeading = () => {
+      const heading = main?.querySelector("h1");
+      if (!heading) return false;
+      stopHeadingWait();
+      if (!heading.hasAttribute("tabindex")) heading.tabIndex = -1;
+      heading.focus({ preventScroll: true });
+      return true;
+    };
     const frame = window.requestAnimationFrame(() => {
       if (preserveMoneyTabFocus) return;
       window.scrollTo({ top, behavior: "auto" });
-      document.querySelector("main.main")?.focus?.({ preventScroll: true });
+      main = document.querySelector("main.main");
+      if (!main || focusHeading()) return;
+      main.focus({ preventScroll: true });
+      // Lazy pages may mount their heading after the shell. Stop waiting as soon
+      // as the user starts interacting, so a delayed page cannot steal focus.
+      headingObserver = new MutationObserver(focusHeading);
+      headingObserver.observe(main, { childList: true, subtree: true });
+      document.addEventListener("focusin", stopAfterInteraction);
+      headingTimeout = window.setTimeout(stopHeadingWait, 2000);
     });
     routeFocusModeRef.current = "settled";
-    return () => window.cancelAnimationFrame(frame);
+    return () => { window.cancelAnimationFrame(frame); stopHeadingWait(); };
   }, [activeTab, flipScoutView, productWorkspaceHome, effectiveProductWorkspaceHome, botOpsSection, collectionWorkspaceView, businessWorkspaceView, businessMoneyView, ownerCenterSection, ownerCenterSubview, accountOpsSection]);
   useEffect(() => {
     if (activeTab !== "kidsProgram" && sparkFlowView !== "home") {
@@ -34714,23 +35058,23 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     [workspaceWatchlist]
   );
   const catalogProductsForFiltering = useMemo(
-    () => {
-      if (!catalogSearchHasRun) return [];
-      return catalogPagedResultSet.size
-        ? catalogPagedResultIds
-            .map((id) => catalogProductsById.get(String(id)))
-            .filter(Boolean)
-        : catalogProducts;
-    },
-    [catalogSearchHasRun, catalogPagedResultSet, catalogPagedResultIds, catalogProductsById, catalogProducts]
+    () => getCatalogPageProducts({
+      hasRun: catalogSearchHasRun,
+      pagedIds: catalogPagedResultIds,
+      products: catalogProducts,
+      productsById: catalogProductsById,
+      usePagedResults: true,
+    }),
+    [catalogSearchHasRun, catalogPagedResultIds, catalogProducts, catalogProductsById]
   );
   const filteredCatalogProducts = useMemo(() => catalogProductsForFiltering.filter((product) => {
+    if (!catalogCardQueryMatchesRow(submittedCatalogSearch, product)) return false;
     const search = (catalogSearchHasRun ? submittedCatalogSearch : "").toLowerCase();
-    const serverSearchResult = catalogSearchHasRun && product.sourceType === "supabase";
+    const pagedSearchResult = catalogSearchHasRun && catalogPagedResultSet.has(String(product.id));
     const marketInfo = getTideTradrMarketInfo(product);
     const owned = ownedCatalogProductIds.has(String(product.id));
     const watched = watchedCatalogProductIds.has(String(product.id));
-    const matchesSearch = serverSearchResult ||
+    const matchesSearch = Boolean(getCatalogCollectorQuery(submittedCatalogSearch)) || pagedSearchResult ||
       String(product.name || "").toLowerCase().includes(search) ||
       String(product.productName || "").toLowerCase().includes(search) ||
       String(product.cardName || "").toLowerCase().includes(search) ||
@@ -34801,7 +35145,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const matchesValue = marketInfo.currentMarketValue >= minValue && marketInfo.currentMarketValue <= maxValue;
 
     return matchesSearch && matchesKind && matchesSet && matchesType && matchesEra && matchesYear && matchesRarity && matchesVariant && matchesCondition && matchesGraded && matchesOwned && matchesWatchlist && matchesHistory && matchesDataFilter && matchesValue;
-  }).sort((a, b) => compareCatalogProducts(a, b, catalogSort)), [catalogProductsForFiltering, catalogSearchHasRun, submittedCatalogSearch, getTideTradrMarketInfo, ownedCatalogProductIds, watchedCatalogProductIds, catalogKindFilter, catalogSetFilter, catalogTypeFilter, catalogEraFilter, catalogYearFilter, catalogRarityFilter, catalogVariantFilter, catalogConditionFilter, catalogGradedFilter, catalogOwnedFilter, catalogWatchlistFilter, catalogHistoryFilter, catalogDataFilter, catalogMinValue, catalogMaxValue, catalogSort]);
+  }).sort((a, b) => compareCatalogProducts(a, b, catalogSort)), [catalogProductsForFiltering, catalogPagedResultSet, catalogSearchHasRun, submittedCatalogSearch, getTideTradrMarketInfo, ownedCatalogProductIds, watchedCatalogProductIds, catalogKindFilter, catalogSetFilter, catalogTypeFilter, catalogEraFilter, catalogYearFilter, catalogRarityFilter, catalogVariantFilter, catalogConditionFilter, catalogGradedFilter, catalogOwnedFilter, catalogWatchlistFilter, catalogHistoryFilter, catalogDataFilter, catalogMinValue, catalogMaxValue, catalogSort]);
   const catalogOptionSummary = useMemo(() => {
     const optionProducts = catalogSearchHasRun ? catalogProductsForFiltering : [];
     const setNames = new Set();
@@ -35216,6 +35560,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const pickerProducts = [];
     const pickerProductIds = new Set();
     [...pagedProducts, ...catalogProducts].forEach((product) => {
+      if (!catalogCardQueryMatchesRow(cleanQuery, product)) return;
       const key = String(product.id || product.externalProductId || product.tcgplayerProductId || catalogTitle(product)).toLowerCase();
       if (!key || pickerProductIds.has(key)) return;
       pickerProductIds.add(key);
@@ -35224,7 +35569,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
     const scannedMatches = getBestCatalogMatches(cleanQuery, pickerProducts)
       .filter((match) => ["upc", "sku", "card-number"].includes(match.matchType) || Number(match.confidencePercent || 0) >= 50)
-      .map((match) => ({ ...match.item, _matchReason: match.explanation || match.reason || "Best catalog match" }));
+      .map((match) => ({ ...match.item, _matchReason: getCatalogCollectorQuery(cleanQuery) ? "Name and collector number match; review the set and printing" : match.explanation || match.reason || "Best catalog match" }));
     const normalizedQuery = cleanQuery.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
     const localPickerStopWords = new Set(["and", "the", "for", "with", "scan", "match", "missing", "item", "test", "none", "no"]);
     const queryTokens = normalizedQuery
@@ -35267,7 +35612,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       })
       .filter((entry) => entry.score > 0)
       .sort((a, b) => b.score - a.score)
-      .map((entry) => ({ ...entry.product, _matchReason: entry.score >= 1000 ? "Exact identifier match" : "Name, set, or product detail match" }));
+      .map((entry) => ({ ...entry.product, _matchReason: getCatalogCollectorQuery(cleanQuery) ? "Name and collector number match; review the set and printing" : entry.score >= 1000 ? "Exact identifier match" : "Nearby catalog suggestion; verify the item before choosing" }));
 
     const byId = new Map();
     [...scannedMatches, ...simpleMatches].forEach((product) => {
@@ -35827,7 +36172,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
   function focusCatalogDetailConditionEditor() {
     if (!selectedCatalogDetailIsCard || selectedCatalogDetailIsCodeCard) {
-      setVaultToast("Condition editing is available when adding a card to Vault, Forge, or Wishlist.");
+      setVaultToast("Condition editing is available when adding a card to Vault, Business, or Wishlist.");
       return;
     }
     document.querySelector(".catalog-version-picker select")?.focus?.();
@@ -35875,7 +36220,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         ? "Freshness not labeled"
         : "Weak data";
     const sellerMarketMode = Boolean(adaptiveSellerToolsVisible || adminToolsVisible);
-    const primaryAddLabel = sellerMarketMode && activeForgeWorkspace ? "Add to Forge" : "Add to Vault";
+    const primaryAddLabel = sellerMarketMode && activeForgeWorkspace ? "Add to Business" : "Add to Vault";
     const primaryAddDestination = sellerMarketMode && activeForgeWorkspace ? "forge" : "vault";
     const watched = workspaceWatchlist.some((item) => String(item.productId || "") === String(product.id));
     const topResult = Boolean(options.topResult);
@@ -36369,7 +36714,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         || (Array.isArray(value[field]) && (field === "storeAliases" || value[field].every(isRecord))))
       && ["alertSettings", "scoutProfile"].every((field) => !Object.hasOwn(value, field) || isRecord(value[field]));
     if (!isSupported(savedScout) || !isSupported(nextScout)) {
-      throw new Error("Scout data was not saved because the saved data or draft could not be read safely.");
+      throw new Error("Restock data was not saved because the saved data or draft could not be read safely.");
     }
     const preservedScout = {
       ...savedScout,
@@ -36423,46 +36768,46 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       label: "Mark verified",
       rpc: "admin_verify_store_report",
       status: "Confirmed",
-      message: "Scout report marked verified.",
+      message: "Restock report marked verified.",
     },
     needsReview: {
       label: "Flag for review",
       rpc: "admin_mark_report_disputed",
       status: "Needs Review",
-      message: "Scout report marked for review.",
+      message: "Restock report marked for review.",
     },
     reject: {
       label: "Mark inaccurate",
       rpc: "admin_hide_store_report",
       status: "Rejected",
-      message: "Scout report marked inaccurate.",
+      message: "Restock report marked inaccurate.",
       risky: true,
     },
     duplicate: {
       label: "Duplicate",
       rpc: "admin_mark_report_disputed",
       status: "Duplicate",
-      message: "Scout report marked duplicate.",
+      message: "Restock report marked duplicate.",
       risky: true,
     },
     stale: {
       label: "Mark stale",
       rpc: "admin_mark_report_disputed",
       status: "Stale",
-      message: "Scout report marked stale.",
+      message: "Restock report marked stale.",
       risky: true,
     },
     restore: {
       label: "Restore",
       rpc: "admin_restore_store_report",
       status: "Live",
-      message: "Scout report restored to the public feed.",
+      message: "Restock report restored to the public feed.",
     },
     softDelete: {
       label: "Hide",
       rpc: "admin_soft_delete_store_report",
       status: "Rejected",
-      message: "Scout report archived from public trust surfaces.",
+      message: "Restock report archived from public trust surfaces.",
       risky: true,
     },
   };
@@ -36542,10 +36887,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       return;
     }
     const confidence = scoutReportConfidenceBadge(report);
-    const storeName = getScoutReportStore(report).name || report?.storeName || "Scout report";
+    const storeName = getScoutReportStore(report).name || report?.storeName || "Restock report";
     requestAdminActionConfirmation({
-      title: `${action.label} Scout report?`,
-      message: `${storeName} will be updated for public Scout trust surfaces.`,
+      title: `${action.label} Restock report?`,
+      message: `${storeName} will be updated for public Restocks trust surfaces.`,
       details: `Confidence: ${confidence.label}. Reason: ${(report.confidenceReasons || report.confidence_reasons || [confidence.helper]).join(" | ")}`,
       targetName: storeName,
       confirmLabel: action.label,
@@ -36632,7 +36977,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
   function openScoutReportDateTimeEditor(report = {}) {
     if (!canEditScoutReportDateTime(report)) {
-      showErrorToast("Permission denied.", { message: "Only admins or moderators can edit Scout report visit times." });
+      showErrorToast("Permission denied.", { message: "Only admins or moderators can edit restock report visit times." });
       return;
     }
     setScoutDateTimeEdit({
@@ -36647,7 +36992,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     event?.preventDefault?.();
     const report = scoutDateTimeEdit.report;
     if (!report || !canEditScoutReportDateTime(report)) {
-      showErrorToast("Permission denied.", { message: "Only admins or moderators can edit Scout report visit times." });
+      showErrorToast("Permission denied.", { message: "Only admins or moderators can edit restock report visit times." });
       return;
     }
     const [date = "", time = ""] = String(scoutDateTimeEdit.value || "").split("T");
@@ -36672,8 +37017,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       const cloudReport = await persistScoutReportDateTimeToSupabase(report, validation.iso);
       const updatedReport = saveScoutReportDateTimeLocally(cloudReport || report, validation.iso);
       setScoutDateTimeEdit({ report: null, value: "", message: "", saving: false });
-      showSuccessToast(validation.oldBackfill ? "Backfilled report saved." : "Scout report date updated.", {
-        message: validation.oldBackfill ? "The visit time now reflects the older store check." : "The Scout timeline now uses the updated visit time.",
+      showSuccessToast(validation.oldBackfill ? "Backfilled report saved." : "Restock report date updated.", {
+        message: validation.oldBackfill ? "The visit time now reflects the older store check." : "The Restocks timeline now uses the updated visit time.",
       });
       if (adminEditModeActive) {
         void trackBetaActivity("scout_report_datetime_updated", {
@@ -36759,7 +37104,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   function openScoutReportAction(type, report = selectedScoutReport) {
     const targetReport = findScoutReportForDetail(report, report);
     if (!targetReport || !getScoutReportId(targetReport)) {
-      showErrorToast("Scout report unavailable.", { message: "Open the report again before adding community context." });
+      showErrorToast("Restock report unavailable.", { message: "Open the report again before adding community context." });
       return;
     }
     setScoutReportActionDraft(createScoutReportActionDraft(type, targetReport));
@@ -36902,7 +37247,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function validateScoutReportActionDraft(report = {}, draft = scoutReportActionDraft) {
-    if (!report || !getScoutReportId(report)) return "Open a Scout report before saving.";
+    if (!report || !getScoutReportId(report)) return "Open a restock report before saving.";
     if (draft?.type === "proof") {
       const hasProof = Boolean(String(draft.proofUrl || "").trim() || String(draft.note || "").trim());
       if (!hasProof) return "Add a proof note or link before saving.";
@@ -36927,9 +37272,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       const actionType = scoutReportActionDraft?.type;
       setScoutReportActionDraft(null);
       if (actionType === "confirm") {
-        showSuccessToast("Scout report confirmed.", { message: "Confirmations help Scout trust current reports." });
+        showSuccessToast("Restock report confirmed.", { message: "Confirmations help Restocks trust current reports." });
       } else if (actionType === "proof") {
-        showSuccessToast("Proof added.", { message: "Proof helps Scout trust this report." });
+        showSuccessToast("Proof added.", { message: "Proof helps Restocks trust this report." });
       } else if (actionType === "flag") {
         showSuccessToast("Thanks - admin will review this.", { message: "Flagging keeps the report visible while moderation reviews it." });
       }
@@ -37109,7 +37454,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     event?.preventDefault?.();
     const report = findScoutReportForDetail(scoutReportDetailsDraft?.reportId, selectedScoutReport);
     if (!report || !canAddScoutReportDetails(report)) {
-      showErrorToast("Permission denied.", { message: "Only the reporter or an admin can add Scout report details." });
+      showErrorToast("Permission denied.", { message: "Only the reporter or an admin can add restock report details." });
       return;
     }
     const patchedReport = buildScoutReportDetailsPatch(report);
@@ -37129,15 +37474,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       const updatedReport = saveScoutReportDetailsLocally(cloudReport ? { ...cloudReport, ...patchedReport } : patchedReport);
       setSelectedScoutReport(updatedReport);
       setScoutReportDetailsDraft(null);
-      showSuccessToast("Scout report details updated.", { message: "Products, proof, and source context now appear on the report." });
+      showSuccessToast("Restock report details updated.", { message: "Products, proof, and source context now appear on the report." });
     } catch (error) {
       logAppError("scout_report_details_update", error, { reportId: getScoutReportId(report) }, "normal");
       setScoutReportDetailsDraft((current) => ({
         ...current,
         saving: false,
-        message: error?.message || "Couldn't update this Scout report. Please try again.",
+        message: error?.message || "Couldn't update this restock report. Please try again.",
       }));
-      showErrorToast("Couldn't update Scout report.", { message: "Please try again in a moment." });
+      showErrorToast("Couldn't update restock report.", { message: "Please try again in a moment." });
     }
   }
 
@@ -37152,7 +37497,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const report = findScoutReportForDetail(reportOrId, options.fallback);
     const reportId = getScoutReportId(report || {});
     if (!report || !reportId) {
-      setVaultToast("That Scout report could not be opened. Try the Reports feed.");
+      setVaultToast("That restock report could not be opened. Try the Reports feed.");
       return;
     }
     setSelectedScoutReport(report);
@@ -37190,7 +37535,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   function openScoutReportAddDetails(report = selectedScoutReport) {
     const targetReport = findScoutReportForDetail(report, report);
     if (!targetReport || !canAddScoutReportDetails(targetReport)) {
-      showErrorToast("Permission denied.", { message: "Only the reporter or an admin can add Scout report details." });
+      showErrorToast("Permission denied.", { message: "Only the reporter or an admin can add restock report details." });
       return;
     }
     setScoutReportDetailsDraft(createScoutReportDetailsDraft(targetReport));
@@ -37264,7 +37609,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <span>{observedSummary}</span>
             {reportLocationCopy ? <span>{reportLocationCopy}</span> : null}
           </div>
-          <div className="scout-signal-badge-row" aria-label="Scout signal trust">
+          <div className="scout-signal-badge-row" aria-label="Restock signal trust">
             {isOwnReport ? <span className="mini-badge scout-own-report-badge">Your report</span> : null}
             <span className={`mini-badge ${proofAttached ? "scout-proof-badge" : "scout-proof-missing-badge"}`}>{proofCopy}</span>
             {historicalImport ? <span className="mini-badge scout-historical-import-badge">Historical</span> : null}
@@ -37666,7 +38011,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       });
       if (!confirmed) return;
     } else if (!replaceStoreId && watchedRows.length >= scoutWatchSlotLimit() && !tierAccess.isAdmin) {
-      setVaultToast("You are at your watched-store limit. Change an existing store or ask admin about extra Scout store add-ons during beta.");
+      setVaultToast("You are at your watched-store limit. Change an existing store or ask the Code 3 team for an extra watched store (free during beta).");
       return;
     }
     applyStoreMapWatchState(row, true, { replaceStoreId });
@@ -38036,7 +38381,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       <PageHeader
         className={getHeaderCardClass("panel suggestions-page-header")}
         title="My Suggestions"
-        subtitle="Universal store, catalog, SKU, and Scout data suggestions you submitted for admin approval."
+        subtitle="Universal store, catalog, SKU, and restock data suggestions you submitted for admin approval."
         actions={<button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>}
         tabs={["All", ...SUGGESTION_STATUSES].map((status) => ({ key: status, label: status }))}
         activeTab={mySuggestionFilter}
@@ -38047,7 +38392,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           {visibleSuggestions.length ? pagedSuggestions.items.map((suggestion) => renderSuggestionCard(suggestion, false)) : (
             <div className="empty-state">
               <h3>No suggestions here yet</h3>
-              <p>Use Suggest Missing Store, Suggest Correction, or Suggest UPC/SKU from Scout and Market Watch.</p>
+              <p>Use Suggest Missing Store, Suggest Correction, or Suggest UPC/SKU from Restocks and Market Watch.</p>
             </div>
           )}
         </div>
@@ -38416,7 +38761,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 sendEmberAssistMessage(prompt);
               }}
             >
-              Ask Ember Assist
+              Business Assistant
             </button>
           ) : null}
         </div>
@@ -38457,8 +38802,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <div>
                 <h3>Alerts</h3>
                 <p>{IN_APP_ALERT_DISCLOSURE}</p>
+                <p className="compact-subtitle">{deviceNotificationState.label}</p>
               </div>
               <div className="quick-actions">
+                {deviceNotificationState.supported && deviceNotificationState.permission === "default" ? <button type="button" className="secondary-button" onClick={enableDeviceNotifications}>Turn on device alerts</button> : null}
                 {unreadCount ? <button type="button" className="secondary-button" onClick={markAllNotificationsRead}>Mark all read</button> : null}
                 <button ref={notificationCloseRef} type="button" className="secondary-button" onClick={closeNotificationCenter}>Close</button>
               </div>
@@ -38572,7 +38919,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             {hearthStartHereExpanded ? (
               <div className="hearth-start-here-note" role="note">
                 <strong>Safety note</strong>
-                <p>Exact user location is never shown publicly. Scout reports are shared by store, not private address, and Kids Program details stay careful.</p>
+                <p>Exact user location is never shown publicly. Restock reports are shared by store, not private address, and Kids Program details stay careful.</p>
               </div>
             ) : null}
             <div className="quick-actions hearth-start-here-actions">
@@ -38596,7 +38943,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   sendEmberAssistMessage("What should I do first?");
                 }}
               >
-                Ask Ember
+                Business Assistant
               </button>
             </div>
           </>
@@ -38633,7 +38980,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <button type="button" className="drawer-link" onClick={() => {
             setEmberAssistOpen(true);
             sendEmberAssistMessage("What should I do first?");
-          }}>Ask Ember</button>
+          }}>Business Assistant</button>
         </div>
       </div>
     );
@@ -38667,7 +39014,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { label: "Purpose", value: setupPurposes.slice(0, 2).join(", ") || "Not set yet", helper: setupPurposes.length > 2 ? `${setupPurposes.length - 2} more selected` : "Change this anytime." },
       { label: "Tools needed", value: setupTools.slice(0, 2).join(", ") || "Recommended defaults", helper: setupTools.length > 2 ? `${setupTools.length - 2} more tools selected` : "Based on Smart Setup." },
       { label: "Business/tax needs", value: businessNeed || "Not set", helper: context.sellerToolsEnabled ? "Seller tools are enabled." : "Seller tools stay tucked away." },
-      { label: "Home area", value: locationSettings.manualLocation || locationSettings.selectedSavedLocation || smartSetupPreferences.homeArea || "Not set", helper: "Used for Scout sorting and favorite stores." },
+      { label: "Home area", value: locationSettings.manualLocation || locationSettings.selectedSavedLocation || smartSetupPreferences.homeArea || "Not set", helper: "Used for Restocks sorting and favorite stores." },
       { label: "Quick Add", value: `${quickAddVisibleCount} visible`, helper: "Extra enabled actions go under More." },
     ];
     const panelRows = [
@@ -38678,8 +39025,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     ];
     const modeRows = [
       { key: "budget", title: "Collector / family", helper: "Simple family-friendly collection tools.", active: normalizeUserType(userType) === "budget" || normalizeDashboardPreset(dashboardPreset) === "budget_parent" },
-      { key: "collector", title: "Collector", helper: "Vault, Scout, Market Watch, and community.", active: normalizeUserType(userType) === "collector" && normalizeDashboardPreset(dashboardPreset) !== "seller" },
-      { key: "seller", title: "Seller / business", helper: "Forge, receipts, mileage, sales, and Payout Assist.", active: context.sellerToolsEnabled },
+      { key: "collector", title: "Collector", helper: "Vault, Restocks, Market Watch, and community.", active: normalizeUserType(userType) === "collector" && normalizeDashboardPreset(dashboardPreset) !== "seller" },
+      { key: "seller", title: "Seller / business", helper: "Business, receipts, mileage, sales, and Payout Assist.", active: context.sellerToolsEnabled },
     ];
 
     const renderCustomizeGroup = (group) => {
@@ -38869,7 +39216,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </article>
               <article className="settings-section-card">
                 <strong>Seller tools</strong>
-                <span>{context.sellerToolsEnabled ? "Forge and business tools are enabled." : "Seller tools are hidden for collector/family mode."}</span>
+                <span>{context.sellerToolsEnabled ? "Business and business tools are enabled." : "Seller tools are hidden for collector/family mode."}</span>
                 {context.sellerToolsEnabled ? (
                   <button type="button" className="secondary-button" onClick={turnOffSellerToolsFromPersonalization}>Turn off seller tools</button>
                 ) : (
@@ -38878,7 +39225,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </article>
               <article className="settings-section-card">
                 <strong>Favorite stores</strong>
-                <span>Update stores and nearby Scout area.</span>
+                <span>Update stores and nearby Restocks area.</span>
                 <button type="button" className="secondary-button" onClick={() => { setScoutView("stores"); setActiveTab("scout"); }}>Manage favorite stores</button>
               </article>
               <article className="settings-section-card">
@@ -39002,7 +39349,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             {step === "location" ? (
               <div className="smart-setup-step">
                 <h3 id="smart-setup-step-title" tabIndex={-1}>Home area and store preferences</h3>
-                <p>Scout uses store-level preferences. Exact user location is never shown publicly.</p>
+                <p>Restocks uses store-level preferences. Exact user location is never shown publicly.</p>
                 <label className="settings-field-group">
                   <span>Home area / region</span>
                   <input className="drawer-field" value={smartSetupDraft.homeArea} onChange={(event) => updateSmartSetupDraft({ homeArea: event.target.value })} placeholder="ZIP, city, or region" />
@@ -39066,7 +39413,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       .sort((a, b) => String(b.dateTimeText || b.createdAt || "").localeCompare(String(a.dateTimeText || a.createdAt || "")))
       .slice(0, compact ? 3 : 4);
     const surfaceHelper = surface === "tidepool"
-      ? "Tidepool notes can help remember trusted contacts and community context. This planner does not publish events or verify shops."
+      ? "Community notes can help remember trusted contacts and community context. This planner does not publish events or verify shops."
       : "Use this next to Spark event support when a kid pack event or family collecting day needs supplies.";
     const sectionId = surface === "spark" ? "collector-event-planner-section" : undefined;
 
@@ -39117,12 +39464,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const safetyRows = [
       { title: "Child privacy default", body: "Kid profiles begin private. Names, ages, notes, and wishlists are not shown in public surfaces.", status: "Private" },
       { title: "Trade approval", body: "Kid trades are treated as parent-review decisions before anything changes hands.", status: "Approval first" },
-      { title: "Community restrictions", body: "Tidepool remains adult-guided and moderated. No unmoderated kid messaging is connected.", status: "Restricted" },
-      { title: "Purchase reminders", body: "Market and Scout guide fair value and planning, not rush buying, checkout, or guaranteed stock.", status: "Fair pace" },
+      { title: "Community restrictions", body: "Community remains adult-guided and moderated. No unmoderated kid messaging is connected.", status: "Restricted" },
+      { title: "Purchase reminders", body: "Market and Restocks guide fair value and planning, not rush buying, checkout, or guaranteed stock.", status: "Fair pace" },
     ];
     const approvalRows = [
       { title: "Trade review", body: "Check exact variants, condition, value range, and who receives each card.", status: "Parent approval" },
-      { title: "Scout trip decision", body: "Use Worth the Trip and proof confidence without exposing harmful restock patterns.", status: "Current signals" },
+      { title: "Restocks trip decision", body: "Use Worth the Trip and proof confidence without exposing harmful restock patterns.", status: "Current signals" },
       { title: "Spark participation", body: parentCenterKidsApplication ? `Latest request: ${statusLabel(parentCenterKidsApplication.status || "pending")}.` : "Requests are reviewed before a child-sensitive program action is counted.", status: "Review queue" },
       { title: "Purchase pause", body: "Add a reminder to compare budget, fair range, and family rules before buying.", status: "Reminder" },
     ];
@@ -39225,7 +39572,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
           <section className="drawer-info-card parent-center-summary-card utility-card utility-card-wide">
             <strong>Safety summary</strong>
-            <p className="compact-subtitle">No live messaging, no child account backend, no payment flow, no public child identity, and no unsafe Scout pattern access were added. Parent Center stays a UI shell until the safety system is explicitly approved.</p>
+            <p className="compact-subtitle">No live messaging, no child account backend, no payment flow, no public child identity, and no unsafe restock pattern access were added. Parent Center stays a UI shell until the safety system is explicitly approved.</p>
             <div className="settings-section-grid compact">
               {["No unmoderated kid messaging", "Parent-reviewed trade guidance", "Private child/family details", "Spark participation is reviewed"].map((item) => (
                 <article className="settings-section-card" key={item}>
@@ -39268,7 +39615,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           subtitle="Post helpful updates without creating a rush feed."
           actions={(
             <>
-              <button type="button" className="secondary-button" onClick={() => openPublicBetaFeedback({ page: "Shop Portal", role: "Shop", mainReason: "Shop partnership", interests: ["Shop partnership", "Scout restock alerts", "The Spark kids program"] })}>I&apos;m a shop or sponsor</button>
+              <button type="button" className="secondary-button" onClick={() => openPublicBetaFeedback({ page: "Shop Portal", role: "Shop", mainReason: "Shop partnership", interests: ["Shop partnership", "Restocks restock alerts", "The Spark kids program"] })}>I&apos;m a shop or sponsor</button>
               <button type="button" className="secondary-button" onClick={() => setActiveTab("trust")}>Review safety rules</button>
               <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>
             </>
@@ -39601,14 +39948,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         priority: "highlight",
       },
       {
-        title: "Scout Improvements",
+        title: "Restocks Improvements",
         body: "Better signals, report flow polish, and stronger store/restock card treatment.",
-        type: "Scout update",
+        type: "Restocks update",
         priority: "normal",
       },
       {
-        title: "Daily Tide Refresh",
-        body: "A tighter overview with the Scout, Vault, Market, and Forge daily loop.",
+        title: "Daily Refresh",
+        body: "A tighter overview with the Restocks, Vault, Market, and Business daily loop.",
         type: "New feature",
         priority: "normal",
       },
@@ -39821,14 +40168,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     ].filter(Boolean);
     const profileStreaks = [
       { label: "Daily Tide", value: `${dailyTideToday.checkInStreak || 0} day`, helper: "Private check-in streak" },
-      { label: "Scout reports", value: `${dailyTideToday.scoutReportStreak || scoutSnapshot.scoutProfile?.reportStreak || 0} day`, helper: "Helpful report activity" },
+      { label: "Restock reports", value: `${dailyTideToday.scoutReportStreak || scoutSnapshot.scoutProfile?.reportStreak || 0} day`, helper: "Helpful report activity" },
       { label: "Scan rhythm", value: `${dailyTideToday.scannerStreak || 0} day`, helper: "Card and receipt review habit" },
     ];
     const profileActivity = [
       { label: "Vault cards", value: activeVaultItems.length },
-      { label: "Scout reports", value: scoutSnapshot.reports?.length || 0 },
+      { label: "Restock reports", value: scoutSnapshot.reports?.length || 0 },
       { label: "Market listings", value: marketplaceListings.length },
-      { label: "Forge items", value: forgeInventoryItems.length },
+      { label: "Business items", value: forgeInventoryItems.length },
     ];
     const isKidProfile = /kid|child/i.test(`${currentUserProfile?.accountType || currentUserProfile?.role || userType || ""}`);
     const publicCommunity = publicCommunityProfile(publicProfileForCurrentUser({
@@ -39839,12 +40186,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       <section className="profile-progress-page">
         <PageHeader
           className={getHeaderCardClass("panel page-summary-card profile-progress-header")}
-          title="Ember ID Progress"
+          title="Public Profile Progress"
           subtitle="Public profile label, achievements, badges, membership status, and account progress in one private place."
           actions={(
             <>
               <button type="button" className="secondary-button" onClick={() => setActiveTab("menu")}>Settings</button>
-              <button type="button" onClick={() => setActiveTab("dashboard")}>Back to Hearth</button>
+              <button type="button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>
             </>
           )}
         />
@@ -39853,7 +40200,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div className="profile-public-preview" aria-label="Public profile preview">
             <div className="profile-avatar" aria-hidden="true">{avatarInitials}</div>
             <div>
-              <p className="section-kicker">Ember ID preview</p>
+              <p className="section-kicker">Public Profile preview</p>
               <h2>{publicCommunity.publicUsernameLabel}</h2>
               <p>{publicCommunity.contributionLine}</p>
               <p>@{handleSource} · {isKidProfile ? "Kid collector" : "Collector"}</p>
@@ -39896,7 +40243,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <article className="panel profile-progress-card">
             <div className="compact-card-header">
               <div>
-                <p className="section-kicker">Scout reputation</p>
+                <p className="section-kicker">Restocks reputation</p>
                 <h2>{publicCommunity.scoutLevel.label}</h2>
               </div>
               <span className="status-badge">{publicCommunity.scoutPoints}/{publicCommunity.guessThreshold} points</span>
@@ -39906,7 +40253,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <span>{publicCommunity.communityGuesses} community guesses</span>
               <span>{publicCommunity.canSubmitCommunityGuesses ? "Community guesses unlocked" : "Community guesses locked"}</span>
             </div>
-            <p className="compact-subtitle">Earn Scout points by submitting confirmed reports. Trusted Scouts can help predict restock windows, but guesses stay separate from confirmed data.</p>
+            <p className="compact-subtitle">Earn restock points by submitting confirmed reports. Trusted Reporters can help predict restock windows, but guesses stay separate from confirmed data.</p>
           </article>
         </section>
 
@@ -40575,7 +40922,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function renderAdminScoutReportQueue() {
-    if (!["Trust Command Center", "Reports & Moderation", "Scout Report Moderation", "Scout Report Review"].includes(adminReviewFilter)) return null;
+    if (!["Trust Command Center", "Reports & Moderation", "Restocks Report Moderation", "Restocks Report Review"].includes(adminReviewFilter)) return null;
     const reports = adminReviewFilter === "All"
       ? scoutReportRows.slice(0, 8)
       : scoutNeedsReviewReports.length ? scoutNeedsReviewReports : scoutReportRows.slice(0, 8);
@@ -40583,12 +40930,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       <section className="settings-subsection admin-ops-section">
         <div className="compact-card-header">
           <div>
-            <h3>Scout Report Review</h3>
-            <p>Review Scout reports, confirm useful signals, reject bad reports, or hide unsafe entries. Writes still depend on admin edit mode and backend/RLS protections.</p>
+            <h3>Restocks Report Review</h3>
+            <p>Review restock reports, confirm useful signals, reject bad reports, or hide unsafe entries. Writes still depend on admin edit mode and backend/RLS protections.</p>
           </div>
           <div className="summary-pill-row">
             <span className="status-badge">{scoutNeedsReviewReports.length} need review</span>
-            <button type="button" className="secondary-button" onClick={() => { setActiveTab("scout"); setScoutView("review"); }}>Open Scout Review</button>
+            <button type="button" className="secondary-button" onClick={() => { setActiveTab("scout"); setScoutView("review"); }}>Open Restocks Review</button>
           </div>
         </div>
         <div className="admin-report-review-grid">
@@ -40610,7 +40957,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </article>
           )) : (
             <div className="empty-state">
-              <h3>No Scout reports waiting</h3>
+              <h3>No restock reports waiting</h3>
               <p>Submitted reports, disputed posts, and low-confidence reports appear here.</p>
             </div>
           )}
@@ -40786,7 +41133,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     });
     if (!result) return;
     resetAdminStoreDraft();
-    setVaultToast(result.created ? "Store added to this device's local Scout directory." : "Store metadata saved to this device's local Scout directory.");
+    setVaultToast(result.created ? "Store added to this device's local Restocks directory." : "Store metadata saved to this device's local Restocks directory.");
   }
 
   function quickPatchAdminStore(row, patch) {
@@ -40796,7 +41143,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const allowLocalOverride = !(scoutSnapshot.stores || []).some((store) => getStoreMapStoreId(store) === targetId)
       && isAdminStoreDirectoryRecord(targetId);
     const result = persistAdminStoreManagementDraft(patch, { targetId, sourceStore, allowLocalOverride });
-    if (result) setVaultToast("Store metadata saved to this device's local Scout directory.");
+    if (result) setVaultToast("Store metadata saved to this device's local Restocks directory.");
   }
 
   function renderAdminStoreManagementSection() {
@@ -40873,7 +41220,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </label>
           <label className="inline-toggle">
             <input type="checkbox" checked={adminStoreDraft.reportable} onChange={(event) => updateAdminStoreDraft("reportable", event.target.checked)} />
-            <span>Reportable in Scout</span>
+            <span>Reportable in Restocks</span>
           </label>
           <label className="inline-toggle">
             <input type="checkbox" checked={adminStoreDraft.familyFriendlyApproved} onChange={(event) => updateAdminStoreDraft("familyFriendlyApproved", event.target.checked)} />
@@ -40923,7 +41270,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <span className={`status-badge${["Empty shelves", "Low stock", "Needs report"].includes(row.status) ? " warning" : ""}`}>{row.status}</span>
                 <span className="confidence-badge">{row.confidence} confidence</span>
                 <span className={row.store.active === false || row.store.isActive === false ? "status-badge danger" : "status-badge"}>{row.store.active === false || row.store.isActive === false ? "Inactive" : "Active"}</span>
-                {row.store.reportable === false || row.store.isReportable === false ? <span className="status-badge warning">Not reportable</span> : <span className="status-badge">Scout reportable</span>}
+                {row.store.reportable === false || row.store.isReportable === false ? <span className="status-badge warning">Not reportable</span> : <span className="status-badge">Restocks reportable</span>}
               </div>
               {row.profile?.badges?.length ? (
                 <div className="store-expansion-badges">
@@ -41004,7 +41351,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </div>
                 <div className="detail-grid compact-detail-grid">
                   <DetailItem label="Reporter" value={publicCommunityProfile(guess).publicUsernameLabel} />
-                  <DetailItem label="Scout points" value={String(publicCommunityProfile(guess).scoutPoints)} />
+                  <DetailItem label="Restock points" value={String(publicCommunityProfile(guess).scoutPoints)} />
                   <DetailItem label="Product/category" value={guess.productType || "Pokemon restock"} />
                   <DetailItem label="Prediction impact" value={status === "Converted to Confirmed" ? "May train after proof" : "Does not train"} />
                 </div>
@@ -41027,7 +41374,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           }) : (
             <div className="empty-state">
               <h3>No community guesses waiting</h3>
-              <p>Qualified Scout guesses will appear here and stay labeled separately from confirmed restocks.</p>
+              <p>Qualified Restocks guesses will appear here and stay labeled separately from confirmed restocks.</p>
             </div>
           )}
         </div>
@@ -41114,7 +41461,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       <section className="settings-subsection admin-ops-section admin-trust-queue-section">
         <div className="compact-card-header">
           <div>
-            <h3>Tidepool Post Moderation</h3>
+            <h3>Community Post Moderation</h3>
             <p>Review pending, flagged, and edit-requested community posts before they affect public trust. Prefer publish, needs edit, reject, or archive instead of hard delete.</p>
           </div>
           <span className="status-badge">{rows.length} need review</span>
@@ -41148,7 +41495,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <p className="compact-subtitle">{post.moderationReason || "No moderation note attached."}</p>
                 {renderCommunityProfileSummary(post, { compact: true, adminDetail: true, className: "admin-reputation-profile-card" })}
                 <div className="quick-actions">
-                  <button type="button" className="secondary-button" onClick={() => runTidepoolAdminPostAction(post, "Publish", { status: "Published", moderationReason: "Approved for public Tidepool feed." })}>Publish</button>
+                  <button type="button" className="secondary-button" onClick={() => runTidepoolAdminPostAction(post, "Publish", { status: "Published", moderationReason: "Approved for public Community feed." })}>Publish</button>
                   <button type="button" className="secondary-button" onClick={() => runTidepoolAdminPostAction(post, "Needs Edit", { status: "Needs Edit", moderationReason: "Author should revise before publishing." })}>Needs Edit</button>
                   <button type="button" className="ghost-button" onClick={() => runTidepoolAdminPostAction(post, "Reject", { status: "Rejected", moderationReason: "Rejected by admin review." }, { confirm: true, danger: true })}>Reject</button>
                   <button type="button" className="ghost-button" onClick={() => runTidepoolAdminPostAction(post, "Archive", { status: "Archived", moderationReason: "Archived by admin review." }, { confirm: true })}>Archive</button>
@@ -41157,7 +41504,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             );
           }) : (
             <div className="empty-state">
-              <h3>No Tidepool posts need review</h3>
+              <h3>No Community posts need review</h3>
               <p>Pending, flagged, and edit-requested posts will appear here before becoming public.</p>
             </div>
           )}
@@ -41170,9 +41517,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const recentItems = [
       ...scoutReportRows.slice(0, 3).map((report) => ({
         id: `activity-report-${getScoutReportId(report)}`,
-        title: getScoutReportStore(report).name || report.storeName || "Scout report",
+        title: getScoutReportStore(report).name || report.storeName || "Restock report",
         detail: `${normalizeScoutReportModerationStatus(report)} | ${scoutReportFeedsPredictions(report) ? "trains predictions" : "does not train predictions"}`,
-        status: "Scout",
+        status: "Restocks",
       })),
       ...scoutGuessRows.slice(0, 3).map((guess) => ({
         id: `activity-guess-${guess.id}`,
@@ -41182,7 +41529,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       })),
       ...suggestions.filter(isEmberAssistSuggestion).slice(0, 3).map((message) => ({
         id: `activity-assist-${message.id}`,
-        title: message.submittedData?.question || "Ember Assist message",
+        title: message.submittedData?.question || "Business Assistant message",
         detail: normalizeEmberAssistMessageStatus(message),
         status: "Assist",
       })),
@@ -41208,7 +41555,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           )) : (
             <div className="small-empty-state">
               <strong>No recent trust activity</strong>
-              <span>Scout reports, guesses, shop reviews, and admin messages will appear here.</span>
+              <span>Restock reports, guesses, shop reviews, and admin messages will appear here.</span>
             </div>
           )}
         </div>
@@ -41387,7 +41734,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     openMarketplaceCreate("vault", item);
     if (action === "move") {
       openVaultForgeTransfer(item, "move");
-      setVaultToast("Listing draft created. Confirm the Forge move separately when you are ready.");
+      setVaultToast("Listing draft created. Confirm the Business move separately when you are ready.");
     }
   }
 
@@ -42028,7 +42375,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           {listingCatalogProduct && !closedListing ? (
             <>
               {sellerMarketMode ? (
-                <button type="button" onClick={() => openProductAddFlow({ product: listingCatalogProduct, source: "marketplace-listing-forge", destinations: { forge: true } })}>Add to Forge</button>
+                <button type="button" onClick={() => openProductAddFlow({ product: listingCatalogProduct, source: "marketplace-listing-forge", destinations: { forge: true } })}>Add to Business</button>
               ) : null}
               <button type="button" className={sellerMarketMode ? "secondary-button" : ""} onClick={() => openProductAddFlow({ product: listingCatalogProduct, source: "marketplace-listing-vault", destinations: { vault: true } })}>Add to Vault</button>
             </>
@@ -42303,7 +42650,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <div className="compact-card-header">
                 <div>
                   <h3>Linked items</h3>
-                  <p>Search existing Vault or Forge items, then link this receipt as proof.</p>
+                  <p>Search existing Vault or Business items, then link this receipt as proof.</p>
                 </div>
                 <button type="button" className="secondary-button" onClick={() => openReceiptAddItemFlow(receipt)}>
                   Add item from receipt
@@ -42313,7 +42660,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <input
                   value={receiptLinkQuery}
                   onChange={(event) => setReceiptLinkQuery(event.target.value)}
-                  placeholder="Search Vault or Forge items"
+                  placeholder="Search Vault or Business items"
                 />
               </Field>
               <div className="receipt-link-candidates">
@@ -42321,7 +42668,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <div className="receipt-linked-row" key={item.id}>
                     <div>
                       <strong>{item.name || item.itemName}</strong>
-                      <span>{[vaultItemSetLabel(item), vaultItemTypeLabel(item), isForgeInventoryItem(item) ? "Forge" : isWishlistItemRecord(item) ? "Wishlist" : "Vault"].filter(Boolean).join(" · ")}</span>
+                      <span>{[vaultItemSetLabel(item), vaultItemTypeLabel(item), isForgeInventoryItem(item) ? "Business" : isWishlistItemRecord(item) ? "Wishlist" : "Vault"].filter(Boolean).join(" · ")}</span>
                     </div>
                     <button type="button" className="secondary-button" onClick={() => void linkReceiptToItem(receipt, item)}>
                       Link receipt
@@ -42336,7 +42683,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <div className="receipt-linked-row is-linked" key={item.id}>
                     <div>
                       <strong>{item.name || item.itemName}</strong>
-                      <span>{[vaultItemSetLabel(item), vaultItemTypeLabel(item), isForgeInventoryItem(item) ? "Forge" : isWishlistItemRecord(item) ? "Wishlist" : "Vault"].filter(Boolean).join(" · ")}</span>
+                      <span>{[vaultItemSetLabel(item), vaultItemTypeLabel(item), isForgeInventoryItem(item) ? "Business" : isWishlistItemRecord(item) ? "Wishlist" : "Vault"].filter(Boolean).join(" · ")}</span>
                     </div>
                     <button type="button" className="ghost-button" onClick={() => void unlinkReceiptFromItem(receipt, item)}>
                       Unlink
@@ -42415,10 +42762,24 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     );
   }
 
+  function tradeReceivedCatalogEstimate(draft = tradeDraft) {
+    // #22: find a catalog product for the received item and use its market
+    // value as a starting estimate when the person has not typed one.
+    const name = String(draft.receivedName || "").trim();
+    if (name.length < 3) return null;
+    const match = findQuickAddCatalogMatch(catalogProducts, { productName: name, title: draft.receivedSet ? `${name} ${draft.receivedSet}` : name });
+    if (!match) return null;
+    const info = getTideTradrMarketInfo(match);
+    const value = Number(info?.marketValue || info?.currentMarketValue || match.marketValue || match.marketPrice || match.currentMarketValue || match.midPrice || 0);
+    if (!(value > 0)) return null;
+    return { value, source: `Catalog estimate (${catalogTitle(match)})`, product: match };
+  }
+
   function renderTradeValueFlowContent() {
     const sourceItem = selectedTradeSourceItem();
     const validation = validateTradeDraft(tradeDraft, sourceItem);
-    const comparison = buildTradeComparison(tradeDraft, sourceItem || {}, { moneyFormatter: money });
+    const receivedEstimate = tradeDraft.receivedValue === "" || tradeDraft.receivedValue === undefined ? tradeReceivedCatalogEstimate(tradeDraft) : null;
+    const comparison = buildTradeComparison(tradeDraft, sourceItem || {}, { moneyFormatter: money, receivedEstimate });
     const selectedOption = tradeSourceOptions.find((option) => String(option.id) === String(tradeDraft.sourceItemId));
     const recentTrades = workspaceTradeRecords.slice(0, 3);
     const sourceMasterCard = sourceItem ? buildMasterCardsFromItems(inventoryGroupEntries(sourceItem))[0] || null : null;
@@ -42459,7 +42820,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <section className="trade-value-success-card">
             <span className="trust-badge trust-badge--verified">Saved locally</span>
             <h3>Trade saved to your Trade Ledger.</h3>
-            <p>No Vault or Forge inventory counts were changed automatically. Use Collection Update if you want to connect this Trade Memory to Vault.</p>
+            <p>No Vault or Business inventory counts were changed automatically. Use Collection Update if you want to connect this Trade Memory to Vault.</p>
             <div className="trade-comparison-grid">
               <div>
                 <span>What You Gave</span>
@@ -42541,9 +42902,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <span>Exact variant/copy</span>
             <span>Review before saving</span>
             <span>No inventory changes</span>
-            <span>Parent approval for kid items</span>
+            <span>Parent check for kid items (reminder, not an approval step yet)</span>
             <span>Values are estimates</span>
           </div>
+          {kidSafeView ? <p className="compact-subtitle" role="status">{KID_SAFE_COPY.approvalPreview}</p> : null}
         </section>
 
         <section className="trade-builder-grid">
@@ -42555,7 +42917,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
               <strong>{comparison.outgoingLabel}</strong>
             </div>
-            <Field label="Trade Source" help="Choose an existing Vault or Forge item when it is already tracked, or leave this blank and enter a manual item below.">
+            <Field label="Trade Source" help="Choose an existing Vault or Business item when it is already tracked, or leave this blank and enter a manual item below.">
               <select
                 value={tradeDraft.sourceItemId}
                 onChange={(event) => {
@@ -42572,7 +42934,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <option value="">Manual item / choose saved item</option>
                 {tradeSourceOptions.map((option) => (
                   <option key={`${option.sourceKind}-${option.id}`} value={option.id}>
-                    {option.label} - {option.sourceKind === "forge" ? "Forge" : "Vault"} - {option.valueLabel}
+                    {option.label} - {option.sourceKind === "forge" ? "Business" : "Vault"} - {option.valueLabel}
                   </option>
                 ))}
               </select>
@@ -42580,7 +42942,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className={`trade-vault-link-card ${selectedVaultSourceLinked ? "is-linked" : ""}`}>
               <span>Vault Link</span>
               <strong>{selectedVaultSourceLinked ? sourceTitle : `${selectedSourceLabel} Trade Source`}</strong>
-              <small>{selectedVaultSourceLinked ? "Linked Vault item will appear on the saved Trade Memory. Vault still will not update until you choose Update Vault." : "Manual and Forge trades save safely, with Vault update options after the trade is saved."}</small>
+              <small>{selectedVaultSourceLinked ? "Linked Vault item will appear on the saved Trade Memory. Vault still will not update until you choose Update Vault." : "Manual and Business trades save safely, with Vault update options after the trade is saved."}</small>
             </div>
             <Field label="What You Gave" error={tradeMessage && validation.errors.sourceItemId ? validation.errors.sourceItemId : ""}>
               <input
@@ -42632,7 +42994,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <MasterCardFamilyNote masterCard={sourceMasterCard} />
             <div className="trade-exact-copy-note">
               <strong>Exact copy check</strong>
-              <span>Select the specific raw, graded, sealed-related, or duplicate copy before saving trade history. Saving this review still does not change Vault or Forge inventory.</span>
+              <span>Select the specific raw, graded, sealed-related, or duplicate copy before saving trade history. Saving this review still does not change Vault or Business inventory.</span>
             </div>
           </div>
 
@@ -42673,8 +43035,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   step="0.01"
                   value={tradeDraft.receivedValue}
                   onChange={(event) => updateTradeDraftField("receivedValue", event.target.value)}
-                  placeholder="0.00"
+                  placeholder={receivedEstimate ? receivedEstimate.value.toFixed(2) : "0.00"}
                 />
+                {receivedEstimate ? (
+                  <button type="button" className="secondary-button" onClick={() => updateTradeDraftField("receivedValue", receivedEstimate.value.toFixed(2))}>
+                    Use {money(receivedEstimate.value)} from Market Watch
+                  </button>
+                ) : null}
               </Field>
               <Field label="Condition">
                 <input
@@ -42707,7 +43074,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div>
               <span className="section-kicker">Trade Balance</span>
               <h4>{comparison.resultLabel}</h4>
-              <p>Forge compares the values you entered so you can see whether the tide moved in your favor. {comparison.guidance}</p>
+              <p>Business compares the values you entered so you can see whether the tide moved in your favor. {comparison.guidance}</p>
             </div>
             <strong>{comparison.differenceLabel}</strong>
           </div>
@@ -42725,7 +43092,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div>
               <span>Trade Balance</span>
               <strong>{comparison.resultLabel}</strong>
-              <small>Saving history does not edit Vault or Forge records.</small>
+              <small>Saving history does not edit Vault or Business records.</small>
             </div>
           </div>
         </section>
@@ -43825,7 +44192,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (activeFlowModal?.type === "forgeQuickAdd") {
       return {
         title: "Quick Add / Command Center",
-        description: "Create or import Forge records without leaving the current page.",
+        description: "Create or import Business records without leaving the current page.",
         size: "small",
       };
     }
@@ -43915,7 +44282,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     }
     if (activeFlowModal?.type === "vaultMoveToForge") {
       return {
-        title: "Move Item to Forge",
+        title: "Move Item to Business",
         description: "Choose a Vault item to move into business inventory.",
         size: "medium",
       };
@@ -43999,7 +44366,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     }
     if (activeFlowModal?.type === "tidepoolCreatePost") {
       return {
-        title: "Create Tidepool Post",
+        title: "Create Community Post",
         description: "Share a helpful update for review.",
         size: "medium",
       };
@@ -44013,7 +44380,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     }
     if (activeFlowModal?.type === "addInventory") {
       return {
-        title: editingItemId ? "Edit Forge Inventory" : "Add Forge Inventory",
+        title: editingItemId ? "Edit Business Inventory" : "Add Business Inventory",
         description: "Build a sellable inventory record from catalog data, scan review, or manual entry.",
         size: "large",
       };
@@ -44035,21 +44402,21 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (activeFlowModal?.type === "addMileage") {
       return {
         title: editingTripId ? "Edit Mileage Trip" : "Add Mileage Trip",
-        description: "Log business miles and vehicle costs without leaving the current Forge view.",
+        description: "Log business miles and vehicle costs without leaving the current Business view.",
         size: "medium",
       };
     }
     if (activeFlowModal?.type === "createListing") {
       return {
         title: "Create Marketplace Listing",
-        description: "Draft a listing from Vault, Market Watch, Forge, or manual entry. Public listings go to review first.",
+        description: "Draft a listing from Vault, Market Watch, Business, or manual entry. Public listings go to review first.",
         size: "large",
       };
     }
     if (activeFlowModal?.type === "scoutSubmit") {
       const isGuess = quickScoutReportTypeMeta(quickScoutReportForm.reportType)?.isGuess;
       return {
-        title: isGuess ? "Add Scout Guess" : "Report a restock",
+        title: isGuess ? "Add Restocks Guess" : "Report a restock",
         description: isGuess ? "Save a pattern note for Forecast without marking stock as confirmed." : "Choose a store, share what you saw, then review.",
         size: "medium",
       };
@@ -44220,9 +44587,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       return (
         <div className="forge-sale-success-flow" role="status" aria-live="polite">
           <div className="market-add-success-card forge-sale-success-card">
-            <span className="neon-chip">Saved to Forge</span>
+            <span className="neon-chip">Saved to Business</span>
             <h3>{forgeSaleSaveSuccess.saleWasEditing ? "Sale updated." : "Sale recorded."}</h3>
-            <p>{savedItemName} is saved in Forge sales. You can finish, add details, view the sale list, or record another sale.</p>
+            <p>{savedItemName} is saved in Business sales. You can finish, add details, view the sale list, or record another sale.</p>
             <div className="market-add-success-destinations">
               <span>
                 <strong>{savedQuantity} sold</strong>
@@ -44281,11 +44648,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           ) : (
             <div className="small-empty-state forge-sale-helper">
               <strong>Manual sale entry is available.</strong>
-              <span>Inventory will not be adjusted automatically unless you link a Forge item.</span>
+              <span>Inventory will not be adjusted automatically unless you link a Business item.</span>
             </div>
           )}
           <Field label="Sale Date"><input type="date" value={saleForm.saleDate} onChange={(e) => updateSaleForm("saleDate", e.target.value)} /></Field>
-          <Field label="Platform"><select value={saleForm.platform} onChange={(e) => updateSaleForm("platform", e.target.value)}>{PLATFORMS.map((x) => <option key={x}>{x}</option>)}</select></Field>
+          <Field label="Platform" help={getSalesChannelDefaults(saleForm.platform).note || undefined}><select value={saleForm.platform} onChange={(e) => updateSaleForm("platform", e.target.value)}>{PLATFORMS.map((x) => <option key={x}>{x}</option>)}</select></Field>
           <Field label="Quantity Sold"><input type="number" min="1" value={saleForm.quantitySold} onChange={(e) => updateSaleForm("quantitySold", e.target.value)} /></Field>
           <Field label="Sale Price Each" help={INFO_TOOLTIP_COPY.plannedSalePrice}><input type="number" step="0.01" value={saleForm.finalSalePrice} onChange={(e) => updateSaleForm("finalSalePrice", e.target.value)} /></Field>
           {!selectedSaleItem ? <Field label="Cost Basis" help={INFO_TOOLTIP_COPY.costBasis}><input type="number" step="0.01" value={saleForm.costBasis} onChange={(e) => updateSaleForm("costBasis", e.target.value)} /></Field> : null}
@@ -44295,11 +44662,16 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div className="forge-sale-fields-grid">
             <Field label="Buyer / Customer Optional"><input value={saleForm.buyerName} onChange={(e) => updateSaleForm("buyerName", e.target.value)} placeholder="Optional customer label" /></Field>
             <Field label="Shipping Charged"><input type="number" step="0.01" value={saleForm.shippingCharged} onChange={(e) => updateSaleForm("shippingCharged", e.target.value)} /></Field>
-            <Field label="Platform Fee"><input type="number" step="0.01" value={saleForm.platformFees} onChange={(e) => updateSaleForm("platformFees", e.target.value)} /></Field>
-            <Field label="Payment Processing Fee"><input type="number" step="0.01" value={saleForm.paymentProcessingFees} onChange={(e) => updateSaleForm("paymentProcessingFees", e.target.value)} /></Field>
+            <Field label={saleForm.feesPrefilled === true ? "Platform Fee (estimated from channel; edit if different)" : "Platform Fee"}><input type="number" step="0.01" value={saleForm.platformFees} onChange={(e) => updateSaleForm("platformFees", e.target.value)} /></Field>
+            <Field label={saleForm.feesPrefilled === true ? "Payment Processing Fee (estimated)" : "Payment Processing Fee"}><input type="number" step="0.01" value={saleForm.paymentProcessingFees} onChange={(e) => updateSaleForm("paymentProcessingFees", e.target.value)} /></Field>
+            <Field label="Shipping Status"><select value={saleForm.shipStatus || "Not shipped"} onChange={(e) => updateSaleForm("shipStatus", e.target.value)}>{SHIP_STATUS_OPTIONS.map((x) => <option key={x}>{x}</option>)}</select></Field>
+            <Field label="Carrier"><input value={saleForm.shipCarrier || ""} onChange={(e) => updateSaleForm("shipCarrier", e.target.value)} placeholder="USPS, UPS, eBay label..." /></Field>
+            <Field label="Tracking Number"><input value={saleForm.trackingNumber || ""} onChange={(e) => updateSaleForm("trackingNumber", e.target.value)} placeholder="Optional" /></Field>
+            <Field label="Sale Status"><select value={saleForm.saleStatus || "Completed"} onChange={(e) => updateSaleForm("saleStatus", e.target.value)}>{SALE_STATUS_OPTIONS.map((x) => <option key={x}>{x}</option>)}</select></Field>
             <Field label="Shipping Cost"><input type="number" step="0.01" value={saleForm.shippingCost} onChange={(e) => updateSaleForm("shippingCost", e.target.value)} /></Field>
             <Field label="Supplies Cost"><input type="number" step="0.01" value={saleForm.suppliesCost} onChange={(e) => updateSaleForm("suppliesCost", e.target.value)} /></Field>
-            <Field label="Discounts / Refunds"><input type="number" step="0.01" value={saleForm.discountsRefunds} onChange={(e) => updateSaleForm("discountsRefunds", e.target.value)} /></Field>
+            <Field label={saleForm.saleStatus === "Returned" || saleForm.saleStatus === "Partially refunded" ? "Refund amount (what you sent back)" : "Discounts / Refunds"}><input type="number" step="0.01" value={saleForm.discountsRefunds} onChange={(e) => updateSaleForm("discountsRefunds", e.target.value)} /></Field>
+            {saleForm.saleStatus === "Returned" || saleForm.saleStatus === "Partially refunded" ? <Field label="Return Date"><input type="date" value={saleForm.returnDate || ""} onChange={(e) => updateSaleForm("returnDate", e.target.value)} /></Field> : null}
             <Field label="Order / Reference"><input value={saleForm.referenceId} onChange={(e) => updateSaleForm("referenceId", e.target.value)} placeholder="Order ID, payout, or receipt reference" /></Field>
             <Field label="Receipt / Reference Image"><input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, (url) => updateSaleForm("receiptImage", url), "sales")} /></Field>
             <Field label="Notes"><input value={saleForm.notes} onChange={(e) => updateSaleForm("notes", e.target.value)} /></Field>
@@ -44356,7 +44728,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         />
         <Field label="Amount"><input type="number" step="0.01" value={expenseForm.amount} onChange={(e) => updateExpenseForm("amount", e.target.value)} /></Field>
         <Field label="Payment Method"><input value={expenseForm.paymentMethod} placeholder="Card, cash, PayPal, business account..." onChange={(e) => updateExpenseForm("paymentMethod", e.target.value)} /></Field>
-        <Field label="Linked Forge Item"><select value={expenseForm.linkedItemId} onChange={(e) => updateExpenseForm("linkedItemId", e.target.value)}><option value="">None</option>{forgeInventoryItems.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
+        <Field label="Linked Business Item"><select value={expenseForm.linkedItemId} onChange={(e) => updateExpenseForm("linkedItemId", e.target.value)}><option value="">None</option>{forgeInventoryItems.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
         <Field label="Linked Sale"><select value={expenseForm.linkedSaleId} onChange={(e) => updateExpenseForm("linkedSaleId", e.target.value)}><option value="">None</option>{workspaceSales.map((sale) => <option key={sale.id} value={sale.id}>{sale.itemName} - {sale.platform}</option>)}</select></Field>
         {expenseForm.category === "Marketing" ? (
           <>
@@ -44382,7 +44754,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <Field label="Receipt Split">
           <select value={expenseForm.receiptSplitMode || "expense_only"} onChange={(e) => updateExpenseForm("receiptSplitMode", e.target.value)}>
             <option value="expense_only">Create expense only</option>
-            <option value="forge">Create / attach Forge inventory later</option>
+            <option value="forge">Create / attach Business inventory later</option>
             <option value="vault">Send to Vault later</option>
             <option value="split_business_personal">Split business / personal</option>
             <option value="attach_existing">Attach to existing item</option>
@@ -44464,17 +44836,17 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               setMarketplaceSourcePicker(source);
               if (source === "manual") setMarketplaceForm(BLANK_MARKETPLACE_FORM);
             }}>
-              {source === "forge" ? "List from Forge" : source === "vault" ? "List from Vault" : source === "catalog" ? "List from Catalog" : "Create Manual Listing"}
+              {source === "forge" ? "List from Business" : source === "vault" ? "List from Vault" : source === "catalog" ? "List from Catalog" : "Create Manual Listing"}
             </button>
           ))}
         </div>
         {marketplaceSourcePicker === "forge" ? (
-          <Field label="Forge item">
+          <Field label="Business item">
             <select onChange={(event) => {
               const item = forgeInventoryItems.find((candidate) => candidate.id === event.target.value);
               if (item) setMarketplaceForm(listingFromSource("forge", item));
             }}>
-              <option value="">Choose Forge inventory</option>
+              <option value="">Choose Business inventory</option>
               {forgeInventoryItems.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
             </select>
           </Field>
@@ -44551,13 +44923,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       betaAccessAllowed: betaAccessAllowed(),
       guestPreviewActive,
       activeTabLocked,
+      blocked: kidSafeView,
     });
     const quickPostTypes = ["Restock Discussion", "Question", "Local Event", "Trade Night", "Kid-Friendly Win"].filter((type) => TIDEPOOL_POST_TYPES.includes(type));
     return (
       <form className="form flow-form-grid tidepool-create-form" onSubmit={submitTidepoolPost}>
         <div className="drawer-info-card">
           <strong>Share a helpful update.</strong>
-          <p className="compact-subtitle">Posts are reviewed so Tidepool stays kind, local, and family-friendly.</p>
+          <p className="compact-subtitle">Posts are reviewed so Community stays kind, local, and family-friendly.</p>
           <div className="tidepool-guideline-list">
             {TIDEPOOL_FAMILY_SAFE_RULES.slice(0, 3).map((rule) => <span key={rule}>{rule}</span>)}
           </div>
@@ -44598,6 +44971,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <input value={tidepoolPostForm.photoUrl} onChange={(event) => setTidepoolPostForm((current) => ({ ...current, photoUrl: event.target.value }))} placeholder="Optional beta image URL" />
         </Field>
         <div className="flow-form-footer">
+          {kidSafeView ? <p className="compact-subtitle" role="status">{KID_SAFE_COPY.postingBlocked}</p> : null}
           <button type="submit" disabled={(!tidepoolPostForm.body.trim() && !tidepoolPostForm.title.trim()) || !canCreateTidepoolPost}>Submit for Review</button>
         </div>
       </form>
@@ -44795,8 +45169,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
   function renderForgeQuickAddFlowContent() {
     const options = [
-      { key: "inventory", title: "Add Inventory", helper: "Review a matched item before saving to Forge.", onClick: () => openProductAddFlow({ source: "forge-quick-add-inventory", destinations: { forge: true } }) },
-      { key: "bulk", title: "Bulk Add", helper: "Stage multiple Forge, Vault, or Wishlist items for review.", onClick: () => openBulkAddFlow("Forge") },
+      { key: "inventory", title: "Add Inventory", helper: "Review a matched item before saving to Business.", onClick: () => openProductAddFlow({ source: "forge-quick-add-inventory", destinations: { forge: true } }) },
+      { key: "bulk", title: "Bulk Add", helper: "Stage multiple Business, Vault, or Wishlist items for review.", onClick: () => openBulkAddFlow("Forge") },
       { key: "sale", title: "Add Sale", helper: "Record revenue and profit.", onClick: () => openAddSaleFlow() },
       { key: "expense", title: "Add Expense", helper: "Receipts, fees, supplies.", onClick: () => openAddExpenseFlow() },
       { key: "mileage", title: "Add Mileage", helper: "Business trip tracking.", onClick: () => openAddMileageFlow() },
@@ -45241,7 +45615,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       return (
         <div className="empty-state small-empty-state vault-move-empty">
           <h3>No movable Vault items yet.</h3>
-          <p>Add a personal collection or sealed item first, then move it into Forge when it becomes business inventory.</p>
+          <p>Add a personal collection or sealed item first, then move it into Business when it becomes business inventory.</p>
           <button type="button" onClick={() => {
             if (!closeFlowModal({ force: true })) return;
             openVaultQuickAdd({ category: "Personal collection", subTab: "collection" });
@@ -45671,6 +46045,22 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     );
   }
 
+  function renderStorageQuotaBanner() {
+    if (storageQuota.level === "ok" || storageQuotaDismissed === storageQuota.level) return null;
+    return (
+      <div className={`storage-quota-banner is-${storageQuota.level}`} role={storageQuota.level === "critical" ? "alert" : "status"}>
+        <div>
+          <strong>{storageQuota.title} ({storageQuota.percent}%)</strong>
+          <p>{storageQuota.message}</p>
+        </div>
+        <div className="quick-actions">
+          <button type="button" className="secondary-button" onClick={() => { prepareRouteNavigation(); setActiveTab("settings"); }}>Open Backup</button>
+          <button type="button" className="secondary-button" onClick={() => setStorageQuotaDismissed(storageQuota.level)}>Later</button>
+        </div>
+      </div>
+    );
+  }
+
   function renderToastViewport() {
     if (!appToasts.length) return null;
     return (
@@ -45913,17 +46303,17 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { key: "permission-needed", label: "Permission Needed", helper: "Locked state clarity" },
     ];
     const tierRows = [
-      { title: "Free", body: "Start with Vault, Market, three Scout watched stores, and one child profile.", status: "Real starter app" },
+      { title: "Free", body: "Start with Vault, Market, three Restocks watched stores, and one child profile.", status: "Real starter app" },
       { title: "Plus", body: "More capacity, smarter collection tools, alerts, and saved product context.", status: "Collector growth" },
       { title: "Family", body: "Parent-guided tools, Spark participation, and kid-safe defaults.", status: "Family safe" },
-      { title: "Pro / Seller", body: "Forge workspace, Harbor listing health, receipts, proof, and sales organization.", status: "Optional" },
+      { title: "Pro / Seller", body: "Business workspace, Harbor listing health, receipts, proof, and sales organization.", status: "Optional" },
       { title: "Shop Partner", body: "Trusted family friend updates and Spark support placeholders.", status: "Admin reviewed" },
       { title: "Beta / Admin", body: "Protected access for testing, review queues, and operations.", status: "Permission gated" },
     ];
     const setupRows = [
-      { title: "Start with Hearth", body: "Preview the warm home base, then choose the tools your family needs first.", status: "Home base" },
+      { title: "Start with Home", body: "Preview the warm home base, then choose the tools your family needs first.", status: "Home base" },
       { title: "Pick your role", body: "Collector, family, Pro / Seller, Shop Partner, sponsor, and admin paths stay clearly separated.", status: "Role scoped" },
-      { title: "Keep it safe", body: "Scout, Tidepool, Spark, and Parent Center avoid private child data and exploit-friendly details.", status: "Family first" },
+      { title: "Keep it safe", body: "Restocks, Community, Spark, and Parent Center avoid private child data and exploit-friendly details.", status: "Family first" },
     ];
     const stateRows = [
       { title: "Virginia", body: "Virginia users can continue into beta review.", status: "Current launch" },
@@ -45941,7 +46331,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { title: "Spark participation", body: "Giving, events, and thank-you states stay parent-safe and preview-only here.", status: "Parent guided" },
     ];
     const notificationRows = [
-      { title: "Scout signals", body: "Current reports and Worth the Trip labels are helpful without raw pattern history.", status: "Current only" },
+      { title: "Restock signals", body: "Current reports and Worth the Trip labels are helpful without raw pattern history.", status: "Current only" },
       { title: "Family reminders", body: "Spark events, safe trade review, and Vault tasks can be suggested without pressure.", status: "Calm alerts" },
       { title: "No rush feed", body: "No guaranteed stock, auto-buy prompts, vendor schedules, or employee details.", status: "Anti-scalper" },
     ];
@@ -45954,7 +46344,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       welcome: {
         kicker: "Welcome",
         title: "Fair collecting starts with a safer home base.",
-        body: "Code 3 TCG helps families collect, report, trade, and give back without turning Scout into a rush feed.",
+        body: "Code 3 TCG helps families collect, report, trade, and give back without turning Restocks into a rush feed.",
         badge: "Mock onboarding",
       },
       "state-check": {
@@ -45978,7 +46368,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       "family-setup": {
         kicker: "Family Setup",
         title: "Kids can collect safely with parent-guided tools.",
-        body: "Child-sensitive actions stay private, parent-guided, and separate from public Tidepool or marketplace context.",
+        body: "Child-sensitive actions stay private, parent-guided, and separate from public Community or marketplace context.",
         badge: "Parent guided",
       },
       notifications: {
@@ -45996,7 +46386,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       "permission-needed": {
         kicker: "Permission Needed",
         title: "Some tools stay locked until access is approved.",
-        body: "Locked states explain the benefit without exposing hidden Scout data, private family details, or admin tools.",
+        body: "Locked states explain the benefit without exposing hidden restock data, private family details, or admin tools.",
         badge: "Protected",
       },
     };
@@ -46050,7 +46440,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         { label: "See locked state", action: () => setView("permission-needed") },
       ],
       "first-store": [
-        { label: "Open Hearth preview", action: () => { startGuestPreview(); setActiveTab("dashboard"); } },
+        { label: "Open Home preview", action: () => { startGuestPreview(); setActiveTab("dashboard"); } },
         { label: "Permission example", action: () => setView("permission-needed") },
       ],
       "permission-needed": [
@@ -46114,7 +46504,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <strong>Safety foundation</strong>
             <div className="settings-stacked-list">
               {[
-                ["No raw Scout patterns", "Exact pattern windows, vendor schedules, and employee details stay hidden."],
+                ["No raw restock patterns", "Exact pattern windows, vendor schedules, and employee details stay hidden."],
                 ["No private child data", "Family setup is parent-guided and child details stay private."],
                 ["No checkout wired", "Membership and shop paths are preview-only in this screen."],
                 ["Role-scoped tools", "Admin, Shop, and Beta surfaces stay permission-gated."],
@@ -46132,7 +46522,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <div className="live-onboarding-actions glass-card">
           <div>
             <strong>Next safe step</strong>
-            <p className="compact-subtitle">{signedOut ? "Create/sign in when ready, or preview the app without changing account data." : "Continue through the mock onboarding path or return to Hearth."}</p>
+            <p className="compact-subtitle">{signedOut ? "Create/sign in when ready, or preview the app without changing account data." : "Continue through the mock onboarding path or return to Home."}</p>
           </div>
           <div className="drawer-inline-actions">
             {(primaryActions[viewKey] || primaryActions.welcome).map((action) => (
@@ -46424,17 +46814,19 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const sparksStatus = littleSparksStatus();
     const accessStatusUpdatedAt = shorelineState.betaRequest?.updatedAt || shorelineState.betaRequest?.createdAt || currentUserProfile?.updatedAt;
     const selectedAccessState = normalizeAccessState(shorelineBetaForm.state || "VA") || "VA";
-    const selectedAccessIsVirginia = isVirginiaAccessState(selectedAccessState);
+    const selectedAccessIsVirginia = isOpenAccessState(selectedAccessState);
     const accessHeadline = betaStatus === "waitlist"
       ? "You are on the state waitlist."
       : betaStatus === "approved"
         ? "Your beta access is approved."
         : betaStatus === "not_requested"
           ? "Set up your Code 3 TCG access."
-          : "Your access request is pending.";
+          : "Your access request is being reviewed.";
     const accessIntroCopy = betaStatus === "waitlist"
-      ? "Code 3 TCG is starting in Virginia. Your state waitlist request helps us decide where to expand next."
-      : "We review beta access to keep the community safe and family-friendly.";
+      ? `Code 3 TCG is open in ${openAccessStatesLabel()} right now. Your waitlist request holds your spot and tells us where to expand next; we email you the moment your state opens.`
+      : betaStatus === "pending"
+        ? betaAccessPendingMessage()
+        : `${BETA_REVIEW_EXPLANATION} Open right now in ${openAccessStatesLabel()}; other states join the waitlist.`;
     return (
       <div className={`app app-shoreline-access app-theme-${resolvedAppTheme}`} data-theme={resolvedAppTheme}>
         <main className="main shoreline-access-main">
@@ -46482,7 +46874,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <article className="shoreline-access-note glass-card">
               <span className="status-badge">Safe identity</span>
               <strong>Usernames protect private details.</strong>
-              <p>Public usernames can appear in Marketplace, Tidepool, Scout, and confirmations. Official Code 3 TCG names stay reserved.</p>
+              <p>Public usernames can appear in Marketplace, Community, Restocks, and confirmations. Official Code 3 TCG names stay reserved.</p>
             </article>
             <article className="shoreline-access-note glass-card">
               <span className="status-badge">Setup paths</span>
@@ -46512,8 +46904,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </select>
               </label>
               <div className={selectedAccessIsVirginia ? "shoreline-state-note" : "shoreline-state-note waitlist"}>
-                <strong>{selectedAccessIsVirginia ? "Virginia beta review" : `${accessStateLabel(selectedAccessState)} waitlist`}</strong>
-                <span>{selectedAccessIsVirginia ? "Virginia requests can be reviewed for beta access." : betaAccessWaitlistMessage(selectedAccessState)}</span>
+                <strong>{selectedAccessIsVirginia ? `${accessStateLabel(selectedAccessState)} beta review` : `${accessStateLabel(selectedAccessState)} waitlist`}</strong>
+                <span>{selectedAccessIsVirginia ? `${accessStateLabel(selectedAccessState)} requests go to a person for beta review. ${BETA_REVIEW_EXPLANATION}` : betaAccessWaitlistMessage(selectedAccessState)}</span>
               </div>
               <label>City / area (no exact address)<input value={shorelineBetaForm.cityArea} onChange={(event) => updateShorelineBetaField("cityArea", event.target.value)} placeholder="Hampton Roads, Fredericksburg, or your city" /></label>
               <label>Starting path
@@ -46534,7 +46926,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </select>
               </label>
               <label>Why do you want beta access?<textarea value={shorelineBetaForm.reason} onChange={(event) => updateShorelineBetaField("reason", event.target.value)} /></label>
-              {selectedAccessIsVirginia ? (
+              {isVirginiaAccessState(selectedAccessState) ? (
                 <label>Virginia area
                   <select value={shorelineBetaForm.localAreaAnswer} onChange={(event) => updateShorelineBetaField("localAreaAnswer", event.target.value)}>
                     <option value="">Choose one</option>
@@ -46610,7 +47002,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <button type="button" onClick={() => openScoutSubmitFlow({ source: "ember-watch-admin-drop" })}>Add/Edit Drop</button>
               ) : null}
             </div>
-            <div className="watch-month-grid" role="grid" aria-label="Ember Watch monthly calendar">
+            <div className="watch-month-grid" role="grid" aria-label="Watch Center monthly calendar">
               {watchCalendarMonthCells.map((cell) => (
                 <article className={cell.isToday ? "watch-month-day is-today" : "watch-month-day"} key={cell.dateKey}>
                   <div className="watch-month-day-header">
@@ -46732,17 +47124,17 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         : "Local beta";
   const settingsAppPreferencePersistenceLabel = phase2SyncStatus.source === "supabase"
     ? "Supabase app_user_preferences"
-    : phase2SyncStatus.label || "Local only";
+    : phase2SyncStatus.label || "Saved on this device";
   const settingsScoutAlertPersistenceLabel = phase2SyncStatus.source === "supabase"
     ? "Supabase notification_preferences"
-    : "Local only";
+    : "Saved on this device";
   const settingsStoreAlertPersistenceLabel = scoutBackendSync.loaded
     ? "Supabase store_user_watchlist when store IDs are cloud-backed"
-    : "Loads with Scout/store routes";
+    : "Loads with Restocks/store routes";
   const settingsTrustSourceLabel = phase2Data.userTrustProfile
     ? "Supabase user_trust_profiles"
     : scoutSnapshot.scoutProfile?.trustScore || scoutSnapshot.scoutProfile?.rewardPoints
-      ? "Scout activity summary"
+      ? "Restocks activity summary"
       : "Derived when activity exists";
   const settingsFamilyStatusLabel = littleSparksStatus() === "not_applied"
     ? "No Kids Program request"
@@ -46754,22 +47146,22 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       status: settingsProfilePersistenceLabel,
     },
     {
-      title: "Workspace & Forge Identity",
-      body: "Personal, business, or Code 3 TCG Forge behavior.",
+      title: "Workspace & Business Identity",
+      body: "Personal, business, or Code 3 TCG Business behavior.",
       status: BETA_LOCAL_MODE ? "Local workspace settings" : "Workspace scoped",
     },
     {
       title: "Experience Mode",
-      body: `Current: ${dashboardPresetLabel(dashboardPreset)}. Hearth and Today priorities follow this mode.`,
+      body: `Current: ${dashboardPresetLabel(dashboardPreset)}. Home and Today priorities follow this mode.`,
       status: settingsAppPreferencePersistenceLabel,
     },
     {
       title: "Notification Preferences",
-      body: "Scout routing can sync when supported; detailed in-app categories stay local in beta.",
+      body: "Restocks routing can sync when supported; detailed in-app categories stay local in beta.",
       status: settingsScoutAlertPersistenceLabel,
     },
     {
-      title: "Scout Limits",
+      title: "Restocks Limits",
       body: `Current tier: ${TIER_LABELS[currentTier] || "Free"}. ${tierAccess.scoutStoreSlots} watched store${Number(tierAccess.scoutStoreSlots) === 1 ? "" : "s"} and protected raw history.`,
       status: tierAccess.scoutStoreSwapDays ? `${tierAccess.scoutStoreSwapDays}-day changes` : "Admin-managed",
     },
@@ -46780,17 +47172,17 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     },
     {
       title: "Privacy & Data",
-      body: "Child privacy, Scout location, exports, and support requests stay scoped to your account/workspace.",
+      body: "Child privacy, Restocks location, exports, and support requests stay scoped to your account/workspace.",
       status: "Private by default",
     },
     {
       title: "Family Safety",
-      body: "No unmoderated kid messaging, public child profiles, or raw Scout pattern access is enabled.",
+      body: "No unmoderated kid messaging, public child profiles, or raw restock pattern access is enabled.",
       status: settingsFamilyStatusLabel,
     },
     {
       title: "Trust & Reputation",
-      body: `${scoutGuessPoints} Scout points. Public cards hide private email and admin notes.`,
+      body: `${scoutGuessPoints} Restock points. Public cards hide private email and admin notes.`,
       status: settingsTrustSourceLabel,
     },
     {
@@ -46832,7 +47224,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             label="You"
             title={title}
             description={subtitle}
-            primaryAction={{ label: "Back to Hearth", icon: "home", onClick: () => setActiveTab("dashboard") }}
+            primaryAction={{ label: "Back to Home", icon: "home", onClick: () => setActiveTab("dashboard") }}
             secondaryActions={[
               { label: "Menu", icon: "settings", onClick: () => setMenuOpen(true) },
               { label: "Help", icon: "help", onClick: () => openUtilityPage("help") },
@@ -46925,7 +47317,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const roleLabel = adminViewingAsAdmin ? actualAdminRole : experiencePresentation.personaLabel;
     const profileStats = [
       { label: "Setup", value: setupLabel },
-      { label: "Scout", value: `${scoutGuessPoints} points` },
+      { label: "Restocks", value: `${scoutGuessPoints} points` },
       { label: "Workspace", value: activeWorkspace?.name || "Personal" },
       { label: "Access", value: betaAccessAllowed() ? "Beta approved" : "Limited" },
     ];
@@ -46964,6 +47356,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
   function updateAppThemeChoice(nextTheme, { syncSetupDraft = false } = {}) {
     const normalized = normalizeAppThemeChoice(nextTheme);
+    appThemeChosenByUser.current = true;
     setAppThemeChoice(normalized);
     if (syncSetupDraft) updateSmartSetupDraft({ themeChoice: normalized });
   }
@@ -47002,7 +47395,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <div className="compact-card-header">
           <div>
             <strong>Workspace</strong>
-            <p className="compact-subtitle">Choose where Vault, Forge, and shared records belong.</p>
+            <p className="compact-subtitle">Choose where Vault, Business, and shared records belong.</p>
           </div>
           <span className="status-badge">{workspaceTypeLabel(activeWorkspace?.type)}</span>
         </div>
@@ -47012,8 +47405,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <small>{workspaceRoleLabel(activeWorkspaceRole)} - {activeRecords.total || 0} linked record{activeRecords.total === 1 ? "" : "s"}</small>
         </div>
         <dl className="drawer-status-list settings-compact-status-list">
-          <div><dt>Active Forge</dt><dd>{activeForgeWorkspace?.name || "Unavailable"}</dd></div>
-          <div><dt>Forge mode</dt><dd>{forgeIdentityModeLabel(activeForgeIdentityMode)}</dd></div>
+          <div><dt>Active Business</dt><dd>{activeForgeWorkspace?.name || "Unavailable"}</dd></div>
+          <div><dt>Business mode</dt><dd>{forgeIdentityModeLabel(activeForgeIdentityMode)}</dd></div>
           <div><dt>Workspace actions</dt><dd>{canEditActiveWorkspace ? "Edit supported" : "View only"}</dd></div>
         </dl>
         <div className="drawer-inline-actions settings-action-row">
@@ -47053,7 +47446,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <article className="settings-preference-panel">
             <span>Home area</span>
             <strong>{locationSettings.manualLocation || locationSettings.selectedSavedLocation || "Not set"}</strong>
-            <p>Used for nearby Scout stores. Exact user location is never shown publicly.</p>
+            <p>Used for nearby watched stores. Exact user location is never shown publicly.</p>
             <input className="drawer-field" aria-label="Home area / ZIP or city" value={locationSettings.manualLocation} onChange={(event) => updateLocationSettings({ mode: "manual", manualLocation: event.target.value, trackingEnabled: false })} placeholder="ZIP or city" />
             <div className="drawer-inline-actions">
               <button type="button" className="drawer-link" onClick={saveManualLocation}>Save area</button>
@@ -47092,11 +47485,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { title: "Private location", body: "Exact user location is never shown publicly. Reports are shared by store, not private address.", status: locationSettings.trackingEnabled ? "Device location on" : "Manual/local" },
       { title: "Child privacy", body: "Child-sensitive details stay parent-managed. Public child profiles and private family information are not exposed.", status: "Protected" },
       { title: "No open kid messaging", body: "The app does not enable unmoderated child messaging. Family tools stay parent-guided.", status: "Not connected" },
-      { title: "Protected Scout data", body: "Raw restock history, exact pattern windows, and unsafe Scout details stay hidden from normal users.", status: "Guarded" },
-      { title: "Role-scoped tools", body: "Forge, shop, admin, and moderation surfaces follow role and workspace access instead of public visibility.", status: "Scoped" },
+      { title: "Protected restock data", body: "Raw restock history, exact pattern windows, and unsafe restock details stay hidden from normal users.", status: "Guarded" },
+      { title: "Role-scoped tools", body: "Business, shop, admin, and moderation surfaces follow role and workspace access instead of public visibility.", status: "Scoped" },
       { title: "Family-safe community", body: "Public community areas stay family-friendly. Use report/block when something feels off.", status: settingsFamilyStatusLabel },
       { title: "Admin review", body: "Flagged reports, posts, Spark requests, and support messages may be reviewed by approved admins.", status: actualAdminUser ? "Admin visible" : "Protected" },
-      { title: "Business records", body: "Forge sales, receipts, mileage, and expenses stay private to seller/business workspaces.", status: commandDeskSellerAccess ? "Seller enabled" : "Hidden" },
+      { title: "Business records", body: "Business sales, receipts, mileage, and expenses stay private to seller/business workspaces.", status: commandDeskSellerAccess ? "Seller enabled" : "Hidden" },
     ];
     return (
       <section className="drawer-info-card settings-privacy-trust-card settings-privacy-safety-card utility-card utility-card-wide">
@@ -47217,7 +47610,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <strong>Account shortcuts</strong>
             <div className="drawer-inline-actions">
               <button type="button" className="drawer-link" onClick={() => openUtilityPage("profile")}>Edit Profile</button>
-              <button type="button" className="drawer-link" onClick={() => setActiveTab("profileProgress")}>Ember ID Progress</button>
+              <button type="button" className="drawer-link" onClick={() => setActiveTab("profileProgress")}>Public Profile Progress</button>
               <button type="button" className="drawer-link" onClick={() => setActiveTab("mySuggestions")}>My Suggestions</button>
             </div>
           </div>
@@ -47302,7 +47695,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         { label: "Latest", value: archiveProofSummary.latest?.dateLabel || "Not started", helper: archiveProofSummary.latest?.group || "Add a record" },
       ];
       const archiveEvidenceRows = [
-        { title: "Receipts & Photos", body: "Purchase proof, condition photos, listing photos, and Scout screenshots stay attached to the record that created them.", status: "Proof" },
+        { title: "Receipts & Photos", body: "Purchase proof, condition photos, listing photos, and Restocks screenshots stay attached to the record that created them.", status: "Proof" },
         { title: "Sales, Trades, Donations", body: "Sold, traded, donated, packed, and gifted records appear here without becoming a public feed.", status: "Private" },
         { title: "Issue Review Trail", body: "Reports and evidence stay visible for admin review later. This does not process disputes, payment, or shipping labels.", status: "Review" },
       ];
@@ -47331,7 +47724,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <p className="section-kicker">Archive / Proof History</p>
               <h3>One trustworthy trail for records and evidence.</h3>
               <p>
-                Archive brings sales, trades, donations, Scout proof, Harbor issues, receipts, and closed records into one private review surface.
+                Archive brings sales, trades, donations, Restocks proof, Harbor issues, receipts, and closed records into one private review surface.
               </p>
             </div>
             <span className="status-badge">Local beta archive</span>
@@ -47384,7 +47777,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           ) : (
             <div className="small-empty-state archive-proof-empty-state">
               <strong>No archive records yet.</strong>
-              <span>Save a sale, trade, receipt, Scout report, Harbor listing, issue note, or Spark gift to start the proof trail.</span>
+              <span>Save a sale, trade, receipt, restock report, Harbor listing, issue note, or Spark gift to start the proof trail.</span>
               <button type="button" className="secondary-button" onClick={() => { setExchangeSection("forge"); setActiveTab("exchange"); }}>Open Exchange</button>
             </div>
           )}
@@ -47483,7 +47876,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <>
           <div className="drawer-info-card utility-card utility-card-wide">
             <strong>App identity</strong>
-            <p className="compact-subtitle">Vault = collect. Forge = sell. Scout = find. Tidepool = share. Catalog = know. Deal Finder = decide. Scanner = add anything.</p>
+            <p className="compact-subtitle">Vault = collect. Business = sell. Restocks = find. Community = share. Catalog = know. Deal Finder = decide. Scanner = add anything.</p>
             <div className="tcg-os-link-grid">
               {TCG_OS_MODES.map((mode) => (
                 <button type="button" className="drawer-link" key={mode.key} onClick={() => openOperatingSystemFeature(mode.key)}>
@@ -47527,8 +47920,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     ];
     const releaseRows = [
       { title: "The Spark kids program UI", body: "Warmer, parent-safe Kids Program layout and request flow." },
-      { title: "Tidepool community UI", body: "Calmer community feed, safety copy, and bottom spacing." },
-      { title: "Market, Forge, and Vault polish", body: "Cleaner mobile cards, tabs, and mode-aware actions." },
+      { title: "Community community UI", body: "Calmer community feed, safety copy, and bottom spacing." },
+      { title: "Market, Business, and Vault polish", body: "Cleaner mobile cards, tabs, and mode-aware actions." },
     ];
     return renderUtilityPageShell({
       title: "Help & Support",
@@ -47659,7 +48052,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <strong>Review queues</strong>
             <p className="compact-subtitle">Moderator access is limited to review and support surfaces. Role Management and owner/admin controls stay hidden.</p>
             <div className="drawer-inline-actions">
-              <button type="button" className="drawer-link" onClick={() => { setAdminReviewFilter("Scout Report Review"); setActiveTab("adminReview"); }}>Scout reports needing review</button>
+              <button type="button" className="drawer-link" onClick={() => { setAdminReviewFilter("Restocks Report Review"); setActiveTab("adminReview"); }}>Restock reports needing review</button>
               <button type="button" className="drawer-link" onClick={() => { setAdminReviewFilter("Reports & Moderation"); setActiveTab("adminReview"); }}>Flagged reports/content</button>
               <button type="button" className="drawer-link" onClick={() => { setAdminReviewFilter("Beta Feedback"); setActiveTab("adminReview"); }}>Support messages</button>
             </div>
@@ -47679,7 +48072,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <h3>{sale.itemName}</h3>
             <p>{sale.platform} | {sale.saleDate || shortDate(sale.createdAt) || "No date"} | Qty {sale.quantitySold}</p>
           </div>
-          <span className="status-badge">{sale.itemId ? "Linked inventory" : "Manual sale"}</span>
+          <div className="quick-actions">
+            {sale.saleStatus && sale.saleStatus !== "Completed" ? <span className={`status-badge ${/Returned|Cancelled/.test(sale.saleStatus) ? "warning" : ""}`}>{sale.saleStatus}</span> : null}
+            {sale.shipStatus && !["Not applicable", "Local pickup"].includes(sale.shipStatus) ? <span className="status-badge">{sale.shipStatus}{sale.trackingNumber ? ` · ${sale.shipCarrier || "tracking"} ${sale.trackingNumber}` : ""}</span> : null}
+            <span className="status-badge">{sale.itemId ? "Linked inventory" : "Manual sale"}</span>
+          </div>
         </div>
         <div className="preview-grid sales-record-metrics">
           <div><span>Gross</span><strong>{money(sale.grossSale)}</strong></div>
@@ -47711,7 +48108,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (!salesReviewView.filteredSales.length) {
       return (
         <section className="panel">
-          <h2>Forge Sales</h2>
+          <h2>Business Sales</h2>
           <div className="small-empty-state">
             <strong>{salesReviewView.filtersActive ? "No sales in this date range." : "No sales records yet."}</strong>
             <span>{salesReviewView.filtersActive ? "Clear the date range or choose a wider window." : getEmptyStateGuidance("sales").body}</span>
@@ -47724,7 +48121,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (salesViewMode === "date") {
       return (
         <section className="panel sales-grouped-list">
-          <h2>Forge Sales by Date</h2>
+          <h2>Business Sales by Date</h2>
           {salesReviewView.dateGroups.map((group) => (
             <article className="sales-group-card" key={group.key}>
               <div className="compact-card-header">
@@ -47751,7 +48148,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (salesViewMode === "item") {
       return (
         <section className="panel sales-grouped-list">
-          <h2>Forge Sales by Item</h2>
+          <h2>Business Sales by Item</h2>
           {salesReviewView.itemGroups.map((group) => {
             const expanded = expandedSalesGroupKey === group.key;
             return (
@@ -47787,7 +48184,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     }
 
     return (
-      <ListPanel title="Forge Sales" emptyText={getEmptyStateGuidance("sales").body}>
+      <ListPanel title="Business Sales" emptyText={getEmptyStateGuidance("sales").body}>
         {salesReviewView.sortedSales.map((sale) => renderForgeSaleCard(sale))}
       </ListPanel>
     );
@@ -47849,7 +48246,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     }
     return "collector";
   })();
-  const roleModeClass = `app-role-${activeRoleMode} app-mode-${activeRoleMode}`;
+  const roleModeClass = `app-role-${activeRoleMode} app-mode-${activeRoleMode}${kidSafeView ? " app-kid-safe" : ""}`;
 
   const personalizationPreferences = currentAppSetupPreferences();
   const adaptiveActivity = {
@@ -47867,6 +48264,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     packs: sparkKidPacks,
   };
   const hearthPageProps = {
+    kidSafeView,
     experiencePresentation,
     onOpenSellTrade: () => { prepareRouteNavigation(); setActiveTab("exchange"); },
     onOpenExperienceSettings: () => { prepareRouteNavigation(); setActiveTab("settings"); },
@@ -47921,7 +48319,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     marketPriceMemories,
     missingSalePriceItems,
     missingSetCardCount,
-    money,
+    money: displayMoney,
     monthlyProfitLoss,
     needsMarketCheckItems,
     normalizeDailyTideState,
@@ -48070,7 +48468,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     forgeInventoryItems,
     marketPriceMemories,
     missingSalePriceItems,
-    money,
+    money: displayMoney,
     needsMarketCheckItems,
     openBeaconCenter,
     openCompassSearch,
@@ -48100,6 +48498,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   };
 
   const marketPageProps = {
+    submittedCatalogSearch,
     CATALOG_PAGE_SIZE_OPTIONS,
     CATALOG_SORT_OPTIONS,
     Field,
@@ -48137,7 +48536,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     isFeatureSectionOpen,
     marketCatalogDealFilter,
     marketSetSearchResults,
-    money,
+    money: displayMoney,
     openBeaconCenter,
     openCompassSearch,
     openCatalogDetails,
@@ -49082,7 +49481,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               {workspaceDeleteTarget?.id === DEFAULT_PERSONAL_WORKSPACE_ID ? (
                 <div className="validation-summary" role="alert">
                   <strong>Default workspace cannot be deleted.</strong>
-                  <p>Use Settings to hide Personal Forge, or archive/delete other empty workspaces you no longer need.</p>
+                  <p>Use Settings to hide Personal Business Workspace, or archive/delete other empty workspaces you no longer need.</p>
                 </div>
               ) : workspaceDeleteCounts?.total > 0 ? (
                 <div className="validation-summary" role="alert">
@@ -49551,7 +49950,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <input
                     value={feedbackForm.page}
                     onChange={(event) => setFeedbackForm((current) => ({ ...current, page: event.target.value }))}
-                    placeholder="Home, Scout, The Vault..."
+                    placeholder="Home, Restocks, The Vault..."
                   />
                 </Field>
                 <Field label={feedbackDialogCopy.stepsLabel}>
@@ -49640,7 +50039,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
             <div className="location-modal-actions">
               <button type="button" onClick={() => handleVaultMarketplaceDecision("copy")}>Create Listing Only</button>
-              <button type="button" className="secondary-button" onClick={() => handleVaultMarketplaceDecision("move")}>Move to Forge and List</button>
+              <button type="button" className="secondary-button" onClick={() => handleVaultMarketplaceDecision("move")}>Move to Business and List</button>
               <button type="button" className="ghost-button" onClick={() => handleVaultMarketplaceDecision("cancel")}>Cancel</button>
             </div>
           </section>
@@ -49678,8 +50077,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <div className="location-modal-backdrop" role="presentation" onClick={() => setTidepoolFlagTarget(null)}>
           <form className="location-modal" role="dialog" aria-modal="true" aria-labelledby="tidepool-flag-title" onSubmit={(event) => { event.preventDefault(); submitTidepoolFlag(); }} onClick={(event) => event.stopPropagation()}>
             <div>
-              <h2 id="tidepool-flag-title">Report Tidepool Post</h2>
-              <p>Thanks for helping keep Tidepool family-safe. Reporting creates a moderation signal; it does not hard-delete the post.</p>
+              <h2 id="tidepool-flag-title">Report Community Post</h2>
+              <p>Thanks for helping keep Community family-safe. Reporting creates a moderation signal; it does not hard-delete the post.</p>
             </div>
             <div className="drawer-info-card">
               <strong>{tidepoolFlagTarget.title || normalizeTidepoolPostCategory(tidepoolFlagTarget.postType)}</strong>
@@ -49728,12 +50127,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <section className="location-modal scout-score-modal" role="dialog" aria-modal="true" aria-labelledby="scout-score-title" onClick={(event) => event.stopPropagation()}>
             <div className="compact-card-header">
               <div>
-                <h2 id="scout-score-title">Scout Score</h2>
-                <p>Scout Score increases when reports are accurate and verified. False or spam reports lower trust.</p>
+                <h2 id="scout-score-title">Restocks Score</h2>
+                <p>Restocks Score increases when reports are accurate and verified. False or spam reports lower trust.</p>
               </div>
               <div className="summary-pill-row">
                 {scoutSnapshot.scoutProfile?.badgeLevel ? <span className="status-badge">{scoutSnapshot.scoutProfile.badgeLevel}</span> : null}
-                <button type="button" className="modal-icon-close" aria-label="Close Scout Score" onClick={() => setScoutScoreModalOpen(false)}>X</button>
+                <button type="button" className="modal-icon-close" aria-label="Close Restocks Score" onClick={() => setScoutScoreModalOpen(false)}>X</button>
               </div>
             </div>
             <div className="scout-score-grid">
@@ -49759,10 +50158,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <section className="location-modal scout-report-detail-sheet" role="dialog" aria-modal="true" aria-labelledby="scout-report-detail-title" onClick={(event) => event.stopPropagation()}>
             <div className="modal-title-row modal-sticky-header">
               <div>
-                <h2 id="scout-report-detail-title">Scout Report</h2>
+                <h2 id="scout-report-detail-title">Restocks Report</h2>
                 <p>{getScoutReportStore(selectedScoutReport).name || selectedScoutReport.storeName || "Manual store name unavailable"} | {scoutReportDateTimeLabel(selectedScoutReport)} | Current report only</p>
               </div>
-              <button type="button" className="modal-close-button" aria-label="Close Scout report" onClick={closeScoutReportDetail}>X</button>
+              <button type="button" className="modal-close-button" aria-label="Close restock report" onClick={closeScoutReportDetail}>X</button>
             </div>
             <div className="scout-report-detail-body">
               <div className="scout-report-detail-summary">
@@ -49774,7 +50173,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <span>{scoutReportObservationStatusLabel(selectedScoutReport)}</span>
               <small className="scout-report-detail-primary-copy">{scoutReportDetailItemSummary(selectedScoutReport)}</small>
               <small>{scoutReportObservedSummaryLabel(selectedScoutReport)}</small>
-              <div className="scout-signal-badge-row" aria-label="Scout report detail trust">
+              <div className="scout-signal-badge-row" aria-label="Restock report detail trust">
                 <span className={`scout-trust-pill scout-trust-pill--${scoutReportConfidenceBadge(selectedScoutReport).key}`}>{scoutReportConfidenceBadge(selectedScoutReport).label}</span>
                 {(() => {
                   const detailProofLabel = scoutReportPhotoUrls(selectedScoutReport).length ? "Photo proof" : quickScoutProofLabel(selectedScoutReport.proofType || selectedScoutReport.proof_type);
@@ -49782,7 +50181,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 })()}
               </div>
               </div>
-              <div className="scout-report-detail-overview-grid" aria-label="Scout report summary">
+              <div className="scout-report-detail-overview-grid" aria-label="Restock report summary">
                 <section className="scout-report-detail-info-card">
                   <span>Store</span>
                   <strong>{getScoutReportStore(selectedScoutReport).name || selectedScoutReport.storeName || "Manual store name unavailable"}</strong>
@@ -49804,10 +50203,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <small>{scoutReportConfidenceBadge(selectedScoutReport).label}</small>
                 </section>
               </div>
-              <section className="scout-report-detail-action-panel" aria-label="Scout report actions">
+              <section className="scout-report-detail-action-panel" aria-label="Restock report actions">
                 <div>
                   <h3>Report actions</h3>
-                  <p>{canAddScoutReportDetails(selectedScoutReport) ? "Add details, confirm, add proof, or flag issues without exposing raw Scout history." : "You can confirm, add proof, flag an issue, or add a fresh report for this store."}</p>
+                  <p>{canAddScoutReportDetails(selectedScoutReport) ? "Add details, confirm, add proof, or flag issues without exposing raw restock history." : "You can confirm, add proof, flag an issue, or add a fresh report for this store."}</p>
                 </div>
                 <div className="scout-report-detail-action-grid">
                   {canAddScoutReportDetails(selectedScoutReport) ? (
@@ -49934,7 +50333,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </summary>
                 <div className="scout-report-detail-row">
                   <strong>{scoutReportPhotoUrls(selectedScoutReport).length ? `${scoutReportPhotoUrls(selectedScoutReport).length} proof image${scoutReportPhotoUrls(selectedScoutReport).length === 1 ? "" : "s"}` : "No proof added yet."}</strong>
-                  <span>{selectedScoutReport.proofText || selectedScoutReport.proof_text || selectedScoutReport.sourceText || selectedScoutReport.source_text || "No proof added yet. Proof helps Scout trust this report."}</span>
+                  <span>{selectedScoutReport.proofText || selectedScoutReport.proof_text || selectedScoutReport.sourceText || selectedScoutReport.source_text || "No proof added yet. Proof helps Restocks trust this report."}</span>
                 </div>
                 {scoutReportPhotoUrls(selectedScoutReport).length ? (
                   <div className="scout-report-proof-strip">
@@ -50011,7 +50410,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </details>
               <details className="scout-report-detail-section">
                 <summary>
-                  <span>{tierAccess.canViewRawScoutHistory ? "History / Source" : "Protected Scout context"}</span>
+                  <span>{tierAccess.canViewRawScoutHistory ? "History / Source" : "Protected restock context"}</span>
                   <small>{tierAccess.canViewRawScoutHistory ? "Similar and conflicting reports." : "Raw history and pattern tools stay protected."}</small>
                 </summary>
                 {renderScoutReportRelatedContext(selectedScoutReport)}
@@ -50051,17 +50450,17 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
       {scoutReportActionDraft ? (() => {
         const actionReport = findScoutReportForDetail(scoutReportActionDraft.reportId, selectedScoutReport) || selectedScoutReport || {};
-        const storeName = getScoutReportStore(actionReport).name || actionReport.storeName || "Scout report";
+        const storeName = getScoutReportStore(actionReport).name || actionReport.storeName || "Restock report";
         const itemSummary = scoutReportDetailItemSummary(actionReport);
         const actionTitle = scoutReportActionDraft.type === "confirm"
-          ? "Confirm Scout Report"
+          ? "Confirm Restocks Report"
           : scoutReportActionDraft.type === "proof"
             ? "Add Proof"
             : "Flag Report";
         const actionCopy = scoutReportActionDraft.type === "confirm"
-          ? "Confirmations help Scout trust current reports."
+          ? "Confirmations help Restocks trust current reports."
           : scoutReportActionDraft.type === "proof"
-            ? "Proof helps Scout trust this report."
+            ? "Proof helps Restocks trust this report."
             : "Flagging sends this report to admin review without deleting it.";
         return (
           <div className="location-modal-backdrop scout-report-action-backdrop" role="presentation" onClick={() => !scoutReportActionDraft.saving && setScoutReportActionDraft(null)}>
@@ -50069,7 +50468,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <div className="modal-title-row modal-sticky-header">
                 <div>
                   <h2 id="scout-report-action-title">{actionTitle}</h2>
-                  <p>{actionCopy} Nothing is removed from Scout by this action.</p>
+                  <p>{actionCopy} Nothing is removed from Restocks by this action.</p>
                 </div>
                 <button
                   type="button"
@@ -50091,7 +50490,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 {scoutReportActionDraft.type === "confirm" ? (
                   <section className="scout-report-action-section">
                     <h3>What did you confirm?</h3>
-                    <div className="scout-report-action-options" role="radiogroup" aria-label="Scout confirmation status">
+                    <div className="scout-report-action-options" role="radiogroup" aria-label="Restocks confirmation status">
                       {SCOUT_REPORT_CONFIRM_OPTIONS.map((option) => (
                         <button
                           key={option.value}
@@ -50150,7 +50549,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 {scoutReportActionDraft.type === "flag" ? (
                   <section className="scout-report-action-section">
                     <h3>Why are you flagging this?</h3>
-                    <div className="scout-report-action-options scout-report-action-options--compact" role="radiogroup" aria-label="Scout flag reason">
+                    <div className="scout-report-action-options scout-report-action-options--compact" role="radiogroup" aria-label="Restocks flag reason">
                       {SCOUT_REPORT_FLAG_REASONS.map((reason) => (
                         <button
                           key={reason.value}
@@ -50199,7 +50598,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="modal-title-row modal-sticky-header">
               <div>
                 <h2 id="scout-date-time-edit-title">Edit visit date &amp; time</h2>
-                <p>{getScoutReportStore(scoutDateTimeEdit.report).name || scoutDateTimeEdit.report.storeName || "Scout report"}</p>
+                <p>{getScoutReportStore(scoutDateTimeEdit.report).name || scoutDateTimeEdit.report.storeName || "Restock report"}</p>
               </div>
               <button
                 type="button"
@@ -50247,7 +50646,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <button type="button" className="modal-close-button" aria-label="Close moderation confirmation" onClick={() => setScoutReportModerationTarget(null)}>X</button>
             </div>
             <div className="drawer-info-card">
-              <strong>{getScoutReportStore(scoutReportModerationTarget.report).name || scoutReportModerationTarget.report?.storeName || "Scout report"}</strong>
+              <strong>{getScoutReportStore(scoutReportModerationTarget.report).name || scoutReportModerationTarget.report?.storeName || "Restock report"}</strong>
               <p className="compact-subtitle">{normalizeScoutReportItems(scoutReportModerationTarget.report)[0]?.productName || scoutReportModerationTarget.report?.note || "No product details added."}</p>
             </div>
             <div className="location-modal-actions modal-sticky-footer">
@@ -50350,6 +50749,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       ) : null}
 
       {renderSmartSetupModal()}
+      {renderStorageQuotaBanner()}
       {renderToastViewport()}
       {renderConfirmationModal()}
 
@@ -50566,7 +50966,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   </div>
                 ) : null}
                 <div className="scan-product-helper-card scan-product-helper-card--receipt">
-                  <strong>We’ll capture:</strong>
+                  <strong>How this works right now:</strong>
+                  <p className="compact-subtitle">There is no automatic receipt reading yet. Attach the photo for your records, then type or paste the receipt lines and we sort them into:</p>
                   <ul>
                     <li>Store</li>
                     <li>Date</li>
@@ -50839,7 +51240,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   {scanDestination === "vault" || scanDestination === "forge" || scanDestination === "wishlist"
                     ? `Next: open the shared Add review screen for ${scannerDestinationLabel(scanDestination)}. You can edit quantity, condition, price, location, and notes before saving.`
                     : scanDestination === "expense_only"
-                      ? "Expense-only saves the scanner review only. It does not create a Vault or Forge item."
+                      ? "Expense-only saves the scanner review only. It does not create a Vault or Business item."
                       : scanDestination === "ignore"
                         ? "Ignore records the review as rejected and does not save an item."
                         : "Choose a destination before continuing. Nothing is saved automatically."}
@@ -51163,7 +51564,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                           {item.verified ? "Verified" : "Verify Items"}
                         </button>
                         <button type="button" className="secondary-button" onClick={() => markReceiptDraftItemUse(item.id, RECEIPT_LINE_ENTRY_TYPES.INVENTORY, "vault")}>Destination: Vault</button>
-                        <button type="button" className="secondary-button" onClick={() => markReceiptDraftItemUse(item.id, RECEIPT_LINE_ENTRY_TYPES.INVENTORY, "forge")}>Destination: Forge</button>
+                        <button type="button" className="secondary-button" onClick={() => markReceiptDraftItemUse(item.id, RECEIPT_LINE_ENTRY_TYPES.INVENTORY, "forge")}>Destination: Business</button>
                         <button type="button" className="secondary-button" onClick={() => markReceiptDraftItemUse(item.id, RECEIPT_LINE_ENTRY_TYPES.EXPENSE_ONLY, "expense_only")}>Expense Only</button>
                         <button type="button" className="secondary-button" onClick={() => markReceiptDraftItemUse(item.id, RECEIPT_LINE_ENTRY_TYPES.SUPPLIES, "expense_only")}>Supplies</button>
                         <button type="button" className="secondary-button" onClick={() => markReceiptDraftItemUse(item.id, RECEIPT_LINE_ENTRY_TYPES.MILEAGE_REFERENCE, "expense_only")}>Mileage/Gas</button>
@@ -51196,7 +51597,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       <DetailItem label="Items added" value={receiptScanDraft.report.itemsAdded} />
                       <DetailItem label="Items ignored" value={receiptScanDraft.report.itemsIgnored} />
                       <DetailItem label="Vault value added" value={money(receiptScanDraft.report.vaultValueAdded || 0)} />
-                      <DetailItem label="Forge cost added" value={money(receiptScanDraft.report.forgeInventoryCostAdded || 0)} />
+                      <DetailItem label="Business cost added" value={money(receiptScanDraft.report.forgeInventoryCostAdded || 0)} />
                       <DetailItem label="Estimated MSRP" value={money(receiptScanDraft.report.estimatedMsrpTotal || 0)} />
                       <DetailItem label="Estimated market" value={money(receiptScanDraft.report.estimatedMarketTotal || 0)} />
                     </div>
@@ -51340,16 +51741,16 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
             <div className="watch-calendar-why-panel">
               <strong>Why this is showing</strong>
-              <p>{selectedWatchCalendarEvent.reason || selectedWatchCalendarEvent.basisSummary || "Tide Watch is using available Scout reports, watched-store data, or release dates. Treat this as a watch window, not a guarantee."}</p>
+              <p>{selectedWatchCalendarEvent.reason || selectedWatchCalendarEvent.basisSummary || "Watch Center is using available restock reports, watched-store data, or release dates. Treat this as a watch window, not a guarantee."}</p>
               <div className="watch-calendar-why-grid">
                 <span>Past reports: {selectedWatchCalendarEvent.supportingReportCount ?? "Unknown"}</span>
                 <span>Planned context: {selectedWatchCalendarEvent.supportingGuessCount ?? "Unknown"}</span>
                 <span>Last confirmed: {selectedWatchCalendarEvent.lastConfirmedReportLabel || "Not confirmed yet"}</span>
               </div>
               {selectedWatchCalendarEvent.sourceUrl ? (
-                <a className="watch-calendar-source-link" href={selectedWatchCalendarEvent.sourceUrl} target="_blank" rel="noreferrer">
+                <ExternalWebLink className="watch-calendar-source-link" href={selectedWatchCalendarEvent.sourceUrl}>
                   View source reference
-                </a>
+                </ExternalWebLink>
               ) : null}
             </div>
             <div className="location-modal-actions modal-sticky-footer">
@@ -51637,7 +52038,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         itemForm,
         itemPurchaserName,
         markWishlistItemOwned,
-        money,
+        money: displayMoney,
         normalizeItemCompareType,
         normalizeVaultStatus,
         openItemComparisonFlow,
@@ -51700,6 +52101,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         setVaultSubTab,
         setVaultTypeFilter,
         setVaultValueFilter,
+        setFeatureSectionsOpen,
         shortDate,
         startEditingVaultItem,
         statusClass,
@@ -51757,7 +52159,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         )}
 
         {activeTab === "scout" && (
-          <LazyToolBoundary label="Loading Scout command center...">
+          <LazyToolBoundary label="Loading Restocks command center...">
             <Scout
               targetSubTab={{
                 ...scoutSubTabTarget,
@@ -51909,7 +52311,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   <section className="panel forge-add-inventory-panel">
     <div className="compact-card-header forge-form-page-header">
       <div>
-        <h2>Add Forge Inventory</h2>
+        <h2>Add Business Inventory</h2>
         <p>Build a sellable inventory record from catalog data, scan review, or manual entry.</p>
       </div>
       <button type="button" className="secondary-button" onClick={() => beginScanProduct("none")}>
@@ -51981,7 +52383,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <EtMockupPageShell
             accent="forge"
             className="forge-mockup-rebuild"
-            ariaLabel="Forge private seller command desk"
+            ariaLabel="Business private seller command desk"
           >
             <div className="et-mockup-main-column forge-mockup-main">
               {renderForgeHeader()}
@@ -51989,13 +52391,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <>
               <PageHeader
                 className={getHeaderCardClass("panel marketplace-page-heading")}
-                title="Forge > Marketplace"
-                subtitle="Create listings from Forge inventory, Vault items, Market Watch catalog products, or manual entry."
+                title="Business > Marketplace"
+                subtitle="Create listings from Business inventory, Vault items, Market Watch catalog products, or manual entry."
                 actions={(
                   <button type="button" className="secondary-button" onClick={() => {
                     setMarketplaceView("browse");
                     setForgeSubTab("overview");
-                  }}>Back to Forge</button>
+                  }}>Back to Business</button>
                 )}
               />
               {renderMarketplaceSection()}
@@ -52004,11 +52406,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <>
               <PageHeader
                 className={getHeaderCardClass("panel forge-command-center forge-ledger-page-heading")}
-                title="Forge > Business Ledger"
+                title="Business > Business Ledger"
                 subtitle="Planning surface for money in, money out, payouts, partner splits, reinvestment, events, and export previews."
                 actions={(
                   <>
-                    <button type="button" className="secondary-button" onClick={() => setForgeSubTab("overview")}>Back to Forge</button>
+                    <button type="button" className="secondary-button" onClick={() => setForgeSubTab("overview")}>Back to Business</button>
                     <button type="button" onClick={() => openAddSaleFlow()}>Add Sale</button>
                   </>
                 )}
@@ -52024,19 +52426,19 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <p>Grouped seller items ready for listing, sale, or review.</p>
                 <div className="summary-pill-row forge-identity-pill-row">
                   <span className="status-badge">{forgeIdentityModeLabel(activeForgeIdentityMode)}</span>
-                  <span className="status-badge trust-badge--secure">{activeForgeWorkspace?.name || "Forge unavailable"}</span>
+                  <span className="status-badge trust-badge--secure">{activeForgeWorkspace?.name || "Business unavailable"}</span>
                 </div>
               </div>
             </div>
             {!activeForgeWorkspace ? (
               <div className="empty-state small-empty-state forge-workspace-unavailable">
-                <h3>Forge workspace unavailable</h3>
+                <h3>Business workspace unavailable</h3>
                 <p>{forgeWorkspaceUnavailableMessage}</p>
-                <button type="button" className="secondary-button" onClick={() => setActiveTab("menu")}>Open Forge settings</button>
+                <button type="button" className="secondary-button" onClick={() => setActiveTab("menu")}>Open Business settings</button>
               </div>
             ) : null}
             {renderForgeBusinessCommandPanel()}
-            <div className="quick-actions forge-action-strip" aria-label="Forge quick actions">
+            <div className="quick-actions forge-action-strip" aria-label="Business quick actions">
               <button type="button" onClick={() => openProductAddFlow({ source: "forge-action-strip", destinations: { forge: true } })}>Add Inventory</button>
               <button type="button" className="secondary-button" onClick={() => openAddSaleFlow()}>Add Sale</button>
               <button type="button" className="secondary-button" onClick={() => openTradeCompassFlow({ source: "forge-action-strip" })}>Trade Compass</button>
@@ -52057,13 +52459,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
             <details className="forge-analytics-disclosure">
               <summary>View analytics</summary>
-            <section className="forge-business-dashboard" aria-label="Forge business dashboard">
+            <section className="forge-business-dashboard" aria-label="Business dashboard">
               <div className="forge-business-dashboard-heading">
                 <div>
                   <h3>Business snapshot</h3>
                   <p>Quick status for inventory, sales, receipts, and mileage.</p>
                 </div>
-                <span className="trust-badge trust-badge--secure">Private Forge</span>
+                <span className="trust-badge trust-badge--secure">Private Business</span>
               </div>
               {activeForgeWorkspace && !forgeBusinessHasRecords ? (
                 <div className="small-empty-state forge-business-empty-state">
@@ -52099,7 +52501,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   const displayCard = compactCardCopy ? { ...card, ...compactCardCopy } : card;
                   return (
                     <button type="button" className="forge-daily-card forge-business-card" key={displayCard.label} onClick={displayCard.action}>
-                      <span className="forge-business-card-group">{displayCard.group || "Forge"}</span>
+                      <span className="forge-business-card-group">{displayCard.group || "Business"}</span>
                       <span className="forge-business-card-label">{displayCard.label}</span>
                       <strong>{displayCard.value}</strong>
                       <small>{displayCard.helper}</small>
@@ -52107,7 +52509,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   );
                 })}
               </div>
-              <div className="inventory-insight-panel forge-valuation-panel" aria-label="Forge valuation and profit planning">
+              <div className="inventory-insight-panel forge-valuation-panel" aria-label="Business valuation and profit planning">
                 <div className="inventory-insight-heading">
                   <div>
                     <h3>Inventory valuation and planning</h3>
@@ -52124,7 +52526,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     </div>
                   ))}
                 </div>
-                <div className="price-reliability-summary" aria-label="Forge valuation reliability">
+                <div className="price-reliability-summary" aria-label="Business valuation reliability">
                   <div>
                     <h4>Valuation reliability</h4>
                     <p>Valuation is estimated from known values. Manual, stale, or missing prices stay labeled for review.</p>
@@ -52167,7 +52569,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </section>
             </details>
             {!activeFlowModal && importAssistantContext === "Forge" ? renderInventoryImportAssistant() : null}
-            <input className="search-input" value={inventorySearch} onChange={(e) => setInventorySearch(e.target.value)} placeholder="Search Forge inventory..." />
+            <input className="search-input" value={inventorySearch} onChange={(e) => setInventorySearch(e.target.value)} placeholder="Search Business inventory..." />
             <div className="chip-row">
               {quickInventoryFilters.map((filter) => (
                 <button
@@ -52251,7 +52653,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <section className="panel forge-edit-panel">
                 <div className="forge-toolbar">
                   <div>
-                    <h2>Edit Forge Item</h2>
+                    <h2>Edit Business Item</h2>
                     <p>Save changes here, then the Home totals update from localStorage.</p>
                   </div>
                   <button type="button" className="secondary-button" onClick={() => { setEditingItemId(null); setItemForm(blankItem); }}>
@@ -52302,7 +52704,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 renderGuidedEmptyState("forge", {
                   title: "Start tracking sales and resale inventory.",
                   body: "Your business workspace is ready. Add inventory, a receipt, mileage, or a sale when you are ready.",
-                  actionLabel: "Add first Forge item",
+                  actionLabel: "Add first Business item",
                   actionTarget: "forge",
                 })
               ) : pagedForgeInventory.items.map((item) => {
@@ -52362,7 +52764,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <div className="compact-card-header">
                 <div>
                   <h3>Recent activity</h3>
-                  <p>Latest inventory, sales, expense, and mileage records in this Forge workspace.</p>
+                  <p>Latest inventory, sales, expense, and mileage records in this Business workspace.</p>
                 </div>
               </div>
               {forgeRecentActivity.length ? (
@@ -52378,7 +52780,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </div>
               ) : (
                 <div className="small-empty-state forge-business-empty-state">
-                  <strong>No Forge activity yet.</strong>
+                  <strong>No Business activity yet.</strong>
                   <span>Add inventory, a receipt, mileage, or a sale when you are ready.</span>
                 </div>
               )}
@@ -52410,14 +52812,20 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <div className="compact-card-header">
                 <div>
                   <h1>Sales Records</h1>
-                  <p>Manual sales and linked Forge inventory sales stay organized for business records and year-end review.</p>
+                  <p>Manual sales and linked Business inventory sales stay organized for business records and year-end review.</p>
                 </div>
                 <div className="drawer-inline-actions">
                   <button type="button" onClick={() => openAddSaleFlow()}>Add Sale</button>
-                  <button type="button" className="secondary-button" onClick={() => downloadSalesRecords("csv")}>Export Sales CSV</button>
-                  <button type="button" className="secondary-button" onClick={() => downloadSalesRecords("json")}>Export Sales JSON</button>
+                  <button type="button" className="secondary-button" aria-describedby="sales-export-disclosure" onClick={() => downloadSalesRecords("csv")}>Export Sales CSV</button>
+                  <button type="button" className="secondary-button" aria-describedby="sales-export-disclosure" onClick={() => downloadSalesRecords("json")}>Export Sales JSON</button>
                 </div>
               </div>
+              {/* #97: describe the sales file before it is generated. */}
+              <label className="checkbox-row export-private-toggle">
+                <input type="checkbox" checked={!exportIncludePrivateFields} onChange={(event) => setExportIncludePrivateFields(!event.target.checked)} />
+                <span>Leave out buyer names and notes (totals and dates stay in)</span>
+              </label>
+              <ExportDisclosure id="sales-export-disclosure" format="csv/json" fields={fieldsFromRows(buildSalesExportRows(workspaceSales.slice(0, 5), { includePrivateFields: exportIncludePrivateFields }))} recordCount={workspaceSales.length} redactions={exportIncludePrivateFields ? ["customer contact details", "receipt images"] : ["buyer names", "notes", "customer contact details", "receipt images"]} />
               <div className="expense-summary-grid sales-summary-grid">
                 <div><span>Gross sales</span><strong>{money(salesSummary.grossSales)}</strong><small>{salesSummary.count} sale{salesSummary.count === 1 ? "" : "s"}</small></div>
                 <div><span>Estimated fees</span><strong>{money(salesSummary.estimatedFees)}</strong><small>Platform + payment processing</small></div>
@@ -52685,10 +53093,16 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </div>
                 <div className="drawer-inline-actions">
                   <button type="button" onClick={() => openAddMileageFlow()}>Add Mileage</button>
-                  <button type="button" className="secondary-button" onClick={() => downloadMileageRecords("csv")}>Export CSV</button>
-                  <button type="button" className="secondary-button" onClick={() => downloadMileageRecords("json")}>Export JSON</button>
+                  <button type="button" className="secondary-button" aria-describedby="mileage-export-disclosure" onClick={() => downloadMileageRecords("csv")}>Export CSV</button>
+                  <button type="button" className="secondary-button" aria-describedby="mileage-export-disclosure" onClick={() => downloadMileageRecords("json")}>Export JSON</button>
                 </div>
               </div>
+              {/* #97: mileage notes carry trip purpose and driver names, so say so first. */}
+              <label className="checkbox-row export-private-toggle">
+                <input type="checkbox" checked={!exportIncludePrivateFields} onChange={(event) => setExportIncludePrivateFields(!event.target.checked)} />
+                <span>Leave out driver names and notes (miles, dates and purposes stay in)</span>
+              </label>
+              <ExportDisclosure id="mileage-export-disclosure" format="csv/json" fields={exportIncludePrivateFields ? [...fieldsFromRows(buildMileageExportRows(groupedMileageVehicles.slice(0, 3))), "driver"] : fieldsFromRows(buildMileageExportRows(groupedMileageVehicles.slice(0, 3), { includePrivateFields: false })).filter((field) => field !== "notes")} recordCount={groupedMileageVehicles.reduce((total, group) => total + (Number(group?.tripCount) || 0), 0)} redactions={exportIncludePrivateFields ? [] : ["driver names", "notes"]} />
             </section>
             <ListPanel title="Mileage Vehicle Summary" emptyText={getEmptyStateGuidance("mileage").body}>
               {groupedMileageVehicles.map((group) => (
@@ -52813,7 +53227,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       actions={[
                         { label: "Open Profile", variant: "primary", onClick: () => document.querySelector(".catalog-detail-core-panel")?.scrollIntoView?.({ block: "start", behavior: "smooth" }) },
                         { label: "Save Price", onClick: () => openMarketPriceMemoryFlow(selectedCatalogDetailPricingProduct || selectedCatalogDetailProduct, { source: "market-detail-flip-save-price" }) },
-                        { label: adaptiveSellerToolsVisible && activeForgeWorkspace ? "Add to Forge" : "Add to Vault", onClick: () => openMarketProductAddFlow(selectedCatalogDetailPricingProduct || selectedCatalogDetailProduct, "market-detail-flip", { defaultDestination: adaptiveSellerToolsVisible && activeForgeWorkspace ? "forge" : "vault" }) },
+                        { label: adaptiveSellerToolsVisible && activeForgeWorkspace ? "Add to Business" : "Add to Vault", onClick: () => openMarketProductAddFlow(selectedCatalogDetailPricingProduct || selectedCatalogDetailProduct, "market-detail-flip", { defaultDestination: adaptiveSellerToolsVisible && activeForgeWorkspace ? "forge" : "vault" }) },
                         { label: "Add to Set", disabled: true, title: "Add to Set is coming soon from Market details." },
                       ]}
                     />
@@ -52954,7 +53368,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </section>
 	                <div className="catalog-detail-action-group catalog-detail-primary-actions">
 	                  <button type="button" onClick={() => openMarketProductAddFlow(selectedCatalogDetailPricingProduct || selectedCatalogDetailProduct, "market-detail", { defaultDestination: adaptiveSellerToolsVisible && activeForgeWorkspace ? "forge" : "vault" })}>
-	                    {adaptiveSellerToolsVisible && activeForgeWorkspace ? "Add to Forge" : "Add to Vault"}
+	                    {adaptiveSellerToolsVisible && activeForgeWorkspace ? "Add to Business" : "Add to Vault"}
 	                  </button>
 	                  <button type="button" className="secondary-button" onClick={() => addCatalogDetailToWatchlist(selectedCatalogDetailProduct)}>Watch</button>
 	                  <button type="button" className="secondary-button" onClick={() => checkCatalogDetailDeal(selectedCatalogDetailProduct)}>Check Deal</button>
@@ -52965,7 +53379,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 	                  <div className="catalog-detail-action-group catalog-detail-secondary-actions">
 	                    <button type="button" onClick={() => markCatalogDetailOwned(selectedCatalogDetailProduct)}>Mark Owned</button>
 	                    <button type="button" onClick={() => markCatalogDetailMissing(selectedCatalogDetailProduct)}>Mark Missing</button>
-	                    <button type="button" onClick={() => addCatalogDetailToScoutSighting(selectedCatalogDetailProduct)}>Add to Scout Sighting</button>
+	                    <button type="button" onClick={() => addCatalogDetailToScoutSighting(selectedCatalogDetailProduct)}>Add to Restocks Sighting</button>
 	                    <button type="button" className="secondary-button" onClick={() => addCatalogDetailDuplicate(selectedCatalogDetailProduct)}>Add Duplicate</button>
 	                    <button type="button" className="secondary-button" onClick={focusCatalogDetailConditionEditor}>Edit Condition</button>
 	                    <button type="button" className="secondary-button" onClick={focusCatalogDetailVariantPicker}>Choose Variant</button>
@@ -53044,7 +53458,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     </div>
                   ) : null}
                   {catalogSourceUrl(selectedCatalogDetailPricingProduct) ? (
-                    <a className="secondary-button" href={catalogSourceUrl(selectedCatalogDetailPricingProduct)} target="_blank" rel="noreferrer">Open Source</a>
+                    <ExternalWebLink className="secondary-button" href={catalogSourceUrl(selectedCatalogDetailPricingProduct)}>Open Source</ExternalWebLink>
                   ) : null}
                 </details> : null}
                 <details className="catalog-source-details">
@@ -53418,7 +53832,7 @@ function ForgeItemDetail({ item, marketItem, masterCard, onClose, onEdit, onDele
   if (!item) return null;
   const detailImage = item.itemImage || vaultItemDisplayImage(item);
   const setLabel = item.setName || item.expansion || "";
-  const productType = item.productType || "Forge inventory";
+  const productType = item.productType || "Business inventory";
   const valuation = item.valuationSummary || buildGroupedInventoryValuation(item, { context: "forge" });
   const statusSummary = item.statusSummary || summarizeForgeGroupedInventoryStatus(inventoryGroupEntries(item), item.saleHistory || []);
   const primaryEntry = inventoryGroupEntries(item)[0] || item;
@@ -53475,7 +53889,7 @@ function ForgeItemDetail({ item, marketItem, masterCard, onClose, onEdit, onDele
       <div className="compact-card-header">
         <div>
           <h3>{item.name}</h3>
-          <p className="compact-subtitle">Forge is private business inventory for pricing, selling, and fulfillment prep.</p>
+          <p className="compact-subtitle">Business is private business inventory for pricing, selling, and fulfillment prep.</p>
         </div>
         <button type="button" className="secondary-button" onClick={onClose}>Close</button>
       </div>
@@ -53484,7 +53898,7 @@ function ForgeItemDetail({ item, marketItem, masterCard, onClose, onEdit, onDele
           {detailImage ? <PrivateStorageImage src={detailImage} alt={item.name} /> : <span>Photo needed</span>}
         </div>
         <div className="inventory-detail-summary">
-          <span className="trust-badge trust-badge--secure">Private Forge</span>
+          <span className="trust-badge trust-badge--secure">Private Business</span>
           <h4>{item.name}</h4>
           <p>{[setLabel, productType].filter(Boolean).join(" - ") || "Business inventory"}</p>
           <div className="inventory-detail-metrics">
@@ -53673,7 +54087,7 @@ function VaultGroupedCardDetail({ cardGroup, setSummary, onClose, onViewSet, onA
               <div className="vault-set-mini-actions">
                 {firstOwned ? <button type="button" className="secondary-button" onClick={() => onOpenRecord?.(firstOwned)}>View item</button> : null}
                 {firstWishlist ? <button type="button" className="secondary-button" onClick={() => onMarkOwned?.(firstWishlist)}>Mark owned</button> : null}
-                {showSellerTools && firstOwned ? <span className="status-badge">Forge actions in item detail</span> : null}
+                {showSellerTools && firstOwned ? <span className="status-badge">Business actions in item detail</span> : null}
               </div>
             </article>
           );
@@ -54106,7 +54520,7 @@ function VaultItemDetailContent({ item, marketItem, masterCard, setSummary, link
     { key: "compare", label: "Compare", detail: "Raw, graded, or sealed options", action: () => onAddToCompare?.(item) },
     itemIsWishlist
       ? { key: "owned", label: "Mark owned", detail: "Move from want to Vault", action: () => onMarkOwned?.(item) }
-      : { key: "forge", label: "Forge", detail: "Trade or seller review", action: () => onStartTrade?.(item) },
+      : { key: "forge", label: "Business", detail: "Trade or seller review", action: () => onStartTrade?.(item) },
   ];
 
   return (
@@ -54117,7 +54531,7 @@ function VaultItemDetailContent({ item, marketItem, masterCard, setSummary, link
           <h3>{item.name}</h3>
           <p className="compact-subtitle">
             {showVaultSellerTools
-              ? "Vault keeps collection records protected. Move or copy to Forge when this becomes business stock."
+              ? "Vault keeps collection records protected. Move or copy to Business when this becomes business stock."
               : "Vault keeps collection records protected, readable, and separate from seller tools."}
           </p>
         </div>
@@ -54351,7 +54765,7 @@ function VaultItemDetailContent({ item, marketItem, masterCard, setSummary, link
         <article className="vault-profile-usefulness-card vault-profile-trade-preview">
           <span>Linked trade history preview</span>
           <h4>{linkedTradePreview.length ? `${linkedTradePreview.length} linked trade${linkedTradePreview.length === 1 ? "" : "s"}` : "No linked trades yet"}</h4>
-          <p>{linkedTradePreview.length ? "Trade Ledger memories linked to this Vault item appear here." : "Choose this Vault item as Trade Source in Forge to link a future Trade Memory. Vault items are never deleted automatically."}</p>
+          <p>{linkedTradePreview.length ? "Trade Ledger memories linked to this Vault item appear here." : "Choose this Vault item as Trade Source in Business to link a future Trade Memory. Vault items are never deleted automatically."}</p>
           {linkedTradePreview.length ? (
             <div className="vault-profile-linked-trade-list">
               {linkedTradePreview.map((trade) => (
@@ -54393,14 +54807,14 @@ function VaultItemDetailContent({ item, marketItem, masterCard, setSummary, link
         <div>
           <span className="trust-badge trust-badge--secure">Actions</span>
           <h4>Next safe actions</h4>
-          <p>Bring this item into Forge when you want to compare, trade, or think through its value. Set assignment is still local-preview planning and will not change this item automatically.</p>
+          <p>Bring this item into Business when you want to compare, trade, or think through its value. Set assignment is still local-preview planning and will not change this item automatically.</p>
         </div>
         <div className="vault-detail-primary-actions">
           <button type="button" onClick={() => onEdit(item)}>Edit Profile</button>
           <button type="button" className="secondary-button" onClick={() => onAddToDisplayCase?.(item)}>Add to Display Case</button>
           <button type="button" className="secondary-button" onClick={() => onEdit(item)}>Add note</button>
           {!itemIsWishlist ? <button type="button" className="secondary-button" onClick={() => onStartTrade?.(item)}>Add to trade</button> : null}
-          {!itemIsWishlist ? <button type="button" className="secondary-button" onClick={() => onStartTrade?.(item)}>Use in Forge</button> : null}
+          {!itemIsWishlist ? <button type="button" className="secondary-button" onClick={() => onStartTrade?.(item)}>Use in Business</button> : null}
           <button type="button" className="secondary-button" onClick={() => onCheckMarket?.(item)}>Check in Market</button>
           <button type="button" className="secondary-button" onClick={() => onAddToCompare?.(item)}>Compare</button>
           <button type="button" className="secondary-button" disabled title="Add to Set is coming soon.">Add to set</button>
@@ -54408,7 +54822,7 @@ function VaultItemDetailContent({ item, marketItem, masterCard, setSummary, link
           {setSummary ? <button type="button" className="secondary-button" onClick={() => onViewSet?.(setSummary)}>View Set</button> : null}
           <button type="button" className="secondary-button" onClick={() => onAttachReceipt?.(item)}>Attach receipt</button>
           <button type="button" className="secondary-button" onClick={() => onQuickUpdateMarketValue?.(item)}>Review value</button>
-          {showVaultSellerTools ? <button type="button" className="secondary-button" disabled={Number(item.quantity || 0) < 1} onClick={() => onMoveToForge(item)}>Move to Forge</button> : null}
+          {showVaultSellerTools ? <button type="button" className="secondary-button" disabled={Number(item.quantity || 0) < 1} onClick={() => onMoveToForge(item)}>Move to Business</button> : null}
         </div>
         <small>{collectionSetCount ? `${collectionSetCount} Set Shelf group${collectionSetCount === 1 ? "" : "s"} available. Add to set is Coming Soon.` : "Create a Set Shelf first, then add items later when assignment is enabled."}</small>
       </section>
@@ -54568,7 +54982,7 @@ function VaultItemDetailContent({ item, marketItem, masterCard, setSummary, link
             </div>
             <div className="grade-assist-safety-strip" aria-label="Grade Assist safety limits">
               <span>Manual checklist</span>
-              <span>Local-only storage</span>
+              <span>Saved on this device only</span>
               <span>No AI, camera, OCR, authentication, or grading-company guarantee</span>
             </div>
             {gradeAssistEmpty ? (
@@ -54622,7 +55036,7 @@ function VaultItemDetailContent({ item, marketItem, masterCard, setSummary, link
               <p>{gradeAssistValue.helper}</p>
             </div>
             {showVaultSellerTools ? (
-              <p className="vault-detail-action-note">Seller context: use this as pre-listing review notes only. It does not change Forge pricing or listing status.</p>
+              <p className="vault-detail-action-note">Seller context: use this as pre-listing review notes only. It does not change Business pricing or listing status.</p>
             ) : null}
             <div className="quick-actions grade-assist-actions">
               <button type="button" onClick={saveGradeAssist}>Save notes / Update checklist</button>
@@ -54640,7 +55054,7 @@ function VaultItemDetailContent({ item, marketItem, masterCard, setSummary, link
           tone="vault"
           actions={[
             { label: "Check in Market", onClick: () => onCheckMarket?.(item) },
-            !itemIsWishlist ? { label: "Use in Forge", onClick: () => onStartTrade?.(item) } : null,
+            !itemIsWishlist ? { label: "Use in Business", onClick: () => onStartTrade?.(item) } : null,
             { label: "Add note", onClick: () => onEdit(item) },
           ]}
         />
@@ -54849,7 +55263,7 @@ function CompactInventoryCard({
       )}
       <MasterVariantRail masterCard={masterCard} compact />
 
-      <div className="forge-group-status-row" aria-label="Grouped Forge status summary">
+      <div className="forge-group-status-row" aria-label="Grouped Business status summary">
         <span>{statusSummary.currentQuantity || item.quantity || 0} held</span>
         <span>{statusSummary.listedQuantity || 0} listed</span>
         <span>{statusSummary.soldQuantity || 0} sold</span>
@@ -54908,8 +55322,8 @@ function CompactInventoryCard({
 
       <div className="compact-links">
         {physicalLocation ? <span className="neon-chip forge-location-pill">{physicalLocation}</span> : null}
-        {item.tideTradrUrl && <a href={item.tideTradrUrl} target="_blank" rel="noreferrer">Market Watch</a>}
-        {item.listingUrl && <a href={item.listingUrl} target="_blank" rel="noreferrer">Listing</a>}
+        {item.tideTradrUrl && <ExternalWebLink href={item.tideTradrUrl}>Market Watch</ExternalWebLink>}
+        {item.listingUrl && <ExternalWebLink href={item.listingUrl}>Listing</ExternalWebLink>}
         {item.receiptImage && <PrivateReceiptLink href={item.receiptImage}>Receipt</PrivateReceiptLink>}
       </div>
 
@@ -55009,7 +55423,7 @@ function VaultEditForm({
       <div className="compact-card-header">
         <div>
           <h2>Edit Vault Item</h2>
-          <p>Vault is for personal collection and held items. Move to Forge when it becomes selling inventory.</p>
+          <p>Vault is for personal collection and held items. Move to Business when it becomes selling inventory.</p>
         </div>
       </div>
 
@@ -55143,7 +55557,7 @@ function VaultEditForm({
           </div>
         ))}
 
-        {renderSection("forge", "Selling / Forge", (
+        {renderSection("forge", "Selling / Business", (
           <div className="form vault-form-grid">
             <Field label="Planned Sale Price">
               <input type="number" step="0.01" value={form.salePrice || ""} onChange={(event) => setForm("salePrice", event.target.value)} />
@@ -55160,7 +55574,7 @@ function VaultEditForm({
             <Field label="Action Notes">
               <input value={form.actionNotes || ""} onChange={(event) => setForm("actionNotes", event.target.value)} />
             </Field>
-            <button type="button" className="secondary-button" disabled={!item} onClick={() => item && onMoveToForge(item)}>Move to Forge</button>
+            <button type="button" className="secondary-button" disabled={!item} onClick={() => item && onMoveToForge(item)}>Move to Business</button>
           </div>
         ))}
 

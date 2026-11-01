@@ -145,7 +145,8 @@ const partialExport = await createVerifiedBackup({
 });
 const partialPreview = await previewBackupRestore(partialExport.json);
 assert.equal(partialPreview.result, RESTORE_PREVIEW_RESULTS.READY_WITH_WARNINGS);
-assert.match(partialPreview.warnings.join(" "), /coverage is PARTIAL/i);
+// 2026-10-31 (A72): the coverage warning now names what is missing instead of saying "coverage is PARTIAL".
+assert.match(partialPreview.warnings.join(" "), /does not include|coverage is partial/i);
 
 const corruptedSection = JSON.parse(baseline.json);
 corruptedSection.sections.find((section) => section.sourceId === "deal-finder").data.deals[0].askingPrice = 999;
@@ -544,8 +545,12 @@ const missingCurrency = await mutateAndSeal((envelope) => {
   delete section.data.deals[0].currency;
 });
 const missingCurrencyPreview = await previewBackupRestore(JSON.stringify(missingCurrency));
-assert.equal(missingCurrencyPreview.result, RESTORE_PREVIEW_RESULTS.READY_WITH_WARNINGS);
+// Tester reaction #10 (2026-10-30): a single-currency backup with one undeclared
+// money field is still ready; the record is listed but no longer raises a warning.
+assert.equal(missingCurrencyPreview.result, RESTORE_PREVIEW_RESULTS.READY_FOR_FUTURE_RESTORE);
 assert.equal(missingCurrencyPreview.missingCurrency.length, 1);
+assert.equal(missingCurrencyPreview.assumedCurrency, "USD");
+assert.ok(!missingCurrencyPreview.warnings.some((warning) => /currency/i.test(warning)));
 
 const currencyMismatch = await mutateAndSeal((envelope) => {
   const section = envelope.sections.find((entry) => entry.sourceId === "deal-finder");

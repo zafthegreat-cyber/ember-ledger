@@ -112,6 +112,7 @@ function emberManualChunks(id) {
 
 export default defineConfig({
   define: {
+    "import.meta.env.VITE_SENTRY_DSN": JSON.stringify(process.env.VITE_SENTRY_DSN || process.env.SENTRY_DSN || ""),
     __EMBER_TIDE_APP_VERSION__: JSON.stringify(appVersion),
   },
   plugins: [react(), brandMetadataPlugin(), appVersionPlugin()],

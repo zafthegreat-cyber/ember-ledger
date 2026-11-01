@@ -45,9 +45,9 @@ export const SHOP_REVIEW_STATUSES = [
 export const ADMIN_COMMAND_CENTER_FILTERS = [
   "All",
   "Trust Command Center",
-  "Scout Report Moderation",
+  "Restocks Report Moderation",
   "Community Guess Review",
-  "Ember Assist Inbox",
+  "Business Assistant Inbox",
   "Family-Friendly Shop Review",
   "Beta Users",
   "Role Management",

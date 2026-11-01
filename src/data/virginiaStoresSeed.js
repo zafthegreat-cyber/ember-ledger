@@ -88,7 +88,7 @@ export const VIRGINIA_STORE_SEED_STATUS = [
     region: "Virginia statewide",
     source: "openstreetmap-overpass-cache",
     count: "On demand",
-    instructions: "Cached directory matches only. Scout restock confidence still comes from user reports and history.",
+    instructions: "Cached directory matches only. Restocks restock confidence still comes from user reports and history.",
   },
 ];
 

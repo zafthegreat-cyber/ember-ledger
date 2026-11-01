@@ -118,7 +118,7 @@ export function matchBestBuyStoreToScoutStore(bestBuyStore = {}, scoutStores = [
   const byCity = scoutStores.find((store) => /best buy/i.test(store.chain || store.name || "") && city && normalizeText(store.city) === city);
   return byCity
     ? { store: byCity, confidenceScore: 65, reason: "Best Buy city match - needs review" }
-    : { store: null, confidenceScore: 0, reason: "No Scout store match found" };
+    : { store: null, confidenceScore: 0, reason: "No watched store match found" };
 }
 
 export function cacheBestBuyStockResult(cache = [], result = {}) {

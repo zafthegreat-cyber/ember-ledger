@@ -103,7 +103,7 @@ function ProtectedCloudWorkspaceBoundary({ children, client = supabase, configur
 
   const open = useCallback(async (user, ticket) => {
     const assertCurrent = () => {
-      if (ticket !== generation.current || identity.current !== user.id) throw new Error("The account changed. No new records were applied.");
+      if (ticket !== generation.current || identity.current !== user.id) throw new Error("A different account signed in on this device, so no new records were applied. Sign in with the account that saved these records and try again.");
     };
     if (hasPendingWorkspaceOwnerSwitch(localStorage)) await recoverWorkspaceOwnerSwitch({ storage: localStorage, assertCurrent });
     if (hasPendingSessionDraftSwitch(sessionStorage)) recoverSessionDraftSwitch({ storage: sessionStorage, assertCurrent });
@@ -262,14 +262,14 @@ function ProtectedCloudWorkspaceBoundary({ children, client = supabase, configur
     const ticket = generation.current;
     const user = await verify(screen.user.id);
     const assertCurrent = () => {
-      if (signal.aborted || ticket !== generation.current || identity.current !== user.id || readWorkspaceBinding(localStorage)?.ownerId !== user.id) throw new Error("The account changed. Recovery was cancelled.");
+      if (signal.aborted || ticket !== generation.current || identity.current !== user.id || readWorkspaceBinding(localStorage)?.ownerId !== user.id) throw new Error("A different account signed in on this device while recovery was running, so recovery stopped. Nothing was changed. Sign in with the account that saved these records and try again.");
     };
     await controller.current?.waitForIdle();
     assertCurrent();
     const latest = await planWorkspaceRestore(raw, { storage: localStorage });
     if (latest.plan.planHash !== plan.planHash) throw new Error("Records changed after the preview. Choose the backup again to review the updated recovery.");
     const confirmation = await confirmAccountOperation({ purpose: "BACKUP_RECOVERY", planDigest: plan.planHash, password, userId: user.id, signal });
-    if (signal.aborted || ticket !== generation.current) throw new Error("The account changed. Recovery was cancelled.");
+    if (signal.aborted || ticket !== generation.current) throw new Error("A different account signed in on this device while recovery was running, so recovery stopped. Nothing was changed. Sign in with the account that saved these records and try again.");
     await consumeAccountConfirmation(confirmation, { signal });
     if (signal.aborted || ticket !== generation.current) throw new Error("Recovery was cancelled before changing records.");
     await applyWorkspaceSources({ storage: localStorage, expectedSources: latest.expectedSources, nextSources: latest.nextSources, ownerId: user.id, assertCurrent });

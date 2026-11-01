@@ -1,0 +1,43 @@
+/* Improvement #80: compatibility + dry-run review shown before accepting a backup. */
+.restore-review { display: grid; gap: var(--space-4); min-width: 0; }
+/* The recovery gate renders before OperationsUI's stylesheet loads; these mirror
+   .ops-badge so the status chips look the same in both places. */
+.restore-review .ops-badge { min-height: 28px; display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border: 1px solid var(--border-subtle); border-radius: 999px; background: var(--surface-secondary); color: var(--text-secondary); font-size: 12px; font-weight: 750; line-height: 1.1; }
+.restore-review .ops-badge--success { border-color: color-mix(in srgb, var(--status-success) 32%, var(--border-subtle)); background: color-mix(in srgb, var(--status-success) 10%, var(--surface-primary)); color: var(--status-success); }
+.restore-review .ops-badge--warning { border-color: color-mix(in srgb, var(--status-warning) 32%, var(--border-subtle)); background: color-mix(in srgb, var(--status-warning) 10%, var(--surface-primary)); color: var(--status-warning); }
+.restore-review .ops-badge--danger { border-color: color-mix(in srgb, var(--status-danger) 32%, var(--border-subtle)); background: color-mix(in srgb, var(--status-danger) 9%, var(--surface-primary)); color: var(--status-danger); }
+.restore-review .ops-badge--info { border-color: color-mix(in srgb, var(--status-info) 30%, var(--border-subtle)); background: color-mix(in srgb, var(--status-info) 8%, var(--surface-primary)); color: var(--status-info); }
+.restore-review section { min-width: 0; }
+.restore-review__heading { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-2); font-size: 1rem; line-height: 1.4; }
+.restore-review__lede, .restore-review__note, .restore-review__message, .restore-review__versions { margin: 0; line-height: 1.5; overflow-wrap: anywhere; }
+.restore-review__lede { color: var(--text-secondary); font-size: 14px; margin-bottom: var(--space-2); }
+.restore-review__note { color: var(--status-warning); font-size: 14px; margin-top: var(--space-2); }
+.restore-review__facts { margin: 0 0 var(--space-3); display: grid; gap: var(--space-2); }
+.restore-review__facts > div { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(0, 2fr); gap: var(--space-2); min-height: 32px; align-items: baseline; }
+.restore-review__facts dt { color: var(--text-secondary); font-size: 14px; }
+.restore-review__facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.restore-review__sources { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.restore-review__sources li { min-width: 0; padding: var(--space-3); background: var(--surface-secondary); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); display: grid; gap: 4px; }
+.restore-review__sources li[data-status="NEWER_THAN_SUPPORTED"], .restore-review__sources li[data-status="OLDER_UNSUPPORTED"], .restore-review__sources li[data-status="INVALID_VERSION"] { border-color: color-mix(in srgb, var(--status-danger) 45%, var(--border-subtle)); }
+.restore-review__source-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); min-height: 28px; }
+.restore-review__source-head strong { min-width: 0; overflow-wrap: anywhere; color: var(--text-primary); }
+.restore-review__versions { color: var(--text-secondary); font-size: 14px; font-variant-numeric: tabular-nums; }
+.restore-review__message { font-size: 14px; color: var(--text-primary); }
+.restore-review__table-wrap { max-width: 100%; overflow-x: auto; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); }
+.restore-review__table-wrap:focus-visible { outline: 3px solid var(--brand-primary); outline-offset: 2px; }
+.restore-review__table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.restore-review__table th, .restore-review__table td { padding: var(--space-2) var(--space-3); text-align: right; border-bottom: 1px solid var(--border-subtle); min-height: 44px; vertical-align: top; }
+.restore-review__table th[scope="col"] { font-size: 13px; color: var(--text-secondary); font-weight: 600; white-space: nowrap; }
+.restore-review__table th[scope="row"], .restore-review__table th:first-child { text-align: left; color: var(--text-primary); overflow-wrap: anywhere; }
+.restore-review__table tfoot th, .restore-review__table tfoot td { border-bottom: 0; background: var(--surface-secondary); font-weight: 600; }
+.restore-review__table tbody tr:last-child td, .restore-review__table tbody tr:last-child th { border-bottom-color: var(--border-subtle); }
+@media (max-width: 560px) {
+  .restore-review__facts > div { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .restore-review__table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .restore-review__table, .restore-review__table tbody, .restore-review__table tfoot, .restore-review__table tr { display: block; width: 100%; }
+  .restore-review__table tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 2px var(--space-3); padding: var(--space-3); border-bottom: 1px solid var(--border-subtle); }
+  .restore-review__table tr:last-child { border-bottom: 0; }
+  .restore-review__table th[scope="row"] { grid-column: 1 / -1; padding: 0 0 var(--space-2); border: 0; font-size: 1rem; }
+  .restore-review__table td { display: flex; justify-content: space-between; gap: var(--space-2); padding: 4px 0; border: 0; text-align: right; min-height: 28px; }
+  .restore-review__table td::before { content: attr(data-label); color: var(--text-secondary); font-size: 13px; text-align: left; }
+}

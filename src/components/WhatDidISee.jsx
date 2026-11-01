@@ -5,6 +5,8 @@ import { searchPokemonCatalog } from "../services/pokemonCatalogSearch";
 import MarketPriceHistoryPanel from "./MarketPriceHistoryPanel";
 import SmartCatalogSearchBox from "./SmartCatalogSearchBox";
 import { safeReadBrowserJson } from "../utils/betaDataCleanup";
+import ExternalWebLink from "./ExternalWebLink.jsx";
+import ExportDisclosure from "./ExportDisclosure.jsx";
 
 export const WHAT_DID_I_SEE_STORAGE_KEY = "tide_tradr_what_did_i_see_reports";
 
@@ -313,7 +315,7 @@ export default function WhatDidISee({
     ];
     saveReports(nextReports);
     setSavedReportId(report.id);
-    onMessage?.(status === "scout_report" ? "What Did I See saved as a Scout report." : "What Did I See draft saved.");
+    onMessage?.(status === "scout_report" ? "What Did I See saved as a restock report." : "What Did I See draft saved.");
     if (status === "scout_report") onSaveScoutReport?.({ ...report, createdAt: nextReports[0].createdAt });
     return report;
   }
@@ -426,7 +428,7 @@ export default function WhatDidISee({
         <div className="compact-card-header">
           <div>
             <h2>What Did I See?</h2>
-            <p>Search the imported Pokemon catalog, check what you saw in-store, and save a beta Scout sighting list.</p>
+            <p>Search the imported Pokemon catalog, check what you saw in-store, and save a beta Restocks sighting list.</p>
           </div>
           {onBack ? <button type="button" className="secondary-button" onClick={onBack}>Back</button> : null}
         </div>
@@ -500,7 +502,7 @@ export default function WhatDidISee({
                   <p>Market: {money(marketPrice)} {product.lowPrice ? `| Low ${money(product.lowPrice)}` : ""} {product.midPrice ? `| Mid ${money(product.midPrice)}` : ""} {product.highPrice ? `| High ${money(product.highPrice)}` : ""}</p>
                   <p className="compact-subtitle">
                     Source: {compactSource(product)}
-                    {productSourceUrl(product) ? <> | <a href={productSourceUrl(product)} target="_blank" rel="noreferrer">Source URL</a></> : null}
+                    {productSourceUrl(product) ? <> | <ExternalWebLink href={productSourceUrl(product)}>Source URL</ExternalWebLink></> : null}
                   </p>
                   {product.historySnapshotCount > 0 ? (
                     <p className="compact-subtitle">History available: {product.historySnapshotCount} snapshot{product.historySnapshotCount === 1 ? "" : "s"}</p>
@@ -524,11 +526,12 @@ export default function WhatDidISee({
 
       <div className="what-see-footer-actions">
         <button type="button" onClick={() => persistReport("draft")}>Save Draft</button>
-        <button type="button" onClick={() => persistReport("scout_report")}>Save Scout Report</button>
+        <button type="button" onClick={() => persistReport("scout_report")}>Save Restocks Report</button>
         <button type="button" className="secondary-button" onClick={clearList}>Clear List</button>
-        <button type="button" className="secondary-button" onClick={exportJson} disabled={!selectedCount}>Export JSON</button>
+        <button type="button" className="secondary-button" aria-describedby="what-see-export-disclosure" onClick={exportJson} disabled={!selectedCount}>Export JSON</button>
         <button type="button" className="secondary-button" onClick={copySummary} disabled={!selectedCount}>Print/Copy Summary</button>
       </div>
+      <ExportDisclosure id="what-see-export-disclosure" kind="scout-report" format="json" recordCount={selectedCount} />
     </section>
   );
 }

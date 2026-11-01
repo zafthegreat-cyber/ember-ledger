@@ -72,13 +72,13 @@ export default function AdminReviewContent({ scope }) {
             className={getHeaderCardClass("panel admin-page-header")}
             title="Permission Denied"
             subtitle="This area is not available for your account."
-            actions={<button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Go to Hearth</button>}
+            actions={<button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Go to Home</button>}
           />
           <section className="panel admin-permission-denied">
             <h2>Admin role required</h2>
             <p>If you think this is a mistake, contact Code 3 TCG support. Local beta users can submit suggestions, but cannot approve shared data, moderate reports, or access admin queues.</p>
             <div className="quick-actions">
-              <button type="button" onClick={() => setActiveTab("dashboard")}>Go to Hearth</button>
+              <button type="button" onClick={() => setActiveTab("dashboard")}>Go to Home</button>
               <button type="button" className="secondary-button" onClick={() => openMenuDrawer("feedback")}>Open Help & Support</button>
             </div>
           </section>
@@ -86,13 +86,13 @@ export default function AdminReviewContent({ scope }) {
       );
     }
     if (moderatorToolsVisible && !betaAdminVisible) {
-      const moderatorSections = ["All", "Reports & Moderation", "Scout Report Moderation", "Community Guess Review", REVIEW_SECTION_LABELS.assist || "Ember Assist Inbox"];
+      const moderatorSections = ["All", "Reports & Moderation", "Restocks Report Moderation", "Community Guess Review", REVIEW_SECTION_LABELS.assist || "Business Assistant Inbox"];
       return (
         <>
           <PageHeader
             className={getHeaderCardClass("panel admin-page-header")}
             title="Moderator Command Center"
-            subtitle="Limited moderation tools for Scout reports, community guesses, flagged content, and support messages."
+            subtitle="Limited moderation tools for restock reports, community guesses, flagged content, and support messages."
             actions={<span className="status-badge">Moderator</span>}
             tabs={moderatorSections.map((section) => ({ key: section, label: section }))}
             activeTab={moderatorSections.includes(adminReviewFilter) ? adminReviewFilter : "All"}
@@ -115,7 +115,7 @@ export default function AdminReviewContent({ scope }) {
       "All",
       ...ADMIN_COMMAND_CENTER_FILTERS.filter((section) => section !== "All"),
       "Reports & Moderation",
-      "Scout Report Review",
+      "Restocks Report Review",
       "Store Management",
       "Announcements / New Stuff",
       "Family / Kid Accounts",
@@ -146,18 +146,18 @@ export default function AdminReviewContent({ scope }) {
     const totalOpenCount = openCount + listingReviewItems.length + trustOpenCount;
     const pagedVisibleSuggestions = getPagedItems(visibleSuggestions, adminReviewPage, LONG_LIST_PAGE_SIZE);
     const pagedListingReviewItems = getPagedItems(listingReviewItems, marketplaceReviewPage, LONG_LIST_PAGE_SIZE);
-    const dedicatedAdminFilters = new Set(["Trust Command Center", "Scout Report Moderation", "Scout Report Review", "Community Guess Review", "Family-Friendly Shop Review", "Store Management", "Beta Users", "Role Management"]);
+    const dedicatedAdminFilters = new Set(["Trust Command Center", "Restocks Report Moderation", "Restocks Report Review", "Community Guess Review", "Family-Friendly Shop Review", "Store Management", "Beta Users", "Role Management"]);
     const openAdminQueue = (filter) => setAdminReviewFilter(filter);
     const adminCommandStatus = [
       { key: "role", icon: "admin", label: "Access", value: actualAdminRole, detail: adminEditModeActive ? "Admin Edit On" : "View mode" },
       { key: "open", icon: "bell", label: "Open queue", value: totalOpenCount, detail: "Needs review" },
-      { key: "trust", icon: "scout", label: "Trust queue", value: trustOpenCount, detail: "Scout, shops, posts" },
+      { key: "trust", icon: "scout", label: "Trust queue", value: trustOpenCount, detail: "Restocks, shops, posts" },
       { key: "market", icon: "market", label: "Marketplace", value: listingReviewItems.length, detail: "Pricing/listing flags" },
       { key: "identity", icon: "account", label: "Identity", value: adminReviewIdentityLabel, detail: currentUserProfile?.source || "admin" },
     ];
     const adminCommandPlan = [
       { key: "trust", icon: "admin", label: "Trust center", detail: "Highest-risk queue", action: () => openAdminQueue("Trust Command Center") },
-      { key: "scout", icon: "scout", label: "Scout review", detail: "Reports and guesses", action: () => openAdminQueue("Scout Report Review") },
+      { key: "scout", icon: "scout", label: "Restocks review", detail: "Reports and guesses", action: () => openAdminQueue("Restocks Report Review") },
       { key: "beta", icon: "account", label: "Beta access", detail: "Users and invites", action: () => openAdminQueue("Beta Access") },
       { key: "kids", icon: "spark", label: "Spark requests", detail: "Family privacy", action: () => openAdminQueue("Kids Program Applications") },
     ];
@@ -200,7 +200,7 @@ export default function AdminReviewContent({ scope }) {
         ariaLabel="Admin Operations Command Center"
         label="Admin"
         title="Admin Operations Center"
-        description="Protected review queues for beta access, Scout trust, Tidepool moderation, Marketplace safety, Spark family requests, shop approvals, catalog corrections, and system health."
+        description="Protected review queues for beta access, Restocks trust, Community moderation, Marketplace safety, Spark family requests, shop approvals, catalog corrections, and system health."
         primaryAction={{ label: "Summarize Queue", icon: "admin", onClick: () => void runAdminReviewAiSummary() }}
         secondaryActions={[
           { label: "Trust Center", icon: "admin", onClick: () => openAdminQueue("Trust Command Center") },
@@ -332,7 +332,7 @@ export default function AdminReviewContent({ scope }) {
         ) : null}
         {renderBetaAdminReviewQueues()}
         {adminReviewFilter !== "All" ? renderEmberAssistAdminInbox() : null}
-        {adminReviewFilter !== "All" && adminReviewFilter !== "Marketplace Listings" && adminReviewFilter !== "Market Source Controls" && adminReviewFilter !== (REVIEW_SECTION_LABELS.assist || "Ember Assist Inbox") && !dedicatedAdminFilters.has(adminReviewFilter) && !BETA_REVIEW_SECTIONS.includes(adminReviewFilter) ? (
+        {adminReviewFilter !== "All" && adminReviewFilter !== "Marketplace Listings" && adminReviewFilter !== "Market Source Controls" && adminReviewFilter !== (REVIEW_SECTION_LABELS.assist || "Business Assistant Inbox") && !dedicatedAdminFilters.has(adminReviewFilter) && !BETA_REVIEW_SECTIONS.includes(adminReviewFilter) ? (
         <div className="inventory-list compact-inventory-list">
           {visibleSuggestions.length ? pagedVisibleSuggestions.items.map((suggestion) => renderSuggestionCard(suggestion, true)) : (
             <div className="empty-state">

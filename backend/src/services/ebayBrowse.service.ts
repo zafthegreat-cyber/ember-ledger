@@ -470,6 +470,7 @@ export function normalizeEbayListing(item: EbayItemSummary, checkedAt = new Date
     title: cleanString(item.title, 300) || "Untitled eBay listing",
     description: cleanString(item.shortDescription, 4_000),
     sellerName: recordValue(seller, "username"),
+    sellerUserId: recordValue(seller, "userId"),
     sellerRating: recordValue(seller, "feedbackPercentage"),
     sellerFeedbackScore: optionalNumber(seller.feedbackScore),
     listingType: listingType(item.buyingOptions),

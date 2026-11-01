@@ -28,7 +28,18 @@ export const DROP_RADAR_RESET_OPTIONS = [
 
 export const DROP_RADAR_CONFIRMATION_TEXT = "RESET DROP RADAR";
 export const MIN_SCOUT_POINTS_FOR_GUESS = 20;
-export const DROP_RADAR_GUESS_LOCKED_MESSAGE = "Earn more Scout points by submitting confirmed reports before posting predictions.";
+// How points are earned, in one place so every "needs N points" message can say so.
+export const SCOUT_POINTS_EXPLAINER =
+  "Each restock report you submit earns 6 points, plus 4 for a shelf photo or screenshot, 6 for a receipt, 3 for listing the products you saw, and 2 for a quantity or price. Reports that other people confirm earn 3 more. Most helpers reach 20 points with two or three good reports.";
+
+export const DROP_RADAR_GUESS_LOCKED_MESSAGE = `Community guesses open at ${MIN_SCOUT_POINTS_FOR_GUESS} Restock points. ${SCOUT_POINTS_EXPLAINER}`;
+
+export function describeScoutPointsProgress(points = 0, threshold = MIN_SCOUT_POINTS_FOR_GUESS) {
+  const have = Math.max(0, Math.round(Number(points) || 0));
+  const need = Math.max(0, threshold - have);
+  if (need <= 0) return `You have ${have} Restock points, enough to post community guesses.`;
+  return `You have ${have} of ${threshold} Restock points; ${need} more to post community guesses. ${SCOUT_POINTS_EXPLAINER}`;
+}
 
 export const DROP_RADAR_RECORD_KIND_LABELS = {
   confirmed_restock: "Confirmed Restock",
@@ -456,7 +467,7 @@ export function buildDropRadarPredictions({ stores = [], reports = [], trainingR
     .map((report) => ({
       ...report,
       sourceType: report.sourceType || report.source_type || "user_report",
-      productCategory: report.itemName || report.productName || report.product_name || "Scout report",
+      productCategory: report.itemName || report.productName || report.product_name || "Restock report",
       shouldTrainPredictions: true,
     }));
 
@@ -530,7 +541,7 @@ export function buildDropRadarPredictions({ stores = [], reports = [], trainingR
       dataNeededMessage,
       products: commonProduct ? [commonProduct] : [],
       reason,
-      sourceLabel: historicalCount ? "Historical Scout import / restock history" : "Confirmed Scout/restock history",
+      sourceLabel: historicalCount ? "Historical Restocks import / restock history" : "Confirmed Restocks/restock history",
       entries: sorted,
     };
   }).sort((a, b) => {

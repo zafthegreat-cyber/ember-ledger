@@ -1,4 +1,5 @@
 import { CommandBoardV4, FlowNextActionCard } from "../components/command-system";
+import { SPARK_FEATURE_STATUS, sparkFeatureStatusLabel } from "../utils/kidsProgramSafety";
 export default function SparkPage(props) {
   const {
     Field,
@@ -309,6 +310,29 @@ export default function SparkPage(props) {
       { label: "Sponsor interest", value: "Review", detail: "Admin-reviewed support queue", action: () => openPublicBetaFeedback({ page: "The Spark", role: "Sponsor / Donor", mainReason: "Sponsor / donate to The Spark", interests: ["The Spark kids program", "Shop partnership"] }) },
     ];
 
+    const renderSparkFeatureStatus = () => (
+      <section className="spark-v4-review-panel spark-feature-status" aria-label="What The Spark can do today">
+        <div className="spark-v4-panel-heading compact">
+          <div>
+            <span>Before you start</span>
+            <h3>What works today, and what is still coming</h3>
+            <p>So you never fill in a form and then meet a "coming soon" screen.</p>
+          </div>
+        </div>
+        <ul className="spark-feature-status-list">
+          {SPARK_FEATURE_STATUS.map((feature) => (
+            <li key={feature.key} className={`spark-feature-status-item spark-feature-status-item--${feature.status}`}>
+              <span className={`status-badge ${feature.status === "live" ? "status-badge--ok" : "status-badge--pending"}`}>{sparkFeatureStatusLabel(feature.status)}</span>
+              <div>
+                <strong>{feature.label}</strong>
+                <small>{feature.detail}</small>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
+
     const renderSparkV4ImpactPanel = () => (
       <section className="spark-v4-impact-panel" aria-label="Spark Impact Summary">
         <div className="spark-v4-panel-heading">
@@ -404,6 +428,7 @@ export default function SparkPage(props) {
       children: (
         <div className="spark-v4-command-content">
           <div className="spark-v4-main-stack">
+            {renderSparkFeatureStatus()}
             {renderSparkV4ImpactPanel()}
             {renderSparkV4ReviewPanel()}
           </div>

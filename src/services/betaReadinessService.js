@@ -17,24 +17,24 @@ export const PRODUCT_PROMISE_COPY =
 
 export const PRODUCT_TAGLINES = {
   primary: "Protect the Spark. Follow the Tide.",
-  secondary: "Collect smarter. Scout fairly. Grow together.",
+  secondary: "Collect smarter. Restocks fairly. Grow together.",
 };
 
 export const PRODUCT_GLOSSARY = [
   { key: "hearth", term: "Hearth", status: "Live", body: "Your home base for the next best action, setup progress, and calm daily guidance." },
-  { key: "your_next_move", term: "Your Next Move", status: "Live", body: "The main Hearth recommendation. It should show one useful action, not every possible tool." },
-  { key: "scout", term: "Scout", status: "Live", body: "Store Signals for fair restock reports, nearby store context, and honest confidence labels." },
+  { key: "your_next_move", term: "Your Next Move", status: "Live", body: "The main Home recommendation. It should show one useful action, not every possible tool." },
+  { key: "scout", term: "Restocks", status: "Live", body: "Store Signals for fair restock reports, nearby store context, and honest confidence labels." },
   { key: "vault", term: "Vault", status: "Live", body: "Your protected collection for owned, wanted, and set-progress records." },
-  { key: "forge", term: "Forge", status: "Live", body: "Seller Tools for inventory, sales, receipts, mileage, expenses, and year-end record support." },
+  { key: "forge", term: "Business", status: "Live", body: "Seller Tools for inventory, sales, receipts, mileage, expenses, and year-end record support." },
   { key: "market_watch", term: "Market Watch", status: "Live", body: "Price lookup, watchlist, fair value checks, and freshness labels. It does not imply live checkout." },
-  { key: "tidepool_community", term: "Tidepool Community", status: "Live", body: "A family-safe community space for helpful posts, questions, events, and shop notes." },
+  { key: "tidepool_community", term: "Community", status: "Live", body: "A family-safe community space for helpful posts, questions, events, and shop notes." },
   { key: "spark", term: "The Spark", status: "Live", body: "Kids Program requests, safety rules, parent-managed family interest, and kid-friendly missions." },
-  { key: "quick_add", term: "Quick Add", status: "Live", body: "Adaptive add hub for items, UPCs, receipts, Scout reports, and manual entries." },
+  { key: "quick_add", term: "Quick Add", status: "Live", body: "Adaptive add hub for items, UPCs, receipts, restock reports, and manual entries." },
   { key: "admin_command_center", term: "Admin Command Center", status: "Protected", body: "Permission-safe admin tools for beta access, review queues, invites, and cleanup controls." },
   { key: "smart_setup", term: "Smart Setup", status: "Live", body: "First-login personalization that keeps irrelevant seller or admin tools out of the way." },
-  { key: "ember_watch", term: "Ember Watch", status: "Planned", body: "Alerts and watchlist center for watched products, restocks, favorite stores, reminders, and announcements." },
-  { key: "ember_id", term: "Ember ID", status: "Planned", body: "Public profile label for username, contribution count, Scout level, and permission-safe badges." },
-  { key: "tide_score", term: "Tide Score", status: "Live label", body: "Report and store confidence language: Needs more reports, Based on recent reports, Community confirmed, Admin reviewed, Fresh, Aging, or Expired." },
+  { key: "ember_watch", term: "Watch Center", status: "Planned", body: "Alerts and watchlist center for watched products, restocks, favorite stores, reminders, and announcements." },
+  { key: "ember_id", term: "Public Profile", status: "Planned", body: "Public profile label for username, contribution count, Restocks level, and permission-safe badges." },
+  { key: "tide_score", term: "Trust Score", status: "Live label", body: "Report and store confidence language: Needs more reports, Based on recent reports, Community confirmed, Admin reviewed, Fresh, Aging, or Expired." },
   { key: "fair_price_badges", term: "Fair Price Badges", status: "Live label", body: "Market Watch price labels: Near Retail, Fair Price, High Price, Market Estimate, Source Unknown, or Needs Price Data." },
   { key: "partner_shops", term: "Partner Shops", status: "Future", body: "Family-friendly shop system with events, stock notes, and paid-placement labels only if sponsorship exists later." },
 ];
@@ -61,15 +61,15 @@ export const PRODUCT_ROADMAP_NOTES = [
   },
   {
     key: "ember_watch",
-    term: "Ember Watch",
+    term: "Watch Center",
     status: "Future",
     body: "A unified alert center for watched products, price drops, restock alerts, favorite stores, Set Mastery reminders, giveaways, and admin announcements.",
   },
   {
     key: "ember_id",
-    term: "Ember ID",
+    term: "Public Profile",
     status: "Future",
-    body: "A public profile label with username, Scout level, contribution count, family-safe status, seller status, and protected admin/founder badges.",
+    body: "A public profile label with username, Restocks level, contribution count, family-safe status, seller status, and protected admin/founder badges.",
   },
 ];
 
@@ -250,7 +250,7 @@ export const BETA_EMPTY_STATES = {
     body: "Add your first card or sealed product to start tracking your collection. Manual entry stays available when catalog search misses something.",
   },
   forge: {
-    title: "Your Forge inventory is empty",
+    title: "Your Business inventory is empty",
     body: "Add business inventory, receipt purchases, sales, mileage, and items you plan to sell.",
   },
   wishlist: {
@@ -263,7 +263,7 @@ export const BETA_EMPTY_STATES = {
   },
   market: {
     title: "No Market Watch checks yet",
-    body: "Search a product, compare known value, save watched products, or add details from Vault or Forge. No live checkout is connected.",
+    body: "Search a product, compare known value, save watched products, or add details from Vault or Business. No live checkout is connected.",
   },
   kids: {
     title: "Kids Program opportunities will appear here",
@@ -278,8 +278,8 @@ export const BETA_EMPTY_STATES = {
 export const BETA_TOOLTIPS = {
   Vault: "Your personal collection.",
   Forge: "Your business inventory and selling tools.",
-  "Vault vs Forge": "Vault is for collection. Forge is for sellable/business inventory, receipts, mileage, sales, and year-end records.",
-  "Quick Add": "Choose Vault, Forge, Scout, Expense, or Mileage before saving so records go to the right place.",
+  "Vault vs Forge": "Vault is for collection. Business is for sellable/business inventory, receipts, mileage, sales, and year-end records.",
+  "Quick Add": "Choose Vault, Business, Restocks, Expense, or Mileage before saving so records go to the right place.",
   Scout: "Store Signals with confirmed reports, community guesses, and confidence labels kept separate.",
   Guess: "A personal prediction or pattern note, not confirmed stock.",
   Report: "A real stock sighting or store update.",

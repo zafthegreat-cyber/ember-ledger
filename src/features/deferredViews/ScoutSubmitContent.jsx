@@ -269,7 +269,7 @@ export default function ScoutSubmitContent({ scope }) {
             ["Expected day", quickScoutDateLabel()],
             ["Expected window", quickScoutReportForm.guessedTimeWindow || "Unknown"],
             ["Self rating", `${quickScoutReportForm.confidenceSelfRating || 50}/100`],
-            ["Scout point gate", currentUserCanSubmitScoutGuess ? `${scoutGuessPoints}/${MIN_SCOUT_POINTS_FOR_GUESS} points` : DROP_RADAR_GUESS_LOCKED_MESSAGE],
+            ["Restock point gate", currentUserCanSubmitScoutGuess ? `${scoutGuessPoints}/${MIN_SCOUT_POINTS_FOR_GUESS} points` : DROP_RADAR_GUESS_LOCKED_MESSAGE],
           ]
         : [
             ["Quantity", quickScoutReportForm.quantity || "Optional"],
@@ -426,17 +426,17 @@ export default function ScoutSubmitContent({ scope }) {
       const savedSubmittedTime = quickScoutReportSaved ? scoutReportDateTimeLabel(quickScoutReportSaved) : quickScoutDateLabel();
       const savedSignalType = currentType.isGuess
         ? "Community Guess (not confirmed stock)"
-        : (quickScoutReportSaved?.confidenceLabel || quickScoutReportSaved?.confidence_label || scoutReportConfidenceBadge(quickScoutReportSaved || {}).label || "New Scout report");
+        : (quickScoutReportSaved?.confidenceLabel || quickScoutReportSaved?.confidence_label || scoutReportConfidenceBadge(quickScoutReportSaved || {}).label || "New Reporter report");
       const savedToCloud = quickScoutReportSaved?.sourceStatus === "supabase";
       return (
         <section className="scout-quick-report-v2 scout-quick-report-sent">
           <div className="scout-quick-report-success">
             <span>{currentType.isGuess ? "Saved" : savedToCloud ? "Saved to your account" : "Saved locally"}</span>
-            <h3 data-scout-step-heading={!currentType.isGuess || undefined} tabIndex={-1}>{currentType.isGuess ? "Scout note saved." : "Scout report saved."}</h3>
+            <h3 data-scout-step-heading={!currentType.isGuess || undefined} tabIndex={-1}>{currentType.isGuess ? "Restocks note saved." : "Restock report saved."}</h3>
             <p>{currentType.isGuess ? "Your planning note stays separate from live stock reports." : savedToCloud ? "Your report is saved to your account. Add details now or return to your reports later." : "Your report is saved on this device. It has not been posted to the community."}</p>
             {quickScoutReportMessage ? <small>{quickScoutReportMessage}</small> : null}
           </div>
-          <div className="scout-report-review-grid scout-submit-confirmation-grid" aria-label="Submitted Scout report confirmation">
+          <div className="scout-report-review-grid scout-submit-confirmation-grid" aria-label="Submitted restock report confirmation">
             <div>
               <span>Store</span>
               <strong>{quickScoutReportSaved?.storeName || quickScoutReportForm.storeName || quickScoutReportForm.manualLocation || "Store not selected"}</strong>
@@ -499,7 +499,7 @@ export default function ScoutSubmitContent({ scope }) {
             <i style={{ width: `${((activeStepIndex + 1) / wizardSteps.length) * 100}%` }} />
           </div>
         </div> : null}
-        <div className="scout-report-stepper" aria-label="Scout report steps">
+        <div className="scout-report-stepper" aria-label="Restock report steps">
           {wizardSteps.map((step, index) => (
             <button
               key={step.key}
@@ -530,7 +530,7 @@ export default function ScoutSubmitContent({ scope }) {
           <span>{currentType.isGuess ? "Timing" : "Status"}: {selectedStockSummary}</span>
           <span>Product: {selectedProductSummary}</span>
         </div>
-        <div className="scout-required-checklist" aria-label="Required Scout report fields">
+        <div className="scout-required-checklist" aria-label="Required restock report fields">
           {scoutRequiredChecklist.map((item) => (
             <span key={item.key} className={item.ready ? "is-ready" : "needs-review"}>
               {item.ready ? "Ready" : "Needed"}: {item.label}
@@ -539,7 +539,7 @@ export default function ScoutSubmitContent({ scope }) {
         </div>
         <div className="scout-flow-guidance-card" aria-live="polite">
           <div>
-            <strong>Scout Points</strong>
+            <strong>Restocks Points</strong>
             <span>{scoutGuessPoints} / {MIN_SCOUT_POINTS_FOR_GUESS} points for community guesses</span>
           </div>
           <div className="scout-points-meter" aria-hidden="true">
@@ -930,11 +930,11 @@ export default function ScoutSubmitContent({ scope }) {
                 <details className="scout-report-disclosure scout-area-disclosure">
                   <summary>{locationAvailable ? `Search area: ${scoutAreaText || "your location"}` : "Set an area to find nearby stores"}</summary>
                   <label className="scout-area-field">
-                    <span>Scout area / ZIP</span>
+                    <span>Restocks area / ZIP</span>
                     <input
                       value={locationSettings.manualLocation}
                       onChange={(event) => updateLocationSettings({ mode: "manual", manualLocation: event.target.value, selectedSavedLocation: event.target.value, trackingEnabled: false })}
-                      placeholder="ZIP, city, or Scout area"
+                      placeholder="ZIP, city, or Restocks area"
                     />
                     <small>Used to sort nearby stores. We do not need your exact address.</small>
                   </label>
@@ -1096,7 +1096,7 @@ export default function ScoutSubmitContent({ scope }) {
                     <p>A category is enough if you do not know the exact name.</p>
                   </div>
                 </div>
-                <div className="scout-product-chip-row scout-category-chip-row" role="group" aria-label="Scout report item category">
+                <div className="scout-product-chip-row scout-category-chip-row" role="group" aria-label="Restock report item category">
                   {primaryCategories.map((category) => {
                     const isSelected = quickScoutReportForm.productCategory === category;
                     return (
@@ -1241,7 +1241,7 @@ export default function ScoutSubmitContent({ scope }) {
               <span>Step 3</span>
               <div>
                 <h3>Time and remaining stock</h3>
-                <p>These details help Scout history without making weak forecasts sound certain.</p>
+                <p>These details help restock history without making weak forecasts sound certain.</p>
               </div>
             </div>
             <div className="scout-report-detail-grid">
@@ -1409,7 +1409,7 @@ export default function ScoutSubmitContent({ scope }) {
             {quickScoutStoreHasHistory(storeSelection) ? (
               <div className="scout-location-trust-note">
                 <strong>Check for duplicates</strong>
-                <span>This store already has current Scout activity. Save only if this is a fresh visit or adds useful context.</span>
+                <span>This store already has current Restocks activity. Save only if this is a fresh visit or adds useful context.</span>
               </div>
             ) : null}
             <div className="scout-location-trust-note">

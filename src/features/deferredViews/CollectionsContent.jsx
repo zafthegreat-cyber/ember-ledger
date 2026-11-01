@@ -65,7 +65,7 @@ export default function CollectionsContent({ scope }) {
     const activeWorkspaceRecordTotal = Number(activeWorkspaceCounts.total || 0);
     const activeWorkspaceSummaryStats = [
       { label: "Vault items", value: activeWorkspaceCounts.vault || 0, helper: "Protected collection" },
-      { label: "Forge items", value: activeWorkspaceCounts.forge || 0, helper: "Seller workspace" },
+      { label: "Business items", value: activeWorkspaceCounts.forge || 0, helper: "Seller workspace" },
       { label: "Members", value: activeWorkspaceMembers.length || 0, helper: `${activePendingInvites.length || 0} pending invite${activePendingInvites.length === 1 ? "" : "s"}` },
     ];
     const activeWorkspaceAccessCopy = canManageActiveWorkspace
@@ -87,7 +87,7 @@ export default function CollectionsContent({ scope }) {
         return (
           <div className="collections-drawer-form">
             <strong>Choose where you are working</strong>
-            <p className="compact-subtitle">Switching changes the active Vault, Forge, Market Watch, and workspace-scoped records. Archived workspaces stay hidden here.</p>
+            <p className="compact-subtitle">Switching changes the active Vault, Business, Market Watch, and workspace-scoped records. Archived workspaces stay hidden here.</p>
             <div className="workspace-switch-list" role="list">
               {workspaceSelectorOptions.map((workspace) => {
                 const counts = workspaceRecordCountsFor(workspace.id);
@@ -100,7 +100,7 @@ export default function CollectionsContent({ scope }) {
                     </div>
                     <dl>
                       <div><dt>Vault</dt><dd>{counts.vault || 0}</dd></div>
-                      <div><dt>Forge</dt><dd>{counts.forge || 0}</dd></div>
+                      <div><dt>Business</dt><dd>{counts.forge || 0}</dd></div>
                       <div><dt>Records</dt><dd>{counts.total || 0}</dd></div>
                     </dl>
                     <button
@@ -132,8 +132,8 @@ export default function CollectionsContent({ scope }) {
           <form className="forge-identity-settings-card collections-drawer-form" onSubmit={saveWorkspaceIdentitySettings} noValidate>
             <div className="compact-card-header">
               <div>
-                <strong>Workspace &amp; Forge Identity</strong>
-                <p className="compact-subtitle">Choose how this workspace appears across Vault, Forge, and shared records.</p>
+                <strong>Workspace &amp; Business Identity</strong>
+                <p className="compact-subtitle">Choose how this workspace appears across Vault, Business, and shared records.</p>
               </div>
               <span className="status-badge">{forgeIdentityModeLabel(activeForgeIdentityMode)}</span>
             </div>
@@ -151,7 +151,7 @@ export default function CollectionsContent({ scope }) {
             <Field label="Shop nickname">
               <input value={workspaceIdentityForm.shopName} onChange={(event) => updateWorkspaceIdentityForm({ shopName: event.target.value })} disabled={!canEditActiveWorkspace} placeholder="Optional nickname, DBA, or internal label" />
             </Field>
-            <div className="settings-mode-grid forge-identity-mode-grid" role="group" aria-label="Forge display mode">
+            <div className="settings-mode-grid forge-identity-mode-grid" role="group" aria-label="Business display mode">
               {FORGE_IDENTITY_MODE_OPTIONS.map((mode) => {
                 const disabled = mode.value === "ember_tide" && !emberTideForgeWorkspace;
                 const active = normalizeForgeIdentityMode(workspaceIdentityForm.forgeIdentityMode) === mode.value;
@@ -177,17 +177,17 @@ export default function CollectionsContent({ scope }) {
             </div>
             <div className="menu-toggle-list">
               <label className="toggle-row forge-mode-toggle">
-                <span><strong>Use Code 3 TCG branding</strong><small>Use Code 3 TCG naming in Forge where you have access.</small></span>
+                <span><strong>Use Code 3 TCG branding</strong><small>Use Code 3 TCG naming in Business where you have access.</small></span>
                 <input type="checkbox" checked={workspaceIdentityForm.useEmberTideBranding} disabled={!canEditActiveWorkspace || !emberTideForgeWorkspace} onChange={(event) => updateWorkspaceIdentityForm({ useEmberTideBranding: event.target.checked, forgeIdentityMode: event.target.checked ? "ember_tide" : "business", defaultForgeMode: event.target.checked ? "ember_tide" : "business" })} />
               </label>
               <label className="toggle-row forge-mode-toggle">
-                <span><strong>Keep personal Forge separate</strong><small>Personal Forge stays available as its own private option.</small></span>
+                <span><strong>Keep personal Business separate</strong><small>Personal Business Workspace stays available as its own private option.</small></span>
                 <input type="checkbox" checked={workspaceIdentityForm.keepPersonalForgeSeparate} disabled={!canEditActiveWorkspace} onChange={(event) => updateWorkspaceIdentityForm({ keepPersonalForgeSeparate: event.target.checked })} />
               </label>
             </div>
             <dl className="drawer-status-list forge-mode-summary">
-              <div><dt>Forge mode</dt><dd>{forgeIdentityModeLabel(workspaceIdentityForm.forgeIdentityMode)}</dd></div>
-              <div><dt>Active Forge</dt><dd>{activeForgeWorkspace?.name || "Unavailable"}</dd></div>
+              <div><dt>Business mode</dt><dd>{forgeIdentityModeLabel(workspaceIdentityForm.forgeIdentityMode)}</dd></div>
+              <div><dt>Active Business</dt><dd>{activeForgeWorkspace?.name || "Unavailable"}</dd></div>
               <div><dt>Workspace records</dt><dd>{activeWorkspaceCounts.total} linked</dd></div>
             </dl>
             {workspaceIdentityMessage ? <p className="flow-inline-message is-info" role="status">{workspaceIdentityMessage}</p> : null}

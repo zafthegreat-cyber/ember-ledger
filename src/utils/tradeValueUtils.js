@@ -100,15 +100,28 @@ export function buildTradeComparison(draft = {}, sourceItem = {}, options = {}) 
       unitValue: Number(normalized.outgoingValue) / Math.max(1, normalized.outgoingQuantity),
     }
     : estimateTradeItemValue(sourceItem, normalized.outgoingQuantity);
-  const receivedUnitValue = Number(normalized.receivedValue || 0);
+  // #22: when a side has no value, fall back to a catalog/market estimate the
+  // caller found for the received item (options.receivedEstimate = { value,
+  // source }) so the analyzer gives a one-tap answer instead of "Unknown".
+  const receivedEstimate = options.receivedEstimate && Number(options.receivedEstimate.value) > 0
+    ? { value: Number(options.receivedEstimate.value), source: String(options.receivedEstimate.source || "Catalog estimate") }
+    : null;
+  const usedReceivedEstimate = normalized.receivedValue === "" && Boolean(receivedEstimate);
+  const receivedUnitValue = usedReceivedEstimate ? receivedEstimate.value : Number(normalized.receivedValue || 0);
   const receivedTotalValue = receivedUnitValue * normalized.receivedQuantity;
   const hasOutgoingValue = hasManualOutgoingValue || outgoing.totalValue > 0;
-  const hasReceivedValue = normalized.receivedValue !== "";
+  const hasReceivedValue = normalized.receivedValue !== "" || usedReceivedEstimate;
   const difference = receivedTotalValue - outgoing.totalValue;
+  const missingSides = [
+    ...(hasOutgoingValue ? [] : ["what you gave"]),
+    ...(hasReceivedValue ? [] : ["what you got"]),
+  ];
   let tone = "needs-review";
-  let label = "Unknown Balance";
-  let resultLabel = "Unknown Balance";
-  let guidance = "Add estimated values later to compare what you gave with what you got.";
+  let label = missingSides.length ? `Value needed: ${missingSides.join(" and ")}` : "Unknown Balance";
+  let resultLabel = label;
+  let guidance = missingSides.length
+    ? `Add an estimated value for ${missingSides.join(" and ")} to compare. Tip: a card's Market Watch price or what you paid both work as a starting estimate.`
+    : "Add estimated values later to compare what you gave with what you got.";
 
   if (hasOutgoingValue && hasReceivedValue) {
     if (difference > 0) {
@@ -138,9 +151,12 @@ export function buildTradeComparison(draft = {}, sourceItem = {}, options = {}) 
     hasOutgoingValue,
     hasReceivedValue,
     label,
+    missingSides,
     outgoing,
     outgoingLabel: hasOutgoingValue ? moneyFormatter(outgoing.totalValue) : "Value needed",
     receivedLabel: hasReceivedValue ? moneyFormatter(receivedTotalValue) : "Value needed",
+    receivedEstimate: usedReceivedEstimate ? receivedEstimate : null,
+    receivedConfidence: usedReceivedEstimate ? receivedEstimate.source : normalized.receivedValue !== "" ? "Manual estimate" : "Needs value",
     receivedTotalValue,
     resultLabel,
     tone,

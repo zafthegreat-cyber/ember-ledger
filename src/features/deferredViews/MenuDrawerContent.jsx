@@ -459,7 +459,7 @@ export default function MenuDrawerContent({ scope }) {
                           publicBio: profileForm.publicBio,
                           scoutPoints: scoutGuessPoints,
                         }), { compact: false, className: "settings-community-profile-preview" })}
-                        <small>Your public username may appear on Scout reports, community guesses, marketplace listings, and Tidepool. Private email and child/family details stay hidden from public views.</small>
+                        <small>Your public username may appear on restock reports, community guesses, marketplace listings, and Community. Private email and child/family details stay hidden from public views.</small>
                       </div>
                       <div className="ai-helper-note">
                         <span>AI can explain what these settings do; it cannot change account permissions.</span>
@@ -479,7 +479,7 @@ export default function MenuDrawerContent({ scope }) {
                           placeholder="public_username"
                           autoComplete="nickname"
                         />
-                        <small>Shown on Scout reports, community guesses, marketplace listings, and Tidepool instead of private account details. Code 3 TCG staff, support, moderator, and official names are protected.</small>
+                        <small>Shown on restock reports, community guesses, marketplace listings, and Community instead of private account details. Code 3 TCG staff, support, moderator, and official names are protected.</small>
                         {publicIdentityForProfile({ ...currentUserProfile, email: accountEmail() }).isOfficialAdminIdentity ? (
                           <small className="status-badge verified-badge">Official Code 3 TCG admin identity: {publicProfileLabel()}</small>
                         ) : null}
@@ -491,7 +491,7 @@ export default function MenuDrawerContent({ scope }) {
                           rows={3}
                           value={profileForm.publicBio}
                           onChange={(event) => setProfileForm((current) => ({ ...current, publicBio: event.target.value.slice(0, 160) }))}
-                          placeholder="Optional: collector, parent helper, Scout, or seller note."
+                          placeholder="Optional: collector, parent helper, Restocks, or seller note."
                         />
                         <small>Optional and public. Do not include private family details, exact locations, or child information.</small>
                       </label>
@@ -521,7 +521,7 @@ export default function MenuDrawerContent({ scope }) {
                 <div className="drawer-links workspace-settings-panel">
                   <div className="drawer-info-card">
                     <strong>Current collection</strong>
-                    <p className="compact-subtitle">Vault, Wishlist, Forge, dashboard stats, Market Watch, and listings are filtered to this collection. Archived collections are hidden here by default.</p>
+                    <p className="compact-subtitle">Vault, Wishlist, Business, dashboard stats, Market Watch, and listings are filtered to this collection. Archived collections are hidden here by default.</p>
                     <div className="settings-active-workspace-card">
                       <span>Active workspace</span>
                       <strong>{activeWorkspace?.name || "My Personal Space"}</strong>
@@ -540,7 +540,7 @@ export default function MenuDrawerContent({ scope }) {
                       <div><dt>Type</dt><dd>{workspaceTypeLabel(activeWorkspace?.type)}</dd></div>
                       <div><dt>Workspace role</dt><dd>{workspaceRoleLabel(activeWorkspaceRole)}</dd></div>
                       <div><dt>Vault items</dt><dd>{vaultItems.length}</dd></div>
-                      <div><dt>Forge items</dt><dd>{forgeInventoryItems.length}</dd></div>
+                      <div><dt>Business items</dt><dd>{forgeInventoryItems.length}</dd></div>
                     </dl>
                     <div className="drawer-inline-actions">
                       <button type="button" className="drawer-link" onClick={() => openWorkspaceRename(activeWorkspace)} disabled={!canEditActiveWorkspace}>
@@ -553,7 +553,7 @@ export default function MenuDrawerContent({ scope }) {
                     <div className="settings-section-grid compact">
                       <article className="settings-section-card">
                         <strong>Personal workspace</strong>
-                        <span>Private collection space for personal Vault, wishlist, and optional Personal Forge records.</span>
+                        <span>Private collection space for personal Vault, wishlist, and optional Personal Business Workspace records.</span>
                       </article>
                       <article className="settings-section-card">
                         <strong>Code 3 TCG workspace</strong>
@@ -569,15 +569,15 @@ export default function MenuDrawerContent({ scope }) {
                   <form className="drawer-info-card forge-identity-settings-card" onSubmit={saveWorkspaceIdentitySettings} noValidate>
                     <div className="compact-card-header">
                       <div>
-                        <strong>Workspace &amp; Forge Identity</strong>
-                        <p className="compact-subtitle">Control whether Forge acts like your private seller space, a business workspace, or Code 3 TCG branded workspace.</p>
+                        <strong>Workspace &amp; Business Identity</strong>
+                        <p className="compact-subtitle">Control whether Business acts like your private seller space, a business workspace, or Code 3 TCG branded workspace.</p>
                       </div>
                       <span className="status-badge">{forgeIdentityModeLabel(activeForgeIdentityMode)}</span>
                     </div>
                     <div className="settings-active-workspace-card">
                       <span>Active workspace</span>
                       <strong>{activeWorkspace?.name || "My Personal Space"}</strong>
-                      <small>{workspaceTypeLabel(activeWorkspace?.type)} · {workspaceRoleLabel(activeWorkspaceRole)} · {activeForgeWorkspace?.name ? `Forge uses ${activeForgeWorkspace.name}` : "Forge unavailable"}</small>
+                      <small>{workspaceTypeLabel(activeWorkspace?.type)} · {workspaceRoleLabel(activeWorkspaceRole)} · {activeForgeWorkspace?.name ? `Business uses ${activeForgeWorkspace.name}` : "Business unavailable"}</small>
                     </div>
                     <Field label="Workspace name">
                       <input
@@ -623,7 +623,7 @@ export default function MenuDrawerContent({ scope }) {
                         placeholder="Private notes for this workspace"
                       />
                     </Field>
-                    <div className="settings-mode-grid forge-identity-mode-grid" role="group" aria-label="Forge display mode">
+                    <div className="settings-mode-grid forge-identity-mode-grid" role="group" aria-label="Business display mode">
                       {FORGE_IDENTITY_MODE_OPTIONS.map((mode) => {
                         const disabled = mode.value === "ember_tide" && !emberTideForgeWorkspace;
                         const active = normalizeForgeIdentityMode(workspaceIdentityForm.forgeIdentityMode) === mode.value;
@@ -651,7 +651,7 @@ export default function MenuDrawerContent({ scope }) {
                       <label className="toggle-row forge-mode-toggle">
                         <span>
                           <strong>Use Code 3 TCG branding</strong>
-                          <small>Use Code 3 TCG naming in Forge where you have access. This does not overwrite your personal profile.</small>
+                          <small>Use Code 3 TCG naming in Business where you have access. This does not overwrite your personal profile.</small>
                         </span>
                         <input
                           type="checkbox"
@@ -666,8 +666,8 @@ export default function MenuDrawerContent({ scope }) {
                       </label>
                       <label className="toggle-row forge-mode-toggle">
                         <span>
-                          <strong>Keep personal Forge separate</strong>
-                          <small>Personal Forge stays available as its own private option. Turning this off hides it from Forge choices without deleting data.</small>
+                          <strong>Keep personal Business separate</strong>
+                          <small>Personal Business Workspace stays available as its own private option. Turning this off hides it from Business choices without deleting data.</small>
                         </span>
                         <input
                           type="checkbox"
@@ -678,9 +678,9 @@ export default function MenuDrawerContent({ scope }) {
                       </label>
                     </div>
                     <dl className="drawer-status-list forge-mode-summary">
-                      <div><dt>Forge mode</dt><dd>{forgeIdentityModeLabel(workspaceIdentityForm.forgeIdentityMode)}</dd></div>
+                      <div><dt>Business mode</dt><dd>{forgeIdentityModeLabel(workspaceIdentityForm.forgeIdentityMode)}</dd></div>
                       <div><dt>Mode meaning</dt><dd>{forgeIdentityModeDescription(workspaceIdentityForm.forgeIdentityMode)}</dd></div>
-                      <div><dt>Active Forge</dt><dd>{activeForgeWorkspace?.name || "Unavailable"}</dd></div>
+                      <div><dt>Active Business</dt><dd>{activeForgeWorkspace?.name || "Unavailable"}</dd></div>
                       <div><dt>Workspace records</dt><dd>{workspaceRecordCountsFor(activeWorkspace?.id).total} linked</dd></div>
                     </dl>
                     <p className="compact-subtitle">Workspace metadata saves with beta workspace data where supported. Cloud schema currently stores name/type; extended identity fields stay in local beta backup until cloud fields are added.</p>
@@ -700,12 +700,12 @@ export default function MenuDrawerContent({ scope }) {
                   </form>
 
                   <div className="drawer-info-card forge-mode-settings-card">
-                    <strong>Forge workspace mode</strong>
-                    <p className="compact-subtitle">Choose whether Forge follows your personal workspace or stays locked to Code 3 TCG seller inventory. Personal Forge data is hidden when turned off, not deleted.</p>
+                    <strong>Business workspace mode</strong>
+                    <p className="compact-subtitle">Choose whether Business follows your personal workspace or stays locked to Code 3 TCG seller inventory. Personal Business Workspace data is hidden when turned off, not deleted.</p>
                     <div className="settings-mode-summary">
                       <span>Seller mode</span>
                       <strong>{settingsSellerModeActive ? "On" : "Off"}</strong>
-                      <small>{settingsSellerModeActive ? "Forge, receipts, mileage, inventory, and sales are prioritized." : "Turn on Seller mode to prioritize business tools."}</small>
+                      <small>{settingsSellerModeActive ? "Business, receipts, mileage, inventory, and sales are prioritized." : "Turn on Seller mode to prioritize business tools."}</small>
                     </div>
                     <div className="drawer-inline-actions">
                       <button type="button" className={settingsSellerModeActive ? "drawer-link active" : "drawer-link"} onClick={() => applyHomeViewPreset("seller")}>Turn Seller Mode On</button>
@@ -713,8 +713,8 @@ export default function MenuDrawerContent({ scope }) {
                     </div>
                     <label className="toggle-row forge-mode-toggle">
                       <span>
-                        <strong>Show Personal Forge</strong>
-                        <small>Keep your personal seller inventory visible as a Forge option.</small>
+                        <strong>Show Personal Business Workspace</strong>
+                        <small>Keep your personal seller inventory visible as a Business option.</small>
                       </span>
                       <input
                         type="checkbox"
@@ -724,8 +724,8 @@ export default function MenuDrawerContent({ scope }) {
                     </label>
                     <label className="toggle-row forge-mode-toggle">
                       <span>
-                        <strong>Always use Code 3 TCG Forge</strong>
-                        <small>Open Forge, Add Item, and Vault-to-Forge transfers directly in Code 3 TCG.</small>
+                        <strong>Always use Code 3 TCG Business</strong>
+                        <small>Open Business, Add Item, and Vault-to-Business transfers directly in Code 3 TCG.</small>
                       </span>
                       <input
                         type="checkbox"
@@ -739,7 +739,7 @@ export default function MenuDrawerContent({ scope }) {
                         }}
                       />
                     </label>
-                    <Field label="Default Forge">
+                    <Field label="Default Business">
                       <select
                         value={forgeModeSettings.lockToEmberTide ? emberTideForgeWorkspace?.id || "__ember_tide_missing__" : forgeModeSettings.defaultForgeWorkspaceId || ""}
                         disabled={forgeModeSettings.lockToEmberTide || !forgeWorkspaceOptions.length}
@@ -757,19 +757,19 @@ export default function MenuDrawerContent({ scope }) {
                       </select>
                     </Field>
                     <dl className="drawer-status-list forge-mode-summary">
-                      <div><dt>Active Forge</dt><dd>{activeForgeWorkspace?.name || "Unavailable"}</dd></div>
-                      <div><dt>Personal Forge</dt><dd>{forgeModeSettings.personalForgeEnabled ? "Visible" : "Hidden"}</dd></div>
+                      <div><dt>Active Business</dt><dd>{activeForgeWorkspace?.name || "Unavailable"}</dd></div>
+                      <div><dt>Personal Business Workspace</dt><dd>{forgeModeSettings.personalForgeEnabled ? "Visible" : "Hidden"}</dd></div>
                       <div><dt>Locked mode</dt><dd>{forgeModeSettings.lockToEmberTide ? "Code 3 TCG" : "Off"}</dd></div>
                     </dl>
                     <p className="compact-subtitle">{activeForgeModeSummary}</p>
                     {!emberTideForgeWorkspace ? (
-                      <p className="compact-subtitle">Code 3 TCG Forge is not available in your workspace list yet. Create a Code 3 TCG business workspace or keep Personal Forge enabled.</p>
+                      <p className="compact-subtitle">Code 3 TCG Business is not available in your workspace list yet. Create a Code 3 TCG business workspace or keep Personal Business Workspace enabled.</p>
                     ) : null}
                     {!activeForgeWorkspace ? (
                       <p className="auth-status-message error" role="status">{forgeWorkspaceUnavailableMessage}</p>
                     ) : null}
                     <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("inventory"))}>
-                      Open Forge
+                      Open Business
                     </button>
                   </div>
 
@@ -901,7 +901,7 @@ export default function MenuDrawerContent({ scope }) {
                 <div className="drawer-links">
                   <div className="drawer-info-card">
                     <strong>App identity</strong>
-                    <p className="compact-subtitle">Vault = collect. Forge = sell. Scout = find. Tidepool = share. Catalog = know. Deal Finder = decide. Scanner = add anything.</p>
+                    <p className="compact-subtitle">Vault = collect. Business = sell. Restocks = find. Community = share. Catalog = know. Deal Finder = decide. Scanner = add anything.</p>
                     <div className="tcg-os-link-grid">
                       {TCG_OS_MODES.map((mode) => (
                         <button type="button" className="drawer-link" key={mode.key} onClick={() => runMenuAction(() => openOperatingSystemFeature(mode.key))}>
@@ -957,13 +957,13 @@ export default function MenuDrawerContent({ scope }) {
                   {renderOnboardingSettingsCard()}
                   <div className="drawer-info-card experience-mode-settings-card">
                     <strong>Experience Mode</strong>
-                    <p className="compact-subtitle">This changes what Hearth and Today&apos;s Tide prioritize. Mobile navigation stays stable unless seller personalization is already supported.</p>
+                    <p className="compact-subtitle">This changes what Home and Today&apos;s Tide prioritize. Mobile navigation stays stable unless seller personalization is already supported.</p>
                     <p className="compact-subtitle">Persistence: {settingsAppPreferencePersistenceLabel}. Card density remains local-only until a backend field exists.</p>
                     <div className="settings-mode-grid">
                       {[
                         { key: "budget", title: "Simple", helper: "Parents, families, and new collectors.", active: normalizeUserType(userType) === "budget" || normalizeDashboardPreset(dashboardPreset) === "budget_parent" },
-                        { key: "collector", title: "Collector", helper: "Vault, Scout, Market, and Tidepool.", active: normalizeUserType(userType) === "collector" && normalizeDashboardPreset(dashboardPreset) !== "seller" },
-                        { key: "seller", title: "Seller", helper: "Forge, receipts, mileage, inventory, and sales.", active: normalizeUserType(userType) === "seller" || normalizeDashboardPreset(dashboardPreset) === "seller" },
+                        { key: "collector", title: "Collector", helper: "Vault, Restocks, Market, and Community.", active: normalizeUserType(userType) === "collector" && normalizeDashboardPreset(dashboardPreset) !== "seller" },
+                        { key: "seller", title: "Seller", helper: "Business, receipts, mileage, inventory, and sales.", active: normalizeUserType(userType) === "seller" || normalizeDashboardPreset(dashboardPreset) === "seller" },
                       ].map((mode) => (
                         <button
                           key={mode.key}
@@ -1009,7 +1009,7 @@ export default function MenuDrawerContent({ scope }) {
                   ) : null}
                   <div className="drawer-info-card">
                     <strong>Location</strong>
-                    <p className="compact-subtitle">Location is used for nearby Scout stores and alerts. Device location stays off unless you enable it.</p>
+                    <p className="compact-subtitle">Location is used for nearby watched stores and alerts. Device location stays off unless you enable it.</p>
                     <input
                       className="drawer-field"
                       value={locationSettings.manualLocation}
@@ -1024,11 +1024,11 @@ export default function MenuDrawerContent({ scope }) {
                   </div>
                   <div className="drawer-info-card store-alert-settings-card">
                     <strong>Store Watch Notes</strong>
-                    <p className="compact-subtitle">Followed stores power favorite-store alerts and regional Scout context. Store follows sync to Supabase when the store comes from the cloud directory; manual/local stores remain local fallback.</p>
+                    <p className="compact-subtitle">Followed stores power favorite-store alerts and regional restock context. Store follows sync to Supabase when the store comes from the cloud directory; manual/local stores remain local fallback.</p>
                     <dl className="drawer-status-list">
                       <div><dt>Followed stores</dt><dd>{settingsFollowedStores.length}</dd></div>
                       <div><dt>Persistence</dt><dd>{settingsStoreAlertPersistenceLabel}</dd></div>
-                      <div><dt>Store data</dt><dd>{scoutBackendSync.loaded ? "Cloud + local fallback" : scoutBackendSync.loading ? "Loading Scout stores" : "Open Scout or Regional Stores to load"}</dd></div>
+                      <div><dt>Store data</dt><dd>{scoutBackendSync.loaded ? "Cloud + local fallback" : scoutBackendSync.loading ? "Loading watched stores" : "Open Restocks or Regional Stores to load"}</dd></div>
                     </dl>
                     <div className="drawer-inline-actions">
                       <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setActiveTab("scout"); setScoutView("stores"); setScoutStoresMode("map"); })}>Open Store Directory</button>
@@ -1037,7 +1037,7 @@ export default function MenuDrawerContent({ scope }) {
                   </div>
                   <div className="drawer-info-card">
                     <strong>In-app Alert Preferences</strong>
-                    <p className="compact-subtitle">{IN_APP_ALERT_DISCLOSURE} These category toggles are local beta preferences. Scout alert routing below uses {settingsScoutAlertPersistenceLabel} when available.</p>
+                    <p className="compact-subtitle">{IN_APP_ALERT_DISCLOSURE} These category toggles are local beta preferences. Restock alert routing below uses {settingsScoutAlertPersistenceLabel} when available.</p>
                     <div className="ai-helper-note">
                       <span>Draft clearer alert copy without sending anything.</span>
                       <button type="button" className="secondary-button" onClick={() => void runNotificationCopyAiAssist()}>Draft notification</button>
@@ -1059,7 +1059,7 @@ export default function MenuDrawerContent({ scope }) {
                       ))}
                     </div>
                     <details className="drawer-subdetails">
-                      <summary>Scout alert routing preferences</summary>
+                      <summary>Restock alert routing preferences</summary>
                       <div className="menu-toggle-list">
                         {notificationPreferenceRows.map((row) => (
                           <label className="toggle-row" key={row.key}>
@@ -1092,11 +1092,11 @@ export default function MenuDrawerContent({ scope }) {
                     <div className="settings-section-grid compact">
                       <article className="settings-section-card">
                         <strong>Business data privacy</strong>
-                        <span>Your Forge inventory, receipts, sales, and mileage stay private to you and authorized workspace members.</span>
+                        <span>Your Business inventory, receipts, sales, and mileage stay private to you and authorized workspace members.</span>
                         <small className="status-badge">{commandDeskSellerAccess ? "Seller/admin private" : "Hidden from non-sellers"}</small>
                       </article>
                       <article className="settings-section-card">
-                        <strong>Location usage for Scout</strong>
+                        <strong>Location usage for Restocks</strong>
                         <span>Device location is optional and only used for nearby stores and restock signals.</span>
                         <small className="status-badge">{locationSettings.trackingEnabled ? "Device location on" : "Manual/local"}</small>
                       </article>
@@ -1251,7 +1251,7 @@ export default function MenuDrawerContent({ scope }) {
                   </div>
                   <div className="drawer-info-card">
                     <strong>Product glossary</strong>
-                    <p className="compact-subtitle">Hearth, Market Watch, Tidepool Community, Tide Score, Fair Price Badges, and future roadmap names live with Known Limitations.</p>
+                    <p className="compact-subtitle">Home, Market Watch, Community, Trust Score, Fair Price Badges, and future roadmap names live with Known Limitations.</p>
                     <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("knownLimitations"))}>Open Glossary</button>
                   </div>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openPublicBetaFeedback({ page: "More Feedback", mainReason: "General feedback" }))}>Join Beta / Request State</button>
@@ -1283,13 +1283,13 @@ export default function MenuDrawerContent({ scope }) {
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(restartOnboarding)}>Restart Onboarding</button>
                 </div>
               ), "help")}
-              {renderMenuPullDown("community", "Tidepool Community", "Family-safe posts, guidelines, and community rules", (
+              {renderMenuPullDown("community", "Community", "Family-safe posts, guidelines, and community rules", (
                 <div className="drawer-links">
                   <div className="drawer-info-card">
-                    <strong>Tidepool Community</strong>
+                    <strong>Community</strong>
                     <p className="compact-subtitle">Family-safe community hub for reports, guidelines, questions, events, and future community tools.</p>
                   </div>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openTidepoolCommunity("Latest"))}>Open Tidepool Community</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openTidepoolCommunity("Latest"))}>Open Community</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setVaultToast("Report Guidelines are coming soon for beta."))}>Report Guidelines</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("trust"))}>Community Rules</button>
                   <button type="button" className="drawer-link disabled-link" disabled>Discord Coming Soon</button>
@@ -1305,7 +1305,7 @@ export default function MenuDrawerContent({ scope }) {
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("dashboard"))}>Open Settings / Plans</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("membership"))}>Compare Plans Preview</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("membership"))}>Membership Foundation</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => requestLockedFeatureAccess("seller_tools"))}>Ask admin to upgrade during beta</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => requestLockedFeatureAccess("seller_tools"))}>Ask the Code 3 team to turn on seller tools (free during beta)</button>
                   <button type="button" className="drawer-link disabled-link" disabled>Stripe Not Connected</button>
                 </div>
               ), "plan")}
@@ -1332,13 +1332,13 @@ export default function MenuDrawerContent({ scope }) {
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Kids Program Applications"); setActiveTab("adminReview"); })}>Kids Program Review</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Beta Feedback"); setActiveTab("adminReview"); })}>Beta Feedback Review</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Sponsor Interest"); setActiveTab("adminReview"); })}>Sponsor Interest Review</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminEditMode(true); openTidepoolCommunity("Needs Review"); })}>Tidepool Moderation</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminEditMode(true); openTidepoolCommunity("Needs Review"); })}>Community Moderation</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Market Source Controls"); setActiveTab("adminReview"); })}>Market Source Controls</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Marketplace Listings"); setActiveTab("adminReview"); })}>Marketplace Listing Review</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Store Suggestions"); setActiveTab("adminReview"); })}>Store Correction Review</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Catalog Suggestions"); setActiveTab("adminReview"); })}>Catalog Correction Review</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("SKU / UPC Suggestions"); setActiveTab("adminReview"); })}>Best Buy SKU Review</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminEditMode(true); setAdminReviewFilter("Scout Report Review"); setActiveTab("adminReview"); })}>Scout Report Review</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminEditMode(true); setAdminReviewFilter("Restocks Report Review"); setActiveTab("adminReview"); })}>Restocks Report Review</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Store Intelligence Suggestions"); setActiveTab("adminReview"); })}>Store Intelligence Suggestions</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Flagged / Duplicate Items"); setActiveTab("adminReview"); })}>Flagged / Duplicate Items</button>
                 </div>

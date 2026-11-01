@@ -43,7 +43,7 @@ export function explainRouteChoice(storeCandidate = {}, routeGoal = "Highest res
   const pieces = [routeGoal];
   if (storeCandidate.recentConfirmed) pieces.push("recent confirmed sighting");
   if (storeCandidate.reportCountToday) pieces.push(`${storeCandidate.reportCountToday} reports today`);
-  if (storeCandidate.tidepoolScore) pieces.push(`Tidepool ${Math.round(storeCandidate.tidepoolScore)}%`);
+  if (storeCandidate.tidepoolScore) pieces.push(`Community ${Math.round(storeCandidate.tidepoolScore)}%`);
   if (store.priority || store.favorite) pieces.push("favorite/priority store");
   if (storeCandidate.strictLimit) pieces.push("strict limits noted");
   if (!storeCandidate.lastReportTime) pieces.push("needs newer report data");

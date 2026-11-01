@@ -102,7 +102,7 @@ export function isPhase2TableMissing(error) {
 
 export function classifyPhase2SyncError(error) {
   const text = `${error?.code || ""} ${error?.message || ""} ${error?.details || ""}`.toLowerCase();
-  if (!error) return { kind: "local", label: "Local only mode", message: "Saved locally." };
+  if (!error) return { kind: "local", label: "Saved on this device", message: "Saved on this device only. If you lose or reset this phone, these records go with it unless you download a backup (Settings > Backup) or sign in for cloud sync." };
   if (isPhase2TableMissing(error)) {
     return {
       kind: "missing_table",
@@ -393,7 +393,7 @@ export async function loadPhase2Data(ctx = {}) {
               label: "Supabase sign-in required",
               message: "Supabase mode is enabled. Sign in to save Phase 2 workflows to Supabase.",
             }
-          : { source: "local", kind: "local", label: "Local only mode", message: "Local only mode. Phase 2 saved locally until cloud sign-in and migrations are ready." },
+          : { source: "local", kind: "local", label: "Saved on this device", message: "Saved on this device only until cloud sign-in is ready. Download a backup (Settings > Backup) so a lost or reset phone does not take your records with it." },
     };
   }
 

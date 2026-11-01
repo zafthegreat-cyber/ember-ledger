@@ -1,4 +1,5 @@
 import { compareCatalogProducts } from "../utils/catalogSortUtils";
+import { catalogCardQueryMatchesRow, getCatalogCollectorQuery } from "../utils/catalogResultIdentity.mjs";
 import {
   analyzeCatalogSearch,
   buildCatalogAliasSuggestions,
@@ -763,7 +764,7 @@ function dedupeRows(rows = []) {
 }
 
 function rankRows(rows, analysis, exactTerm, sort) {
-  return [...rows].sort((a, b) => {
+  return rows.filter((row) => catalogCardQueryMatchesRow(exactTerm, row)).sort((a, b) => {
     if (sort === "bestMatch") {
       const aScore = scoreCatalogSearchRow(a, analysis, exactTerm).score;
       const bScore = scoreCatalogSearchRow(b, analysis, exactTerm).score;
@@ -853,6 +854,7 @@ async function runTextSearchAgainstSource({ supabase, sourceName, query, barcode
   const cleanedBarcode = cleanCatalogSearch(barcode);
   const exactTerm = mode === "barcode" ? cleanedBarcode || cleanedQuery : cleanedQuery || cleanedBarcode;
   const analysis = analyzeCatalogSearch(exactTerm);
+  const collectorQuery = getCatalogCollectorQuery(exactTerm);
   const pageOffset = Math.max(0, (page - 1) * pageSize);
   const searchTerms = buildSearchTerms(cleanedQuery || cleanedBarcode, mode);
   const broadMultiTokenSearch = mode === "general" && sort === "bestMatch" && searchTerms.length > 1 && exactTerm.includes(" ");
@@ -860,18 +862,27 @@ async function runTextSearchAgainstSource({ supabase, sourceName, query, barcode
   const remoteTextFields = broadMultiTokenSearch ? compactTextFieldsForBroadSearch(textFields) : textFields;
   const structuredSetProductSearch = (analysis.setMatches || []).length > 0 && (analysis.productMatches || []).length > 0;
   const structuredSealedSetSearch = filters.productGroup === "Sealed" && (analysis.setMatches || []).length > 0;
-  const candidateLimit = (structuredSealedSetSearch || structuredSetProductSearch)
+  const clientRankedSearch = Boolean(collectorQuery || searchTerms.length > 1);
+  const candidateLimit = (collectorQuery || structuredSealedSetSearch || structuredSetProductSearch)
     ? Math.min(Math.max(pageSize * Math.max(page, 1) * 6, 120), 300)
     : sort === "bestMatch" && searchTerms.length > 1
       ? Math.min(Math.max(pageSize * Math.max(page, 1) * 3, 60), 180)
       : pageSize;
-  const rangeStart = searchTerms.length > 1 ? 0 : pageOffset;
+  const rangeStart = clientRankedSearch ? 0 : pageOffset;
   const rangeEnd = rangeStart + candidateLimit - 1;
   let dbQuery = supabase
     .from(sourceName)
     .select(selectFields, { count: "estimated" });
   dbQuery = applyFilters(dbQuery, filters);
-  if (remoteSearchTerms.length) {
+  if (collectorQuery) {
+    // The name and number usually live in separate columns. Retrieve bounded
+    // number candidates, then require the full identity before ranking them.
+    const numberPattern = collectorQuery.collectorNumber.split("/").map(part => {
+      const [, prefix, digits, suffix] = /^([a-z]*)(\d+)([a-z]*)$/.exec(part);
+      return [prefix, digits, suffix].filter(Boolean).join("%");
+    }).join("%/%");
+    dbQuery = dbQuery.or(`card_number.ilike.%${numberPattern}%`);
+  } else if (remoteSearchTerms.length) {
     const orClauses = remoteSearchTerms.flatMap((term) =>
       remoteTextFields.map((field) => `${field}.ilike.${matchMode === "prefix" ? `${safeOrTerm(term)}%` : `%${safeOrTerm(term)}%`}`)
     );
@@ -885,7 +896,7 @@ async function runTextSearchAgainstSource({ supabase, sourceName, query, barcode
   if (error) throw error;
 
   let priorityRows = [];
-  if (sort === "bestMatch" && searchTerms.length > 1 && !broadMultiTokenSearch) {
+  if (!collectorQuery && sort === "bestMatch" && searchTerms.length > 1 && !broadMultiTokenSearch) {
     const priorityClauses = buildPriorityTextClauses([exactTerm, ...searchTerms]);
     if (priorityClauses.length) {
       let priorityQuery = supabase
@@ -903,12 +914,12 @@ async function runTextSearchAgainstSource({ supabase, sourceName, query, barcode
 
   const rankedRows = rankRows(filterRowsByProductGroup(dedupeRows([...(data || []), ...priorityRows]), filters), analysis, exactTerm, sort);
   const rows = rankedRows
-    .slice(searchTerms.length > 1 ? pageOffset : 0)
+    .slice(clientRankedSearch ? pageOffset : 0)
     .slice(0, pageSize);
 
   const filteredCount = filters.productGroup && filters.productGroup !== "All"
     ? Math.max(rankedRows.length, pageOffset + rows.length)
-    : searchTerms.length > 1
+    : clientRankedSearch
       ? Math.max(rankedRows.length, pageOffset + rows.length)
       : count || rows.length;
 

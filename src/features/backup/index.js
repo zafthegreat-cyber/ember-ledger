@@ -4,3 +4,4 @@ export * from "./backupValidation.js";
 export * from "./backupSourceRegistry.js";
 export * from "./canonicalJson.js";
 export * from "./restorePreview.js";
+export * from "./restoreCompatibility.js";

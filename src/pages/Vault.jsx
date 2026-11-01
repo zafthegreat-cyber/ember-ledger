@@ -1,5 +1,7 @@
 import { PrivateStorageImage } from "../components/PrivateReceipt.jsx";
 import { CommandBoardV4 } from "../components/command-system";
+import CollectionValueCoverage from "../components/CollectionValueCoverage.jsx";
+import { collectionItemKnownValue, summarizeCollectionPortfolio } from "../utils/collectionValueCoverage.mjs";
 
 export default function VaultPage(props) {
   const {
@@ -113,13 +115,7 @@ export default function VaultPage(props) {
           (vaultItemSetLabel(item) || item.productType || item.category)
         );
       };
-      const getVaultItemValue = (item = {}) => {
-        const savedTotal = Number(vaultItemTotalMarketValue(item) || 0);
-        if (savedTotal > 0) return savedTotal;
-        const unitValue = Number(item.marketPrice || item.marketValue || item.currentValue || item.estimatedValue || item.manualValue || item.targetPrice || 0);
-        const quantity = Math.max(1, Number(item.quantity || item.ownedQuantity || item.quantityOwned || 1));
-        return unitValue > 0 ? unitValue * quantity : 0;
-      };
+      const getVaultItemValue = collectionItemKnownValue;
       const formatDashboardMoney = (value) => {
         const number = Number(value || 0);
         if (!number) return "$0";
@@ -149,21 +145,18 @@ export default function VaultPage(props) {
         : 0;
       const collectionHealthPercent = vaultHealthScore;
       const estimatedValue = vaultMarketValueDisplay === "Price data unavailable" ? "Value pending" : vaultMarketValueDisplay;
-      const portfolioTotalValue = activeVaultItems.reduce((sum, item) => sum + getVaultItemValue(item), 0);
-      const portfolioCardValue = activeVaultCardItems.reduce((sum, item) => sum + getVaultItemValue(item), 0);
-      const portfolioSealedValue = activeVaultSealedItems.reduce((sum, item) => sum + getVaultItemValue(item), 0);
-      const portfolioWishlistValue = wishlistItems.reduce((sum, item) => sum + getVaultItemValue(item), 0);
+      const portfolioSummary = summarizeCollectionPortfolio({ owned: activeVaultItems, cards: activeVaultCardItems, sealed: activeVaultSealedItems, wishlist: wishlistItems, statusFor: normalizeVaultStatus });
+      const portfolioTotalValue = portfolioSummary.totalKnownValue;
+      const portfolioCardValue = portfolioSummary.groups[0].value;
+      const portfolioSealedValue = portfolioSummary.groups[1].value;
       const portfolioBasisTotal = portfolioTotalValue > 0
-        ? Math.max(1, portfolioTotalValue + portfolioWishlistValue)
-        : Math.max(1, activeVaultCardItems.length + activeVaultSealedItems.length + wishlistItems.length + Math.max(0, activeVaultItems.length - activeVaultCardItems.length - activeVaultSealedItems.length));
-      const portfolioCardBasis = portfolioTotalValue > 0 ? portfolioCardValue : activeVaultCardItems.length;
-      const portfolioSealedBasis = portfolioTotalValue > 0 ? portfolioSealedValue : activeVaultSealedItems.length;
-      const portfolioWishlistBasis = portfolioTotalValue > 0 ? portfolioWishlistValue : wishlistItems.length;
+        ? portfolioTotalValue
+        : Math.max(1, portfolioSummary.ownedQuantity);
+      const portfolioCardBasis = portfolioTotalValue > 0 ? portfolioCardValue : portfolioSummary.groups[0].quantity;
+      const portfolioSealedBasis = portfolioTotalValue > 0 ? portfolioSealedValue : portfolioSummary.groups[1].quantity;
       const portfolioCardShare = Math.round((portfolioCardBasis / portfolioBasisTotal) * 100);
       const portfolioSealedShare = Math.round((portfolioSealedBasis / portfolioBasisTotal) * 100);
-      const portfolioWishlistShare = Math.round((portfolioWishlistBasis / portfolioBasisTotal) * 100);
       const portfolioSealedStop = Math.min(100, portfolioCardShare + portfolioSealedShare);
-      const portfolioWishlistStop = Math.min(100, portfolioSealedStop + portfolioWishlistShare);
       const portfolioValueLabel = (value, count) => value > 0 ? formatDashboardMoney(value) : pluralizeItems(count);
       const slabCount = activeVaultItems.filter((item) => /slab|graded/i.test(`${item.productType || ""} ${item.category || ""} ${item.grade || ""} ${item.gradingCompany || ""}`)).length;
       const tradeReadyCount = activeVaultItems.filter((item) => ["trade_pile", "ready_for_forge", "listed"].includes(normalizeVaultStatus(item))).length;
@@ -171,8 +164,7 @@ export default function VaultPage(props) {
       const portfolioBreakdownCards = [
         { key: "cards", label: "Cards", value: portfolioValueLabel(portfolioCardValue, activeVaultCardItems.length), detail: `${activeVaultCardItems.length} records`, share: portfolioCardShare, tone: "vault" },
         { key: "sealed", label: "Sealed", value: portfolioValueLabel(portfolioSealedValue, activeVaultSealedItems.length), detail: `${activeVaultSealedItems.length} products`, share: portfolioSealedShare, tone: "gold" },
-        { key: "slabs", label: "Slabs", value: slabCount, detail: "Graded or slabbed", share: percentOfVault(slabCount), tone: "collector" },
-        { key: "wishlist", label: "Wishlist", value: wishlistItems.length, detail: "Wanted, not owned", share: portfolioWishlistShare, tone: "vault" },
+        { key: "other", label: "Other owned", value: portfolioValueLabel(portfolioSummary.groups[2].value, portfolioSummary.groups[2].quantity), detail: `${portfolioSummary.groups[2].quantity} copies`, share: portfolioSummary.ownedQuantity ? Math.max(0, 100 - portfolioSealedStop) : 0, tone: "collector" },
       ];
       const storageLocationCards = [
         { key: "binder", label: "Binders", count: activeVaultItems.filter((item) => /binder|page|toploader/i.test(vaultItemLocationLabel(item))).length, detail: "Pages, binders, top loaders" },
@@ -358,19 +350,19 @@ export default function VaultPage(props) {
                   <div>
                     <span className="trust-badge trust-badge--verified">Portfolio Breakdown</span>
                     <h3>{portfolioTotalValue ? formatDashboardMoney(portfolioTotalValue) : pluralizeItems(activeVaultItems.length)}</h3>
-                    <p>Cards, sealed, slabs, wishlist, and trade-ready collection mix.</p>
+                    <p>Known values for owned copies. Unpriced copies need review.</p>
                   </div>
                   <div
                     className="vault-portfolio-donut"
                     style={{
                       "--vault-card-share": `${portfolioCardShare}%`,
                       "--vault-sealed-share": `${portfolioSealedStop}%`,
-                      "--vault-wishlist-share": `${portfolioWishlistStop}%`,
+                      "--vault-wishlist-share": "100%",
                     }}
-                    aria-label="Vault portfolio mix"
+                    aria-hidden="true"
                   >
-                    <b>{activeVaultItems.length}</b>
-                    <small>items</small>
+                    <b>{portfolioSummary.ownedQuantity}</b>
+                    <small>owned copies</small>
                   </div>
                 </div>
                 <div className="vault-portfolio-breakdown-list">
@@ -379,11 +371,13 @@ export default function VaultPage(props) {
                       <span>{card.label}</span>
                       <strong>{card.value}</strong>
                       <small>{card.detail}</small>
-                      <i aria-hidden="true"><b style={{ width: `${Math.max(5, card.share)}%` }} /></i>
+                      <i aria-hidden="true"><b style={{ width: `${card.share}%` }} /></i>
                     </div>
                   ))}
                 </div>
+                <CollectionValueCoverage summary={portfolioSummary} money={formatDashboardMoney} />
                 <div className="vault-status-chip-row" aria-label="Vault status chips">
+                  <span>{slabCount} graded/slab records within owned types</span>
                   <span>{tradeReadyCount} trade/sell ready</span>
                   <span>{kidsCollectionCount} family-labeled</span>
                   <span>{confidenceLabel} data confidence</span>

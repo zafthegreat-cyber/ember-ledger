@@ -1,4 +1,8 @@
 import { PrivateStorageImage } from "../../components/PrivateReceipt.jsx";
+import ExportDisclosure from "../../components/ExportDisclosure.jsx";
+
+// #97: the cross-listing CSV columns are fixed in App's exportCrossListingCSV.
+const CROSS_LISTING_EXPORT_FIELDS = ["platform", "sku", "title", "description", "price", "estimatedFees", "status", "sourceListingId", "catalogItemId"];
 // Rendering is deferred; the owning App retains record state and action handlers.
 export default function MarketplaceContent({ scope }) {
   const {
@@ -388,8 +392,10 @@ export default function MarketplaceContent({ scope }) {
               {label}
             </button>
           ))}
-          {sellerMarketMode ? <button type="button" className="secondary-button" onClick={() => exportCrossListingCSV("all")}>Export</button> : null}
+          {sellerMarketMode ? <button type="button" className="secondary-button" aria-describedby="cross-listing-export-disclosure" onClick={() => exportCrossListingCSV("all")}>Export listing CSV</button> : null}
         </div>
+        {sellerMarketMode ? <p className="compact-subtitle">Listings here are drafts and records. Code 3 TCG does not post to eBay, TCGplayer or Whatnot yet; the CSV is for pasting into those sites' bulk tools. Posting from the app needs each marketplace's approval and is on the roadmap.</p> : null}
+        {sellerMarketMode ? <ExportDisclosure id="cross-listing-export-disclosure" format="csv" fields={CROSS_LISTING_EXPORT_FIELDS} redactions={["buyer details", "photos"]} /> : null}
 
         {marketplaceView === "landing" ? (
           <div className="empty-state">
@@ -538,14 +544,14 @@ export default function MarketplaceContent({ scope }) {
             {selectedListingClosed ? (
               <p className="market-closed-note">This listing is {normalizeListingStatus(selectedListing)}. It is kept for history and review, not as an active public offer.</p>
             ) : null}
-            <p className="compact-subtitle">Seller trust uses public username, Scout level, public badges, and contribution history. Private email and admin moderation notes are not shown publicly.</p>
+            <p className="compact-subtitle">Seller trust uses public username, Restocks level, public badges, and contribution history. Private email and admin moderation notes are not shown publicly.</p>
             <p className="compact-subtitle">Code 3 TCG does not provide checkout/payment inside the app yet. Use safe, agreed payment methods and follow community rules.</p>
             <div className="quick-actions">
               <button type="button" disabled={selectedListingClosed} onClick={() => setVaultToast("Contact request saved for beta. Messaging is coming soon.")}>Contact Seller</button>
               <button type="button" className="secondary-button" onClick={() => toggleSavedListing(selectedListing.id)}>Save Listing</button>
               {!selectedListingClosed && selectedListingCatalogProduct ? (
                 adaptiveSellerToolsVisible ? (
-                  <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product: selectedListingCatalogProduct, source: "marketplace-detail-forge", destinations: { forge: true } })}>Add to Forge</button>
+                  <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product: selectedListingCatalogProduct, source: "marketplace-detail-forge", destinations: { forge: true } })}>Add to Business</button>
                 ) : (
                   <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product: selectedListingCatalogProduct, source: "marketplace-detail-vault", destinations: { vault: true } })}>Add to Vault</button>
                 )

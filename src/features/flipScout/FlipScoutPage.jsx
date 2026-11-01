@@ -5,6 +5,7 @@ import { findDealForProviderListing, mergeProviderListings, providerListingToDea
 import { downloadTextFile } from "./csv.js";
 import { createEmptyFlipScoutState } from "./constants.js";
 import { createFlipScoutRepository } from "./storageRepository.js";
+import { sanitizeEbaySnapshot } from "./ebayClient.js";
 import { LoadingState, PageHeader } from "../../components/operations/OperationsUI.jsx";
 import { resolveExperiencePresentation } from "../../utils/experiencePresentation.js";
 import "./flipScout.css";
@@ -77,6 +78,28 @@ export default function FlipScoutPage({ onOpenRestocks, onReportRestock, initial
   const [subview, setSubview] = useState(initialDestination.subview);
   const [appraisalSeed, setAppraisalSeed] = useState(null);
   const [storageMessage, setStorageMessage] = useState(repository.getLastError());
+  useEffect(() => {
+    let disposed = false;
+    let running = false;
+    const reconcile = async () => {
+      if (running || document.visibilityState === "hidden") return;
+      // Devices with no eBay evidence need no network request.
+      const snapshot = repository.load();
+      if (!/"(?:providerId|marketplace|externalProvider)"\s*:\s*"ebay"|"sourceId"\s*:\s*"ebay:/i.test(JSON.stringify(snapshot))) return;
+      running = true;
+      try {
+        const result = await repository.reconcileEbayPrivacy(sanitizeEbaySnapshot);
+        if (!disposed && result.changed) { setState(result.state); setStorageMessage(""); }
+      } catch (error) {
+        if (!disposed) setStorageMessage(error?.message || "Reconnect to finish eBay privacy cleanup.");
+      } finally { running = false; }
+    };
+    void reconcile();
+    const timer = window.setInterval(reconcile, 60_000);
+    window.addEventListener("focus", reconcile);
+    window.addEventListener("online", reconcile);
+    return () => { disposed = true; window.clearInterval(timer); window.removeEventListener("focus", reconcile); window.removeEventListener("online", reconcile); };
+  }, [repository]);
   const activeTitle = useMemo(() => activeScreen === "records" && !showOperationalTools ? "Saved records" : SCREEN_TITLES[activeScreen] || "Find", [activeScreen, showOperationalTools]);
   const visiblePrimaryNavItems = PRIMARY_NAV_ITEMS.filter(([key]) => key !== "restocks" || featureControls.restocks !== false).filter(([key]) => key !== "auctions" || featureControls.auctions !== false);
   const intelligenceAnalyses = useMemo(() => (state.appraisals || [])

@@ -135,10 +135,12 @@ export default function HearthPage(props) {
     workspaceSales,
     workspaceTradeRecords,
     workspaceWatchlist,
+    kidSafeView = false,
   } = props;
 
   function renderHearthHomeCommandView() {
-      const sellerAccessVisible = adaptiveSellerToolsVisible;
+      // A48: a kid profile never sees seller tools or the business strip on Home.
+      const sellerAccessVisible = adaptiveSellerToolsVisible && !kidSafeView;
       const hearthMode = adminToolsVisible ? "admin" : adaptiveUiState.hearthMode;
       const hearthAdaptiveState = adminToolsVisible
         ? { ...adaptiveUiState, showAdminTools: true, showModeratorTools: true, showSellerTools: false }
@@ -295,33 +297,33 @@ export default function HearthPage(props) {
             onSecondary: () => setActiveTab("kidsProgram"),
           };
           if (scoutNeedsReviewReports.length) return {
-            badge: "Scout",
-            title: `${scoutNeedsReviewReports.length} Scout report${scoutNeedsReviewReports.length === 1 ? "" : "s"} need moderation`,
+            badge: "Restocks",
+            title: `${scoutNeedsReviewReports.length} Restock report${scoutNeedsReviewReports.length === 1 ? "" : "s"} need moderation`,
             reason: "Verified reports protect store history and restock predictions.",
-            primaryLabel: "Review Scout",
+            primaryLabel: "Review Restocks",
             onPrimary: () => {
-              setAdminReviewFilter("Scout Report Review");
+              setAdminReviewFilter("Restocks Report Review");
               setActiveTab("adminReview");
             },
-            secondaryLabel: "Open Scout",
+            secondaryLabel: "Open Restocks",
             onSecondary: () => setActiveTab("scout"),
           };
         }
         if (hearthMode === "seller") {
           if (receiptsNeedingReviewCount) return {
-            badge: "Forge",
+            badge: "Business",
             title: `${receiptsNeedingReviewCount} receipt${receiptsNeedingReviewCount === 1 ? "" : "s"} need review`,
             reason: "Profit and inventory cost stay accurate when receipts are reviewed.",
             primaryLabel: "Review Receipts",
             onPrimary: () => setActiveTab("expenses"),
-            secondaryLabel: "Open Forge",
+            secondaryLabel: "Open Business",
             onSecondary: () => setActiveTab("inventory"),
           };
           if (needsMarketCheckItems.length || missingSalePriceItems.length) return {
-            badge: "Forge",
+            badge: "Business",
             title: `${needsMarketCheckItems.length + missingSalePriceItems.length} inventory item${needsMarketCheckItems.length + missingSalePriceItems.length === 1 ? "" : "s"} need pricing`,
             reason: "Market value and planned sale prices keep seller decisions current.",
-            primaryLabel: "Open Forge",
+            primaryLabel: "Open Business",
             onPrimary: () => setActiveTab("inventory"),
             secondaryLabel: "Check Market",
             onSecondary: () => setActiveTab("market"),
@@ -333,7 +335,7 @@ export default function HearthPage(props) {
           if (!activeVaultItems.length) return {
             badge: "Vault",
             title: "Add your first item to Vault",
-            reason: "Start by adding a card, sealed product, or binder item so Hearth can guide your next step.",
+            reason: "Start by adding a card, sealed product, or binder item so Home can guide your next step.",
             primaryLabel: "Add Item to Vault",
             onPrimary: () => openQuickAddAction("vaultItem"),
             secondaryLabel: "Search Market",
@@ -342,10 +344,10 @@ export default function HearthPage(props) {
           const simpleGuidance = renderSmartGuidanceAction();
           if (["spark_focus", "start_collection", "first_scout_report", "fresh_scout_signals", "default_collection"].includes(simpleGuidance?.key)) return simpleGuidance;
           if (latestScoutReport) return {
-            badge: latestScoutReport.verified ? "Verified" : "Scout",
-            title: `${latestScoutStoreName} has a recent Scout signal`,
+            badge: latestScoutReport.verified ? "Verified" : "Restocks",
+            title: `${latestScoutStoreName} has a recent restock signal`,
             reason: `${latestScoutItem}${latestScoutTime ? ` was reported ${latestScoutTime}` : " was reported recently"}.`,
-            primaryLabel: "Open Scout",
+            primaryLabel: "Open Restocks",
             onPrimary: () => setActiveTab("scout"),
             secondaryLabel: "Submit Report",
             onSecondary: () => openQuickAddAction("storeReport"),
@@ -373,10 +375,10 @@ export default function HearthPage(props) {
             onSecondary: () => openQuickAddAction("vaultItem"),
           };
           if (latestScoutReport) return {
-            badge: latestScoutReport.verified ? "Verified" : "Scout",
-            title: `${latestScoutStoreName} has a recent Scout signal`,
+            badge: latestScoutReport.verified ? "Verified" : "Restocks",
+            title: `${latestScoutStoreName} has a recent restock signal`,
             reason: `${latestScoutItem}${latestScoutTime ? ` was reported ${latestScoutTime}` : " was reported recently"}.`,
-            primaryLabel: "Open Scout",
+            primaryLabel: "Open Restocks",
             onPrimary: () => setActiveTab("scout"),
             secondaryLabel: "Add Item",
             onSecondary: () => openAddActionSheet("hearth-best-action"),
@@ -384,7 +386,7 @@ export default function HearthPage(props) {
           if (!activeVaultItems.length) return {
             badge: "Vault",
             title: "Add your first item to Vault",
-            reason: "Start by adding a card, sealed product, or binder item so Hearth can guide your next step.",
+            reason: "Start by adding a card, sealed product, or binder item so Home can guide your next step.",
             primaryLabel: "Add Item to Vault",
             onPrimary: () => openQuickAddAction("vaultItem"),
             secondaryLabel: "Search Market",
@@ -403,8 +405,8 @@ export default function HearthPage(props) {
         return {
           badge: "Calm Tide",
           title: "No urgent actions today",
-          reason: "Check Scout Signals or add the next item to your Vault when you are ready.",
-          primaryLabel: "Open Scout",
+          reason: "Check Restocks Signals or add the next item to your Vault when you are ready.",
+          primaryLabel: "Open Restocks",
           onPrimary: () => setActiveTab("scout"),
           secondaryLabel: "Quick Add",
           onSecondary: () => openAddActionSheet("hearth-calm"),
@@ -499,7 +501,7 @@ export default function HearthPage(props) {
       const hearthCanUseScout = featureAllowed("scout_submit_reports") || BETA_LOCAL_MODE || scoutReportRows.length > 0;
       const hearthCanUseVault = featureAllowed("vault_basic") || featureAllowed("collection_basic") || BETA_LOCAL_MODE || activeVaultItems.length > 0;
       const hearthSparkRelevant = Boolean(hearthMode === "simple" || adaptiveUiState.familyMode || kidsApplication || pendingKidsRequests || adminToolsVisible);
-      const hearthSellerRelevant = Boolean(sellerAccessVisible || forgeInventoryItems.length || workspaceSales.length || workspaceExpenses.length || visibleReceiptRecords.length);
+      const hearthSellerRelevant = !kidSafeView && Boolean(sellerAccessVisible || forgeInventoryItems.length || workspaceSales.length || workspaceExpenses.length || visibleReceiptRecords.length);
 
       const openSparkManualSeed = (kind) => {
         const donation = kind === "donation";
@@ -568,11 +570,11 @@ export default function HearthPage(props) {
         },
       ];
       const routeToAdminReportReview = () => {
-        setAdminReviewFilter("Scout Report Review");
+        setAdminReviewFilter("Restocks Report Review");
         setActiveTab("adminReview");
       };
       const hearthSparkQuickActions = [
-        hearthCanUseScout ? { key: "add-scout-report", title: "Add Scout Report", helper: "Share a store signal.", icon: "scout", tone: "scout", onClick: () => openQuickAddAction("storeReport") } : null,
+        hearthCanUseScout ? { key: "add-scout-report", title: "Add Restocks Report", helper: "Share a store signal.", icon: "scout", tone: "scout", onClick: () => openQuickAddAction("storeReport") } : null,
         hearthCanUseScout ? { key: "scan-screenshot", title: "Scan Screenshot", helper: "Review before saving.", icon: "scan", tone: "vault", onClick: () => openQuickAddPathFromHearth("scoutScreenshotReview", {}, "hearth-scan-screenshot") } : null,
         hearthCanUseVault ? { key: "scan-cards", title: "Scan Cards", helper: "Manual card-page review.", icon: "scan", tone: "vault", onClick: () => openQuickAddPathFromHearth("cardPageReview", {}, "hearth-scan-cards") } : null,
         hearthCanUseVault ? { key: "add-vault-item", title: "Add Vault Item", helper: "Save one item.", icon: "vault", tone: "vault", onClick: () => openQuickAddAction("vaultItem") } : null,
@@ -593,7 +595,7 @@ export default function HearthPage(props) {
       const sparkMissionCandidates = [
         hearthCanUseScout ? {
           key: "add-scout-report",
-          title: "Add one Scout report",
+          title: "Add one restock report",
           purpose: "Share a current store signal.",
           icon: "scout",
           tone: "scout",
@@ -604,7 +606,7 @@ export default function HearthPage(props) {
         } : null,
         hearthCanUseScout ? {
           key: "add-scout-proof",
-          title: "Add proof to one Scout report",
+          title: "Add proof to one restock report",
           purpose: "Boost trust with proof.",
           icon: "scan",
           tone: "scout",
@@ -809,12 +811,12 @@ export default function HearthPage(props) {
       const latestVaultSetName = latestVaultActivityItem?.setName || latestVaultActivityItem?.set_name || latestVaultActivityItem?.expansion || "";
       const scoutSignalLabel = latestScoutReport
         ? `${scoutReportStatusLabel(latestScoutReport)}${isConfirmedScoutSignal(latestScoutReport) ? " | confirmed" : " | needs context"}`
-        : "Start Scout";
+        : "Start Restocks";
       const hearthFeatureCards = [
         {
           key: "scout",
-          title: "Scout",
-          value: latestScoutReport ? `${latestScoutStoreName}` : "Start Scout",
+          title: "Restocks",
+          value: latestScoutReport ? `${latestScoutStoreName}` : "Start Restocks",
           detail: latestScoutReport ? `${latestScoutItem}${latestScoutTime ? ` | ${latestScoutTime}` : ""}` : "Choose your first watched store or share a report.",
           meta: scoutSignalLabel,
           icon: "scout",
@@ -850,11 +852,11 @@ export default function HearthPage(props) {
         },
         {
           key: "forge",
-          title: "Forge Snapshot",
-          value: workspaceSales.length || workspaceExpenses.length ? `${money(totalSalesRevenue)} revenue` : "Start Forge",
+          title: "Business Snapshot",
+          value: workspaceSales.length || workspaceExpenses.length ? `${money(totalSalesRevenue)} revenue` : "Start Business",
           detail: workspaceSales.length || workspaceExpenses.length
             ? `${money(monthlyProfitLoss)} profit | ${receiptsNeedingReviewCount} receipt${receiptsNeedingReviewCount === 1 ? "" : "s"} missing`
-            : "Add Forge to your Hearth when seller tools are part of your workflow.",
+            : "Add Business to your Home when seller tools are part of your workflow.",
           meta: forgeInventoryItems.length ? `${forgeInventoryItems.length} inventory item${forgeInventoryItems.length === 1 ? "" : "s"}` : "Seller tools",
           icon: "forge",
           onClick: () => sellerAccessVisible ? setActiveTab("inventory") : requestLockedFeatureAccess("seller_tools"),
@@ -892,7 +894,7 @@ export default function HearthPage(props) {
           reminder: "Vault Reminder",
           title: activeVaultItems.length ? `${activeVaultItems.length} Vault item${activeVaultItems.length === 1 ? "" : "s"}` : "Start your Vault",
           detail: activeVaultItems.length
-            ? `Review what you own, what matters, and what may be ready for Forge. ${hearthVaultValueLabel}.`
+            ? `Review what you own, what matters, and what may be ready for Business. ${hearthVaultValueLabel}.`
             : "Add one card, sealed product, slab, or supply so Vault can become your collection home.",
           icon: "vault",
           tone: "vault",
@@ -914,26 +916,26 @@ export default function HearthPage(props) {
         },
         {
           key: "scout-watch",
-          label: "Scout Watch",
+          label: "Restocks Watch",
           reminder: "Current reports only",
           title: latestScoutReport ? latestScoutStoreName : followedStores.length ? `${followedStores.length} watched store${followedStores.length === 1 ? "" : "s"}` : "Choose a watched store",
           detail: latestScoutReport
             ? `Check ${latestScoutItem}${latestScoutTime ? ` from ${latestScoutTime}` : ""} without exposing full patterns.`
-            : "Check watched stores and Scout signals without exposing full patterns.",
+            : "Check watched stores and restock signals without exposing full patterns.",
           icon: "scout",
           tone: "scout",
-          actionLabel: "Open Scout",
+          actionLabel: "Open Restocks",
           onClick: () => setActiveTab("scout"),
         },
         {
           key: "forge-reminder",
-          label: "Forge Reminder",
+          label: "Business Reminder",
           reminder: tradeRecords.length ? `${tradeRecords.length} Trade Ledger record${tradeRecords.length === 1 ? "" : "s"}` : "Trade value workspace",
-          title: forgeReviewCount ? `${forgeReviewCount} Forge review item${forgeReviewCount === 1 ? "" : "s"}` : "Compare before you trade",
+          title: forgeReviewCount ? `${forgeReviewCount} Business review item${forgeReviewCount === 1 ? "" : "s"}` : "Compare before you trade",
           detail: "Compare trades, save trade memories, and protect your collection value.",
           icon: "forge",
           tone: "forge",
-          actionLabel: "Open Forge",
+          actionLabel: "Open Business",
           onClick: () => setActiveTab("inventory"),
         },
         {
@@ -1032,7 +1034,7 @@ export default function HearthPage(props) {
             ? vaultItemsMissingEstimate.length
               ? `${vaultItemsMissingEstimate.length} Vault item${vaultItemsMissingEstimate.length === 1 ? "" : "s"} could use an estimate, note, or next action.`
               : "Your Vault is started. Organize one item or create a Collection Set when you are ready."
-            : "Add one card, sealed product, slab, or accessory so Hearth can guide your next step.",
+            : "Add one card, sealed product, slab, or accessory so Home can guide your next step.",
           meta: activeVaultItems.length ? "Local Vault data" : "Safe starter step",
           actionLabel: activeVaultItems.length ? "Open Vault" : "Add to Vault",
           onClick: () => activeVaultItems.length ? setActiveTab("vault") : openQuickAddAction("vaultItem"),
@@ -1042,13 +1044,13 @@ export default function HearthPage(props) {
         },
         {
           key: "trade-review",
-          eyebrow: "Forge Reminder",
+          eyebrow: "Business Reminder",
           title: latestTradeForHearth ? "Trade to review" : "Try one trade check",
           detail: latestTradeForHearth
             ? `Last Trade Ledger memory: ${latestTradeForHearth.sourceItemName || latestTradeForHearth.itemGiven || "what you gave"} for ${latestTradeForHearth.receivedItemName || latestTradeForHearth.itemReceived || "what you got"}.`
             : "Use Trade Compass before a real trade so the values, condition, and meaning are easier to compare.",
           meta: latestTradeForHearth ? "Saved locally" : "Planning only",
-          actionLabel: latestTradeForHearth ? "Open Forge" : "Trade Compass",
+          actionLabel: latestTradeForHearth ? "Open Business" : "Trade Compass",
           onClick: () => latestTradeForHearth ? setActiveTab("inventory") : openTradeCompassFlow({ source: "hearth-smart-trade-check" }),
           icon: "forge",
           tone: "forge",
@@ -1056,13 +1058,13 @@ export default function HearthPage(props) {
         },
         {
           key: "scout-watch-reminder",
-          eyebrow: "Scout Watch",
-          title: followedStores.length ? "Scout watch reminder" : "Choose your first watch store",
+          eyebrow: "Restocks Watch",
+          title: followedStores.length ? "Restocks watch reminder" : "Choose your first watch store",
           detail: latestScoutReport
-            ? `Check the latest current report near ${latestScoutStoreName}. Scout keeps raw patterns protected.`
-            : "Free Scout keeps one watched store and nearby public signals without exposing full restock history.",
+            ? `Check the latest current report near ${latestScoutStoreName}. Restocks keeps raw patterns protected.`
+            : "Free Restocks keeps one watched store and nearby public signals without exposing full restock history.",
           meta: followedStores.length ? `${followedStores.length} watched` : "Free Watch",
-          actionLabel: "Open Scout",
+          actionLabel: "Open Restocks",
           onClick: () => setActiveTab("scout"),
           icon: "scout",
           tone: "scout",
@@ -1072,7 +1074,7 @@ export default function HearthPage(props) {
           key: "grade-assist-follow-up",
           eyebrow: "Vault Reminder",
           title: "Grade Assist checklist saved",
-          detail: `${hearthGradeAssistChecklistCount} manual Grade Assist checklist${hearthGradeAssistChecklistCount === 1 ? "" : "s"} saved locally. Review value, condition notes, or Forge only when you are ready.`,
+          detail: `${hearthGradeAssistChecklistCount} manual Grade Assist checklist${hearthGradeAssistChecklistCount === 1 ? "" : "s"} saved locally. Review value, condition notes, or Business only when you are ready.`,
           meta: "Not a professional grade",
           actionLabel: "Open Vault",
           onClick: () => setActiveTab("vault"),
@@ -1124,13 +1126,13 @@ export default function HearthPage(props) {
         },
         {
           key: "trusted-circle",
-          eyebrow: "Tidepool",
+          eyebrow: "Community",
           title: trustedCircleCount ? "Trusted Circle reminder" : "Remember safe helpers",
           detail: trustedCircleCount
             ? `${trustedCircleCount} private Trusted Circle note${trustedCircleCount === 1 ? "" : "s"} saved. This does not verify people or send invites.`
-            : "Use Tidepool to keep private notes about trusted shops, helpers, and family-safe contacts.",
+            : "Use Community to keep private notes about trusted shops, helpers, and family-safe contacts.",
           meta: trustedCircleCount ? "Private notes" : "No verification claims",
-          actionLabel: "Open Tidepool",
+          actionLabel: "Open Community",
           onClick: () => setActiveTab("tidepool"),
           icon: "pool",
           tone: "tidepool",
@@ -1156,14 +1158,15 @@ export default function HearthPage(props) {
         key: "try-one-next-step",
         eyebrow: "Next Best Step",
         title: "Try one next step",
-        detail: "Start by adding something to Vault, then Hearth can personalize the day with local collection signals.",
+        detail: "Start by adding something to Vault, then Home can personalize the day with local collection signals.",
         meta: "Local beta",
         actionLabel: "Add to Vault",
         onClick: () => openQuickAddAction("vaultItem"),
         icon: "hearth",
         tone: "hearth",
       };
-      const visibleHearthSmartDailyCards = hearthSmartDailyCards.length ? hearthSmartDailyCards : [hearthSmartDailyFallback];
+      const kidSafeSmartDailyCards = kidSafeView ? hearthSmartDailyCards.filter((card) => card.tone !== "forge" && card.tone !== "seller") : hearthSmartDailyCards;
+      const visibleHearthSmartDailyCards = kidSafeSmartDailyCards.length ? kidSafeSmartDailyCards : [hearthSmartDailyFallback];
       const profileDisplayNameValue = String(
         currentUserProfile?.displayName ||
         currentUserProfile?.display_name ||
@@ -1193,7 +1196,7 @@ export default function HearthPage(props) {
           key: "admin-review",
           eyebrow: "Admin",
           title: "Review protected queues",
-          detail: `${pendingBetaRequests + pendingKidsRequests + scoutNeedsReviewReports.length} item${pendingBetaRequests + pendingKidsRequests + scoutNeedsReviewReports.length === 1 ? "" : "s"} need beta, family, or Scout review.`,
+          detail: `${pendingBetaRequests + pendingKidsRequests + scoutNeedsReviewReports.length} item${pendingBetaRequests + pendingKidsRequests + scoutNeedsReviewReports.length === 1 ? "" : "s"} need beta, family, or Restocks review.`,
           meta: "Admin only",
           actionLabel: "Open Admin",
           onClick: () => setActiveTab("adminReview"),
@@ -1202,11 +1205,11 @@ export default function HearthPage(props) {
         } : null,
         sellerAccessVisible && forgeReviewCount > 0 ? {
           key: "forge-review",
-          eyebrow: "Forge",
+          eyebrow: "Business",
           title: "Review seller records",
-          detail: `${forgeReviewCount} local Forge item${forgeReviewCount === 1 ? "" : "s"} need receipt, price, or listing attention.`,
+          detail: `${forgeReviewCount} local Business item${forgeReviewCount === 1 ? "" : "s"} need receipt, price, or listing attention.`,
           meta: "Private ledger",
-          actionLabel: "Open Forge",
+          actionLabel: "Open Business",
           onClick: () => setActiveTab("inventory"),
           icon: "forge",
           tone: "forge",
@@ -1226,7 +1229,7 @@ export default function HearthPage(props) {
           key: "first-vault-item",
           eyebrow: "Vault",
           title: "Add your first Vault item",
-          detail: "Save one card, sealed product, slab, or supply so Hearth can personalize future actions.",
+          detail: "Save one card, sealed product, slab, or supply so Home can personalize future actions.",
           meta: "First step",
           actionLabel: "Add to Vault",
           onClick: () => openQuickAddAction("vaultItem"),
@@ -1248,24 +1251,24 @@ export default function HearthPage(props) {
         } : null,
         hearthCanUseScout && scoutReportRows.length > 0 ? {
           key: "check-scout",
-          eyebrow: "Scout",
-          title: latestScoutReport ? "Check current Scout reports" : "Review Scout reports",
+          eyebrow: "Restocks",
+          title: latestScoutReport ? "Check current restock reports" : "Review restock reports",
           detail: latestScoutReport
             ? `${latestScoutItem} was reported near ${latestScoutStoreName}. Review freshness before making a trip.`
             : `${scoutReportRows.length} local report${scoutReportRows.length === 1 ? "" : "s"} available for review.`,
           meta: hearthFreshReports ? `${hearthFreshReports} fresh` : "Current reports",
-          actionLabel: "Open Scout",
+          actionLabel: "Open Restocks",
           onClick: () => setActiveTab("scout"),
           icon: "scout",
           tone: "scout",
         } : null,
         hearthCanUseScout && !scoutReportRows.length && !followedStores.length ? {
           key: "choose-store",
-          eyebrow: "Scout",
+          eyebrow: "Restocks",
           title: "Choose your first watched store",
-          detail: "Scout works best after you choose one store or region to watch. No raw stocking patterns are exposed.",
+          detail: "Restocks works best after you choose one store or region to watch. No raw stocking patterns are exposed.",
           meta: "Free watch",
-          actionLabel: "Open Scout",
+          actionLabel: "Open Restocks",
           onClick: () => setActiveTab("scout"),
           icon: "scout",
           tone: "scout",
@@ -1276,9 +1279,9 @@ export default function HearthPage(props) {
           title: latestTradeForHearth ? "Review your latest trade memory" : "Review Exchange actions",
           detail: latestTradeForHearth
             ? `${latestTradeForHearth.sourceItemName || latestTradeForHearth.itemGiven || "Your side"} for ${latestTradeForHearth.receivedItemName || latestTradeForHearth.itemReceived || "their side"} is saved locally.`
-            : "Open Forge to review local trades, receipts, prices, or listing prep.",
+            : "Open Business to review local trades, receipts, prices, or listing prep.",
           meta: `${exchangeReviewCount} local signal${exchangeReviewCount === 1 ? "" : "s"}`,
-          actionLabel: "Open Forge",
+          actionLabel: "Open Business",
           onClick: () => setActiveTab("inventory"),
           icon: "forge",
           tone: "forge",
@@ -1325,7 +1328,7 @@ export default function HearthPage(props) {
         key: "smart-sparks-empty",
         eyebrow: "Start",
         title: "Add one thing to Vault",
-        detail: "Hearth will get smarter after you add one real collection item or Scout report.",
+        detail: "Home will get smarter after you add one real collection item or restock report.",
         meta: "Local beta",
         actionLabel: "Add to Vault",
         onClick: () => openQuickAddAction("vaultItem"),
@@ -1337,7 +1340,7 @@ export default function HearthPage(props) {
           <div className="compact-card-header hearth-smart-sparks-header">
             <div>
               <h3>Smart Sparks</h3>
-              <p>Adaptive next actions from your local Vault, Scout, Market, Forge, and setup data.</p>
+              <p>Adaptive next actions from your local Vault, Restocks, Market, Business, and setup data.</p>
             </div>
             <EtMockupPill tone={hearthIsNewUser ? "gold" : "collector"}>{hearthIsNewUser ? "First steps" : "Adaptive"}</EtMockupPill>
           </div>
@@ -1383,7 +1386,7 @@ export default function HearthPage(props) {
           title: "Review one trade",
           detail: workspaceTradeRecords.length ? "Look back at your latest Trade Ledger memory." : "Use Trade Compass before a real trade.",
           status: workspaceTradeRecords.length ? `${workspaceTradeRecords.length} logged` : "Guide",
-          actionLabel: workspaceTradeRecords.length ? "Open Forge" : "Trade Compass",
+          actionLabel: workspaceTradeRecords.length ? "Open Business" : "Trade Compass",
           onClick: () => workspaceTradeRecords.length ? setActiveTab("inventory") : openTradeCompassFlow({ source: "hearth-collector-path" }),
           tone: "forge",
         },
@@ -1421,7 +1424,7 @@ export default function HearthPage(props) {
         },
         hearthCanUseScout ? {
           key: "snapshot-scout",
-          label: "Scout",
+          label: "Restocks",
           value: latestScoutReport ? "Signal ready" : `${followedStores.length || 0} watched`,
           detail: latestScoutReport ? latestScoutStoreName : "Current reports only",
           accent: "scout",
@@ -1470,11 +1473,11 @@ export default function HearthPage(props) {
       const commandPriorityCards = [
         {
           key: "scout-reports",
-          title: "Scout Reports",
+          title: "Restocks Reports",
           count: scoutNeedsReviewReports.length,
           empty: "No urgent review items",
           detail: "Reports that need moderation before they influence trust signals.",
-          filter: "Scout Report Review",
+          filter: "Restocks Report Review",
           icon: "scout",
           tone: "scout",
         },
@@ -1512,7 +1515,7 @@ export default function HearthPage(props) {
       const commandQueueRows = [...commandPriorityCards].sort((a, b) => b.count - a.count || a.title.localeCompare(b.title));
       const commandQuickActions = [
         { key: "admin-dashboard", label: "Admin Dashboard", helper: "Open the protected command center.", icon: "settings", filter: "Trust Command Center" },
-        { key: "scout-queue", label: "Scout Reports", helper: "Review current report safety.", icon: "scout", filter: "Scout Report Review" },
+        { key: "scout-queue", label: "Restocks Reports", helper: "Review current report safety.", icon: "scout", filter: "Restocks Report Review" },
         { key: "spark-queue", label: "Spark Requests", helper: "Review family requests.", icon: "spark", filter: "Kids Program Applications" },
         { key: "catalog-queue", label: "Catalog Issues", helper: "Review products and UPC/SKU fixes.", icon: "search", filter: "Catalog Suggestions" },
       ];
@@ -1520,14 +1523,14 @@ export default function HearthPage(props) {
         const openItems = commandPriorityCards.reduce((sum, card) => sum + Number(card.count || 0), 0);
         return (
           <div className="dashboard-layout home-clean-layout hearth-command-layout hearth-command-view command-hearth">
-            <section className="panel command-hearth-header" aria-label="Command Hearth status">
+            <section className="panel command-hearth-header" aria-label="Command Home status">
               <div className="command-hearth-title-block">
                 <span className="hearth-logo-mark command-hearth-mark" aria-hidden="true">
                   <img src={BRAND_ASSETS.mark} alt="" />
                 </span>
                 <div>
-                  <p className="section-kicker">Hearth</p>
-                  <h1>Command Hearth</h1>
+                  <p className="section-kicker">Home</p>
+                  <h1>Command Home</h1>
                   <strong>Welcome to Code 3 TCG</strong>
                   <p>Here&apos;s what needs your attention today.</p>
                 </div>
@@ -1540,7 +1543,7 @@ export default function HearthPage(props) {
               </div>
             </section>
 
-            <section className="command-hearth-main-grid" aria-label="Command Hearth overview">
+            <section className="command-hearth-main-grid" aria-label="Command Home overview">
               <div className="command-hearth-primary-column">
                 <section className="panel command-hearth-priority-panel" aria-label="Priority cards">
                   <div className="compact-card-header">
@@ -1589,7 +1592,7 @@ export default function HearthPage(props) {
                 </section>
               </div>
 
-              <aside className="command-hearth-side-column" aria-label="Command Hearth actions">
+              <aside className="command-hearth-side-column" aria-label="Command Home actions">
                 <section className="panel command-hearth-actions-panel">
                   <div className="compact-card-header">
                     <div>
@@ -1643,7 +1646,7 @@ export default function HearthPage(props) {
         <EtMockupPageShell
           accent="hearth"
           className={`home-clean-layout hearth-mockup-rebuild hearth-dashboard-final hearth-mode-${hearthMode}`}
-          ariaLabel="Hearth daily command center"
+          ariaLabel="Home daily command center"
         >
           <div className="et-mockup-main-column hearth-mockup-main">
             <EtMockupHero
@@ -1684,7 +1687,7 @@ export default function HearthPage(props) {
 
               {renderHearthSmartSparksPanel()}
 
-              <div className="hearth-dashboard-pulse-grid" aria-label="Hearth pulse">
+              <div className="hearth-dashboard-pulse-grid" aria-label="Home pulse">
                 {hearthSnapshotCards.map((stat) => (
                   <EtMockupStatCard
                     key={stat.key}
@@ -1697,7 +1700,7 @@ export default function HearthPage(props) {
                 ))}
               </div>
 
-              <div className="hearth-daily-command-grid hearth-dashboard-command-grid" aria-label="Core Hearth paths">
+              <div className="hearth-daily-command-grid hearth-dashboard-command-grid" aria-label="Core Home paths">
                 {hearthDashboardPulseCards.map((card) => (
                   <article className={`hearth-daily-command-card et-mockup-tone-${card.tone}`} key={card.key}>
                     <EtMockupIcon icon={card.icon} tone={card.tone} />
@@ -1715,7 +1718,7 @@ export default function HearthPage(props) {
 
             <EtMockupSectionCard
               title="Recent Activity"
-              detail="Latest meaningful movement across Scout, Vault, Market, and Forge."
+              detail="Latest meaningful movement across Restocks, Vault, Market, and Business."
               className="hearth-mockup-recent hearth-dashboard-recent"
             >
               <div className="hearth-mockup-recent-list">
@@ -1732,7 +1735,7 @@ export default function HearthPage(props) {
                 )) : (
                   <EtMockupEmptyState
                     title="No collector trail yet."
-                    detail="Add a Vault item, Scout proof note, Market watch, or Spark support preview to start a reviewable activity trail."
+                    detail="Add a Vault item, Restocks proof note, Market watch, or Spark support preview to start a reviewable activity trail."
                     action={<EtMockupButton variant="secondary" onClick={() => openAddActionSheet("hearth-empty")}>Quick Add</EtMockupButton>}
                   />
                 )}
@@ -1746,7 +1749,7 @@ export default function HearthPage(props) {
             <details className="hearth-dashboard-more-tools">
               <summary>
                 <span>
-                  <strong>More Hearth tools</strong>
+                  <strong>More Home tools</strong>
                   <small>Open secondary paths when you need them.</small>
                 </span>
               </summary>
@@ -1778,7 +1781,7 @@ export default function HearthPage(props) {
                 </section>
 
                 {hearthDashboardMoreCards.length ? (
-                  <div className="hearth-daily-command-grid hearth-daily-command-grid-secondary" aria-label="More Hearth paths">
+                  <div className="hearth-daily-command-grid hearth-daily-command-grid-secondary" aria-label="More Home paths">
                     {hearthDashboardMoreCards.map((card) => (
                       <article className={`hearth-daily-command-card et-mockup-tone-${card.tone}`} key={card.key}>
                         <EtMockupIcon icon={card.icon} tone={card.tone} />
@@ -1860,7 +1863,7 @@ export default function HearthPage(props) {
               </div>
             </EtMockupSectionCard>
 
-            <div className="et-mockup-action-stack hearth-mockup-feature-stack hearth-feature-list" aria-label="Hearth feature status">
+            <div className="et-mockup-action-stack hearth-mockup-feature-stack hearth-feature-list" aria-label="Home feature status">
               {hearthFeatureCards.slice(0, 3).map((card) => (
                 <EtMockupActionCard
                   key={card.key}

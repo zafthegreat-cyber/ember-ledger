@@ -264,8 +264,8 @@ export function summarizeForgeRecords({ inventory = [], sales = [], expenses = [
     return sum + Math.max(0, numeric(trip.endMiles) - numeric(trip.startMiles));
   }, 0);
   return {
-    inputSummary: `${plural(inventoryRows.length, "Forge item")}, ${plural(saleRows.length, "sale")}, ${plural(expenseRows.length, "expense")}, ${plural(mileageRows.length, "trip")}`,
-    outputSummary: `Forge summary: inventory cost basis ${moneyText(inventoryCost) || "not available"}, sales tracked ${moneyText(salesTotal) || "$0.00"}, expenses ${moneyText(expenseTotal) || "$0.00"}, and ${miles.toFixed(1)} business miles. Attention: ${plural(missingCost, "inventory item")} missing cost basis and ${plural(staleDrafts, "listing/inventory row")} may need cleanup. Estimates are for tracking only, not tax advice.`,
+    inputSummary: `${plural(inventoryRows.length, "Business item")}, ${plural(saleRows.length, "sale")}, ${plural(expenseRows.length, "expense")}, ${plural(mileageRows.length, "trip")}`,
+    outputSummary: `Business summary: inventory cost basis ${moneyText(inventoryCost) || "not available"}, sales tracked ${moneyText(salesTotal) || "$0.00"}, expenses ${moneyText(expenseTotal) || "$0.00"}, and ${miles.toFixed(1)} business miles. Attention: ${plural(missingCost, "inventory item")} missing cost basis and ${plural(staleDrafts, "listing/inventory row")} may need cleanup. Estimates are for tracking only, not tax advice.`,
     confidenceScore: 70,
   };
 }
@@ -330,7 +330,7 @@ export function classifyScoutReportNote({ note = "", productName = "", currentTy
     "other";
   return {
     inputSummary: compactText(`${productName} ${note}`),
-    outputSummary: `Suggested Scout classification: ${label}. User must confirm before submitting. ${isGuess ? "This should stay labeled as a guess, not confirmed stock." : "Only mark confirmed if the report/proof supports it."}`,
+    outputSummary: `Suggested Restocks classification: ${label}. User must confirm before submitting. ${isGuess ? "This should stay labeled as a guess, not confirmed stock." : "Only mark confirmed if the report/proof supports it."}`,
     confidenceScore: label === "other" ? 35 : 66,
     label,
     isGuess,
@@ -388,7 +388,7 @@ export function draftNotificationCopy({ type = "account_notice", title = "", mes
 export function draftMarketingCopy({ topic = "", audience = "parents" } = {}) {
   const focus = topic || "Code 3 TCG beta";
   const body = audience === "card_shop"
-    ? `Help bring fair, family-friendly Pokemon access back to local collectors. Code 3 TCG is preparing beta tools for Vault, Forge, Scout, and Kids Program support.`
+    ? `Help bring fair, family-friendly Pokemon access back to local collectors. Code 3 TCG is preparing beta tools for Vault, Business, Restocks, and Kids Program support.`
     : audience === "sponsor"
       ? `Partner with Code 3 TCG to support kid-focused packs, giveaways, and fair-access community events when inventory allows.`
       : `Code 3 TCG helps families track collections, watch local restocks, and support kid-friendly Pokemon access.`;
@@ -411,8 +411,8 @@ export function draftTrustCopy({ section = "privacy", copy = "" } = {}) {
 }
 
 export function suggestOnboardingNextStep({ choices = [], hasVaultItems = false, hasForgeItems = false, hasReports = false } = {}) {
-  const next = choices.includes("Track business inventory") && !hasForgeItems ? "Add your first Forge inventory item." :
-    choices.includes("Watch local restocks") && !hasReports ? "Submit or browse your first Scout report." :
+  const next = choices.includes("Track business inventory") && !hasForgeItems ? "Add your first Business inventory item." :
+    choices.includes("Watch local restocks") && !hasReports ? "Submit or browse your first restock report." :
     choices.includes("Track my personal collection") && !hasVaultItems ? "Add your first Vault item." :
     "Open TideTradr search and save a wishlist or watch item.";
   return {
@@ -463,8 +463,8 @@ export function summarizeScoutSignals({ storeName = "", reports = [], guesses = 
   return {
     inputSummary: compactText(`${storeName}: ${reports.length} reports, ${guesses.length} guesses, ${forecasts.length} forecast windows`),
     outputSummary: parts.length
-      ? `Recent Scout signals for ${storeName || "this store"} suggest ${parts.join(", ")}. Confirmed reports matter more than guesses.`
-      : `There is not enough confirmed Scout history for ${storeName || "this store"} yet. Add confirmed reports to improve Drop Radar.`,
+      ? `Recent restock signals for ${storeName || "this store"} suggest ${parts.join(", ")}. Confirmed reports matter more than guesses.`
+      : `There is not enough confirmed restock history for ${storeName || "this store"} yet. Add confirmed reports to improve Drop Radar.`,
     confidenceScore: Math.max(0, Math.round(confidenceScore)),
   };
 }
@@ -581,7 +581,7 @@ export function summarizeAdminReviewQueue({ suggestions = [], listings = [], rep
   const reportCount = reports.filter((item) => /pending|unverified|stale|rejected/i.test(String(item.status || item.verificationStatus || ""))).length;
   return {
     inputSummary: `${pendingSuggestions} suggestions, ${flaggedListings} listings, ${reportCount} reports, ${feedback.length} feedback rows`,
-    outputSummary: `Admin review summary: ${pendingSuggestions} shared data suggestion${pendingSuggestions === 1 ? "" : "s"}, ${flaggedListings} marketplace listing${flaggedListings === 1 ? "" : "s"}, and ${reportCount} Scout report${reportCount === 1 ? "" : "s"} need review. AI can suggest duplicate or missing-info checks, but admins approve manually.`,
+    outputSummary: `Admin review summary: ${pendingSuggestions} shared data suggestion${pendingSuggestions === 1 ? "" : "s"}, ${flaggedListings} marketplace listing${flaggedListings === 1 ? "" : "s"}, and ${reportCount} Restock report${reportCount === 1 ? "" : "s"} need review. AI can suggest duplicate or missing-info checks, but admins approve manually.`,
     confidenceScore: 70,
   };
 }

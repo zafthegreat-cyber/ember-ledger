@@ -1,11 +1,20 @@
+// Raised 2026-10-30: the 100k-user rehearsal showed that a heavy seller's
+// backup passes 10 MB and then failed its own self-verification. A local file
+// the person chose is still parsed defensively (depth/keys/strings), but the
+// size and record caps now fit a large workspace.
 export const BACKUP_PARSE_LIMITS = Object.freeze({
-  maxBytes: 10 * 1024 * 1024,
+  maxBytes: 64 * 1024 * 1024,
   maxDepth: 40,
-  maxArrayLength: 50_000,
+  maxArrayLength: 250_000,
   maxObjectKeys: 1_000,
   maxStringLength: 256 * 1024,
-  maxTotalRecords: 100_000,
+  maxTotalRecords: 500_000,
 });
+
+export function formatByteLimit(bytes) {
+  const mb = bytes / (1024 * 1024);
+  return mb >= 1 ? `${Math.round(mb)} MB` : `${Math.round(bytes / 1024)} KB`;
+}
 
 export const PROTOTYPE_POLLUTION_KEYS = Object.freeze([
   "__proto__",
@@ -128,7 +137,7 @@ export function parseUntrustedJsonValue(raw, limitOverrides = {}) {
   const limits = mergeLimits(limitOverrides);
   const byteLength = textEncoder.encode(raw).byteLength;
   if (byteLength > limits.maxBytes) {
-    throw new BackupParseError("MAX_FILE_SIZE", `Backup exceeds the ${limits.maxBytes}-byte file limit.`);
+    throw new BackupParseError("MAX_FILE_SIZE", `This backup is ${formatByteLimit(byteLength)}, over the ${formatByteLimit(limits.maxBytes)} limit. Export one workspace at a time or exclude private files.`);
   }
 
   let parsed;

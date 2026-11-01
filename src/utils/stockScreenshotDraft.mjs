@@ -131,13 +131,30 @@ function unsafeLine(line) {
     || /\b(?:\d[\s().-]*){10,}\b/.test(line);
 }
 
+// F05 (2026-10-31): a question is a question even without its question mark.
+// "Is Pokemon in stock at Target" and "wondering if ETBs are in stock" must
+// never become an affirmative report.
+const QUESTION_OPENING = /^\s*(?:is|are|was|were|does|do|did|has|have|can|could|will|would|should|anyone|anybody|any\s+(?:one|body|idea|chance|word)|who|what|when|where|which|why|how|wonder(?:ing)?\s+(?:if|whether)|not\s+sure\s+(?:if|whether)|does\s+anyone|has\s+anyone|did\s+anyone)\b/i;
+const QUESTION_PHRASE = /\b(?:wonder(?:ing|ed)?\s+(?:if|whether)|not\s+sure\s+(?:if|whether)|any(?:one|body)\s+(?:know|seen|see|check|checked|confirm)|let\s+me\s+know\s+if|does\s+anyone|anyone\s+know)\b/i;
+
 function sourceClaim(line) {
-  return /\?/.test(line) || /\b(?:maybe|might|could|should|probably|possibly|guess(?:ing)?|predict(?:ion|ed|ing)?|hop(?:e|ing)|expect(?:ed|ing)?|tomorrow|next\s+(?:week|day|month)|will|would|rumou?r|unconfirmed|reportedly|heard|hearsay|(?:employee|worker|staff|manager|someone|friend)\s+(?:said|says|told|claims?))\b/i.test(line);
+  return /\?/.test(line) || QUESTION_OPENING.test(line) || QUESTION_PHRASE.test(line)
+    || /\b(?:maybe|might|could|should|probably|possibly|guess(?:ing)?|predict(?:ion|ed|ing)?|hop(?:e|ing)|expect(?:ed|ing)?|tomorrow|next\s+(?:week|day|month)|will|would|rumou?r|unconfirmed|reportedly|heard|hearsay|(?:employee|worker|staff|manager|someone|friend)\s+(?:said|says|told|claims?))\b/i.test(line);
 }
+
+// F06: a denial of depletion ("were never sold out", "wasnt out of stock",
+// "hasnt sold out yet", "far from sold out") is not a report of either state.
+const NEGATED_DEPLETION = /\b(?:never|wasnt|werent|isnt|arent|hasnt|havent|hadnt|didnt|not(?:\s+even)?(?:\s+close\s+to)?|far\s+from|nowhere\s+near|no\s+longer|barely|hardly)\s+(?:been\s+|yet\s+|actually\s+|really\s+|fully\s+|completely\s+|totally\s+)*(?:sold\s+out|out\s+of\s+stock|sell(?:ing)?\s+out|empty)\b/;
 
 function statusFor(line) {
   let value = normalize(line);
   const statuses = new Set();
+  if (NEGATED_DEPLETION.test(value)) {
+    // Strip the negated phrase so it neither reads as "sold out" nor as proof
+    // of stock; the reporter reviews the line instead.
+    value = value.replace(NEGATED_DEPLETION, " ");
+    statuses.add("__review__");
+  }
   if (/\b(?:not out of stock|not sold out)\b/.test(value)) {
     statuses.add("stock_on_shelf");
     value = value.replace(/\b(?:not out of stock|not sold out)\b/g, " ");
@@ -201,24 +218,44 @@ export function parseStockScreenshotText(input, { stores = [] } = {}) {
   const statuses = new Set();
   const suggestions = new Map();
   const categories = new Set();
+  let needsReviewFromNegation = false;
+  let unrelatedAvailability = false;
+  let omittedProducts = 0;
+  // F07: availability counts only when the same line names a recognized TCG
+  // product, or when a bare status line directly follows a product heading.
+  let previousLineHadProduct = false;
   for (const line of safeLines) {
     const claim = sourceClaim(line);
     const lineStatuses = claim ? new Set() : statusFor(line);
     if (claim) flags.add("indirect_or_future_claim");
-    for (const status of lineStatuses) statuses.add(status);
-    for (const item of productSuggestions(line, lineStatuses.size > 0)) {
+    if (lineStatuses.has("__review__")) { needsReviewFromNegation = true; lineStatuses.delete("__review__"); }
+    const products = productSuggestions(line, lineStatuses.size > 0);
+    const lineHasProduct = products.length > 0 || GAME_PATTERNS.some(([, pattern]) => pattern.test(line)) || KNOWN_SETS.some(([, , pattern]) => pattern.test(line));
+    const bareStatusLine = lineStatuses.size > 0 && normalize(line).split(" ").length <= 6;
+    const statusApplies = lineStatuses.size > 0 && (lineHasProduct || (bareStatusLine && previousLineHadProduct));
+    if (lineStatuses.size > 0 && !statusApplies) unrelatedAvailability = true;
+    if (statusApplies) for (const status of lineStatuses) statuses.add(status);
+    for (const item of products) {
       categories.add(item.category);
+      if (suggestions.has(item.name)) continue;
       if (suggestions.size < MAX_ITEMS) suggestions.set(item.name, item.name);
+      else omittedProducts += 1;
     }
+    previousLineHadProduct = lineHasProduct;
   }
+  if (needsReviewFromNegation) flags.add("negated_status_needs_review");
+  if (unrelatedAvailability) flags.add("unrelated_availability_ignored");
+  // F08: never silently drop recognized products past the bounded list.
+  if (omittedProducts > 0) flags.add("product_list_truncated");
   // A generic grocery/phone post saying "in stock" is not a TCG stock report.
   const hasProductSignal = suggestions.size > 0;
-  if (statuses.size !== 1 || !hasProductSignal) flags.add(statuses.size > 1 ? "status_conflict" : "status_needs_review");
+  if (statuses.size !== 1 || !hasProductSignal || needsReviewFromNegation) flags.add(statuses.size > 1 ? "status_conflict" : "status_needs_review");
   if (categories.size > 1) flags.add("multiple_product_categories");
   return {
     items: [...suggestions.values()],
+    omittedProductCount: omittedProducts,
     productCategory: categories.size > 1 ? "Other" : [...categories][0] || "",
-    reportType: statuses.size === 1 && hasProductSignal ? [...statuses][0] : "",
+    reportType: statuses.size === 1 && hasProductSignal && !needsReviewFromNegation ? [...statuses][0] : "",
     storeCandidates,
     flags: [...flags],
   };
@@ -277,9 +314,10 @@ export function createStockScreenshotPatch(draft = {}, choices = {}, { stores = 
     if (value && (replace || blank(draft[field]) || untouchedStatusDefault)) patch[field] = value;
     else if (value && !blank(draft[field]) && value !== draft[field]) preservedFields.push(field);
   }
-  if (replace && productName && normalize(productName) !== normalize(draft.productName)) {
-    // Changing a reviewed name must never retain another item's catalog identity,
-    // set or artwork. User-supplied shelf/proof photos remain untouched.
+  const categoryChanged = replace && productCategory && !blank(draft.productCategory) && productCategory !== draft.productCategory;
+  if ((replace && productName && normalize(productName) !== normalize(draft.productName)) || categoryChanged) {
+    // Changing a reviewed name or game must never retain another item's catalog
+    // identity, set or artwork (F04). User-supplied shelf/proof photos remain untouched.
     for (const [field, empty] of Object.entries({ catalogProductId: "", catalog_product_id: "", productId: "", product_id: "",
       catalogProductName: "", catalog_product_name: "", productType: "", product_type: "", productSetName: "", product_set_name: "", productImageUrl: "", product_image_url: "",
       catalogProductSnapshot: null, catalog_product_snapshot: null, productSnapshot: null, product_snapshot: null })) {

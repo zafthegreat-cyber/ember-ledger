@@ -430,3 +430,8 @@ html body .app.app-command-shell .business-destination-grid button:nth-child(n+4
   .everyday-record-card > img, .everyday-record-placeholder { width: 56px; }
   .everyday-record-card dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* F11: lists reveal more rows instead of stopping silently at 24. */
+.everyday-reveal-more { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 16px; padding: 12px 0 4px; }
+.everyday-reveal-more button { min-height: 44px; }
+.everyday-reveal-more small { color: var(--ops-muted, rgba(255, 255, 255, 0.68)); font-size: 0.85rem; }

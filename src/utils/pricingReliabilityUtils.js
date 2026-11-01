@@ -202,7 +202,7 @@ export function buildPriceReviewFields(item = {}, { context = "forge", now = new
     { key: "unit_cost", role: "cost", label: "Unit cost", missingLabel: "Not set", helper: "Cost basis stays separate from market value." },
     { key: "msrp", role: "msrp", label: "MSRP", missingLabel: "MSRP unknown", helper: "Manufacturer or retail reference when known." },
     { key: "market_value", role: "market", label: "Market value", missingLabel: "Market value missing", helper: "Estimated or reviewed value, never guaranteed." },
-    { key: "planned_sale", role: "planned", label: "Planned sale price", missingLabel: "Not set", helper: context === "forge" ? "Your planning price for sellable inventory." : "Optional planning value if this moves to Forge." },
+    { key: "planned_sale", role: "planned", label: "Planned sale price", missingLabel: "Not set", helper: context === "forge" ? "Your planning price for sellable inventory." : "Optional planning value if this moves to Business." },
   ];
 
   return roleDefinitions.map((definition) => {
@@ -300,7 +300,7 @@ export function buildPriceReliabilityCards(summary = {}) {
     { key: "known_cost", label: "Known cost", value: `${Number(summary.knownCostPercent || 0)}%`, helper: `${Number(summary.knownCostCount || 0)}/${Number(summary.totalRecords || 0)} records` },
     { key: "known_market", label: "Known market", value: `${Number(summary.knownMarketValuePercent || 0)}%`, helper: summary.confidenceSummary || "Price coverage" },
     ...(summary.context === "forge"
-      ? [{ key: "missing_planned", label: "Missing planned price", value: Number(summary.missingPlannedSalePriceCount || 0), helper: "Forge planning only" }]
+      ? [{ key: "missing_planned", label: "Missing planned price", value: Number(summary.missingPlannedSalePriceCount || 0), helper: "Business planning only" }]
       : []),
   ];
 }

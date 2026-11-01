@@ -247,7 +247,7 @@ function FeatureSummary({ screen }) {
       <MagicCard className="ets-feature-card ets-home-feature">
         <FeatureTitle feature={feature} />
         <div className="ets-home-cues">
-          <span><Icon name="scout" /><strong>Scout</strong><small>Worth the trip</small></span>
+          <span><Icon name="scout" /><strong>Restocks</strong><small>Worth the trip</small></span>
           <span><Icon name="vault" /><strong>Vault</strong><small>Protect value</small></span>
           <span><Icon name="spark" /><strong>Spark</strong><small>Give back</small></span>
         </div>
@@ -280,7 +280,7 @@ function FeatureSummary({ screen }) {
   }
 
   if (feature.kind === "assist") {
-    return <PageHero eyebrow={feature.badge} title={feature.title || "Ember Assist"} detail={feature.detail || "Warm app guidance."} />;
+    return <PageHero eyebrow={feature.badge} title={feature.title || "Business Assistant"} detail={feature.detail || "Warm app guidance."} />;
   }
 
   if (feature.kind === "admin") {
@@ -357,16 +357,16 @@ const roleIconMap = {
 
 const contextualCards = {
   hearth: {
-    Family: ["Tonight's family plan", "Scout one useful signal, protect the Vault, and choose a Spark moment without turning the night into a rush feed.", "spark", "hearth"],
+    Family: ["Tonight's family plan", "Restocks one useful signal, protect the Vault, and choose a Spark moment without turning the night into a rush feed.", "spark", "hearth"],
     Seller: ["Seller next move", "Check the pending trade, draft one clean listing, and keep inventory changes review-first.", "forge", "forge"],
     Shop: ["Shop family signal", "Post helpful availability or an event without exact counts, hype, or checkout pressure.", "shop", "shop"],
-    Admin: ["Command glance", "Review Scout proof, Spark requests, shop approvals, and safety flags from protected queues.", "admin", "admin"],
+    Admin: ["Command glance", "Review Restocks proof, Spark requests, shop approvals, and safety flags from protected queues.", "admin", "admin"],
   },
   "scout-near-me": {
     Family: ["Family trip lens", "See current proof, confidence, and Worth the Trip notes without raw timing history.", "scout", "scout"],
-    Seller: ["Seller boundary", "Use Scout for fair access context, not sourcing patterns or exact inventory timing.", "scout", "shield"],
+    Seller: ["Seller boundary", "Use Restocks for fair access context, not sourcing patterns or exact inventory timing.", "scout", "shield"],
     Shop: ["Shop trust signal", "Share useful status only when it helps families plan calmly.", "shop", "store"],
-    Admin: ["Scout review lens", "Watch proof quality, disputed reports, and unsafe pattern exposure.", "admin", "report"],
+    Admin: ["Restocks review lens", "Watch proof quality, disputed reports, and unsafe pattern exposure.", "admin", "report"],
   },
   "scout-screenshot-scan": {
     Family: ["Review-first proof", "Screenshots stay private while store, date, time, product, and confidence are checked.", "scout", "scan"],
@@ -376,14 +376,14 @@ const contextualCards = {
   },
   vault: {
     Family: ["Protected collection room", "Folders, completion, wish list, and kid-visible collections stay organized without public child details.", "vault", "vault"],
-    Seller: ["Inventory bridge", "Move eligible items into Forge only after review so Vault records remain intact.", "forge", "forge"],
+    Seller: ["Inventory bridge", "Move eligible items into Business only after review so Vault records remain intact.", "forge", "forge"],
   },
   "vault-item-detail": {
-    Family: ["Item decision view", "Condition, owned count, value range, notes, trade, Forge, and wish list actions stay scannable.", "vault", "card"],
+    Family: ["Item decision view", "Condition, owned count, value range, notes, trade, Business, and wish list actions stay scannable.", "vault", "card"],
   },
   forge: {
     Seller: ["Seller workspace", "Trades, listings, sales, and cost basis live together without checkout or inventory mutation surprises.", "forge", "forge"],
-    Family: ["Protected seller tools", "Family users see why Forge is gated without exposing seller records.", "more", "lock"],
+    Family: ["Protected seller tools", "Family users see why Business is gated without exposing seller records.", "more", "lock"],
   },
   market: {
     Family: ["Fair discovery", "Search cards, sealed, and supplies with honest freshness labels and no auto-buy pressure.", "market", "market"],
@@ -400,9 +400,9 @@ const contextualCards = {
     Family: ["Private helper", "Ask for scanner help, trade context, kid-friendly sets, and app guidance without fake AI promises.", "assist", "assist"],
   },
   more: {
-    Family: ["Family command menu", "Open Forge, Tidepool, The Spark, Parent Center, privacy, membership, and safe help from one place.", "more", "more"],
-    Seller: ["Seller shortcuts", "Forge, listings, sales ledger, trade value, and exports stay one tap away.", "forge", "forge"],
-    Shop: ["Shop shortcuts", "Shop Portal, Spark sponsorship, Tidepool events, and safety settings stay grouped.", "shop", "shop"],
+    Family: ["Family command menu", "Open Business, Community, The Spark, Parent Center, privacy, membership, and safe help from one place.", "more", "more"],
+    Seller: ["Seller shortcuts", "Business, listings, sales ledger, trade value, and exports stay one tap away.", "forge", "forge"],
+    Shop: ["Shop shortcuts", "Shop Portal, Spark sponsorship, Community events, and safety settings stay grouped.", "shop", "shop"],
     Admin: ["Admin shortcuts", "Review queues, protected moderation, shop approvals, and safety tools stay admin-only.", "admin", "admin"],
   },
   "parent-center": {
@@ -541,7 +541,7 @@ function RoleSwitcher({ selectedRole, onRoleChange }) {
 function CoverageChecklist() {
   const items = [
     "No real scraping, checkout, billing, live AI, auth, RLS, or database changes.",
-    "Scout copy protects raw patterns, exact timing, employee details, and unsafe private data.",
+    "Restocks copy protects raw patterns, exact timing, employee details, and unsafe private data.",
     "Kid and family states are parent-guided with no public child profiles.",
     "Every preview screen includes an action, safe state, or next step.",
   ];

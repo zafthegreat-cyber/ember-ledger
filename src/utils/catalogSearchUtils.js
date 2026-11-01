@@ -2,6 +2,7 @@ import { PRODUCT_TYPE_ALIASES, POKEMON_NAME_ALIASES, RARITY_VARIANT_ALIASES } fr
 import { getSetByCodeOrAlias } from "../data/pokemonSetCatalog";
 import generatedSearchAliases from "../data/generated/searchAliases.json";
 import { getProductImageUrl } from "./productDisplayUtils";
+import { catalogCardQueryMatchesRow } from "./catalogResultIdentity.mjs";
 
 const QUERY_EXPANSION_CACHE_LIMIT = 160;
 const queryExpansionCache = new Map();
@@ -285,6 +286,7 @@ export function searchCatalog(query, catalog = [], limit = 24) {
   if (!queryMeta.normalized) return [];
   const indexedCatalog = buildCatalogSearchIndex(catalog);
   return indexedCatalog
+    .filter((indexed) => catalogCardQueryMatchesRow(query, indexed.item))
     .filter((indexed) => indexedItemMayMatch(queryMeta, indexed))
     .map((indexed) => scoreIndexedCatalogItem(queryMeta, indexed))
     .filter((result) => result.score > 0)

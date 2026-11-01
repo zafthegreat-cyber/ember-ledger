@@ -11,7 +11,7 @@ export function normalizeCatalogQuery(input) {
     .replace(/pok(?:e|\u00e9)mon/gi, "pokemon")
     .replace(/&/g, " and ")
     .replace(/['\u2019]/g, "")
-    .replace(/[+_:/\\|]/g, " ")
+    .replace(/[+_:\\|]/g, " ")
     .replace(/[\u2010-\u2015]/g, "-")
     .replace(/-/g, " ")
     .replace(/[.,%()[\]{}"!?]/g, " ")

@@ -1,0 +1,15 @@
+.import-review-issues { padding: 12px; border: 1px solid var(--border-strong, #997c67); border-radius: 10px; margin-block: 12px; }
+.import-review-issues a { color: inherit; text-decoration: underline; }
+.import-assistant-panel .import-review-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 16px; }
+.import-assistant-panel fieldset { min-width: 0; }
+.import-assistant-panel :is(input, select, button) { min-height: 44px; max-width: 100%; }
+.import-assistant-panel .compact-card-header small { display: block; overflow-wrap: anywhere; }
+.import-review-issues a { display: inline-flex; align-items: center; min-height: 44px; }
+.import-copy-review { margin-block: 12px; min-width: 0; }
+.import-copy-review summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 650; }
+.import-copy-review__scroll { overflow: auto; max-width: 100%; max-height: 320px; border: 1px solid var(--border-subtle, #d9cdbc); border-radius: 10px; }
+.import-copy-review table { border-collapse: collapse; min-width: 780px; width: 100%; text-align: left; }
+.import-copy-review :is(td, th) { padding: 10px; border-bottom: 1px solid var(--border-subtle, #d9cdbc); overflow-wrap: anywhere; max-width: 260px; font-size: 14px; }
+.import-copy-review thead { background: var(--surface-secondary, #f5ecdf); }
+.import-copy-review thead th { white-space: nowrap; overflow-wrap: normal; }
+.import-copy-review :is(summary, [role="region"]):focus-visible, .import-review-issues a:focus-visible { outline: 3px solid var(--focus-ring, #247080); outline-offset: 2px; }

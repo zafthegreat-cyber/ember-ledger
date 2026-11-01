@@ -6,6 +6,7 @@ import { randomUUID } from "crypto";
 import { pool, testDbConnection } from "./db";
 import { bestBuyRouter } from "./routes/bestbuy.routes";
 import { ebayRouter } from "./routes/ebay.routes";
+import { createEbayDeletionRouter } from "./routes/ebayDeletion.routes";
 import { catalogRouter } from "./routes/catalog.routes";
 import { forgeRouter } from "./routes/forge.routes";
 import { inventoryRouter } from "./routes/inventory.routes";
@@ -24,11 +25,16 @@ import { mailboxImportRouter } from "./routes/mailboxImport.routes";
 import { createPrivateFilesRouter } from "./routes/privateFiles.routes";
 import { createOwnerSessionsRouter } from "./routes/ownerSessions.routes";
 import { createAccountDeletionRouter } from "./routes/accountDeletion.routes";
+import { createConfiguredBillingRouter } from "./billing/runtime";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
 const protectedCors = createProtectedCors();
+// Stripe verifies raw webhook bytes; authenticated billing routes parse their own bounded JSON.
+app.use("/api/billing", createConfiguredBillingRouter());
+// eBay authenticates with its signature, before CORS, owner auth or JSON parsing.
+app.use("/api/ebay/account-deletion", createEbayDeletionRouter());
 app.use("/api/account/deletion", protectedCors, createAccountDeletionRouter());
 // The provider route authenticates before parsing a deliberately tiny JSON body.
 // Legacy APIs retain their existing larger parser until they are separately hardened.

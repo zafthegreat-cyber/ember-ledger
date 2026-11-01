@@ -31,7 +31,7 @@ export const BRAND_CONFIG = Object.freeze({
 });
 
 export function formatBrandText(value = "") {
-  return String(value ?? "").replace(/\b(?:ember\s*(?:&(?:amp;)?|and|\/)\s*tide|E\s*&(?:amp;)?\s*T)(?:\s+TCG)?\b/gi, BRAND_CONFIG.applicationDisplayName);
+  return String(value ?? "").replace(/\b(?:ember[\s-]*(?:(?:&(?:amp;)?|and|\/)[\s-]*)?tide|E\s*&(?:amp;)?\s*T)(?:[\s-]+TCG)?\b/gi, BRAND_CONFIG.applicationDisplayName);
 }
 
 export function formatBrowserTitle(pageTitle = "") {

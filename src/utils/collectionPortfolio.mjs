@@ -1,4 +1,5 @@
 import { getRecordGameLabel } from "./collectibleGames.mjs";
+import { recordCurrency } from "./recordPresentation.mjs";
 
 // Portfolio organization is device-local presentation metadata. It never writes
 // to owned records, costs, purposes, binder assignments, or a cloud repository.
@@ -99,19 +100,26 @@ export function getPortfolioItemValuation(item = {}) {
   const projected = first(["projectedResaleMid"]);
   const source = item._recordOrigin === "repository" && projected !== null ? "projected" : market !== null ? "market" : projected !== null ? "projected" : "unknown";
   const unitValue = source === "projected" ? projected : source === "market" ? market : null;
+  // F17: a saved estimate in another currency stays saved but is never added
+  // to a USD total as if it were dollars. Explicit USD (or no saved currency)
+  // is treated as USD as before.
+  const currency = recordCurrency(item) || "USD";
+  const unconverted = unitValue !== null && currency !== "USD";
   const computed = unitValue !== null && quantity !== null ? unitValue * quantity : null;
-  const value = computed !== null && finiteNonnegative(computed) ? Math.round((computed + Number.EPSILON) * 100) / 100 : null;
-  return { value, unitValue, quantity: quantity ?? 0, source: value === null ? "unknown" : source, label: value === null ? "Value not recorded" : source === "projected" ? "Saved projected estimate" : "Saved market estimate" };
+  const value = !unconverted && computed !== null && finiteNonnegative(computed) ? Math.round((computed + Number.EPSILON) * 100) / 100 : null;
+  const label = unconverted ? `Saved ${currency} estimate (not converted to USD)` : value === null ? "Value not recorded" : source === "projected" ? "Saved projected estimate" : "Saved market estimate";
+  return { value, unitValue, quantity: quantity ?? 0, currency, unconverted, source: unconverted ? "unconverted" : value === null ? "unknown" : source, label };
 }
 
 export function summarizePortfolio(items = []) {
-  let total = 0; let quantity = 0; let knownCount = 0; let marketKnownCount = 0; let projectedKnownCount = 0;
+  let total = 0; let quantity = 0; let knownCount = 0; let marketKnownCount = 0; let projectedKnownCount = 0; let unconvertedCount = 0; const unconvertedCurrencies = new Set();
   for (const item of items) {
     const valuation = getPortfolioItemValuation(item);
+    if (valuation.unconverted) { unconvertedCount += 1; unconvertedCurrencies.add(valuation.currency); }
     if (quantity !== null) quantity = finiteNonnegative(quantity + valuation.quantity) ? quantity + valuation.quantity : null;
     if (valuation.value !== null) { if (total !== null) total = finiteNonnegative(total + valuation.value) ? total + valuation.value : null; knownCount += 1; if (valuation.source === "market") marketKnownCount += 1; else projectedKnownCount += 1; }
   }
-  return { total: total === null ? null : Math.round((total + Number.EPSILON) * 100) / 100, knownCount, totalCount: items.length, quantity, isValid: total !== null && quantity !== null, marketKnownCount, projectedKnownCount, unknownCount: items.length - knownCount, valuationLabel: marketKnownCount && projectedKnownCount ? "Saved market and projected estimates" : projectedKnownCount ? "Saved projected estimates" : marketKnownCount ? "Saved market estimates" : "No saved estimates" };
+  return { total: total === null ? null : Math.round((total + Number.EPSILON) * 100) / 100, knownCount, totalCount: items.length, quantity, isValid: total !== null && quantity !== null, marketKnownCount, projectedKnownCount, unknownCount: items.length - knownCount, unconvertedCount, unconvertedCurrencies: [...unconvertedCurrencies].sort(), valuationLabel: marketKnownCount && projectedKnownCount ? "Saved market and projected estimates" : projectedKnownCount ? "Saved projected estimates" : marketKnownCount ? "Saved market estimates" : "No saved estimates" };
 }
 
 export function rankPortfolioItems(items = []) {
@@ -140,10 +148,10 @@ export function portfolioSeries(snapshots = [], { portfolioId = "all", period = 
 
 export function buildPortfolioCsv(items = [], { includeValues = true } = {}) {
   const cell = (value) => { const text = String(value ?? ""); return `"${(/^[\s]*[=+@-]/.test(text) ? "'" : "") + text.replaceAll('"', '""')}"`; };
-  const header = ["Name", "Game", "Classification", "Set", "Quantity", ...(includeValues ? ["Unit estimate USD", "Total estimate USD", "Estimate source"] : [])];
+  const header = ["Name", "Game", "Classification", "Set", "Quantity", ...(includeValues ? ["Unit estimate", "Estimate currency", "Total estimate USD", "Estimate source"] : [])];
   const rows = items.map((item) => {
     const valuation = getPortfolioItemValuation(item);
-    return [item.name || item.title || item.cardName || item.productName || "Untitled item", getRecordGameLabel(item), item.productClassification || item.productType || "", item.setName || item.set_name || item.expansion || "", valuation.quantity, ...(includeValues ? [valuation.unitValue ?? "", valuation.value ?? "", valuation.label] : [])];
+    return [item.name || item.title || item.cardName || item.productName || "Untitled item", getRecordGameLabel(item), item.productClassification || item.productType || "", item.setName || item.set_name || item.expansion || "", valuation.quantity, ...(includeValues ? [valuation.unitValue ?? "", valuation.unitValue === null ? "" : valuation.currency, valuation.value ?? "", valuation.label] : [])];
   });
   return [header, ...rows].map((row) => row.map(cell).join(",")).join("\r\n");
 }

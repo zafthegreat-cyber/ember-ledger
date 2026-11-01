@@ -729,3 +729,48 @@ html body .app.app-command-shell[data-theme] .settings-layout__detail-content :i
   html body .app[data-theme] :is(.you-profile-command-card, .membership-v4-command-board, .trust-v4-command-board) .command-board-v4-plan-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   html body .app[data-theme] :is(.membership-v4-lower-grid, .trust-v4-split-grid, .trust-v4-meetup-layout) { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* A44 (2026-10-31): surfaces that kept a cream gradient in dark mode. */
+.app.app-theme-dark.app-kidsprogram .web-command-sidebar,
+.app.app-theme-dark .web-command-sidebar {
+  background: var(--et-surface-2, var(--surface-primary));
+}
+.app.app-theme-dark.app-adminreview,
+.app.app-theme-dark .admin-view-mode,
+.app.app-theme-dark .admin-edit-mode,
+.app.app-theme-dark.app-adminreview .et-mockup-page-hero,
+.app.app-theme-dark.app-kidsprogram .et-mockup-page-hero::after {
+  background: var(--et-surface, var(--surface-primary));
+  border-color: var(--et-border, var(--border-subtle));
+  color: var(--et-text, var(--text-primary));
+}
+.app.app-theme-dark .spark-feature-status-item { background: rgba(255, 255, 255, 0.06); }
+.app.app-theme-dark .collection-sets-artwork { background: var(--et-surface-2, var(--surface-primary)) !important; }
+.app.app-theme-dark .exchange-v4-hub-card.is-active { background: var(--et-card-strong, var(--surface-primary)); }
+
+/* Kid-safe view (A48/A50, 2026-10-31): hide business strip, valuations and prices. */
+.app.app-kid-safe .tcg-command-center,
+.app.app-kid-safe .price-reliability-summary,
+.app.app-kid-safe .vault-portfolio-summary,
+.app.app-kid-safe .collection-portfolio,
+.app.app-kid-safe .market-v4-quote,
+.app.app-kid-safe .sales-records-summary-panel,
+.app.app-kid-safe [data-kid-hide="true"] { display: none !important; }
+
+/* A46/A47: when there is nothing urgent, the "best action" card shrinks to a one-line note. */
+.todays-tide-best-action.todays-tide-best-calm { padding: 12px 16px; min-height: 0; }
+.todays-tide-best-action.todays-tide-best-calm .todays-tide-art { display: none; }
+.todays-tide-best-action.todays-tide-best-calm h2 { font-size: 1.05rem; margin: 2px 0; }
+.todays-tide-best-action.todays-tide-best-calm p { margin: 0; }
+
+/* A79: storage quota early warning banner. */
+.storage-quota-banner {
+  position: fixed; left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px));
+  bottom: calc(72px + env(safe-area-inset-bottom, 0px)); z-index: 60;
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
+  padding: 12px 14px; border-radius: 12px; background: var(--surface-primary); color: var(--text-primary);
+  border: 1px solid var(--border-strong); box-shadow: var(--shadow-1);
+}
+.storage-quota-banner.is-critical { border-color: #c2410c; }
+.storage-quota-banner p { margin: 2px 0 0; font-size: .9rem; }
+.storage-quota-banner .quick-actions button { min-height: 40px; }

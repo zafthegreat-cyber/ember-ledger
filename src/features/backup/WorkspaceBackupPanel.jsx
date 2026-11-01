@@ -24,7 +24,7 @@ export default function WorkspaceBackupPanel({ onRecover, configuredSourceIds = 
         applicationVersion: typeof __EMBER_TIDE_APP_VERSION__ === "undefined" ? "unknown" : __EMBER_TIDE_APP_VERSION__,
       });
       if (request !== lifetime.current) return;
-      if (!result.verified) throw new Error("Some records could not be exported safely. No backup was marked complete and your saved records were not changed.");
+      if (!result.verified) throw new Error(result.verificationSummary || "Some records could not be exported safely. No backup was marked complete and your saved records were not changed.");
       let saved;
       try { saved = await exportFile({ blob: new Blob([result.json], { type: "application/json;charset=utf-8" }), filename: result.fileName, signal: controller.signal }); }
       catch (error) { throw new Error(exportFileError(error)); }
@@ -38,6 +38,7 @@ export default function WorkspaceBackupPanel({ onRecover, configuredSourceIds = 
   return <section className="backup-result" aria-labelledby="workspace-backup-title">
     <h3 id="workspace-backup-title">Backup &amp; recovery</h3>
     <p>Download verified device records before a change or keep an independent copy. Cloud synchronization does not replace a separate backup.</p>
+    <p>Backups can include private collection details, costs, notes, storage locations, household settings and recoverable drafts in the listed scope. A cloud backup can also include private attachments. Authentication credentials and account permissions are excluded. Keep downloaded files private.</p>
     <div className="backup-actions">
       <button type="button" onClick={exportBackup} disabled={busy || externalBusy}>{busy ? "Verifying backup…" : "Download device backup"}</button>
       {onExportCloud ? <button type="button" onClick={onExportCloud} disabled={busy || externalBusy}>Download cloud backup</button> : null}

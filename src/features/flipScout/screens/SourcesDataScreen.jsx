@@ -3,6 +3,11 @@ import { FLIP_SCOUT_PROVIDERS } from "../connectors.js";
 import { CSV_COLUMNS, downloadTextFile, recordsToCsv } from "../csv.js";
 import { EmptyState, SectionHeading, StatusPill } from "../components/Fields.jsx";
 import EbayConnectionPanel from "../components/EbayConnectionPanel.jsx";
+import ExportDisclosure from "../../../components/ExportDisclosure.jsx";
+
+// #97: one disclosure covers every CSV button; the union of the fixed columns is
+// what any of those files can contain.
+const CSV_EXPORT_FIELDS = [...new Set(Object.values(CSV_COLUMNS).flat())];
 
 const CSV_EXPORTS = [
   ["deals", "Deals"],
@@ -52,8 +57,8 @@ export default function SourcesDataScreen({ state, onExportJson, onImportJson, o
     <section className="flip-section">
       <SectionHeading eyebrow="Device-local data" title="Backup and transfer" detail="Find uses its own versioned browser-storage key. Export JSON before clearing browser data or moving to another device." />
       <div className="flip-data-actions">
-        <article><h3>Full JSON backup</h3><p>Includes every sourcing record and schema version.</p><button type="button" className="primary-button" onClick={() => { onExportJson(); setMessage("Sourcing JSON backup prepared."); }}>Export JSON</button><button type="button" className="secondary-button" onClick={() => fileRef.current?.click()}>Import JSON</button><input ref={fileRef} className="flip-visually-hidden" type="file" accept="application/json,.json" onChange={importFile} /></article>
-        <article><h3>CSV exports</h3><p>Exports flat bookkeeping and sourcing records. Empty collections produce a header-only file.</p><div className="flip-export-grid">{CSV_EXPORTS.map(([collection, label]) => <button type="button" className="secondary-button" key={collection} onClick={() => exportCsv(collection, label)}>{label} CSV <span>{state[collection].length}</span></button>)}</div></article>
+        <article><h3>Full JSON backup</h3><p>Includes every sourcing record and schema version.</p><button type="button" className="primary-button" aria-describedby="sourcing-json-export-disclosure" onClick={() => { onExportJson(); setMessage("Sourcing JSON backup prepared."); }}>Export JSON</button><button type="button" className="secondary-button" onClick={() => fileRef.current?.click()}>Import JSON</button><input ref={fileRef} className="flip-visually-hidden" type="file" accept="application/json,.json" onChange={importFile} /><ExportDisclosure id="sourcing-json-export-disclosure" kind="sourcing-backup" format="json" /></article>
+        <article><h3>CSV exports</h3><p>Exports flat bookkeeping and sourcing records. Empty collections produce a header-only file.</p><div className="flip-export-grid">{CSV_EXPORTS.map(([collection, label]) => <button type="button" className="secondary-button" key={collection} aria-describedby="sourcing-csv-export-disclosure" onClick={() => exportCsv(collection, label)}>{label} CSV <span>{state[collection].length}</span></button>)}</div><ExportDisclosure id="sourcing-csv-export-disclosure" format="csv" fields={CSV_EXPORT_FIELDS} redactions={["sign-in sessions", "provider credentials"]} /></article>
         <article className="flip-danger-zone"><h3>Clear sourcing data</h3><p>Removes only the namespaced sourcing repository on this device. Other application storage keys are untouched.</p><button type="button" className="ghost-button flip-delete-button" onClick={async () => { if (window.confirm("Clear all sourcing data on this device? Export a backup first if you may need it.")) { const result = await onReset(); setMessage(result?.error ? `Clear failed: ${result.error}` : "Sourcing data cleared. This cannot be recovered unless you exported a JSON backup."); } }}>Clear all sourcing data</button></article>
       </div>
       {message ? <p className="flip-form-message" role="status">{message}</p> : null}

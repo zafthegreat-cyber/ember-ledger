@@ -1,5 +1,7 @@
 import { PrivateStorageImage } from "./PrivateReceipt.jsx";
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useId, useMemo, useRef, useState } from "react";
+import { getCatalogHighlightParts } from "../utils/catalogSearchPresentation.mjs";
+import "./smart-catalog-search.css";
 import {
   detectCatalogSearchMode,
   getCachedCatalogRecommendations,
@@ -20,17 +22,11 @@ const EMPTY_OPTIONS = Object.freeze([]);
 
 function renderHighlighted(label, query) {
   const text = String(label || "");
-  const needle = normalizeCatalogQuery(query);
-  if (!needle || needle.length < 2) return text;
-  const haystack = normalizeCatalogQuery(text);
-  const index = haystack.indexOf(needle);
-  if (index < 0) return text;
-  const before = text.slice(0, index);
-  const match = text.slice(index, index + needle.length);
-  const after = text.slice(index + needle.length);
+  const parts = getCatalogHighlightParts(text, query);
+  if (!parts) return text;
   return (
     <>
-      {before}<mark>{match}</mark>{after}
+      {parts.before}<mark>{parts.match}</mark>{parts.after}
     </>
   );
 }
@@ -135,6 +131,12 @@ export default function SmartCatalogSearchBox({
   const [errorMessage, setErrorMessage] = useState("");
   const [lastTiming, setLastTiming] = useState(null);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [focusRequest, setFocusRequest] = useState(0);
+  const [dismissedQuery, setDismissedQuery] = useState(null);
+  const controlId = useId();
+  const listboxId = `${controlId}-suggestions`;
+  const statusId = `${controlId}-status`;
+  const optionId = (index) => `${controlId}-option-${index}`;
   const requestId = useRef(0);
   const abortRef = useRef(null);
   const mapRowRef = useRef(mapRow);
@@ -313,12 +315,18 @@ export default function SmartCatalogSearchBox({
     mapRowRef.current = mapRow;
   }, [mapRow]);
 
+  useEffect(() => () => {
+    requestId.current += 1;
+    abortRef.current?.abort?.();
+  }, [closeSignal]);
+
   const searchInputs = [cleanedValue, dataFilter, deferredValue, includeScopeSuggestions, isSupabaseConfigured, localCatalogProducts, maxSuggestions, productGroup, scopeProductTypes, scopeSets, searchCategories, supabase, suggestionFilter, suppressSuggestions];
   const [previousSearchInputs, setPreviousSearchInputs] = useState(null);
   const [previousCloseSignal, setPreviousCloseSignal] = useState(closeSignal);
   if (previousCloseSignal !== closeSignal) {
     setPreviousCloseSignal(closeSignal);
     setOpen(false);
+    setLoading(false);
     setActiveIndex(-1);
   }
   const exactIdentifier = ["barcode", "id"].includes(detectCatalogSearchMode(deferredValue));
@@ -326,7 +334,7 @@ export default function SmartCatalogSearchBox({
   if (!previousSearchInputs || searchInputs.some((input, index) => !Object.is(input, previousSearchInputs[index]))) {
     setPreviousSearchInputs(searchInputs);
     setErrorMessage("");
-    if (suppressSuggestions || !canSearch) {
+    if (suppressSuggestions || !canSearch || dismissedQuery === cleanedValue) {
       if (!canSearch) setSuggestionsIfChanged([]);
       setLoading(false);
       setOpen(false);
@@ -354,7 +362,7 @@ export default function SmartCatalogSearchBox({
   }
 
   useEffect(() => {
-    if (suppressSuggestions || !canSearch || !isSupabaseConfigured || !supabase) return;
+    if (suppressSuggestions || !canSearch || dismissedQuery === cleanedValue || immediateCleanedValue !== cleanedValue || !isSupabaseConfigured || !supabase) return;
     const currentRequestId = requestId.current + 1;
     requestId.current = currentRequestId;
     abortRef.current?.abort?.();
@@ -385,7 +393,7 @@ export default function SmartCatalogSearchBox({
         ]).slice(0, maxSuggestions);
         setSuggestionsIfChanged(nextSuggestions);
         setOpen(true);
-        setActiveIndex(nextSuggestions.length ? 0 : -1);
+        setActiveIndex((current) => nextSuggestions.length ? Math.min(Math.max(0, current), nextSuggestions.length - 1) : -1);
         setErrorMessage("");
         setLastTimingIfChanged({ elapsedMs: result.elapsedMs, sourceName: result.sourceName, cacheState: result.cached ? "hit" : result.cacheState, searchPhase: result.searchPhase });
       } catch (error) {
@@ -405,7 +413,14 @@ export default function SmartCatalogSearchBox({
       window.clearTimeout(timer);
       controller?.abort?.();
     };
-  }, [buildLocalSuggestions, buildScopeSuggestions, canSearch, cleanedValue, dataFilter, deferredValue, isSupabaseConfigured, maxSuggestions, productGroup, supabase, suggestionFilter, suppressSuggestions]);
+  }, [buildLocalSuggestions, buildScopeSuggestions, canSearch, cleanedValue, dataFilter, deferredValue, dismissedQuery, focusRequest, immediateCleanedValue, isSupabaseConfigured, maxSuggestions, productGroup, supabase, suggestionFilter, suppressSuggestions]);
+
+  const popupVisible = !suppressSuggestions && dismissedQuery !== immediateCleanedValue && open && Boolean(suggestions.length || loading || errorMessage || cleanedValue.length >= 2);
+  const activeOptionId = popupVisible && activeIndex >= 0 && suggestions[activeIndex] ? `${controlId}-option-${activeIndex}` : undefined;
+
+  useEffect(() => {
+    if (activeOptionId) document.getElementById(activeOptionId)?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+  }, [activeOptionId]);
 
   const groupedSuggestions = useMemo(() => {
     return suggestions.reduce((groups, suggestion, index) => {
@@ -415,31 +430,56 @@ export default function SmartCatalogSearchBox({
     }, {});
   }, [suggestions]);
 
+  function stopPendingSearch() {
+    requestId.current += 1;
+    abortRef.current?.abort?.();
+    setLoading(false);
+  }
+
+  function dismissSuggestions() {
+    stopPendingSearch();
+    setDismissedQuery(immediateCleanedValue);
+    setOpen(false);
+    setActiveIndex(-1);
+  }
+
   function selectSuggestion(suggestion) {
     const nextValue = suggestion.searchValue || suggestion.label || value;
+    stopPendingSearch();
     onChange?.(nextValue);
     setOpen(false);
     setActiveIndex(-1);
     if (typeof document !== "undefined") document.activeElement?.blur?.();
+    setDismissedQuery(normalizeCatalogQuery(nextValue));
     onSelectSuggestion?.({ ...suggestion, searchValue: nextValue });
   }
 
   function handleKeyDown(event) {
+    // Enter and arrow keys belong to the IME until composition is committed.
+    if (event.isComposing || event.nativeEvent?.isComposing || event.keyCode === 229) return;
     if (event.key === "ArrowDown" && suggestions.length) {
       event.preventDefault();
+      setDismissedQuery(null);
       setOpen(true);
-      setActiveIndex((current) => Math.min(suggestions.length - 1, current + 1));
+      setActiveIndex((current) => open ? Math.min(suggestions.length - 1, current + 1) : 0);
       return;
     }
     if (event.key === "ArrowUp" && suggestions.length) {
       event.preventDefault();
+      setDismissedQuery(null);
       setOpen(true);
-      setActiveIndex((current) => Math.max(0, current - 1));
+      setActiveIndex((current) => !open || current < 0 ? suggestions.length - 1 : Math.max(0, current - 1));
       return;
     }
-    if (event.key === "Escape") {
-      setOpen(false);
-      setActiveIndex(-1);
+    if (open && suggestions.length && ["Home", "End"].includes(event.key)) {
+      event.preventDefault();
+      setActiveIndex(event.key === "Home" ? 0 : suggestions.length - 1);
+      return;
+    }
+    if (event.key === "Escape" && popupVisible) {
+      event.preventDefault();
+      event.stopPropagation();
+      dismissSuggestions();
       return;
     }
     if (event.key === "Enter" && open && activeIndex >= 0 && suggestions[activeIndex]) {
@@ -449,18 +489,22 @@ export default function SmartCatalogSearchBox({
     }
     if (event.key === "Enter" && onSearch) {
       event.preventDefault();
-      setOpen(false);
-      setActiveIndex(-1);
+      dismissSuggestions();
       onSearch(value);
     }
   }
 
   return (
-    <div className={`smart-catalog-search ${className}`}>
+    <div className={`smart-catalog-search ${className}`} onBlur={(event) => {
+      if (!event.currentTarget.contains(event.relatedTarget)) dismissSuggestions();
+    }}>
       <input
+        id={`${controlId}-input`}
         className={inputClassName}
         value={value}
         onChange={(event) => {
+          stopPendingSearch();
+          setDismissedQuery(null);
           const nextValue = event.target.value;
           const nextCleanedValue = normalizeCatalogQuery(nextValue);
           const nextMode = detectCatalogSearchMode(nextValue);
@@ -488,23 +532,39 @@ export default function SmartCatalogSearchBox({
           if (!suppressSuggestions) setOpen(true);
         }}
         onKeyDown={handleKeyDown}
-        onFocus={() => suggestions.length && !suppressSuggestions && setOpen(true)}
-        onBlur={() => window.setTimeout(() => setOpen(false), 120)}
+        onFocus={() => {
+          if (!suppressSuggestions && canSearch) {
+            setDismissedQuery(null);
+            setOpen(true);
+            setFocusRequest((current) => current + 1);
+            if (isSupabaseConfigured && supabase && !suggestions.length) setLoading(true);
+          }
+        }}
         placeholder={placeholder}
         autoFocus={autoFocus}
         aria-label={inputLabel || placeholder}
         role="combobox"
-        aria-expanded={!suppressSuggestions && open && suggestions.length > 0}
+        aria-expanded={popupVisible}
         aria-autocomplete="list"
+        aria-controls={popupVisible ? listboxId : undefined}
+        aria-activedescendant={activeOptionId}
+        aria-describedby={statusId}
       />
-      {!suppressSuggestions && open && (suggestions.length > 0 || loading || errorMessage || cleanedValue.length >= 2) ? (
+      <span id={statusId} className="smart-catalog-announcement" role="status" aria-live="polite" aria-atomic="true">
+        {popupVisible ? loading ? "Finding catalog matches." : errorMessage ? "Catalog search is unavailable." : suggestions.length ? `${suggestions.length} catalog suggestions available. Use the arrow keys to review and Enter to choose.` : emptyMessage : ""}
+      </span>
+      {popupVisible ? (
         <div
+          id={listboxId}
           className={`smart-catalog-suggestions ${inlineResults ? "smart-catalog-suggestions--inline" : ""}`}
           role="listbox"
+          tabIndex={-1}
+          aria-label="Catalog suggestions"
+          aria-busy={loading}
           onMouseDown={(event) => event.preventDefault()}
         >
           {loading ? <div className="smart-catalog-suggestion-status">Finding smart matches...</div> : null}
-          {!loading && errorMessage ? <div className="smart-catalog-suggestion-status error">{errorMessage}</div> : null}
+          {!loading && errorMessage ? <div className="smart-catalog-suggestion-status error" role="alert">{errorMessage}</div> : null}
           {showTiming && !loading && !errorMessage && lastTiming?.elapsedMs ? (
             <div className="smart-catalog-suggestion-status">
               {timingStatusLabel || `Search completed in ${lastTiming.elapsedMs}ms via ${lastTiming.sourceName || "catalog"} (${lastTiming.cacheState || "miss"}).`}
@@ -523,8 +583,14 @@ export default function SmartCatalogSearchBox({
                 <button
                   type="button"
                   key={suggestion.id}
+                  id={optionId(suggestion.index)}
+                  tabIndex={-1}
                   className={suggestion.index === activeIndex ? "smart-catalog-suggestion active" : "smart-catalog-suggestion"}
-                  onMouseEnter={() => setActiveIndex(suggestion.index)}
+                  onMouseMove={(event) => {
+                    // Scrolling an option into view can move the list under a
+                    // stationary pointer. Keep the keyboard selection intact.
+                    if (event.movementX || event.movementY) setActiveIndex(suggestion.index);
+                  }}
                   onClick={() => selectSuggestion(suggestion)}
                   role="option"
                   aria-selected={suggestion.index === activeIndex}

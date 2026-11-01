@@ -50,7 +50,7 @@ test("returning to main removes only membership metadata", () => {
   assert.equal(records[0].totalPurchaseCost, 500);
 });
 test("per-unit repository projections and legacy saved market estimates use quantity", () => {
-  assert.deepEqual(getPortfolioItemValuation(records[0]), { value: 30.75, unitValue: 10.25, quantity: 3, source: "projected", label: "Saved projected estimate" });
+  assert.deepEqual(getPortfolioItemValuation(records[0]), { value: 30.75, unitValue: 10.25, quantity: 3, currency: "USD", unconverted: false, source: "projected", label: "Saved projected estimate" });
   assert.equal(getPortfolioItemValuation(records[1]).value, 41);
   assert.equal(getPortfolioItemValuation(records[1]).source, "market");
   assert.equal(getPortfolioItemValuation({ _recordOrigin: "repository", quantity: 2, marketPrice: 7 }).value, 14);
@@ -69,7 +69,7 @@ test("strict monetary parser rejects blanks, currency formatting, booleans, and 
 });
 test("summary reports coverage and mixed estimate sources independent of later display filtering", () => {
   const summary = summarizePortfolio(records);
-  assert.deepEqual(summary, { total: 71.75, knownCount: 3, totalCount: 4, quantity: 10, isValid: true, marketKnownCount: 2, projectedKnownCount: 1, unknownCount: 1, valuationLabel: "Saved market and projected estimates" });
+  assert.deepEqual(summary, { total: 71.75, knownCount: 3, totalCount: 4, quantity: 10, isValid: true, marketKnownCount: 2, projectedKnownCount: 1, unknownCount: 1, unconvertedCount: 0, unconvertedCurrencies: [], valuationLabel: "Saved market and projected estimates" });
   const searched = records.filter((row) => row.name.includes("Unknown"));
   assert.equal(searched.length, 1); assert.deepEqual(summarizePortfolio(records), summary);
 });

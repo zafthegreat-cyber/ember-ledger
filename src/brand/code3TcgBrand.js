@@ -3,7 +3,7 @@ import { BRAND_CONFIG } from "../config/brand.js";
 export const EMBER_TIDE_PRODUCT_STANDARD = Object.freeze({
   name: BRAND_CONFIG.applicationDisplayName,
   definition: "Private collecting and business operations application",
-  referenceRoute: "Dark Hearth",
+  referenceRoute: "Dark Home",
   promise: BRAND_CONFIG.tagline,
   brandLine: BRAND_CONFIG.tagline,
 });

@@ -15,6 +15,9 @@ const FLAG_LABELS = {
   multiple_product_categories: "More than one game may be mentioned. Review the category and items.",
   screenshot_text_truncated: "This is a long screenshot. Crop to one stock update for a better result.",
   text_needs_review: "Review the extracted text and enter any details that were missed.",
+  negated_status_needs_review: "The post denies a sold-out or stock claim (for example \"never sold out\"). Choose the status yourself.",
+  unrelated_availability_ignored: "An in-stock or sold-out line was not about a recognized card product, so it was not used. Check the status.",
+  product_list_truncated: "More products were recognized than fit the list. Review the full text and report the remaining products separately.",
 };
 const categoryOptions = ["Pokemon TCG", ...COLLECTIBLE_GAMES.filter((game) => game.id !== "pokemon").map((game) => game.name), "Other"];
 const storeId = (store) => String(store.id || store.storeId || store.store_id || "");
@@ -39,6 +42,9 @@ export default function StockScreenshotImport({ stores = EMPTY_STORES, reportDra
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  // F03: the text the current suggestions came from. If the source text changes,
+  // the review is stale and Apply waits until "Find report details" runs again.
+  const [reviewedText, setReviewedText] = useState("");
   const sequence = useRef(0);
   const controller = useRef(null);
   const previewRef = useRef("");
@@ -63,14 +69,21 @@ export default function StockScreenshotImport({ stores = EMPTY_STORES, reportDra
     if (inputRef.current) inputRef.current.value = "";
   }
   function clearSuggestions() {
-    setText(""); setSuggestions(null);
+    setText(""); setSuggestions(null); setReviewedText("");
     if (!edited.current.has("items")) setProductName("");
     if (!edited.current.has("category")) setCategory("");
     if (!edited.current.has("status")) setStatus("");
   }
+  // F02: a new screenshot is a new source. Its store, observed time, confirmation
+  // and replacement choice must not carry over from the previous image.
+  function resetSourceReview() {
+    edited.current = new Set();
+    setChosenStore(""); setObservedTime(""); setTimeConfirmed(false); setReplace(false);
+    setProductName(""); setCategory(""); setStatus("");
+  }
   function suggest(value) {
     const parsed = parseStockScreenshotText(value, { stores: knownStores });
-    setSuggestions(parsed);
+    setSuggestions(parsed); setReviewedText(value);
     if (!edited.current.has("items")) setProductName(parsed.items.join("\n"));
     if (!edited.current.has("category")) setCategory(parsed.productCategory || "");
     if (!edited.current.has("status")) setStatus(parsed.reportType || "");
@@ -79,7 +92,7 @@ export default function StockScreenshotImport({ stores = EMPTY_STORES, reportDra
   async function readImage(event) {
     const file = event.target.files?.[0];
     if (!file) return;
-    clearImage(); clearSuggestions(); setError(""); setMessage("");
+    clearImage(); clearSuggestions(); resetSourceReview(); setError(""); setMessage("");
     const invalid = validateScoutScreenshotFile(file);
     if (invalid) { setError(invalid.message); return; }
     const imageUrl = URL.createObjectURL(file);
@@ -96,7 +109,9 @@ export default function StockScreenshotImport({ stores = EMPTY_STORES, reportDra
     } else if (result.status !== "cancelled") setError(result.message || "The screenshot could not be read. Paste the post text or enter details instead.");
   }
   function changeMode(next) { if (next === "manual") { clearImage(); setError(""); setMessage(""); } setMode(next); }
+  const reviewStale = Boolean(suggestions) && text !== reviewedText;
   function apply() {
+    if (reviewStale) { setError("The post text changed since the last review. Choose \"Find report details\" again and check the suggestions before using them."); return; }
     const result = createStockScreenshotPatch(reportDraft, {
       storeId: chosenStore || reportDraft.storeId || "", productName, productCategory: category,
       reportType: status, platform, reportDate: observedTime.slice(0, 10), reportTime: observedTime.slice(11, 16),
@@ -116,7 +131,7 @@ export default function StockScreenshotImport({ stores = EMPTY_STORES, reportDra
       <header><h4>Add from a screenshot</h4><p>We read the image on your device. Review the store, products, and time before adding anything to your draft.</p></header>
       <div className="stock-screenshot-upload-row">
         <label className="stock-screenshot-upload" htmlFor={`${id}-file`}>Choose screenshot<input id={`${id}-file`} ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={readImage} /></label>
-        {preview ? <button className="stock-screenshot-button" type="button" onClick={() => { clearImage(); clearSuggestions(); setError(""); setMessage("Screenshot removed. Nothing has been posted."); }}>Remove screenshot</button> : null}
+        {preview ? <button className="stock-screenshot-button" type="button" onClick={() => { clearImage(); clearSuggestions(); resetSourceReview(); setError(""); setMessage("Screenshot removed. Nothing has been posted."); }}>Remove screenshot</button> : null}
         <label>Post source<select value={platform} onChange={(event) => setPlatform(event.target.value)}><option value="facebook">Facebook</option><option value="discord">Discord</option><option value="other">Other screenshot</option></select></label>
       </div>
       <p className="stock-screenshot-help">JPG, PNG, or WebP · up to 12 MB. Crop to one stock post for clearer text. No Facebook or Discord login is needed.</p>
@@ -134,9 +149,10 @@ export default function StockScreenshotImport({ stores = EMPTY_STORES, reportDra
       </div>
       <label className="stock-screenshot-replace"><input type="checkbox" checked={replace} onChange={(event) => setReplace(event.target.checked)} /><span>Replace report fields I already entered<small>Otherwise your existing store, product, and status choices are kept. Notes and photos are always kept.</small></span></label>
       <p className="stock-screenshot-privacy">This starts as a private report that needs review. The image and raw text are not attached. You can choose sharing on the final review screen.</p>
+      {reviewStale ? <p className="stock-screenshot-error" role="status">The text changed after the last review. Run “Find report details” again before using these details.</p> : null}
       {message ? <p role="status">{message}</p> : null}
       {error ? <p className="stock-screenshot-error" role="alert">{error}</p> : null}
-      <button type="button" className="stock-screenshot-apply" disabled={busy} onClick={apply}>Use reviewed details</button>
+      <button type="button" className="stock-screenshot-apply" disabled={busy || reviewStale} onClick={apply}>Use reviewed details</button>
     </div> : null}
   </section>;
 }

@@ -30,7 +30,7 @@ export const RETAILER_DROP_SOURCE_LABELS = {
   "community-report": "Community Report",
   "manual-watch": "Manual Watch",
   unavailable: "Source Not Connected",
-  trusted_scout: "Trusted Scout Report",
+  trusted_scout: "Trusted Reporter Report",
 };
 
 export const RETAILER_DROP_CONFIDENCE_LABELS = {

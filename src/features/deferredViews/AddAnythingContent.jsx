@@ -92,8 +92,8 @@ export default function AddAnythingContent({ scope }) {
     const familyVisible = presentation.showAdminTools || (typeof showFamilyExperience === "boolean" ? showFamilyExperience : presentation.showFamilyTools);
     const destinationOptions = [
       { value: "vault", label: "Vault", helper: "Personal collection" },
-      ...(sellerQuickAddActive && activeForgeWorkspace ? [{ value: "forge", label: "Forge", helper: "Seller inventory" }] : []),
-      ...(sellerQuickAddActive && activeForgeWorkspace ? [{ value: "both", label: "Both", helper: "Vault and Forge" }] : []),
+      ...(sellerQuickAddActive && activeForgeWorkspace ? [{ value: "forge", label: "Business", helper: "Seller inventory" }] : []),
+      ...(sellerQuickAddActive && activeForgeWorkspace ? [{ value: "both", label: "Both", helper: "Vault and Business" }] : []),
       { value: "wishlist", label: "Wishlist/Watch", helper: "Track for later" },
     ];
     const comingLaterScanModes = [
@@ -248,7 +248,7 @@ export default function AddAnythingContent({ scope }) {
     const openScoutScanSavedReportDetails = () => {
       const report = quickAddWizard.scoutScanSavedReport;
       if (!report) {
-        updateQuickAddWizard({ message: "Saved report is not available. Open Scout reports to find it." });
+        updateQuickAddWizard({ message: "Saved report is not available. Open restock reports to find it." });
         return;
       }
       closeFlowModal({ force: true, reset: false });
@@ -311,13 +311,13 @@ export default function AddAnythingContent({ scope }) {
           {renderFlowHeader("Scan Anything", "Search, enter UPC/SKU, or add manually.")}
           <div className="scan-anything-principle-card">
             <strong>Review before saving.</strong>
-            <p>Search, UPC/SKU lookup, Scout screenshot review, and manual card-page review work now. Camera scanning and automatic card detection are coming later.</p>
+            <p>Search, UPC/SKU lookup, Restocks screenshot review, and manual card-page review work now. Camera scanning and automatic card detection are coming later.</p>
           </div>
           <div className="add-anything-option-grid">
-            <button type="button" className="add-anything-option add-anything-option--scout" aria-label="Scout screenshot or photo review. Try text extraction, then review before saving a Scout report." onClick={() => setQuickAddPath("scoutScreenshotReview")}>
+            <button type="button" className="add-anything-option add-anything-option--scout" aria-label="Restocks screenshot or photo review. Try text extraction, then review before saving a restock report." onClick={() => setQuickAddPath("scoutScreenshotReview")}>
               <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="scout" /></span>
-              <strong>Scout screenshot/photo review</strong>
-              <small>Try text extraction, then review before saving a Scout report.</small>
+              <strong>Restocks screenshot/photo review</strong>
+              <small>Try text extraction, then review before saving a restock report.</small>
             </button>
             <button type="button" className="add-anything-option add-anything-option--vault" aria-label="Scan page of cards. Manual multi-card review. Automatic card detection is not live yet." onClick={() => setQuickAddPath("cardPageReview")}>
               <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="vault" /></span>
@@ -381,12 +381,12 @@ export default function AddAnythingContent({ scope }) {
       ];
       return (
         <form className="add-anything-flow add-anything-scout-scan-review" onSubmit={saveQuickAddScoutScanReport}>
-          {renderFlowHeader("Review Scout Scan", "We filled what we could. Review before saving. Nothing is saved yet.")}
+          {renderFlowHeader("Review Restocks Scan", "We filled what we could. Review before saving. Nothing is saved yet.")}
           <div className="scan-anything-principle-card">
             <strong>Nothing is saved yet.</strong>
-            <p>Browser text extraction and pasted text only prefill this draft. Confirm the store, observed time, items, and notes before saving a Scout report.</p>
+            <p>Browser text extraction and pasted text only prefill this draft. Confirm the store, observed time, items, and notes before saving a restock report.</p>
           </div>
-          <div className="scout-scan-required-strip" aria-label="Required Scout scan fields">
+          <div className="scout-scan-required-strip" aria-label="Required Restocks scan fields">
             {scanRequiredItems.map((item) => (
               <span key={item.key} className={item.ready ? "is-ready" : "needs-review"}>
                 {item.ready ? "Ready" : "Needed"}: {item.label}
@@ -396,7 +396,7 @@ export default function AddAnythingContent({ scope }) {
           <div className="quick-add-photo-panel scout-scan-photo-panel">
             {quickAddWizard.scoutScanPhotoUrl ? (
               <div className="picture-lookup-preview quick-add-photo-preview">
-                <PrivateStorageImage src={quickAddWizard.scoutScanPhotoUrl} alt="Scout screenshot reference" />
+                <PrivateStorageImage src={quickAddWizard.scoutScanPhotoUrl} alt="Restocks screenshot reference" />
                 <span>{quickAddWizard.scoutScanPhotoFileName || "Screenshot/photo attached"}</span>
               </div>
             ) : (
@@ -486,8 +486,8 @@ export default function AddAnythingContent({ scope }) {
         <div className="add-anything-flow add-anything-success">
           <div className="quick-add-success-card">
             <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="scout" /></span>
-            <strong>Scout report saved.</strong>
-            <p>{quickAddWizard.message || "Opening the created Scout report detail."}</p>
+            <strong>Restock report saved.</strong>
+            <p>{quickAddWizard.message || "Opening the created restock report detail."}</p>
           </div>
           <div className="quick-add-inline-actions">
             <button type="button" onClick={openScoutScanSavedReportDetails}>Add More Details</button>
@@ -538,7 +538,7 @@ export default function AddAnythingContent({ scope }) {
                   <Field label="Destination">
                     <select value={row.destination || "vault"} onChange={(event) => updateCardScanRow(row.id, { destination: event.target.value })}>
                       <option value="vault">Vault - collection</option>
-                      {sellerQuickAddActive && activeForgeWorkspace ? <option value="forge">Forge - seller inventory</option> : null}
+                      {sellerQuickAddActive && activeForgeWorkspace ? <option value="forge">Business - seller inventory</option> : null}
                       <option value="wishlist">Wishlist/Watch</option>
                     </select>
                   </Field>

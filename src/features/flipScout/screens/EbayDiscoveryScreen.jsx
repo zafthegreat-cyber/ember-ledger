@@ -1,10 +1,13 @@
 import { PrivateStorageImage } from "../../../components/PrivateReceipt.jsx";
+import ExternalWebLink from "../../../components/ExternalWebLink.jsx";
 import { useMemo, useState } from "react";
 import EbayConnectionPanel from "../components/EbayConnectionPanel.jsx";
+import EbaySoldPriceComparison from "../../../components/EbaySoldPriceComparison.jsx";
 import { CheckField, EmptyState, FormActions, MoneyInput, NumberInput, SectionHeading, SelectInput, StatusPill, TextInput } from "../components/Fields.jsx";
 import { searchEbayListings } from "../ebayClient.js";
 import { ebaySearchFromRule, isEbaySearchRule } from "../ebayDiscovery.js";
 import { formatCurrency } from "../selectors.js";
+const EMPTY_SOLD_ITEM = Object.freeze({});
 
 function blankSearch() {
   return {
@@ -103,6 +106,7 @@ export default function EbayDiscoveryScreen({ state, initialRuleId = "", onMerge
   const [pagination, setPagination] = useState({ offset: 0, limit: 25, total: 0, hasNext: false, hasPrevious: false });
   const [queueQuery, setQueueQuery] = useState("");
   const [reviewFilter, setReviewFilter] = useState("Pending");
+  const [soldOpen, setSoldOpen] = useState(false);
   const set = (key) => (value) => setForm((current) => ({ ...current, [key]: value }));
 
   const queue = useMemo(() => {
@@ -171,6 +175,11 @@ export default function EbayDiscoveryScreen({ state, initialRuleId = "", onMerge
         <EbayConnectionPanel onStatus={setHealth} />
       </section>
 
+      <details className="market-source-comparison" onToggle={event => setSoldOpen(event.currentTarget.open)}>
+        <summary>Calculate a card’s sold market price</summary>
+        {soldOpen ? <EbaySoldPriceComparison item={EMPTY_SOLD_ITEM} name="" /> : null}
+      </details>
+
       <section className="flip-section">
         <SectionHeading eyebrow="Manual refresh only" title="Search active eBay listings" detail="Results are sorted by newly listed and always enter Import Review first." actions={<button type="button" className="secondary-button" disabled={loading || !lastRequest} onClick={() => runSearch(pagination.offset)}>{loading ? "Checking…" : "Refresh"}</button>} />
         <div className="flip-ebay-truth" role="note"><strong>About these results</strong><ul><li>These are active eBay listings, not sold comparable records.</li><li>Resale value must be supplied manually or supported by a separately configured source.</li><li>Every result is reviewed before it can enter the Deal Inbox.</li></ul></div>
@@ -221,7 +230,7 @@ export default function EbayDiscoveryScreen({ state, initialRuleId = "", onMerge
           {listing.updatedFields?.length ? <p className="flip-warning-copy">Updated fields: {listing.updatedFields.join(", ")}</p> : null}
           <p className="flip-source-note"><strong>Data source:</strong> {listing.dataSourceExplanation || listing.dataSource || "Normalized from the eBay Browse API response during a manual search."}</p>
           <small>Last checked {listing.lastCheckedAt ? new Date(listing.lastCheckedAt).toLocaleString() : "not recorded"}{listing.auctionEndTime ? ` · Ends ${new Date(listing.auctionEndTime).toLocaleString()}` : ""}</small>
-          {listing.listingUrl ? <a href={listing.listingUrl} target="_blank" rel="noreferrer">Open original eBay listing</a> : null}
+          {listing.listingUrl ? <ExternalWebLink href={listing.listingUrl}>Open original eBay listing</ExternalWebLink> : null}
           <div className="flip-record-actions">
             {!listing.isExpired && listing.reviewStatus !== "Dismissed" ? <button type="button" className="primary-button" onClick={() => importListing(listing)}>{listing.reviewStatus === "Imported" ? "Refresh Deal Inbox record" : "Import to Deal Inbox"}</button> : null}
             {!["Imported", "Dismissed", "Expired"].includes(listing.reviewStatus) ? <button type="button" className="ghost-button" onClick={() => onUpdate("providerListings", { ...listing, reviewStatus: "Dismissed" }, { title: "eBay discovery dismissed", detail: listing.title })}>Dismiss</button> : null}

@@ -11,7 +11,7 @@ export const TCG_OS_MODES = [
   },
   {
     key: "forge",
-    title: "Forge",
+    title: "Business",
     verb: "Sell",
     summary: "Business inventory, sales, expenses, mileage, listings, and profit/loss.",
     benchmark: "DeckTradr + InventoryLab + QuickBooks/Expensify",
@@ -21,7 +21,7 @@ export const TCG_OS_MODES = [
   },
   {
     key: "scout",
-    title: "Scout",
+    title: "Restocks",
     verb: "Find",
     summary: "Local restock reports, store intelligence, predictions, alerts, and drop confidence.",
     benchmark: "HotStock + Keepa + Waze-style reporting",
@@ -31,7 +31,7 @@ export const TCG_OS_MODES = [
   },
   {
     key: "tidepool",
-    title: "Tidepool",
+    title: "Community",
     verb: "Share",
     summary: "Local finds, trades, ISO posts, donation coordination, deal checks, and community trust.",
     benchmark: "Rare Candy + Whatnot + Discord/Facebook groups",
@@ -83,10 +83,10 @@ export const TCG_OS_MODES = [
 
 export const DASHBOARD_PRESET_OPTIONS = [
   { key: "collector", label: "Collector", description: "Vault value, wishlist, catalog, set progress, and portfolio view." },
-  { key: "seller", label: "Seller", description: "Forge inventory, sales, expenses, mileage, listings, and reports." },
+  { key: "seller", label: "Seller", description: "Business inventory, sales, expenses, mileage, listings, and reports." },
   { key: "budget_parent", label: "Budget Parent", description: "Spending, wishlist priority, kid/community budget, and deal checks." },
-  { key: "restock_scout", label: "Restock Scout", description: "Scout reports, store alerts, predictions, watchlist, and routes." },
-  { key: "full_business", label: "Full Business", description: "All collection, seller, Scout, market, and admin-ready operating views." },
+  { key: "restock_scout", label: "Restock Intelligence", description: "Restock reports, store alerts, predictions, watchlist, and routes." },
+  { key: "full_business", label: "Full Business", description: "All collection, seller, Restocks, market, and admin-ready operating views." },
   { key: "simple", label: "Simple", description: "A compact beta-safe home view." },
 ];
 
@@ -101,7 +101,7 @@ export const ALERT_TYPE_OPTIONS = [
   { key: "budgetWarning", label: "Budget warning", description: "Purchase or trip would push a budget over plan." },
   { key: "dealFound", label: "Deal found", description: "Deal Finder spots a good buy/flip/community-price opportunity." },
   { key: "newProductRelease", label: "New product release", description: "New catalog products or upcoming sealed releases." },
-  { key: "localTidepoolPost", label: "Local Tidepool post", description: "Nearby trade, ISO, donation, or deal-check posts." },
+  { key: "localTidepoolPost", label: "Local Community post", description: "Nearby trade, ISO, donation, or deal-check posts." },
 ];
 
 export const SCANNER_INTAKE_TYPES = [
@@ -111,7 +111,7 @@ export const SCANNER_INTAKE_TYPES = [
   { key: "sealed_image", label: "Sealed product image", status: "Beta picture lookup" },
   { key: "slab_label", label: "Slab label", status: "Foundation" },
   { key: "receipt", label: "Receipt", status: "Foundation" },
-  { key: "shelf_photo", label: "Shelf photo", status: "Scout photo report" },
+  { key: "shelf_photo", label: "Shelf photo", status: "Restocks photo report" },
   { key: "marketplace_screenshot", label: "Marketplace screenshot", status: "Deal Finder foundation" },
 ];
 
@@ -139,7 +139,7 @@ export const UNIVERSAL_DATA_ENTITIES = [
 export const APP_STRUCTURE_LINKS = [
   { key: "catalog", label: "Catalog", description: "Know products, variants, identifiers, and prices." },
   { key: "deal_finder", label: "Deal Finder", description: "Decide if a purchase is worth it." },
-  { key: "tidepool", label: "Tidepool", description: "Share finds, trades, donations, and deal checks." },
+  { key: "tidepool", label: "Community", description: "Share finds, trades, donations, and deal checks." },
   { key: "wishlist", label: "Wishlist", description: "Track wants without mixing them into owned inventory." },
   { key: "marketplace", label: "Marketplace", description: "Prepare listings and prevent double-selling." },
   { key: "reports", label: "Reports", description: "Business, mileage, sales, and exports." },

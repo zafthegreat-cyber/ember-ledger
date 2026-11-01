@@ -357,8 +357,8 @@ export default function BetaUsersContent({ scope }) {
                   </button>
                   <div className="detail-grid compact-detail-grid">
                     <DetailItem label="App access" value={entry.accessAllowed ? "Allowed" : "Blocked"} />
-                    <DetailItem label="Scout reports" value={String(counts.scout)} />
-                    <DetailItem label="Vault/Forge adds" value={String(counts.inventory)} />
+                    <DetailItem label="Restock reports" value={String(counts.scout)} />
+                    <DetailItem label="Vault/Business adds" value={String(counts.inventory)} />
                     <DetailItem label="Market/watch" value={String(counts.market)} />
                     <DetailItem label="Business Assistant" value={String(counts.assist)} />
                     <DetailItem label="Admin notes" value={String(entry.matchingNotes.length)} />

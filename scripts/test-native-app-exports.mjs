@@ -33,6 +33,10 @@ const context = vm.createContext({
   buildTaxRecordExportRows: () => [{ id: "tax", amount: 5 }],
   buildMileageExportRows: () => [{ id: "car", miles: 5 }],
   buildSalesExportRows: () => [{ id: "sale", quantity: 1 }],
+  // 2026-10-30 (#33-#35): exports can leave buyer/driver names and notes out.
+  exportIncludePrivateFields: true,
+  stripPrivateSaleFields: (sale) => sale,
+  stripPrivateTripFields: (trip) => trip,
 });
 vm.runInContext(source, context);
 

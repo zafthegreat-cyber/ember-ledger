@@ -3,17 +3,17 @@ import { formatBrandText } from "../config/brand.js";
 export const FORGE_IDENTITY_MODE_OPTIONS = [
   {
     value: "personal",
-    label: "Personal Forge",
+    label: "Personal Business Workspace",
     description: "Track your own collection/sales privately.",
   },
   {
     value: "business",
-    label: "Business Forge",
+    label: "Business Workspace",
     description: "Track business inventory, expenses, mileage, and sales prep.",
   },
   {
     value: "ember_tide",
-    label: "Code 3 TCG Forge",
+    label: "Code 3 TCG Business",
     description: "Use Code 3 TCG branding for your shop/workspace.",
   },
 ];
@@ -28,7 +28,7 @@ export function normalizeForgeIdentityMode(value = "personal") {
 
 export function forgeIdentityModeLabel(mode = "personal") {
   const normalized = normalizeForgeIdentityMode(mode);
-  return FORGE_IDENTITY_MODE_OPTIONS.find((option) => option.value === normalized)?.label || "Personal Forge";
+  return FORGE_IDENTITY_MODE_OPTIONS.find((option) => option.value === normalized)?.label || "Personal Business Workspace";
 }
 
 export function forgeIdentityModeDescription(mode = "personal") {
@@ -89,7 +89,7 @@ export function validateWorkspaceIdentityDraft(draft = {}, options = {}) {
   if (String(draft.businessName || "").trim().length > 80) return "Business/shop name must be 80 characters or fewer.";
   if (String(draft.shopName || "").trim().length > 80) return "Shop name must be 80 characters or fewer.";
   if (normalizeForgeIdentityMode(draft.forgeIdentityMode) === "ember_tide" && options.emberTideAvailable === false) {
-    return "Code 3 TCG Forge is not available for this account yet.";
+    return "Code 3 TCG Business is not available for this account yet.";
   }
   if (!businessName && normalizeForgeIdentityMode(draft.forgeIdentityMode) === "business") {
     return "";
@@ -162,11 +162,11 @@ export function workspaceDeleteBlockReason(workspace = {}, counts = {}, options 
   if (!workspace?.id) return "Choose a workspace first.";
   if (isProtectedWorkspace(workspace, options)) {
     return workspace.id === options.defaultWorkspaceId
-      ? "The default personal workspace cannot be deleted. Hide Personal Forge or archive other workspaces instead."
+      ? "The default personal workspace cannot be deleted. Hide Personal Business Workspace or archive other workspaces instead."
       : "Protected system or Code 3 TCG workspaces cannot be deleted by normal users.";
   }
   if (workspace.id === options.defaultWorkspaceId) {
-    return "The default personal workspace cannot be deleted. Hide Personal Forge or archive other workspaces instead.";
+    return "The default personal workspace cannot be deleted. Hide Personal Business Workspace or archive other workspaces instead.";
   }
   if (!options.canManage) return "You need owner or admin access to delete this workspace.";
   if (Number(counts.total || 0) > 0) {
@@ -182,22 +182,22 @@ export function workspaceDeleteBlockReason(workspace = {}, counts = {}, options 
 export function forgeModeSummary(settings = {}, activeForgeWorkspace = null) {
   const identityMode = forgeIdentityModeFromSettings(settings, activeForgeWorkspace);
   if (identityMode === "ember_tide" && settings.useEmberTideBranding && !settings.lockToEmberTide) {
-    return "Forge uses Code 3 TCG branding where available.";
+    return "Business uses Code 3 TCG branding where available.";
   }
   if (settings.lockToEmberTide) {
     return activeForgeWorkspace
-      ? `Forge is locked to ${formatBrandText(activeForgeWorkspace.name || "Code 3 TCG")}.`
-      : "Forge is locked to Code 3 TCG, but that workspace is unavailable.";
+      ? `Business is locked to ${formatBrandText(activeForgeWorkspace.name || "Code 3 TCG")}.`
+      : "Business is locked to Code 3 TCG, but that workspace is unavailable.";
   }
   if (settings.personalForgeEnabled === false) {
-    return "Personal Forge is hidden. Forge uses your default or business workspace.";
+    return "Personal Business Workspace is hidden. Business uses your default or business workspace.";
   }
   if (identityMode === "business") {
     return activeForgeWorkspace
-      ? `Forge is using ${activeForgeWorkspace.name || "your business workspace"}.`
-      : "Business Forge is selected, but no Forge workspace is available.";
+      ? `Business is using ${activeForgeWorkspace.name || "your business workspace"}.`
+      : "Business Workspace is selected, but no Business workspace is available.";
   }
-  return "Personal Forge is visible. Forge can follow your current workspace.";
+  return "Personal Business Workspace is visible. Business can follow your current workspace.";
 }
 
 export function sellerModeEnabled(userType = "", dashboardPreset = "") {

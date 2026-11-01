@@ -76,17 +76,17 @@ export default function AdminOperationsContent({ scope }) {
     const flaggedContentCount = listingReviewItems.length + commandSummary.tidepoolPostsNeedingReview;
     const feedbackMessageCount = (betaReadinessData.betaFeedback || []).length + commandSummary.openAssistMessages;
     const adminQueueRows = [
-      { key: "command", title: "Trust command center", count: commandSummary.totalOpen, priority: commandSummary.totalOpen ? "Needs review" : "Clear", submittedBy: "App queues", details: "Scout, guesses, shops, Assist messages, and user issues.", filter: "Trust Command Center" },
+      { key: "command", title: "Trust command center", count: commandSummary.totalOpen, priority: commandSummary.totalOpen ? "Needs review" : "Clear", submittedBy: "App queues", details: "Restocks, guesses, shops, Assist messages, and user issues.", filter: "Trust Command Center" },
       { key: "roles", title: "Role management", count: roleManagementCount, priority: roleManagementVisible ? "Protected" : "Locked", submittedBy: "Profiles", details: "Assign admins, moderators, beta users, and users through secure role RPCs.", filter: "Role Management" },
       { key: "beta-users", title: "Beta users dashboard", count: approvedBetaUserCount + betaRequests.length, priority: betaRequests.length ? "Access review" : "Track", submittedBy: "Profiles/invites", details: "Track pending, approved, invited, joined, and active beta users.", filter: "Beta Users" },
       { key: "beta", title: "Beta access requests", count: betaRequests.length, priority: betaRequests.length ? "Today" : "Clear", submittedBy: "Applicants", details: "Approve, waitlist, pause, or deny app access.", filter: "Beta Access" },
       { key: "kids", title: "Kids Program requests", count: kidsReviewCount, priority: kidsApplications.length ? "High privacy" : "Clear", submittedBy: "Parents/guardians", details: "Private family requests. No child details are public.", filter: "Kids Program Applications" },
-      { key: "scout", title: "Scout moderation", count: commandSummary.pendingScoutReports, priority: commandSummary.pendingScoutReports ? "Review" : "Clear", submittedBy: "Scout reporters", details: "Moderate unusual, conflicting, flagged, or hidden reports.", filter: "Scout Report Review" },
+      { key: "scout", title: "Restocks moderation", count: commandSummary.pendingScoutReports, priority: commandSummary.pendingScoutReports ? "Review" : "Clear", submittedBy: "Restocks reporters", details: "Moderate unusual, conflicting, flagged, or hidden reports.", filter: "Restocks Report Review" },
       { key: "guesses", title: "Community guesses / predictions", count: commandSummary.pendingCommunityGuesses, priority: commandSummary.pendingCommunityGuesses ? "Review" : "Clear", submittedBy: "Qualified Scouts", details: "Keep guesses separate from confirmed restock history.", filter: "Community Guess Review" },
       { key: "assist", title: "Business Assistant admin messages", count: commandSummary.openAssistMessages, priority: commandSummary.openAssistMessages ? "Review" : "Clear", submittedBy: "App users", details: "Questions escalated from Business Assistant with safe context.", filter: REVIEW_SECTION_LABELS.assist },
       { key: "shops", title: "Family-friendly shop review", count: commandSummary.shopsNeedingReview, priority: commandSummary.shopsNeedingReview ? "Review" : "Clear", submittedBy: "Admin/store metadata", details: "Approve mission-aligned shop badges without pricing guarantees.", filter: "Family-Friendly Shop Review" },
       { key: "market", title: "Marketplace pricing/scalping flags", count: listingReviewItems.length, priority: listingReviewItems.length ? "High" : "Clear", submittedBy: "Sellers/community", details: "Approve, reject, request edits, pause, archive, or feature flagged listings.", filter: "Marketplace Listings" },
-      { key: "tidepool", title: "Tidepool post moderation", count: commandSummary.tidepoolPostsNeedingReview, priority: commandSummary.tidepoolPostsNeedingReview ? "Needs review" : "Clear", submittedBy: "Community", details: "Review pending, flagged, and unsafe community content.", filter: "Reports & Moderation" },
+      { key: "tidepool", title: "Community post moderation", count: commandSummary.tidepoolPostsNeedingReview, priority: commandSummary.tidepoolPostsNeedingReview ? "Needs review" : "Clear", submittedBy: "Community", details: "Review pending, flagged, and unsafe community content.", filter: "Reports & Moderation" },
       { key: "receipts", title: "Receipts needing review", count: receiptsNeedingReview.length, priority: receiptsNeedingReview.length ? "Today" : "Clear", submittedBy: "Sellers", details: "Review receipt drafts, duplicates, and expense evidence.", filter: "System Health / Logs" },
       { key: "catalog", title: "Product/catalog corrections", count: catalogCorrectionCount, priority: catalogCorrectionCount ? "Review" : "Clear", submittedBy: "Users/admin", details: "Catalog, SKU, UPC, store, and data corrections.", filter: "Catalog Suggestions" },
       { key: "feedback", title: "App feedback and bug reports", count: (betaReadinessData.betaFeedback || []).length + (betaReadinessData.appErrorLogs || []).length, priority: ((betaReadinessData.betaFeedback || []).length + (betaReadinessData.appErrorLogs || []).length) ? "Review" : "Clear", submittedBy: "Beta users/app", details: "Feedback, bugs, and safe client error logs.", filter: "Beta Feedback" },
@@ -94,7 +94,7 @@ export default function AdminOperationsContent({ scope }) {
     const adminOverviewRows = [
       { key: "beta", label: "Beta requests", value: betaRequests.length, tone: betaRequests.length ? "warning" : "success", filter: "Beta Access" },
       { key: "invites", label: "Invites", value: activeBetaInviteCount, tone: activeBetaInviteCount ? "info" : "muted", filter: "Beta Access" },
-      { key: "scout", label: "Scout review", value: commandSummary.pendingScoutReports, tone: commandSummary.pendingScoutReports ? "warning" : "success", filter: "Scout Report Review" },
+      { key: "scout", label: "Restocks review", value: commandSummary.pendingScoutReports, tone: commandSummary.pendingScoutReports ? "warning" : "success", filter: "Restocks Report Review" },
       { key: "catalog", label: "Missing catalog", value: catalogCorrectionCount, tone: catalogCorrectionCount ? "warning" : "success", filter: "Catalog Suggestions" },
       { key: "feedback", label: "Feedback", value: feedbackMessageCount, tone: feedbackMessageCount ? "info" : "success", filter: "Beta Feedback" },
       { key: "flagged", label: "Flagged content", value: flaggedContentCount, tone: flaggedContentCount ? "danger" : "success", filter: "Reports & Moderation" },
@@ -105,10 +105,10 @@ export default function AdminOperationsContent({ scope }) {
     const adminEssentialQueues = [
       { key: "beta-requests", title: "Beta Requests", count: betaRequests.length, status: betaRequests.length ? "Needs review" : "Clear", detail: "Approve, waitlist, deny, or reset beta access requests.", filter: "Beta Access" },
       { key: "invites", title: "Invites", count: activeBetaInviteCount, status: activeBetaInviteCount ? "Active" : "No active invites", detail: "Create, copy, and review invitation links.", filter: "Beta Access" },
-      { key: "scout-review", title: "Scout Report Review", count: commandSummary.pendingScoutReports, status: commandSummary.pendingScoutReports ? "Needs review" : "Clear", detail: "Moderate reports that affect Tide Score and community trust.", filter: "Scout Report Review" },
+      { key: "scout-review", title: "Restocks Report Review", count: commandSummary.pendingScoutReports, status: commandSummary.pendingScoutReports ? "Needs review" : "Clear", detail: "Moderate reports that affect Trust Score and community trust.", filter: "Restocks Report Review" },
       { key: "missing-catalog", title: "Missing Catalog Requests", count: catalogCorrectionCount, status: catalogCorrectionCount ? "Needs review" : "Clear", detail: "Review missing products, UPC/SKU fixes, and catalog corrections.", filter: "Catalog Suggestions" },
       { key: "feedback", title: "Feedback Inbox", count: feedbackMessageCount, status: feedbackMessageCount ? "Open" : "Clear", detail: "Review app feedback, bug reports, and support messages.", filter: "Beta Feedback" },
-      { key: "moderation", title: "Moderation / Flagged Content", count: flaggedContentCount, status: flaggedContentCount ? "Flagged" : "Clear", detail: "Review flagged Tidepool, Scout, and marketplace safety items.", filter: "Reports & Moderation" },
+      { key: "moderation", title: "Moderation / Flagged Content", count: flaggedContentCount, status: flaggedContentCount ? "Flagged" : "Clear", detail: "Review flagged Community, Restocks, and marketplace safety items.", filter: "Reports & Moderation" },
       { key: "kids", title: "Kids Program Requests", count: kidsReviewCount, status: kidsReviewCount ? "Needs review" : "Clear", detail: "Review The Spark requests with family safety context.", filter: "Kids Program Applications" },
       { key: "shops", title: "Family-friendly Shop Approvals", count: commandSummary.shopsNeedingReview, status: commandSummary.shopsNeedingReview ? "Needs review" : "Clear", detail: "Approve shop badges and community-safe partner metadata.", filter: "Family-Friendly Shop Review" },
       { key: "roles", title: "User / Role Controls", count: roleManagementCount || approvedBetaUserCount || 0, status: roleManagementVisible ? "Protected" : "View only", detail: "Manage users and roles only when protected admin tools allow it.", filter: "Role Management" },
@@ -125,7 +125,7 @@ export default function AdminOperationsContent({ scope }) {
         key: "reports",
         label: "Reports & Moderation",
         value: commandSummary.pendingScoutReports + flaggedContentCount,
-        helper: "Scout report review, flagged content, community guesses, and Assist messages.",
+        helper: "Restock report review, flagged content, community guesses, and Assist messages.",
         filter: "Reports & Moderation",
       },
       {
@@ -155,7 +155,7 @@ export default function AdminOperationsContent({ scope }) {
       { key: "beta-access", title: "Beta Access", purpose: "Review access requests and beta status.", status: betaRequests.length ? `${betaRequests.length} pending` : "Clear", cta: "Review", filter: "Beta Access" },
       { key: "invites", title: "Invites", purpose: "Create, copy, and review invite links.", status: activeBetaInviteCount ? `${activeBetaInviteCount} active` : "No active invites", cta: "Open", filter: "Beta Access" },
       { key: "members", title: "Members", purpose: "Manage access, cleanup test profiles, and review member context.", status: roleManagementVisible ? `${roleManagementCount || approvedBetaUserCount} profiles` : `${approvedBetaUserCount} beta profiles`, cta: "Manage", filter: "Beta Users" },
-      { key: "scout-moderation", title: "Scout Moderation", purpose: "Check reports that affect trust signals.", status: commandSummary.pendingScoutReports ? `${commandSummary.pendingScoutReports} need review` : "Clear", cta: "Review", filter: "Scout Report Moderation" },
+      { key: "scout-moderation", title: "Restocks Moderation", purpose: "Check reports that affect trust signals.", status: commandSummary.pendingScoutReports ? `${commandSummary.pendingScoutReports} need review` : "Clear", cta: "Review", filter: "Restocks Report Moderation" },
       { key: "catalog-products", title: "Catalog / Products", purpose: "Review missing items, SKU, UPC, and store corrections.", status: catalogCorrectionCount ? `${catalogCorrectionCount} requests` : "Clear", cta: "Open", filter: "Catalog Suggestions" },
       { key: "market-values", title: "Market Values", purpose: "Review listing and price-source issues.", status: listingReviewItems.length ? `${listingReviewItems.length} flagged` : "Clear", cta: "Review", filter: "Marketplace Listings" },
       { key: "expenses-tax", title: "Expenses / Tax Records", purpose: "Spot receipts and records that need follow-up.", status: receiptsNeedingReview.length ? `${receiptsNeedingReview.length} need review` : "Clear", cta: "Open", filter: "System Health / Logs" },
@@ -166,8 +166,8 @@ export default function AdminOperationsContent({ scope }) {
     const primaryQueueRows = adminQueueRows.filter((queue) => primaryQueueKeys.has(queue.key === "market" || queue.key === "tidepool" ? "flagged" : queue.key));
     const secondaryQueueRows = adminQueueRows.filter((queue) => !primaryQueueRows.some((primary) => primary.key === queue.key));
     const adminOpsSections = [
-      { title: "Trust Command Center", value: commandSummary.totalOpen, helper: "Scout, guesses, shops, Assist", filter: "Trust Command Center" },
-      { title: "Reports & Moderation", value: commandSummary.pendingScoutReports + commandSummary.tidepoolPostsNeedingReview, helper: "Scout report and Tidepool post review", filter: "Reports & Moderation" },
+      { title: "Trust Command Center", value: commandSummary.totalOpen, helper: "Restocks, guesses, shops, Assist", filter: "Trust Command Center" },
+      { title: "Reports & Moderation", value: commandSummary.pendingScoutReports + commandSummary.tidepoolPostsNeedingReview, helper: "Restock report and Community post review", filter: "Reports & Moderation" },
       { title: "Community Guesses", value: commandSummary.pendingCommunityGuesses, helper: "Separate prediction notes", filter: "Community Guess Review" },
       { title: "Business Assistant Inbox", value: commandSummary.openAssistMessages, helper: "Escalated user messages", filter: REVIEW_SECTION_LABELS.assist },
       { title: "Family Shops", value: commandSummary.shopsNeedingReview, helper: "Mission-aligned shop badges", filter: "Family-Friendly Shop Review" },
@@ -187,9 +187,9 @@ export default function AdminOperationsContent({ scope }) {
     ];
     const adminReviewFoundationRows = [
       { title: "Proof review queue", detail: "Receipts, photos, confirmations, and admin-visible proof summaries.", status: "Review before action" },
-      { title: "Scout report review", detail: "Current reports, disputed reports, hidden unsafe details, and confidence labels.", status: "No raw patterns" },
+      { title: "Restock report review", detail: "Current reports, disputed reports, hidden unsafe details, and confidence labels.", status: "No raw patterns" },
       { title: "Disputed reports", detail: "Wrong-store, wrong-time, duplicate, stale, and unsafe reports stay separated from current signals.", status: "Protect signals" },
-      { title: "Tidepool moderation", detail: "Family-safe community posts, reports, shop updates, and event notes.", status: "Moderated only" },
+      { title: "Community moderation", detail: "Family-safe community posts, reports, shop updates, and event notes.", status: "Moderated only" },
       { title: "Shop approvals", detail: "Trusted family friend badges, shop metadata, and safe update permissions.", status: "Admin gated" },
       { title: "Spark donation review", detail: "Donation requests, sponsor support, event help, and thank-you states.", status: "Private family context" },
       { title: "Suspicious behavior review", detail: "Fake accounts, unsafe content, exploit attempts, and repeated bad reports.", status: "Escalate carefully" },
@@ -204,8 +204,8 @@ export default function AdminOperationsContent({ scope }) {
       { label: "Suspend placeholder", helper: "Shown as vocabulary only; no user mutation is wired here." },
     ];
     const adminReviewDecisionRows = [
-      { title: "Scout proof", body: "Decide whether proof is useful for families without exposing exact quantities or raw patterns.", action: "Request proof" },
-      { title: "Tidepool post", body: "Keep family posts, shop updates, tips, and events moderated without enabling kid messaging.", action: "Hide / Escalate" },
+      { title: "Restocks proof", body: "Decide whether proof is useful for families without exposing exact quantities or raw patterns.", action: "Request proof" },
+      { title: "Community post", body: "Keep family posts, shop updates, tips, and events moderated without enabling kid messaging.", action: "Hide / Escalate" },
       { title: "Shop badge", body: "Review Trusted Family Friend language before any badge or update becomes public.", action: "Approve / Reject" },
       { title: "Spark request", body: "Check parent-safe context before counting donations, events, or sponsorship interest.", action: "Review first" },
       { title: "User safety flag", body: "Treat suspicious behavior and role issues as protected admin-only review.", action: "Escalate" },
@@ -320,7 +320,7 @@ export default function AdminOperationsContent({ scope }) {
               <input
                 value={adminQueueSearch}
                 onChange={(event) => setAdminQueueSearch(event.target.value)}
-                placeholder="Beta, Scout, feedback, roles..."
+                placeholder="Beta, Restocks, feedback, roles..."
               />
             </label>
             <span className="status-badge">{filteredAdminEssentialQueues.length} section{filteredAdminEssentialQueues.length === 1 ? "" : "s"}</span>

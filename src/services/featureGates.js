@@ -86,51 +86,54 @@ export const TIER_PRICING = {
     id: PLAN_IDS.FREE,
     label: "Free",
     price: "$0",
-    summary: "Complete core collector tools for building a collection, checking fair value, and helping Scout safely.",
+    summary: "Complete core collector tools for building a collection, checking fair value, and helping Restocks safely.",
     trialCopy: "No trial needed.",
     futurePrice: "",
-    cta: "Included during beta",
+    cta: "Included for everyone during beta",
     features: [
-      "Manual card, sealed, and graded item tracking",
-      "Folders, tags, wishlist, favorites, missing cards, and set progress",
-      "Basic fair range, collection value, card search, and product search",
-      "Basic trade analyzer, deck/list builder, and Forge ledger",
-      "Follow 1 Scout store",
-      "Change Scout store once every 30 days",
-      "Submit and confirm Scout reports",
+      "Manual card, sealed, and graded item tracking (Vault item limit applies)",
+      "Folders, tags, wishlist, and favorites",
+      "Basic fair range per item, card search, and product search",
+      "Basic trade analyzer and deck/list builder",
+      "Follow 1 watched store",
+      "Change watched store once every 30 days",
+      "Submit and confirm restock reports",
       "Screenshot scan flow UI and proof review UI",
       "Add proof or context where supported",
-      "Limited current Scout details",
-      "Tidepool read/report, The Spark view, and Ember Assist prompts",
-      "No raw Scout history or restock pattern tools",
+      "Limited current restock details",
+      "Community read/report, The Spark view, and Business Assistant prompts",
+      "Not included: total collection value, set progress and missing-card lists, exports, and the Business ledger (Collector or Seller)",
+      "No raw restock history or restock pattern tools",
     ],
   },
   [PLAN_IDS.COLLECTOR]: {
     id: PLAN_IDS.COLLECTOR,
     label: "Collector",
-    price: "$1.99/month beta price",
-    summary: "More selected-store Scout context plus collection, wishlist, and set-progress tools.",
-    trialCopy: "7-day free trial planned for launch.",
-    futurePrice: "Later $2.99/month.",
-    cta: "Ask admin to upgrade during beta",
+    price: "Free during beta",
+    summary: "More selected-store restock context plus collection, wishlist, and set-progress tools.",
+    trialCopy: "Pricing is set when beta closes; you will be told before anything costs money.",
+    futurePrice: "",
+    cta: "Ask the Code 3 team to turn this on (free during beta)",
     features: [
       "Everything in Free",
-      "Follow 3 Scout stores",
-      "Swap 1 Scout store every 14 days",
-      "Deeper current Scout details for selected stores",
-      "Collection tools, wishlist/chase list, and binder/set progress",
+      "Follow 3 watched stores",
+      "Swap 1 watched store every 14 days",
+      "Deeper current restock details for selected stores",
+      "Total collection value and price history",
+      "Set progress, missing-card lists, and binder view",
+      "Unlimited Vault items and collection export",
       "Saved Market searches/watchlists where supported",
-      "No all-store exact Scout access, raw history, or pattern tools",
+      "No all-store exact restock access, raw history, or pattern tools",
     ],
   },
   [PLAN_IDS.FAMILY]: {
     id: PLAN_IDS.FAMILY,
     label: "Family",
-    price: "$3.99/month beta price",
+    price: "Free during beta",
     summary: "Collector tools plus parent-managed kid profiles and family collection views.",
-    trialCopy: "7-day free trial planned for launch.",
-    futurePrice: "Later $4.99/month.",
-    cta: "Ask admin to upgrade during beta",
+    trialCopy: "Pricing is set when beta closes; you will be told before anything costs money.",
+    futurePrice: "",
+    cta: "Ask the Code 3 team to turn this on (free during beta)",
     features: [
       "Everything in Collector",
       "1 primary adult included",
@@ -144,28 +147,28 @@ export const TIER_PRICING = {
   [PLAN_IDS.SELLER]: {
     id: PLAN_IDS.SELLER,
     label: "Seller",
-    price: "$5.99/month beta price",
-    summary: "Collector tools plus Forge business tracking for sellers.",
-    trialCopy: "7-day free trial planned for launch.",
-    futurePrice: "Later $7.99/month.",
-    cta: "Ask admin to upgrade during beta",
+    price: "Free during beta",
+    summary: "Collector tools plus Business tracking for sellers.",
+    trialCopy: "Pricing is set when beta closes; you will be told before anything costs money.",
+    futurePrice: "",
+    cta: "Ask the Code 3 team to turn this on (free during beta)",
     features: [
-      "Collector features plus Forge business tools",
-      "Forge sales and expense tracking",
+      "Collector features plus Business tools",
+      "Business sales and expense tracking",
       "Cost basis, profit/loss, inventory value, and seller dashboard",
       "Export/tax-support summaries",
       "Business partner add-on copy",
-      "Does not unlock raw Scout history, patterns, or all-store exact access",
+      "Does not unlock raw restock history, patterns, or all-store exact access",
     ],
   },
   [PLAN_IDS.SHOP]: {
     id: PLAN_IDS.SHOP,
     label: "Shop",
-    price: "Shop Basic $19/month",
+    price: "Free during beta for approved shops",
     summary: "Shop profile and directory foundation for family-friendly local shops.",
-    trialCopy: "Shop Plus $39/month. Shop trust labels are admin-reviewed.",
-    futurePrice: "Checkout coming soon; beta upgrades are admin-managed.",
-    cta: "Ask admin about shop access",
+    trialCopy: "Shop pricing is set when beta closes. Shop trust labels are reviewed by the Code 3 team.",
+    futurePrice: "There is no checkout yet: the team enables Shop by hand after a short review, including staff seats.",
+    cta: "Ask the Code 3 team about Shop access",
     features: [
       "Shop profile and family-friendly shop directory",
       "Store rules, limits, events, and donation/support interest",
@@ -178,25 +181,25 @@ export const TIER_PRICING = {
 };
 
 export const TIER_ADD_ONS = [
-  { id: "extra_kid_profile", label: "Extra kid profile", price: "$0.99/month", appliesTo: "Family", status: "Coming soon" },
-  { id: "extra_adult_family_member", label: "Extra adult family member", price: "$0.99/month", appliesTo: "Family", status: "Coming soon" },
-  { id: "extra_scout_store", label: "Extra Scout store", price: "$0.99/month", appliesTo: "Collector, Family, Seller", status: "Coming soon" },
-  { id: "seller_business_partner", label: "Seller/business partner", price: "$1.99/month", appliesTo: "Seller", status: "Coming soon" },
-  { id: "shop_staff_seat", label: "Shop staff seat", price: "$2.99/month", appliesTo: "Shop", status: "Coming soon" },
-  { id: "extra_shop_location", label: "Extra shop location", price: "$9.99/month", appliesTo: "Shop", status: "Coming soon" },
+  { id: "extra_kid_profile", label: "Extra kid profile", price: "Free during beta", appliesTo: "Family", status: "Ask the team during beta" },
+  { id: "extra_adult_family_member", label: "Extra adult family member", price: "Free during beta", appliesTo: "Family", status: "Ask the team during beta" },
+  { id: "extra_scout_store", label: "Extra watched store", price: "Free during beta", appliesTo: "Collector, Family, Seller", status: "Ask the team during beta" },
+  { id: "seller_business_partner", label: "Seller/business partner seat", price: "Free during beta", appliesTo: "Seller", status: "Ask the team; we add your partner to your workspace by hand" },
+  { id: "shop_staff_seat", label: "Shop staff seat", price: "Free during beta", appliesTo: "Shop", status: "Ask the team during beta" },
+  { id: "extra_shop_location", label: "Extra shop location", price: "Free during beta", appliesTo: "Shop", status: "Ask the team during beta" },
 ];
 
 export const TIER_DISPLAY_GUIDANCE = {
   [PLAN_IDS.FREE]: {
     status: "Included",
-    audience: "Families, collectors, and Scout helpers",
-    benefit: "Start safely with current reports, one watched Scout store, and core collection tools.",
-    gateCopy: "1 Scout watch store | change once every 30 days | raw Scout history and pattern tools protected.",
+    audience: "Families, collectors, and restock helpers",
+    benefit: "Start safely with current reports, one watched watched store, and core collection tools.",
+    gateCopy: "1 Restocks watch store | change once every 30 days | raw restock history and pattern tools protected.",
   },
   [PLAN_IDS.COLLECTOR]: {
     status: "Beta path",
     audience: "Collectors",
-    benefit: "Adds deeper collection tools and more selected-store context while keeping Scout fair.",
+    benefit: "Adds deeper collection tools and more selected-store context while keeping Restocks fair.",
     gateCopy: "3 watched stores | 14-day store changes | 7-day free trial planned.",
   },
   [PLAN_IDS.FAMILY]: {
@@ -208,8 +211,8 @@ export const TIER_DISPLAY_GUIDANCE = {
   [PLAN_IDS.SELLER]: {
     status: "Beta path",
     audience: "Sellers",
-    benefit: "Adds Forge business tools for inventory, sales, receipts, expenses, and profit/loss.",
-    gateCopy: "Seller tools do not unlock raw Scout history, all-store access, or pattern windows.",
+    benefit: "Adds Business tools for inventory, sales, receipts, expenses, and profit/loss.",
+    gateCopy: "Seller tools do not unlock raw restock history, all-store access, or pattern windows.",
   },
   [PLAN_IDS.SHOP]: {
     status: "Partner review",
@@ -441,7 +444,7 @@ export const FEATURE_LABELS = {
   catalog_basic_search: "Basic Catalog Search",
   manual_add: "Manual Add",
   wishlist_basic: "Basic Wishlist",
-  scout_reports_basic: "Basic Scout Reports",
+  scout_reports_basic: "Basic Restocks Reports",
   marketplace_draft_basic: "Basic Marketplace Draft",
   scanner_search_limited: "Limited Scanner/Search",
   unlimited_vault: "Unlimited Vault",
@@ -454,13 +457,13 @@ export const FEATURE_LABELS = {
   graded_slab_tracking: "Graded/Slab Tracking",
   collection_export: "Collection Export",
   saved_market_searches: "Saved Market Searches",
-  scout_current_details: "Deeper Current Scout Details",
+  scout_current_details: "Deeper Current Restocks Details",
   family_vault: "Family Vault",
   kid_profiles: "Kid Profiles",
   kid_safe_vault: "Kid-safe Vault",
   kid_wishlists: "Kid Wishlists",
   spark_family_reminders: "The Spark Family Reminders",
-  forge_inventory: "Forge Inventory",
+  forge_inventory: "Business Inventory",
   sales_tracking: "Sales Tracking",
   expenses: "Expenses",
   mileage: "Mileage",
@@ -475,13 +478,13 @@ export const FEATURE_LABELS = {
   shop_directory_profile: "Shop Directory Profile",
   shop_event_support: "Shop Event/Support Interest",
   shop_featured_placement: "Shop Plus Featured Placement",
-  scout_route_planner: "Protected Scout Route Planner",
+  scout_route_planner: "Protected Restocks Route Planner",
   restock_predictions: "Protected Restock Pattern Tools",
   store_confidence_scores: "Store Confidence Scores",
   watchlist_route_planning: "Protected Watchlist Route Planning",
-  advanced_store_history: "Protected Scout History",
-  scout_pattern_tools: "Protected Scout Pattern Tools",
-  scout_raw_history: "Protected Raw Scout History",
+  advanced_store_history: "Protected Restocks History",
+  scout_pattern_tools: "Protected Restocks Pattern Tools",
+  scout_raw_history: "Protected Raw Restocks History",
   text_alerts: "Text Alerts",
   online_monitor: "Online Monitor",
   auto_open_page: "Auto-open Page",
@@ -499,18 +502,18 @@ export const FEATURE_LABELS = {
   collection_basic: "Basic Collection",
   stores_basic: "Store Directory",
   restock_reports_basic: "Basic Restock Reports",
-  scout_view_reports: "Scout Reports",
-  scout_submit_reports: "Submit Scout Reports",
-  scout_alerts: "Scout Alerts",
-  scout_predictions: "Protected Scout Predictions",
-  scout_verified_tips: "Verified Scout Tips",
+  scout_view_reports: "Restocks Reports",
+  scout_submit_reports: "Submit Restocks Reports",
+  scout_alerts: "Restocks Alerts",
+  scout_predictions: "Protected Restocks Predictions",
+  scout_verified_tips: "Verified Restocks Tips",
   alerts_advanced: "Advanced Alerts",
-  seller_tools: "Seller / Forge Tools",
-  forge_sales: "Forge Sales",
-  forge_expenses: "Forge Expenses",
-  forge_mileage: "Forge Mileage",
-  forge_reports: "Forge Reports",
-  forge_import: "Forge Import",
+  seller_tools: "Seller / Business Tools",
+  forge_sales: "Business Sales",
+  forge_expenses: "Business Expenses",
+  forge_mileage: "Business Mileage",
+  forge_reports: "Business Reports",
+  forge_import: "Business Import",
   vault_unlimited: "Unlimited Vault",
   vault_scan_add: "Scan to Vault",
   vault_export: "Vault Export",
@@ -528,10 +531,10 @@ export const FEATURE_DESCRIPTIONS = {
   receipt_scan_review: "Scan or upload a receipt, review extracted lines, choose destinations, and submit a verified report.",
   deal_finder: "Evaluate deal pricing, market value, MSRP, ROI, and save deal checks.",
   marketplace_exports: "Export marketplace drafts to CSV formats for listing prep.",
-  scout_route_planner: "Protected Scout route planning is reserved for admin moderation and future governed access.",
-  restock_predictions: "Raw restock patterns are protected to keep Scout fair. Paid tiers unlock deeper current selected-store details, not raw history.",
-  scout_pattern_tools: "Raw restock patterns are protected to keep Scout fair.",
-  scout_raw_history: "Full Scout history is available only for admin moderation.",
+  scout_route_planner: "Protected restock route planning is reserved for admin moderation and future governed access.",
+  restock_predictions: "Raw restock patterns are protected to keep Restocks fair. Paid tiers unlock deeper current selected-store details, not raw history.",
+  scout_pattern_tools: "Raw restock patterns are protected to keep Restocks fair.",
+  scout_raw_history: "Full restock history is available only for admin moderation.",
   advanced_store_history: "Full store history is protected and not exposed to normal users.",
   scout_current_details: "Collector, Family, and Seller plans can see deeper current details for followed stores.",
   set_completion: "Track master set progress and completion gaps.",
@@ -592,10 +595,25 @@ export function getLockedFeatureDetails(featureKey) {
       requiredTier,
       tierLabel: "Admin",
       description,
-      benefit: "Scout stays focused on current reports, selected stores, confirmations, and proof the community can review.",
-      action: "Submit or confirm a current report instead, or ask admin if you need moderation access.",
+      benefit: "Restocks stays focused on current reports, selected stores, confirmations, and proof the community can review.",
+      action: "Submit or confirm a current report instead, or ask the Code 3 team if you need moderation access.",
       guardrail: "This lock never reveals raw restock history, exact pattern windows, or all-store data.",
-      cta: "Ask admin for review access",
+      cta: "Ask the Code 3 team for review access",
+    };
+  }
+
+  if (SCOUT_EARNED_FEATURES.has(featureKey)) {
+    return {
+      label,
+      title: "Unlock with a plan or with restock points",
+      statusLabel: `${tierLabel} tier or ${SCOUT_EARNED_UNLOCK_POINTS} Restock points`,
+      requiredTier,
+      tierLabel,
+      description,
+      benefit: "Helpers who report restocks should see the current details and alerts from the stores they follow.",
+      action: `Reach ${SCOUT_EARNED_UNLOCK_POINTS} Restock points by submitting restock reports (a photo or receipt earns more), or ask the Code 3 team to turn on the ${tierLabel} path (free during beta).`,
+      guardrail: "Raw restock history and pattern tools stay protected for everyone.",
+      cta: "Submit a restock report",
     };
   }
 
@@ -607,10 +625,10 @@ export function getLockedFeatureDetails(featureKey) {
       requiredTier,
       tierLabel,
       description,
-      benefit: "Forge keeps business records, sales, receipts, expenses, mileage, and exports organized.",
-      action: "Ask admin to enable the Seller path during beta. Checkout is not live yet.",
-      guardrail: "Locked business tools do not change your saved Vault or Scout data.",
-      cta: "Ask admin about Seller",
+      benefit: "Business keeps business records, sales, receipts, expenses, mileage, and exports organized.",
+      action: "Ask the Code 3 team to turn on the Seller path. Everything is free during beta; there is nothing to pay yet.",
+      guardrail: "Locked business tools do not change your saved Vault or restock data.",
+      cta: "Ask the Code 3 team about Seller",
     };
   }
 
@@ -623,9 +641,9 @@ export function getLockedFeatureDetails(featureKey) {
       tierLabel,
       description,
       benefit: "Family tools are parent-managed and keep child/family setup private by default.",
-      action: "Ask admin to enable the Family path during beta, or keep using the core adult-first app.",
+      action: "Ask the Code 3 team to turn on the Family path (free during beta), or keep using the core app.",
       guardrail: "No child profiles, private family details, or hidden records are exposed behind this lock.",
-      cta: "Ask admin about Family",
+      cta: "Ask the Code 3 team about Family",
     };
   }
 
@@ -638,9 +656,9 @@ export function getLockedFeatureDetails(featureKey) {
       tierLabel,
       description,
       benefit: "Shop tools support family-friendly profiles, partner participation, sponsorships, and local events.",
-      action: "Ask admin about shop/partner review. Shop trust labels are admin-reviewed.",
+      action: "Ask the Code 3 team about shop/partner review. Shop trust labels are reviewed by the team, not bought.",
       guardrail: "Paying is not enough to unlock a shop trust label in beta.",
-      cta: "Ask admin about Shop",
+      cta: "Ask the Code 3 team about Shop",
     };
   }
 
@@ -652,9 +670,9 @@ export function getLockedFeatureDetails(featureKey) {
     tierLabel,
     description,
     benefit: "Upgrade paths keep advanced tools clear without cluttering the core app.",
-    action: "Ask admin to adjust your beta access if this belongs in your setup.",
+    action: "Ask the Code 3 team to adjust your beta access if this belongs in your setup.",
     guardrail: "The locked state explains the benefit without exposing hidden data.",
-    cta: "Ask admin to upgrade during beta",
+    cta: "Ask the Code 3 team to turn this on (free during beta)",
   };
 }
 
@@ -864,6 +882,50 @@ function isProtectedScoutFeature(featureKey = "") {
   return SCOUT_PROTECTED_FEATURES.has(featureKey);
 }
 
+// Scout-earned unlock (2026-10-30). The people who report restocks for free
+// were locked out of the two things that make reporting worthwhile: the
+// current details of the stores they follow and alerts from them. Reaching
+// this many Scout points, or holding the Trusted Scout role, unlocks the
+// current-detail tier for those features. Raw history and pattern tools stay
+// admin-only; this never touches SCOUT_PROTECTED_FEATURES.
+export const SCOUT_EARNED_UNLOCK_POINTS = 40;
+export const SCOUT_EARNED_FEATURES = new Set([
+  "scout_current_details",
+  "scout_alerts",
+  "alerts_advanced",
+  "priority_alerts",
+  "scout_verified_tips",
+  "store_confidence_scores",
+]);
+
+function readScoutPoints(profile = {}, options = {}) {
+  const candidates = [
+    options.scoutPoints,
+    profile?.scoutPoints,
+    profile?.scout_points,
+    profile?.rewardPoints,
+    profile?.reward_points,
+  ].map(Number).filter((value) => Number.isFinite(value));
+  return candidates.length ? Math.max(...candidates) : 0;
+}
+
+export function hasScoutEarnedUnlock(profile = {}, options = {}) {
+  const role = normalizeUserRole(profile?.role || profile?.appRole || profile?.app_role || profile?.userRole || profile?.user_role);
+  if (role === USER_ROLES.TRUSTED_SCOUT) return true;
+  return readScoutPoints(profile, options) >= SCOUT_EARNED_UNLOCK_POINTS;
+}
+
+export function isScoutEarnedFeature(featureKey = "") {
+  return SCOUT_EARNED_FEATURES.has(featureKey);
+}
+
+export function describeScoutEarnedUnlock(profile = {}, options = {}) {
+  const points = readScoutPoints(profile, options);
+  const need = Math.max(0, SCOUT_EARNED_UNLOCK_POINTS - points);
+  if (need === 0) return `Unlocked by your ${points} Restock points.`;
+  return `${need} more restock point${need === 1 ? "" : "s"} unlocks this for free (you have ${points} of ${SCOUT_EARNED_UNLOCK_POINTS}). Submit restock reports with a photo or receipt to earn them.`;
+}
+
 export function canUseFeature(userPlan = PLAN_IDS.FREE, featureKey, options = {}) {
   if (options.admin || runtimeQaUnlock(options)) return true;
   const localBetaUnlock = Boolean(options.localBeta) && !isProtectedScoutFeature(featureKey);
@@ -873,7 +935,8 @@ export function canUseFeature(userPlan = PLAN_IDS.FREE, featureKey, options = {}
   const tier = typeof userPlan === "object" ? getUserTier(profile) : normalizeTier(userPlan);
   const allowedPlans = FEATURE_GATES[featureKey];
   if (!allowedPlans) return false;
-  return allowedPlans.map(normalizeTier).includes(tier);
+  if (allowedPlans.map(normalizeTier).includes(tier)) return true;
+  return isScoutEarnedFeature(featureKey) && hasScoutEarnedUnlock(profile, options);
 }
 
 export function hasPlanAccess(profile = {}, featureKey, options = {}) {
@@ -906,7 +969,7 @@ export function getLockedFeatureMessage(featureKey) {
 
 export function getUpgradePrompt(featureKey) {
   const description = FEATURE_DESCRIPTIONS[featureKey];
-  return `${getLockedFeatureMessage(featureKey)} ${description || "Ask admin to upgrade during beta. Payments and checkout are coming soon."}`;
+  return `${getLockedFeatureMessage(featureKey)} ${description || "Ask the Code 3 team to turn this on. Everything is free during beta; prices are set when beta closes and nothing is charged before you are told."}`;
 }
 
 export function sanitizeUserProfileUpdates(updates = {}) {

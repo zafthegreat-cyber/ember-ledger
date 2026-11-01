@@ -1,4 +1,5 @@
 import { PrivateStorageImage } from "../components/PrivateReceipt.jsx";
+import ExternalWebLink from "../components/ExternalWebLink.jsx";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   getStores,
@@ -256,7 +257,7 @@ function createBlankStoreForm() {
 function createDefaultScoutProfile() {
   return {
     userId: LOCAL_SCOUT_USER_ID,
-    displayName: "Local Scout",
+    displayName: "Local Restocks",
     trustScore: 72,
     verifiedReportCount: 0,
     rejectedReportCount: 0,
@@ -264,7 +265,7 @@ function createDefaultScoutProfile() {
     helpfulVotes: 0,
     reportStreak: 0,
     rewardPoints: 0,
-    badgeLevel: "New Scout",
+    badgeLevel: "New Reporter",
     cooldownUntil: "",
     warningCount: 0,
     lastReportDate: "",
@@ -1246,7 +1247,7 @@ function addAdminReviewDisclosure(record = {}, disclosedAt = new Date().toISOStr
 
 function isUserOwnedScoutReport(report = {}) {
     const owner = String(report.userId || report.user_id || report.reportedBy || report.reported_by || "");
-    return !owner || owner.includes(LOCAL_SCOUT_USER_ID) || owner.includes("Zena") || owner.includes("Local Scout") || BETA_LOCAL_SCOUT;
+    return !owner || owner.includes(LOCAL_SCOUT_USER_ID) || owner.includes("Zena") || owner.includes("Local Restocks") || BETA_LOCAL_SCOUT;
   }
 
 function canViewerSeeScoutReport(report = {}, adminMode = false) {
@@ -1326,7 +1327,7 @@ export default function Scout({
     eventTitle: "",
     eventType: "Kid-friendly Pokemon meetup",
     eventDescription: "",
-    hostName: "Local Scout",
+    hostName: "Local Restocks",
     locationName: "",
     address: "",
     city: "",
@@ -1796,7 +1797,7 @@ export default function Scout({
       setRestockIntel(savedRestockIntel);
       setRestockPatterns(savedRestockPatterns);
       setRoutes(saved.routes || []);
-      setError(storageError ? "Saved Scout data could not be loaded or updated. Existing data was left unchanged; the public store directory is still available." : "");
+      setError(storageError ? "Saved restock data could not be loaded or updated. Existing data was left unchanged; the public store directory is still available." : "");
       setLoading(false);
 
       return;
@@ -2223,7 +2224,7 @@ function submitSharedDataSuggestion(input, setMessage) {
   const disclosedAt = new Date().toISOString();
   const result = submitSuggestion({
     userId: LOCAL_SCOUT_USER_ID,
-    displayName: "Local Scout",
+    displayName: "Local Restocks",
     source: "scout",
     adminReviewVisible: true,
     admin_review_visible: true,
@@ -2278,7 +2279,7 @@ function submitMissingStoreForReview(event) {
     suggestionType: SUGGESTION_TYPES.ADD_MISSING_STORE,
     targetTable: "stores",
     submittedData: reviewStore,
-    notes: missingStoreForm.notes || "Submitted from Scout missing store flow.",
+    notes: missingStoreForm.notes || "Submitted from Restocks missing store flow.",
   }, setError);
   if (!suggestion) return;
   setMissingStoreForm({ name: "", retailer: "", address: "", city: "", region: DEFAULT_VIRGINIA_REGION, zip: "", notes: "" });
@@ -2473,7 +2474,7 @@ function updateEventForm(field, value) {
   setEventForm((current) => ({ ...current, [field]: value }));
 }
 
-function resetEventForm(nextHostName = scoutProfile.displayName || "Local Scout") {
+function resetEventForm(nextHostName = scoutProfile.displayName || "Local Restocks") {
   setEventForm({
     eventTitle: "",
     eventType: "Kid-friendly Pokemon meetup",
@@ -2934,7 +2935,7 @@ async function handleCreateStore(e) {
       suggestionType: SUGGESTION_TYPES.ADD_MISSING_STORE,
       targetTable: "stores",
       submittedData: newStore,
-      notes: "Submitted from Scout store form.",
+      notes: "Submitted from watched store form.",
     }, setError);
     if (!suggestion) return;
     setStoreForm(createBlankStoreForm());
@@ -2991,7 +2992,7 @@ async function handleUpdateStore(e) {
       targetRecordId: selectedStoreId,
       submittedData,
       currentDataSnapshot: currentStore || null,
-      notes: "Submitted from Scout store edit form.",
+      notes: "Submitted from watched store edit form.",
     }, setError);
     if (!suggestion) return;
     setIsEditingStore(false);
@@ -3014,12 +3015,12 @@ async function handleUpdateStore(e) {
     e.preventDefault();
     const activeStoreId = selectedStoreId;
     if (!activeStoreId) {
-      setError("Select a store before submitting a Scout report.");
+      setError("Select a store before submitting a restock report.");
       return;
     }
     const isCommunityGuess = reportForm.sourceType === "manual_prediction" || reportForm.confidence === "guess";
     if (isCommunityGuess && !canSubmitLegacyScoutGuess) {
-      setError(`${DROP_RADAR_GUESS_LOCKED_MESSAGE} Current Scout points: ${scoutGuessPoints}/${MIN_SCOUT_POINTS_FOR_GUESS}.`);
+      setError(`${DROP_RADAR_GUESS_LOCKED_MESSAGE} Current restock points: ${scoutGuessPoints}/${MIN_SCOUT_POINTS_FOR_GUESS}.`);
       return;
     }
     const submitMode = e.currentTarget?.dataset?.submitMode || e.nativeEvent?.submitter?.value || "public";
@@ -3927,7 +3928,7 @@ async function handleUpdateStore(e) {
     const sourceLabel = scoutSourceTypeLabel(report.sourceType || report.source_type);
     const confidence = report.confidence || "";
     const historicalImport = String(report.sourceType || report.source_type || "").toLowerCase() === "historical_import" || report.importedByAdmin || report.imported_by_admin;
-    const submittedByLabel = isUserOwnedScoutReport(report) ? "You" : report.submittedByDisplay || report.submitted_by_display || report.displayName || report.reportedBy || report.reported_by || "Scout user";
+    const submittedByLabel = isUserOwnedScoutReport(report) ? "You" : report.submittedByDisplay || report.submitted_by_display || report.displayName || report.reportedBy || report.reported_by || "Restocks user";
     const freshnessLabel = scoutFreshnessLabel(report);
     const trustLabel = restockReportTrustLabel(report, Boolean(photo));
     const primarySummary = visibleItems[0]
@@ -3985,7 +3986,7 @@ async function handleUpdateStore(e) {
             {adminMode && report.visibility ? <span>{scoutVisibilityLabel(report.visibility)}</span> : null}
             <span>Submitted by {submittedByLabel}</span>
           </div>
-          <div className="scout-signal-badge-row" aria-label="Scout signal trust">
+          <div className="scout-signal-badge-row" aria-label="Restock signal trust">
             <span className="mini-badge">{trustLabel}</span>
             <span className="mini-badge">{freshnessLabel}</span>
             {photo ? <span className="mini-badge">Photo attached</span> : null}
@@ -4221,7 +4222,7 @@ async function handleUpdateStore(e) {
       .map((event) => ({
         reportId: event.eventId,
         reportType: event.kidFriendly ? "Kid-friendly event near you" : event.donationAccepted ? "Donation drive posted" : "Saved event reminder",
-        storeName: event.locationName || event.city || "Tidepool Events",
+        storeName: event.locationName || event.city || "Community Events",
         productName: event.eventTitle,
       }));
     return [...reportAlerts, ...eventAlerts].slice(0, 6);
@@ -4254,7 +4255,7 @@ async function handleUpdateStore(e) {
     }));
     const mappedTidepool = tidepoolAlerts.map((alert) => ({
       ...alert,
-      sourceType: alert.sourceType || "Scout report",
+      sourceType: alert.sourceType || "Restock report",
       createdAt: alert.createdAt || alert.reportTime || alert.lastUpdated || "",
     }));
     const grouped = new Map();
@@ -4274,19 +4275,19 @@ async function handleUpdateStore(e) {
 
   const scoutBadge =
     scoutProfile.verifiedReportCount >= 30 || scoutProfile.trustScore >= 90
-      ? "Verified Scout"
+      ? "Verified Restocks"
       : scoutProfile.verifiedReportCount >= 15 || scoutProfile.trustScore >= 82
-        ? "Trusted Scout"
+        ? "Trusted Reporter"
         : scoutProfile.verifiedReportCount >= 5
           ? "Community Helper"
-          : scoutProfile.badgeLevel || "New Scout";
+          : scoutProfile.badgeLevel || "New Reporter";
   const visibleScoutAlerts = combinedScoutAlerts.filter((alert) => {
     const id = alert.reportId || alert.alertId || `${alert.reportType}-${alert.productName}-${alert.createdAt}`;
     return !dismissedAlertIds.includes(id);
   });
   const topActiveAlerts = visibleScoutAlerts.slice(0, 5);
   const alertPreferenceRows = [
-    { key: "enabled", label: "Scout alerts", description: "Turn Scout alerting on or off." },
+    { key: "enabled", label: "Restock alerts", description: "Turn Restocks alerting on or off." },
     { key: "favoriteStoresOnly", label: "Favorite store alerts", description: "Prioritize reports from stores you care about." },
     { key: "watchlistAlerts", label: "Watchlist product alerts", description: "Notify when watched products appear in reports." },
     { key: "onlineDropAlerts", label: "Online drop alerts", description: "Include online drop and Best Buy source updates." },
@@ -4311,7 +4312,7 @@ async function handleUpdateStore(e) {
       return {
         key: report.id || report.reportId || report.report_id || `scout-overview-report-${index}`,
         storeName: getStoreDisplayName(store) || report.storeName || report.store_name || "Local store",
-        retailer: store.chain || store.retailer || report.retailer || getStoreGroup(store) || "Scout signal",
+        retailer: store.chain || store.retailer || report.retailer || getStoreGroup(store) || "Restock signal",
         area: [store.city || report.city, normalizeVirginiaRegion(store.region || report.region)].filter(Boolean).join(" / "),
         summary: reportItems[0]
           ? summarizeReportItem(reportItems[0], money)
@@ -4348,7 +4349,7 @@ async function handleUpdateStore(e) {
       ).trim();
       if (!id || seen.has(id)) return null;
       seen.add(id);
-      const name = meta.name || row.name || getStoreDisplayName(store) || row.storeName || row.store_name || "Scout store";
+      const name = meta.name || row.name || getStoreDisplayName(store) || row.storeName || row.store_name || "Watched store";
       const retailer = meta.retailer || row.retailer || store.retailer || store.chain || getStoreGroup(store) || "Store";
       const area = meta.area || row.area || [store.city || row.city, normalizeVirginiaRegion(store.region || row.region)].filter(Boolean).join(" / ") || "Area protected";
       return {
@@ -4439,7 +4440,7 @@ async function handleUpdateStore(e) {
     { label: "Current reports", value: visibleAllReports.length, detail: "area-level signals" },
     { label: "Watched stores", value: `${watchedStoreOverviewRows.length}/${watchedStoreSlotLimit}`, detail: "free launch slots" },
     { label: "Trusted shops", value: topTrustedShopProfiles.length, detail: "ranked by proof" },
-    { label: "Active alerts", value: visibleScoutAlerts.length, detail: "Scout and drops" },
+    { label: "Active alerts", value: visibleScoutAlerts.length, detail: "Restocks and drops" },
   ];
   const scoutOverviewEventRows = filteredTidepoolEvents.slice(0, 3).map((event, index) => {
     const eventDate = event.startDate || event.date || "";
@@ -4450,15 +4451,15 @@ async function handleUpdateStore(e) {
       key: event.eventId || event.id || `scout-event-${index}`,
       label: daysUntil === null ? "Calendar" : daysUntil <= 0 ? "Today" : `${daysUntil}d`,
       title: event.eventTitle || event.title || "Local event",
-      detail: [event.eventType, event.locationName || event.city || "Scout calendar"].filter(Boolean).join(" | "),
+      detail: [event.eventType, event.locationName || event.city || "Restocks calendar"].filter(Boolean).join(" | "),
       urgency,
     };
   });
   const scoutOverviewAlertRows = visibleScoutAlerts.slice(0, 3).map((alert, index) => ({
     key: alert.reportId || alert.alertId || `scout-alert-release-${index}`,
     label: /best buy|online/i.test(`${alert.sourceType} ${alert.storeName}`) ? "Online" : "Alert",
-    title: alert.productName || alert.title || alert.reportType || "Saved Scout alert",
-    detail: [alert.storeName || "Scout", alert.reportType || alert.sourceType || "Watch signal"].filter(Boolean).join(" | "),
+    title: alert.productName || alert.title || alert.reportType || "Saved restock alert",
+    detail: [alert.storeName || "Restocks", alert.reportType || alert.sourceType || "Watch signal"].filter(Boolean).join(" | "),
     urgency: index === 0 ? "soon" : "planned",
   }));
   const scoutOverviewReleaseRows = scoutOverviewEventRows.length
@@ -4542,7 +4543,7 @@ async function handleUpdateStore(e) {
     }
     if (targetSubTabKey === "reports" && targetSubTabAction === "addGuess") {
       if (!canSubmitLegacyScoutGuess) {
-        setError(`${DROP_RADAR_GUESS_LOCKED_MESSAGE} Current Scout points: ${scoutGuessPoints}/${MIN_SCOUT_POINTS_FOR_GUESS}.`);
+        setError(`${DROP_RADAR_GUESS_LOCKED_MESSAGE} Current restock points: ${scoutGuessPoints}/${MIN_SCOUT_POINTS_FOR_GUESS}.`);
         return;
       }
       setReportInputMethod("Manual");
@@ -4577,15 +4578,15 @@ async function handleUpdateStore(e) {
           <CommandBoardV4
             accent="scout"
             className="scout-command-board-v5"
-            ariaLabel="Scout Intelligence"
-            label="Scout"
-            title="Scout Intelligence"
+            ariaLabel="Restocks Intelligence"
+            label="Restocks"
+            title="Restocks Intelligence"
             description="Real store signals, trusted reports, restock targets, and protected family location data."
             primaryAction={{ label: "Add Report", icon: "scout", onClick: () => setScoutSubTab("reports") }}
             secondaryActions={[
               { label: "Store Directory", icon: "search", onClick: () => setScoutSubTab("stores") },
               { label: "Watch Alerts", icon: "bell", onClick: () => setScoutSubTab("alerts") },
-              ...(onOpenFlipScout ? [{ label: "Flip Scout", icon: "market", onClick: onOpenFlipScout }] : []),
+              ...(onOpenFlipScout ? [{ label: "Deal Finder", icon: "market", onClick: onOpenFlipScout }] : []),
             ]}
             utilityActions={[
               { label: "Compass", icon: "search", onClick: () => openCompassSearch?.("scout_compass") },
@@ -4593,7 +4594,7 @@ async function handleUpdateStore(e) {
             ]}
             statusItems={scoutCommandStatus}
             plan={{
-              label: "Scout Plan",
+              label: "Restocks Plan",
               title: "Verify signals",
               items: scoutCommandPlan,
               actions: [
@@ -4603,8 +4604,8 @@ async function handleUpdateStore(e) {
             }}
             routes={scoutCommandRoutes}
           >
-            <div className="scout-command-workspace" aria-label="Scout command content">
-              <section className="scout-command-radar" aria-label="Local Scout radar">
+            <div className="scout-command-workspace" aria-label="Restocks command content">
+              <section className="scout-command-radar" aria-label="Local Restocks radar">
                 <div className="scout-command-heading">
                   <div>
                     <span>Local Restock Radar</span>
@@ -4619,9 +4620,9 @@ async function handleUpdateStore(e) {
                       className="scout-command-real-map scout-command-map"
                       rows={scoutOverviewMapRows}
                       compact={compact}
-                      label="Scout local restock map"
-                      mapLabel={`${scoutOverviewRegionLabel} Scout Radar`}
-                      emptyTitle="No coordinate-backed Scout stores yet"
+                      label="Restocks local restock map"
+                      mapLabel={`${scoutOverviewRegionLabel} Restocks Radar`}
+                      emptyTitle="No coordinate-backed watched stores yet"
                       emptyDetail="Add or import stores with coordinates to plot real pins."
                       maxPins={12}
                       interactive
@@ -4647,7 +4648,7 @@ async function handleUpdateStore(e) {
                       ))}
                     </div>
                   )}
-                  <div className="scout-command-map-tools" role="group" aria-label="Scout map views and filters">
+                  <div className="scout-command-map-tools" role="group" aria-label="Restock map views and filters">
                     <button type="button" className={scoutOverviewView === "map" ? "is-active" : ""} aria-pressed={scoutOverviewView === "map"} onClick={() => setScoutOverviewView("map")}><AppNavIcon kind="scout" />Map</button>
                     <button type="button" className={scoutOverviewView === "list" ? "is-active" : ""} aria-pressed={scoutOverviewView === "list"} onClick={() => setScoutOverviewView("list")}><AppNavIcon kind="data" />Store list</button>
                     <button type="button" onClick={() => setScoutSubTab("stores")}><AppNavIcon kind="bell" />Watched {watchedStoreOverviewRows.length}</button>
@@ -4680,11 +4681,11 @@ async function handleUpdateStore(e) {
                 )}
               </section>
 
-              <aside className="scout-command-side-rail" aria-label="Scout intelligence rail">
+              <aside className="scout-command-side-rail" aria-label="Restocks intelligence rail">
                 <article className="scout-command-signal-card">
                   <header><AppNavIcon kind="scout" /><span>Current Signal</span><b>{scoutOverviewLeadReport?.confidenceLabel || "Waiting"}</b></header>
                   <strong>{scoutOverviewLeadReport ? scoutOverviewLeadReport.storeName : "No current report"}</strong>
-                  <p>{scoutOverviewLeadReport ? `${scoutOverviewLeadReport.summary} | ${scoutOverviewLeadReport.confidenceLabel} confidence` : "Submit a Scout report to start local confidence."}</p>
+                  <p>{scoutOverviewLeadReport ? `${scoutOverviewLeadReport.summary} | ${scoutOverviewLeadReport.confidenceLabel} confidence` : "Submit a restock report to start local confidence."}</p>
                   <div className="scout-command-confidence" aria-label={`${scoutOverviewLeadReport?.confidenceScore || 0}% confidence`}><i style={{ width: `${scoutOverviewLeadReport?.confidenceScore || 0}%` }} /></div>
                   <button type="button" onClick={() => setScoutSubTab("reports")}>Submit Report</button>
                 </article>
@@ -4709,7 +4710,7 @@ async function handleUpdateStore(e) {
 
               <CommandMetricGrid
                 className="scout-command-metrics"
-                ariaLabel="Scout intelligence metrics"
+                ariaLabel="Restocks intelligence metrics"
                 items={[
                   { key: "reports", label: "Nearby reports", value: totals.reports, detail: "proof-backed signals" },
                   { key: "confidence", label: "Lead confidence", value: scoutOverviewLeadReport?.confidenceLabel || "No data", detail: scoutOverviewLeadReport ? `${scoutOverviewLeadReport.confidenceScore}% signal strength` : "add the first report" },
@@ -4718,7 +4719,7 @@ async function handleUpdateStore(e) {
                 ]}
               />
 
-              <section className="scout-command-lower" aria-label="Scout supporting content">
+              <section className="scout-command-lower" aria-label="Restocks supporting content">
                 <article className="scout-command-feed-card">
                   <div className="scout-command-heading compact">
                     <div>
@@ -4736,7 +4737,7 @@ async function handleUpdateStore(e) {
                       </button>
                     ))}
                     {!scoutOverviewReportRows.length ? (
-                      <p>No current Scout reports yet. Add one report to start the local intel trail.</p>
+                      <p>No current restock reports yet. Add one report to start the local intel trail.</p>
                     ) : null}
                   </div>
                 </article>
@@ -4852,13 +4853,13 @@ async function handleUpdateStore(e) {
 
         {scoutSubTab === "overview" && compact ? (
           <>
-        <section className="scout-local-command-card scout-overview-intelligence-board" aria-label="Scout local intelligence">
+        <section className="scout-local-command-card scout-overview-intelligence-board" aria-label="Restocks local intelligence">
           <div className="scout-overview-intelligence-header">
             <div>
               <p className="section-kicker">Local Intelligence</p>
               <h2>Local restock intelligence with proof, confidence, and protected timing.</h2>
               <p>
-                Scout shows current area-level signals, trusted shops, watched-store usage, and release/drop context.
+                Restocks shows current area-level signals, trusted shops, watched-store usage, and release/drop context.
                 It should help families decide whether a trip is worth it without exposing raw patterns or private location.
               </p>
             </div>
@@ -4869,11 +4870,11 @@ async function handleUpdateStore(e) {
             </div>
           </div>
 
-          <div className="scout-overview-data-rule-grid" aria-label="Scout data rules">
+          <div className="scout-overview-data-rule-grid" aria-label="Restock data rules">
             <article>
               <span>Source</span>
               <strong>Store and report backed</strong>
-              <small>Signals come from saved stores, Scout reports, Best Buy source checks, or approved events.</small>
+              <small>Signals come from saved stores, restock reports, Best Buy source checks, or approved events.</small>
             </article>
             <article>
               <span>Confidence</span>
@@ -4893,14 +4894,14 @@ async function handleUpdateStore(e) {
           </div>
 
           <div className="scout-command-map-shell scout-overview-map-shell">
-            <div className="scout-command-map-card scout-command-real-map-card" aria-label="Local Scout map">
+            <div className="scout-command-map-card scout-command-real-map-card" aria-label="Local restock map">
               <ScoutTileMap
                 className="scout-command-real-map scout-overview-real-map"
                 rows={scoutOverviewMapRows}
                 compact={compact}
-                label="Scout local restock map"
-                mapLabel="Virginia Scout Radar"
-                emptyTitle="No coordinate-backed Scout stores yet"
+                label="Restocks local restock map"
+                mapLabel="Virginia Restocks Radar"
+                emptyTitle="No coordinate-backed watched stores yet"
                 emptyDetail="Add or import stores with coordinates to plot real pins."
                 maxPins={12}
                 onPinSelect={(pin) => {
@@ -4916,7 +4917,7 @@ async function handleUpdateStore(e) {
               <div className="scout-command-map-caption">
                 <span>Priority signal</span>
                 <strong>{scoutOverviewLeadReport ? scoutOverviewLeadReport.storeName : "No current report yet"}</strong>
-                <small>{scoutOverviewLeadReport ? `${scoutOverviewLeadReport.summary} | ${scoutOverviewLeadReport.confidenceLabel} confidence` : "Add a Scout report to start local intelligence."}</small>
+                <small>{scoutOverviewLeadReport ? `${scoutOverviewLeadReport.summary} | ${scoutOverviewLeadReport.confidenceLabel} confidence` : "Add a restock report to start local intelligence."}</small>
               </div>
             </div>
 
@@ -4940,7 +4941,7 @@ async function handleUpdateStore(e) {
             </div>
           </div>
 
-          <div className="scout-overview-stat-grid" aria-label="Scout local intelligence stats">
+          <div className="scout-overview-stat-grid" aria-label="Restocks local intelligence stats">
             {scoutOverviewStats.map((stat) => (
               <article key={stat.label}>
                 <span>{stat.label}</span>
@@ -4950,7 +4951,7 @@ async function handleUpdateStore(e) {
             ))}
           </div>
 
-          <div className="scout-overview-report-grid" aria-label="Current Scout signals">
+          <div className="scout-overview-report-grid" aria-label="Current restock signals">
             {scoutOverviewReportRows.length ? scoutOverviewReportRows.map((report) => (
               <article className={`scout-command-report-card scout-command-report-card--${report.confidenceTone}`} key={report.key}>
                 <div className="scout-home-report-top">
@@ -4974,7 +4975,7 @@ async function handleUpdateStore(e) {
               </article>
             )) : (
               <div className="small-empty-state scout-overview-empty">
-                <strong>No current Scout reports yet.</strong>
+                <strong>No current restock reports yet.</strong>
                 <span>Add a report or choose watched stores to start the local signal board.</span>
               </div>
             )}
@@ -5000,12 +5001,12 @@ async function handleUpdateStore(e) {
         <CommandBoardSection
           className="scout-directory-coverage-card"
           kicker="Directory Coverage"
-          title="Virginia store coverage powers the Scout map."
-          detail="Scout uses reviewed store rows as the foundation for map pins, watched stores, report history, trusted shops, and family-safe route planning. Hampton Roads / 757 remains the default home region."
+          title="Virginia store coverage powers the restock map."
+          detail="Restocks uses reviewed store rows as the foundation for map pins, watched stores, report history, trusted shops, and family-safe route planning. Hampton Roads / 757 remains the default home region."
           action={<button type="button" className="secondary-button" onClick={() => setScoutSubTab("stores")}>Open directory</button>}
         >
           <CommandMetricGrid
-            ariaLabel="Scout directory coverage"
+            ariaLabel="Restocks directory coverage"
             items={[
               { key: "stores", label: "Total Stores", value: directoryStats.totalStores, detail: "Saved directory rows" },
               { key: "regions", label: "Virginia Regions", value: `${directoryStats.virginiaRegions}/${VIRGINIA_REGIONS.length}`, detail: "Area coverage" },
@@ -5035,13 +5036,13 @@ async function handleUpdateStore(e) {
               <p className="section-kicker">Trusted Shop Intelligence</p>
               <h2>Reliable local shops, proof-backed reports, and safer store profiles.</h2>
               <p>
-                Scout ranks stores by recent reports, verification, proof, family-safe signals, and local demand.
+                Restocks ranks stores by recent reports, verification, proof, family-safe signals, and local demand.
                 Use this before watching a shop, reporting a restock, or planning a safe family visit.
               </p>
             </div>
             <button type="button" className="secondary-button" onClick={() => setScoutSubTab("stores")}>Open Stores</button>
           </div>
-          <div className="scout-reliability-stat-grid" aria-label="Scout reliability summary">
+          <div className="scout-reliability-stat-grid" aria-label="Restocks reliability summary">
             {scoutReliabilitySummary.map((stat) => (
               <article key={stat.label}>
                 <span>{stat.label}</span>
@@ -5086,12 +5087,12 @@ async function handleUpdateStore(e) {
         <div className="scout-command-two-column">
           <CommandBoardSection
             className="scout-score-command-card"
-            kicker="Scout Profile"
+            kicker="Restocks Profile"
             title="Trust grows through accurate local help."
             detail={`Current badge: ${scoutBadge}. Verified, useful, proof-supported reports raise confidence while warnings and cooldowns stay transparent.`}
           >
             <CommandMetricGrid
-              ariaLabel="Scout score metrics"
+              ariaLabel="Restocks score metrics"
               items={[
                 { key: "trust", label: "Trust Score", value: scoutProfile.trustScore, detail: "Report reliability" },
                 { key: "verified", label: "Verified", value: scoutProfile.verifiedReportCount, detail: "Confirmed signals" },
@@ -5113,9 +5114,9 @@ async function handleUpdateStore(e) {
             detail="Earn points for verified, helpful, photo-supported, and first-at-store reports. Bad reports use warnings, lower trust, photo review, cooldowns, and admin review first."
           >
             <div className="scout-command-chip-row">
-              <span>New Scout</span>
-              <span>Trusted Scout</span>
-              <span>Verified Scout</span>
+              <span>New Reporter</span>
+              <span>Trusted Reporter</span>
+              <span>Verified Restocks</span>
               <span>Deal Finder</span>
             </div>
             <div className="scout-command-callout-card">
@@ -5128,8 +5129,8 @@ async function handleUpdateStore(e) {
         <div style={styles.reportGrid}>
           <div style={styles.card}>
             <h2 style={styles.sectionTitle}>Best Buy Source Reports</h2>
-            <p style={styles.empty}>Best Buy source rows are pending Tidepool reports until a person confirms or disputes them in store.</p>
-            {bestBuySourceReports.length === 0 ? <p style={styles.empty}>No Best Buy source reports yet. Use Scout &gt; Online Drops to create one.</p> : null}
+            <p style={styles.empty}>Best Buy source rows are pending Community reports until a person confirms or disputes them in store.</p>
+            {bestBuySourceReports.length === 0 ? <p style={styles.empty}>No Best Buy source reports yet. Use Restocks &gt; Online Drops to create one.</p> : null}
             {bestBuySourceReports.slice(0, 5).map((report) => (
               <div key={report.reportId} style={styles.listCard}>
                 <strong>{report.productName || "Best Buy availability"}</strong>
@@ -5201,11 +5202,11 @@ async function handleUpdateStore(e) {
                     <p style={styles.tiny}>Online: {item.onlineAvailability} | Pickup: {item.pickupAvailability} | Shipping: {item.shippingAvailability}</p>
                     <p style={styles.tiny}>Last checked: {item.lastChecked ? new Date(item.lastChecked).toLocaleString() : "Not checked"} | Match confidence: {item.matchConfidence || 0}%</p>
                     <div style={styles.row}>
-                      {item.productUrl ? <a style={styles.linkButton} href={item.productUrl} target="_blank" rel="noreferrer">Open Product</a> : null}
+                      {item.productUrl ? <ExternalWebLink style={styles.linkButton} href={item.productUrl}>Open Product</ExternalWebLink> : null}
                       <button type="button" style={styles.buttonSoft} onClick={() => {
                         const nextReports = [createTidepoolReportFromBestBuyAvailability(item), ...tidepoolReports].slice(0, 80);
                         saveTidepoolReports(nextReports);
-                      }}>Create Tidepool Report</button>
+                      }}>Create Community Report</button>
                     </div>
                   </div>
                 ))}
@@ -5271,8 +5272,8 @@ async function handleUpdateStore(e) {
         {scoutSubTab === "tidepool" ? (
           <>
         <div style={styles.card}>
-          <h2 style={styles.sectionTitle}>{compact ? "Tidepool Reports" : "Tidepool"}</h2>
-          <p style={styles.empty}>{compact ? "Community Scout report feed. Use the chips to filter the same feed." : "Community-powered Scout reports, events, restocks, products, limits, deals, online drops, and store updates."}</p>
+          <h2 style={styles.sectionTitle}>{compact ? "Community Reports" : "Tidepool"}</h2>
+          <p style={styles.empty}>{compact ? "Community restock report feed. Use the chips to filter the same feed." : "Community-powered restock reports, events, restocks, products, limits, deals, online drops, and store updates."}</p>
           <div style={styles.statsRow}>
             <Metric label="Reports" value={tidepoolReports.length} />
             {!compact ? <Metric label="Events" value={tidepoolEvents.length} /> : null}
@@ -5292,7 +5293,7 @@ async function handleUpdateStore(e) {
             ))}
           </div>
           <div style={{ marginTop: "16px", display: "grid", gap: "12px" }}>
-            {filteredTidepoolReports.length === 0 ? <p style={styles.empty}>No Tidepool reports match this filter yet.</p> : null}
+            {filteredTidepoolReports.length === 0 ? <p style={styles.empty}>No Community reports match this filter yet.</p> : null}
             {filteredTidepoolReports.slice(0, tidepoolFilter === "Latest" ? 8 : 20).map((report) => (
               <div key={report.reportId} style={styles.listCard}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
@@ -5323,7 +5324,7 @@ async function handleUpdateStore(e) {
             <div style={styles.card}>
               <h2 style={styles.sectionTitle}>Events</h2>
               <p style={styles.empty}>
-                Tidepool Events support community activity, kid-friendly Pokemon meetups, giveaways, donation drives, trade days, local shop events, and online/community sale events.
+                Community Events support community activity, kid-friendly Pokemon meetups, giveaways, donation drives, trade days, local shop events, and online/community sale events.
               </p>
               <div style={styles.row}>
                 {TIDEPOOL_EVENT_FILTERS.map((filter) => (
@@ -5463,7 +5464,7 @@ async function handleUpdateStore(e) {
             {reportInputMethod === "Photo" ? (
               <div style={{ ...styles.calloutCard, marginTop: "14px" }}>
                 <h3 style={{ marginTop: 0 }}>Step 4: Photo</h3>
-                <p style={styles.tiny}>Add a shelf photo and Scout will save it right away. Product detection can happen later.</p>
+                <p style={styles.tiny}>Add a shelf photo and Restocks will save it right away. Product detection can happen later.</p>
                 <label className="scout-photo-first-button">
                   <span>Add photo / scan shelf</span>
                   <input type="file" accept="image/*" capture="environment" onChange={handlePhotoFirstReportUpload} />
@@ -5951,7 +5952,7 @@ async function handleUpdateStore(e) {
             <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", alignItems: "start" }}>
               <div>
                 <h2 style={styles.sectionTitle}>Alerts</h2>
-                <p style={{ ...styles.empty, padding: 0 }}>Important Scout, store, watchlist, and Best Buy updates.</p>
+                <p style={{ ...styles.empty, padding: 0 }}>Important Restocks, store, watchlist, and Best Buy updates.</p>
               </div>
               <span style={styles.badge}>{visibleScoutAlerts.length} active</span>
             </div>
@@ -5962,22 +5963,22 @@ async function handleUpdateStore(e) {
                 {visibleScoutAlerts.length > topActiveAlerts.length ? <button type="button" style={styles.buttonSoft} onClick={() => setError("Full alert history view is coming later. Showing the top active alerts for beta.")}>View all alerts</button> : null}
               </div>
               <div style={{ display: "grid", gap: "10px", marginTop: "12px" }}>
-                {topActiveAlerts.length === 0 ? <p style={styles.empty}>No active alerts yet. Favorite stores, add watchlist items, or submit reports to make Scout smarter.</p> : null}
+                {topActiveAlerts.length === 0 ? <p style={styles.empty}>No active alerts yet. Favorite stores, add watchlist items, or submit reports to make Restocks smarter.</p> : null}
                 {topActiveAlerts.map((alert) => {
                   const alertId = alert.reportId || alert.alertId || `${alert.reportType}-${alert.productName}-${alert.createdAt}`;
-                  const sourceBadge = /mock|demo/i.test(`${alert.sourceType}`) ? "Estimated" : /best buy/i.test(`${alert.sourceType} ${alert.storeName}`) ? "Online" : "Scout Report";
+                  const sourceBadge = /mock|demo/i.test(`${alert.sourceType}`) ? "Estimated" : /best buy/i.test(`${alert.sourceType} ${alert.storeName}`) ? "Online" : "Restocks Report";
                   const verifyBadge = alert.verified || alert.verificationStatus === "verified" ? "Verified" : alert.verificationStatus === "pending" ? "Needs Review" : "Unverified";
                   return (
                   <div key={alertId} className="scout-alert-card" style={styles.alertCard}>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
-                      <strong>{alert.reportType || "Scout alert"}</strong>
+                      <strong>{alert.reportType || "Restock alert"}</strong>
                       <div style={styles.row}>
                         <span style={styles.badge}>{sourceBadge}</span>
                         <span style={styles.badge}>{verifyBadge}</span>
                       </div>
                     </div>
                     <p style={{ margin: 0, color: "#475569" }}>
-                      {alert.storeName || "Scout"} {alert.productName ? `- ${alert.productName}` : ""}
+                      {alert.storeName || "Restocks"} {alert.productName ? `- ${alert.productName}` : ""}
                       {alert.duplicateCount > 1 ? ` (${alert.duplicateCount} similar)` : ""}
                     </p>
                     <p style={styles.tiny}>Last updated: {alert.createdAt || "Local beta"}</p>
@@ -5987,7 +5988,7 @@ async function handleUpdateStore(e) {
                           openDropWebsiteFromUserAction(alert);
                           return;
                         }
-                        setError("Alert detail view is coming later. Use Scout reports or Stores for details now.");
+                        setError("Alert detail view is coming later. Use restock reports or Stores for details now.");
                       }}>View Website</button>
                       <button type="button" style={styles.buttonSoft} onClick={() => {
                         setDismissedAlertIds((current) => [...new Set([...current, alertId])]);
@@ -6063,9 +6064,9 @@ async function handleUpdateStore(e) {
             </ul>
           </div>
           <div style={styles.card}>
-            <h2 style={styles.sectionTitle}>Tidepool Access</h2>
+            <h2 style={styles.sectionTitle}>Community Access</h2>
             <p style={styles.empty}>Free users get limited/basic report views. Paid users can unlock fuller real-time feed and alerts later. Trusted users can earn extra access through verified reports.</p>
-            <p style={styles.tiny}>Examples: 5 verified reports = extra views, 15 = faster alerts, 30 = Trusted/Verified Scout path.</p>
+            <p style={styles.tiny}>Examples: 5 verified reports = extra views, 15 = faster alerts, 30 = Trusted/Verified Restocks path.</p>
           </div>
         </div>
 
@@ -6074,15 +6075,15 @@ async function handleUpdateStore(e) {
         {(compact && scoutSubTab === "overview") || (!compact && scoutSubTab === "reports" && !reportsBrowseMode) ? (
         <div style={styles.reportGrid}>
           <div style={styles.card}>
-            <h2 style={styles.sectionTitle}>Daily Scout Report</h2>
+            <h2 style={styles.sectionTitle}>Daily Restocks Report</h2>
             {dailyLocalReport.length === 0 ? (
-              <p style={styles.empty}>No store reports yet. Submit a report to help improve Scout predictions and build today&apos;s local restock picture.</p>
+              <p style={styles.empty}>No store reports yet. Submit a report to help improve Restocks predictions and build today&apos;s local restock picture.</p>
             ) : (
               dailyLocalReport.map(({ store, score, commonDay, commonDayCount, commonHour, reason }) => (
                 <div key={store.id} style={styles.calloutCard}>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
                     <strong>{store.name}</strong>
-                    <span style={styles.badge}>{score}% Scout Score</span>
+                    <span style={styles.badge}>{score}% Restocks Score</span>
                   </div>
                   <p style={{ margin: "8px 0", color: "#334155" }}>{reason}</p>
                   <p style={styles.tiny}>
@@ -6120,7 +6121,7 @@ async function handleUpdateStore(e) {
               ) : null}
             </div>
             {restockHistory.length === 0 ? (
-              <p style={styles.empty}>No restock history yet. Add a Scout report after checking a store so future predictions get smarter.</p>
+              <p style={styles.empty}>No restock history yet. Add a restock report after checking a store so future predictions get smarter.</p>
             ) : (
               displayedRestockHistory.map((report) => renderCompactReportCard(report, { compact: true }))
             )}
@@ -6131,8 +6132,8 @@ async function handleUpdateStore(e) {
 
         {scoutSubTab === "route" ? (
         <div style={styles.card}>
-          <h2 style={styles.sectionTitle}>Scout Route Planner</h2>
-          <p style={styles.empty}>Choose a goal and filters. Scout will suggest the best route automatically, then you can adjust stops before saving.</p>
+          <h2 style={styles.sectionTitle}>Restocks Route Planner</h2>
+          <p style={styles.empty}>Choose a goal and filters. Restocks will suggest the best route automatically, then you can adjust stops before saving.</p>
           <form onSubmit={saveRoute} style={styles.formGrid}>
             <input
               style={styles.input}
@@ -6411,7 +6412,7 @@ async function handleUpdateStore(e) {
             {storeDirectoryView === "retailer" ? (
               <>
                 <div style={styles.card}>
-                  <p style={styles.tiny}>Scout &gt; Stores{selectedChain !== "All" ? ` > ${selectedChain}` : ""}</p>
+                  <p style={styles.tiny}>Restocks &gt; Stores{selectedChain !== "All" ? ` > ${selectedChain}` : ""}</p>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", alignItems: "start" }}>
                     <div>
                       <h2 style={styles.sectionTitle}>{selectedChain === "All" ? "Store Locations" : `${selectedChain} Locations`}</h2>
@@ -6467,7 +6468,7 @@ async function handleUpdateStore(e) {
                           <option value="distance">Sort by distance</option>
                           <option value="lastReport">Sort by last report</option>
                           <option value="restockConfidence">Sort by restock confidence</option>
-                          <option value="tidepoolScore">Sort by Tidepool score</option>
+                          <option value="tidepoolScore">Sort by Community score</option>
                         </select>
                       </div>
                     ) : null}
@@ -6605,7 +6606,7 @@ async function handleUpdateStore(e) {
               <>
                 <div className="scout-store-record-header" style={styles.card}>
                   {onReturnToReport ? <button type="button" className="scout-store-action-secondary" style={styles.buttonSoft} onClick={onReturnToReport}>Return to report</button> : null}
-                  <p className="scout-store-record-breadcrumb" style={styles.tiny}>Scout &gt; Stores &gt; {selectedStore.chain || getStoreGroup(selectedStore)} &gt; {selectedStore.nickname || selectedStore.name}</p>
+                  <p className="scout-store-record-breadcrumb" style={styles.tiny}>Restocks &gt; Stores &gt; {selectedStore.chain || getStoreGroup(selectedStore)} &gt; {selectedStore.nickname || selectedStore.name}</p>
                   <div className="scout-store-record-heading" style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: "12px", flexWrap: "wrap" }}>
                     <div>
                       <h2 style={{ ...styles.sectionTitle, marginBottom: "6px" }}>{selectedStore.nickname || selectedStore.name}</h2>
@@ -6711,7 +6712,7 @@ async function handleUpdateStore(e) {
                         <p className="section-kicker">Trusted Shop Profile</p>
                         <h2>{getStoreDisplayName(selectedTrustedShopProfile.store)}</h2>
                         <p>
-                          {selectedTrustedShopProfile.trustBadge} with {selectedTrustedShopProfile.confidence.toLowerCase()} Scout confidence,
+                          {selectedTrustedShopProfile.trustBadge} with {selectedTrustedShopProfile.confidence.toLowerCase()} Restocks confidence,
                           {` ${selectedTrustedShopProfile.reportCount}`} report{selectedTrustedShopProfile.reportCount === 1 ? "" : "s"},
                           and {selectedTrustedShopProfile.proofCount} proof-backed signal{selectedTrustedShopProfile.proofCount === 1 ? "" : "s"}.
                         </p>
@@ -6757,7 +6758,7 @@ async function handleUpdateStore(e) {
                         <span>2</span>
                         <div>
                           <strong>Proof trail</strong>
-                          <p>{selectedTrustedShopProfile.proofCount ? "Photos, evidence, or verified reports are helping this profile." : "Add photos or proof with the next Scout report."}</p>
+                          <p>{selectedTrustedShopProfile.proofCount ? "Photos, evidence, or verified reports are helping this profile." : "Add photos or proof with the next restock report."}</p>
                         </div>
                       </article>
                       <article>
@@ -6780,7 +6781,7 @@ async function handleUpdateStore(e) {
                     <h2 style={styles.sectionTitle}>Recent Reports</h2>
                     {visibleReports.length === 0 ? (
                       <div style={styles.calloutCard}>
-                        <p style={{ ...styles.empty, padding: 0 }}>No store reports yet. Submit a report to help improve Scout predictions.</p>
+                        <p style={{ ...styles.empty, padding: 0 }}>No store reports yet. Submit a report to help improve Restocks predictions.</p>
                         <button type="button" className="scout-store-action-primary" style={styles.buttonPrimary} onClick={() => openStoreReport(selectedStore.id)}>Submit First Report</button>
                       </div>
                     ) : (
@@ -6795,7 +6796,7 @@ async function handleUpdateStore(e) {
                       <button type="button" className="scout-store-action-primary" style={styles.buttonPrimary} onClick={() => { resetTrackedItemForm(); setTrackedProductsModalOpen(true); }}>Add Product Sighting</button>
                       <button type="button" className="scout-store-action-secondary" style={styles.buttonSoft} onClick={() => setError("Tracked items are shown below in this beta view.")}>View Tracked Items</button>
                     </div>
-                    {items.length === 0 ? <p style={styles.empty}>No tracked Scout items yet.</p> : null}
+                    {items.length === 0 ? <p style={styles.empty}>No tracked Restocks items yet.</p> : null}
                     {items.slice(0, 5).map((item) => (
                       <div key={item.id} className="scout-tracked-item-card" style={styles.listCard}>
                         <strong>{item.name}</strong>
@@ -6896,7 +6897,7 @@ async function handleUpdateStore(e) {
             <section ref={reportDetailsRef} inert={Boolean(deleteReportTarget)} aria-hidden={deleteReportTarget ? true : undefined} className="location-modal scout-report-detail-sheet" role="dialog" aria-modal="true" aria-labelledby="scout-page-report-detail-title" onClick={(event) => event.stopPropagation()}>
               <div className="modal-title-row modal-sticky-header">
                 <div>
-                  <p>Scout report</p>
+                  <p>Restock report</p>
                   <h2 id="scout-page-report-detail-title">{getReportStore(selectedReportTarget).nickname || getReportStore(selectedReportTarget).name || "Store not selected"}</h2>
                 </div>
                 <button type="button" className="modal-close-button" aria-label="Close report details" onClick={() => dismissReportDetails()}>X</button>

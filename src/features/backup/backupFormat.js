@@ -3,6 +3,7 @@ import {
   hashCanonicalJson,
   parseUntrustedBackupJson,
   parseUntrustedJsonValue,
+  formatByteLimit,
 } from "./canonicalJson.js";
 import {
   BACKUP_SOURCE_REGISTRY,
@@ -332,6 +333,35 @@ function backupFileTimestamp(createdAt) {
   return `${iso.slice(0, 10)}-${iso.slice(11, 16).replace(":", "")}`;
 }
 
+const textEncoder = new TextEncoder();
+
+// Plain-language reasons for a failed backup, so the person is never left with
+// "failed verification" and nothing else.
+export function explainBackupVerification({ finalVerification, selfVerificationPassed, coverageStatus, failedSources = [], byteLength = 0 } = {}) {
+  const reasons = [];
+  if (coverageStatus === BACKUP_COVERAGE.FAILED) {
+    const names = failedSources.filter((source) => source.affectsCoverage).map((source) => source.displayName).filter(Boolean);
+    reasons.push(names.length
+      ? `These parts of your workspace could not be read or checked: ${names.join(", ")}. The detailed reason is listed under each one below.`
+      : "Part of your workspace could not be read or checked.");
+  }
+  if (finalVerification && !finalVerification.valid) {
+    const errors = (finalVerification.errors || []).filter(Boolean);
+    if (finalVerification.errorCode === "MAX_FILE_SIZE") {
+      reasons.push(`The backup file came out at ${formatByteLimit(byteLength)}, which is larger than this app can re-open. Try exporting the Vault and the business records separately.`);
+    } else if (errors.length) {
+      reasons.push(`The finished file did not pass its own integrity check: ${errors.join(" ")}`);
+    } else {
+      reasons.push("The finished file did not pass its own integrity check.");
+    }
+  } else if (selfVerificationPassed === false) {
+    reasons.push("The file could not be re-read after it was written.");
+  }
+  if (!reasons.length) return ["Backup verified."];
+  reasons.push("Nothing was downloaded and none of your saved records were changed.");
+  return reasons;
+}
+
 export async function createVerifiedBackup(options = {}) {
   const sourceRegistry = options.sourceRegistry || BACKUP_SOURCE_REGISTRY;
   const createdAt = options.createdAt || new Date().toISOString();
@@ -535,11 +565,14 @@ export async function createVerifiedBackup(options = {}) {
   json = JSON.stringify(sealed, null, 2);
   const finalVerification = await verifyBackupJson(json, options);
   const verified = finalVerification.valid && selfVerificationPassed && coverageStatus !== BACKUP_COVERAGE.FAILED;
+  const verificationReasons = explainBackupVerification({ finalVerification, selfVerificationPassed, coverageStatus, failedSources, byteLength: textEncoder.encode(json).byteLength });
 
   return {
     backup: finalVerification.backup || sealed,
     json,
     verified,
+    verificationReasons,
+    verificationSummary: verificationReasons.join(" "),
     integrityVerified: finalVerification.valid && selfVerificationPassed,
     coverageStatus,
     fileName: `code-3-backup-${backupFileTimestamp(createdAt)}.json`,

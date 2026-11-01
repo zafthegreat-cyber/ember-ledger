@@ -1,3 +1,7 @@
+import ExportDisclosure from "../../components/ExportDisclosure.jsx";
+import { buildTaxRecordExportRows } from "../../utils/businessTaxRecords.js";
+import { fieldsFromRows } from "../../utils/exportDisclosure.mjs";
+
 // App owns state, authority and handlers; only this existing renderer is deferred.
 export default function LegacyReportsContent({ scope }) {
   const {
@@ -273,7 +277,7 @@ export default function LegacyReportsContent({ scope }) {
                 <div className="tax-empty-state">
                   <span className="trust-badge trust-badge--secure">Recordkeeping</span>
                   <h3>Start recording sales to build your tax summary.</h3>
-                  <p>Add sales, inventory cost basis, expenses, and mileage in Forge. Exports will stay for recordkeeping and review.</p>
+                  <p>Add sales, inventory cost basis, expenses, and mileage in Business. Exports will stay for recordkeeping and review.</p>
                   <div className="quick-actions">
                     <button type="button" onClick={() => setActiveTab("sales")}>Record a sale</button>
                     <button type="button" className="secondary-button" onClick={() => setActiveTab("expenses")}>Add expense</button>
@@ -288,17 +292,19 @@ export default function LegacyReportsContent({ scope }) {
                   <p>Exports organize records for review. They are not tax advice or a filing.</p>
                 </div>
                 <div className="tax-export-actions">
-                  <button type="button" onClick={() => downloadYearEndTaxSummary("csv")}>Export summary CSV</button>
-                  <button type="button" className="secondary-button" onClick={() => downloadYearEndTaxSummary("json")}>Export report JSON</button>
-                  <button type="button" className="secondary-button" onClick={() => downloadSalesRecords("csv")}>Export sales CSV</button>
-                  <button type="button" className="secondary-button" onClick={() => downloadMileageRecords("csv")}>Export mileage CSV</button>
+                  <button type="button" aria-describedby="tax-export-disclosure" onClick={() => downloadYearEndTaxSummary("csv")}>Export summary CSV</button>
+                  <button type="button" className="secondary-button" aria-describedby="tax-export-disclosure" onClick={() => downloadYearEndTaxSummary("json")}>Export report JSON</button>
+                  <button type="button" className="secondary-button" aria-describedby="tax-export-disclosure" onClick={() => downloadSalesRecords("csv")}>Export sales CSV</button>
+                  <button type="button" className="secondary-button" aria-describedby="tax-export-disclosure" onClick={() => downloadMileageRecords("csv")}>Export mileage CSV</button>
                 </div>
+                {/* #97: say what the year-end files contain before one is generated. */}
+                <ExportDisclosure id="tax-export-disclosure" format="csv/json" fields={[...fieldsFromRows(buildTaxRecordExportRows(yearEndTaxSummary || {})), "vendorName", "vehicleName", "platform", "itemName", "sku", "grossSale", "costBasis", "startLocation", "destination", "notes"]} redactions={["receipt images", "customer contact details"]} />
               </div>
             </section>
 
             {!reportFocus && (
               <>
-                <ReportList title="Forge Sales by Platform" data={salesByPlatform} moneyValues />
+                <ReportList title="Business Sales by Platform" data={salesByPlatform} moneyValues />
                 <ReportList title="Expenses by Category" data={expensesByCategory} moneyValues />
                 <section className="panel">
                   <h2>Marketing Summary</h2>
@@ -307,7 +313,7 @@ export default function LegacyReportsContent({ scope }) {
                   <p>Profit After Marketing: {money(estimatedProfitAfterMarketing)}</p>
                   <p>Marketing ROI: Unavailable until linked sales are connected.</p>
                 </section>
-                <ReportList title="Forge Inventory by Category" data={inventoryByCategory} />
+                <ReportList title="Business Inventory by Category" data={inventoryByCategory} />
                 <ReportList title="Inventory by Status" data={inventoryByStatus} />
               </>
             )}

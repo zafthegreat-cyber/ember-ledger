@@ -367,7 +367,7 @@ export function buildInventoryInsightCards(summary = {}, { context = "forge", mo
     ];
   }
   return [
-    { key: "quantity", label: "Forge quantity", value: Number(summary.totalQuantity || 0), helper: `${Number(summary.itemCount || 0)} grouped record(s)` },
+    { key: "quantity", label: "Business quantity", value: Number(summary.totalQuantity || 0), helper: `${Number(summary.itemCount || 0)} grouped record(s)` },
     { key: "cost", label: "Cost basis", value: money(summary.totalCostBasis || 0), helper: `${Number(summary.missingCostCount || 0)} missing cost` },
     { key: "planned", label: "Planned sale total", value: money(summary.plannedSaleTotal || 0), helper: `${Number(summary.missingPlannedSalePriceCount || 0)} missing planned price` },
     { key: "market", label: "Estimated market value", value: money(summary.estimatedMarketValue || 0), helper: `${Number(summary.missingMarketValueCount || 0)} missing market value` },
@@ -403,5 +403,5 @@ export function buildInventoryValuationExportRows(summary = {}, { sectionPrefix 
 
 export const INVENTORY_VALUATION_COPY = {
   vaultDisclaimer: "Estimated collection value is based only on items with known market values.",
-  forgeDisclaimer: "Forge estimates are for planning and record review, not tax advice.",
+  forgeDisclaimer: "Business estimates are for planning and record review, not tax advice.",
 };

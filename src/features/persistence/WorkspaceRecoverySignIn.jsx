@@ -64,8 +64,8 @@ export default function WorkspaceRecoverySignIn({ client }) {
 
   const busy = ["pending", "verifying", "timeout"].includes(status);
   return <>
-    <p>An interrupted save needs recovery. Sign in to the account that saved these records so we can safely reopen them.</p>
-    <p>Keep this app’s stored data. Your records stay protected while you sign in.</p>
+    <p><strong>Why you are seeing this:</strong> the last time this app saved, it was interrupted (the tab closed, the phone slept, or the connection dropped) before it could confirm the save. Nothing you did caused it, and nothing was lost: the unconfirmed save is held on this device.</p>
+    <p>Signing in again proves this is still your account before we reopen those records. Keep this app’s stored data; your records stay protected while you sign in.</p>
     <form onSubmit={signIn} aria-label="Recovery sign-in">
       <label>Email<input type="email" autoComplete="username" inputMode="email" autoCapitalize="none" spellCheck={false} value={email} onChange={(event) => setEmail(event.target.value)} disabled={busy} required /></label>
       <label>Password<input ref={passwordInput} type="password" autoComplete="current-password" disabled={busy} required /></label>

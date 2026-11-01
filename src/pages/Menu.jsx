@@ -106,7 +106,7 @@ export default function MenuPage(props) {
           <dl className="settings-layout__account-meta">
             <div><dt>Experience</dt><dd>{presentation.personaLabel}</dd></div>
             {showFamily ? <div><dt>Family protection</dt><dd>{familyProtectionLabel}</dd></div> : null}
-            <div><dt>Scout trust</dt><dd>{scoutGuessPoints} pts<span>Report history and proof signals</span></dd></div>
+            <div><dt>Restocks trust</dt><dd>{scoutGuessPoints} pts<span>Report history and proof signals</span></dd></div>
           </dl>
         </section>
 

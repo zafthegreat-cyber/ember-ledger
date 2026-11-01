@@ -2,18 +2,18 @@ export const ONBOARDING_PERSISTENCE_NOTE =
   "Progress is saved only in this browser during beta. Cloud sync needs backend support later.";
 
 export const ONBOARDING_WELCOME_COPY =
-  "Welcome to Code 3 TCG. Start with one card, sealed product, or collector note, then explore fair Scout, Market, Forge, Spark, and Tidepool tools at your own pace.";
+  "Welcome to Code 3 TCG. Start with one card, sealed product, or collector note, then explore fair Restocks, Market, Business, Spark, and Community tools at your own pace.";
 
 export const FIRST_TIME_ONBOARDING_CARDS = [
   {
     key: "welcome",
     title: "Welcome to Code 3 TCG",
-    body: "A warm collector home for tracking items, researching prices, planning trades, checking Scout reports, and supporting family-friendly collecting.",
+    body: "A warm collector home for tracking items, researching prices, planning trades, checking restock reports, and supporting family-friendly collecting.",
   },
   {
     key: "vault",
     title: "Start with Vault",
-    body: "Save one card, sealed product, slab, supply, or wishlist item so your Hearth has something real to organize.",
+    body: "Save one card, sealed product, slab, supply, or wishlist item so your Home has something real to organize.",
   },
   {
     key: "market",
@@ -22,7 +22,7 @@ export const FIRST_TIME_ONBOARDING_CARDS = [
   },
   {
     key: "scout",
-    title: "Try Scout",
+    title: "Try Restocks",
     body: "Review current reports and one watched store while raw restock patterns, vendor schedules, and stock guarantees stay protected.",
   },
   {
@@ -38,7 +38,7 @@ export const FIRST_TIME_ONBOARDING_CARDS = [
 ];
 
 export const ACCOUNT_SETUP_USERNAME_RULES = [
-  "Public usernames may appear on Marketplace, Tidepool, Scout reports, and community confirmations.",
+  "Public usernames may appear on Marketplace, Community, restock reports, and community confirmations.",
   "They must be unique in Code 3 TCG so reports and community activity can be attributed clearly.",
   "Use letters, numbers, and underscores so other collectors can recognize you safely.",
   "Code 3 TCG, staff, support, moderator, and official admin names are reserved.",
@@ -49,7 +49,7 @@ export const ACCOUNT_SETUP_TIER_ROWS = [
     key: "free",
     label: "Free",
     status: "Available",
-    description: "Start with Hearth, Vault basics, current Scout reports, and one watched store.",
+    description: "Start with Home, Vault basics, current restock reports, and one watched store.",
   },
   {
     key: "collector",
@@ -67,7 +67,7 @@ export const ACCOUNT_SETUP_TIER_ROWS = [
     key: "seller",
     label: "Seller",
     status: "Beta path",
-    description: "For Forge inventory, sales records, receipts, expenses, and seller-focused setup.",
+    description: "For Business inventory, sales records, receipts, expenses, and seller-focused setup.",
   },
   {
     key: "shop",
@@ -106,7 +106,7 @@ export const ACCOUNT_SETUP_WORKSPACE_ROWS = [
     key: "seller",
     label: "Seller",
     status: "Supported",
-    description: "Forge can use a seller or business workspace for inventory, receipts, and sales records.",
+    description: "Business can use a seller or business workspace for inventory, receipts, and sales records.",
   },
   {
     key: "shop",
@@ -193,8 +193,29 @@ export function accessStateLabel(value = "") {
   return STATE_LABEL_BY_CODE[code] || code || "your state";
 }
 
+// States where beta requests go to human review instead of the waitlist.
+// Virginia is home; the rest are the expansion wave approved on 2026-10-30.
+export const BETA_OPEN_ACCESS_STATES = ["VA", "NC", "MD", "WV", "TN", "KY", "DC"];
+
 export function isVirginiaAccessState(value = "") {
   return normalizeAccessState(value) === "VA";
+}
+
+export function isOpenAccessState(value = "") {
+  return BETA_OPEN_ACCESS_STATES.includes(normalizeAccessState(value));
+}
+
+export function openAccessStatesLabel() {
+  const labels = BETA_OPEN_ACCESS_STATES.map((code) => STATE_LABEL_BY_CODE[code] || code);
+  if (labels.length <= 1) return labels[0] || "Virginia";
+  return `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`;
+}
+
+export const BETA_REVIEW_EXPLANATION =
+  "A real person reviews every request so the community stays safe and family-friendly. Most reviews finish within a few days, and we email you either way.";
+
+export function betaAccessPendingMessage() {
+  return `Your request is in the review queue. ${BETA_REVIEW_EXPLANATION}`;
 }
 
 export function accountSetupTierLabel(value = "") {
@@ -204,7 +225,7 @@ export function accountSetupTierLabel(value = "") {
 
 export function betaAccessWaitlistMessage(state = "") {
   const label = accessStateLabel(state);
-  return `Code 3 TCG is starting in Virginia. We will add ${label} to the waitlist and use waitlist demand to decide which states to add next.`;
+  return `Code 3 TCG is open in ${openAccessStatesLabel()} right now. ${label} is not open yet, so we will hold your spot on the waitlist, email you the moment ${label} opens, and use waitlist demand to decide which states come next. You can keep your account and browse the public catalog while you wait.`;
 }
 
 export function formatBetaAccessAreaAnswer({ state = "", localAreaAnswer = "", tierInterest = "" } = {}) {
@@ -234,29 +255,29 @@ export const ONBOARDING_GOALS = [
     key: "parent_family",
     label: "Parent/family looking for Pokemon",
     shortLabel: "Family access",
-    description: "Find kid-friendly access, fair prices, The Spark, and in-app Ember Watch planning without guessing.",
-    nextActions: ["Open The Spark", "Review Ember Watch", "Choose one watched store"],
+    description: "Find kid-friendly access, fair prices, The Spark, and in-app Watch Center planning without guessing.",
+    nextActions: ["Open The Spark", "Review Watch Center", "Choose one watched store"],
   },
   {
     key: "collector_vault",
     label: "Collector tracking a Vault",
     shortLabel: "Collector",
     description: "Build a clean collection record with photos, sets, values, and purchaser tallies.",
-    nextActions: ["Add first Vault item", "Search Market Watch", "Ask Ember Assist"],
+    nextActions: ["Add first Vault item", "Search Market Watch", "Business Assistant"],
   },
   {
     key: "seller_forge",
-    label: "Seller/business using Forge",
+    label: "Seller/business using Business",
     shortLabel: "Seller",
     description: "Track sellable inventory, receipts, expenses, mileage, sales, and year-end exports.",
-    nextActions: ["Choose Forge identity", "Add first Forge item", "Review business records"],
+    nextActions: ["Choose Business identity", "Add first Business item", "Review business records"],
   },
   {
     key: "scout_reports",
-    label: "Scout helping with restock reports",
-    shortLabel: "Scout",
+    label: "Restocks helping with restock reports",
+    shortLabel: "Restocks",
     description: "Submit Store Signals and keep estimates separate from confirmed reports.",
-    nextActions: ["Submit Scout report", "Review Ember Watch", "Follow stores"],
+    nextActions: ["Submit restock report", "Review Watch Center", "Follow stores"],
   },
   {
     key: "local_shop_partner",
@@ -293,27 +314,31 @@ const LEGACY_GOAL_ALIASES = {
 export const ONBOARDING_CHECKLIST_ITEMS = [
   {
     key: "profile",
+    core: true,
     title: "Complete profile/public username",
-    description: "Ember ID, Tidepool Community, and Scout use your public identity without exposing raw email.",
+    description: "Public Profile, Community, and Restocks use your public identity without exposing raw email.",
     actionLabel: "Open Profile",
     actionTarget: "profile",
   },
   {
     key: "workspace",
-    title: "Choose workspace/Forge identity",
-    description: "Decide whether Forge is personal, business, or Code 3 TCG branded.",
+    goals: ["seller_forge", "local_shop_partner"],
+    title: "Choose workspace/Business identity",
+    description: "Decide whether Business is personal, business, or Code 3 TCG branded.",
     actionLabel: "Open Settings",
     actionTarget: "settings",
   },
   {
     key: "vault",
+    core: true,
     title: "Add your first item",
-    description: "Start with one card, sealed product, slab, supply, or manual fallback so Hearth has something real to organize.",
+    description: "Start with one card, sealed product, slab, supply, or manual fallback so Home has something real to organize.",
     actionLabel: "Add to Vault",
     actionTarget: "vault",
   },
   {
     key: "market_research",
+    core: true,
     title: "Try one Market search",
     description: "Search a card, sealed product, UPC, or SKU for research only. Market does not promise live prices, checkout, or stock.",
     actionLabel: "Open Market",
@@ -321,20 +346,23 @@ export const ONBOARDING_CHECKLIST_ITEMS = [
   },
   {
     key: "forge",
-    title: "Add first Forge item",
-    description: "Use Forge for sellable inventory, business tracking, and records.",
-    actionLabel: "Add to Forge",
+    goals: ["seller_forge", "local_shop_partner"],
+    title: "Add first Business item",
+    description: "Use Business for sellable inventory, business tracking, and records.",
+    actionLabel: "Add to Business",
     actionTarget: "forge",
   },
   {
     key: "scout_report",
-    title: "Submit your first Scout report",
-    description: "Share a current store signal only when you have real context. Scout protects patterns and never guarantees stock.",
+    goals: ["scout_reports"],
+    title: "Submit your first restock report",
+    description: "Share a current store signal only when you have real context. Restocks protects patterns and never guarantees stock.",
     actionLabel: "Submit Report",
     actionTarget: "scout_report",
   },
   {
     key: "kids_program",
+    goals: ["parent_family", "spark_parent"],
     title: "Learn about The Spark",
     description: "Review parent-managed Kids Program rules before sharing family details.",
     actionLabel: "Open The Spark",
@@ -342,27 +370,31 @@ export const ONBOARDING_CHECKLIST_ITEMS = [
   },
   {
     key: "home_area",
+    goals: ["parent_family", "scout_reports", "local_shop_partner", "collector_vault"],
     title: "Set your home area",
-    description: "Use a ZIP or city so Scout can prioritize nearby stores without showing your exact location publicly.",
+    description: "Use a ZIP or city so Restocks can prioritize nearby stores without showing your exact location publicly.",
     actionLabel: "Set Area",
     actionTarget: "settings",
   },
   {
     key: "scout_points",
-    title: "Learn Tide Score",
-    description: "Tide Score uses useful confirmed reports and context; it is not a promise of restocks.",
-    actionLabel: "Learn Tide Score",
+    goals: ["scout_reports"],
+    title: "Learn Trust Score",
+    description: "Trust Score uses useful confirmed reports and context; it is not a promise of restocks.",
+    actionLabel: "Learn Trust Score",
     actionTarget: "scout_points",
   },
   {
     key: "follow",
+    goals: ["parent_family", "scout_reports", "collector_vault", "local_shop_partner"],
     title: "Favorite your first stores",
-    description: "Choose one watched store so Scout can keep current reports nearby without exposing full restock history.",
-    actionLabel: "Open Scout",
+    description: "Choose one watched store so Restocks can keep current reports nearby without exposing full restock history.",
+    actionLabel: "Open Restocks",
     actionTarget: "stores",
   },
   {
     key: "alerts",
+    core: true,
     title: "Review in-app alerts",
     description: "Choose which confirmed restocks, possible windows, shop updates, and admin statuses appear inside Code 3 TCG. Local beta does not send push notifications.",
     actionLabel: "Alert Settings",
@@ -370,33 +402,34 @@ export const ONBOARDING_CHECKLIST_ITEMS = [
   },
   {
     key: "ember_assist",
-    title: "Ask Ember Assist a question",
+    core: true,
+    title: "Business Assistant a question",
     description: "Use the corner assistant when you are not sure where something belongs.",
-    actionLabel: "Ask Ember",
+    actionLabel: "Business Assistant",
     actionTarget: "ember_assist",
   },
 ];
 
 export const ONBOARDING_ASSIST_PROMPTS = [
   "What should I do first?",
-  "What is the difference between Vault and Forge?",
-  "How do Scout points work?",
+  "What is the difference between Vault and Business?",
+  "How do restock points work?",
   "How do alerts work?",
-  "How do I use Forge for business records?",
+  "How do I use Business for business records?",
   "How do I join the Kids Program?",
-  "What is Tidepool?",
+  "What is Community?",
   "How do I post safely?",
 ];
 
 export const CONTEXTUAL_HELP_CARDS = {
   vault_forge: {
-    title: "Vault vs Forge",
-    body: "Vault is for collection and held inventory. Forge is for sellable/business inventory, receipts, mileage, sales prep, and year-end records.",
-    prompt: "What is the difference between Vault and Forge?",
+    title: "Vault vs Business",
+    body: "Vault is for collection and held inventory. Business is for sellable/business inventory, receipts, mileage, sales prep, and year-end records.",
+    prompt: "What is the difference between Vault and Business?",
   },
   quick_add: {
     title: "Quick Add destinations",
-    body: "Quick Add adapts to your mode. Collectors see Vault, Scout, and missing-item paths first; seller tools add Forge, sales, receipts, and mileage.",
+    body: "Quick Add adapts to your mode. Collectors see Vault, Restocks, and missing-item paths first; seller tools add Business, sales, receipts, and mileage.",
     prompt: "How do I add inventory?",
   },
   scout_trust: {
@@ -405,9 +438,9 @@ export const CONTEXTUAL_HELP_CARDS = {
     prompt: "What does confirmed vs predicted mean?",
   },
   scout_points: {
-    title: "Tide Score",
-    body: "Tide Score is confidence language from useful confirmed reports, admin review, freshness, and clean community help.",
-    prompt: "How does Tide Score work?",
+    title: "Trust Score",
+    body: "Trust Score is confidence language from useful confirmed reports, admin review, freshness, and clean community help.",
+    prompt: "How does Trust Score work?",
   },
   shop_badges: {
     title: "Family-Friendly Card Shop badges",
@@ -415,30 +448,30 @@ export const CONTEXTUAL_HELP_CARDS = {
     prompt: "How do family-friendly shop badges work?",
   },
   alerts: {
-    title: "Ember Watch",
+    title: "Watch Center",
     body: "Alerts are in-app only for now. Confirmed restocks, possible windows, guesses, watchlist items, and admin statuses stay clearly labeled.",
     prompt: "How do alerts work?",
   },
   workspace_identity: {
-    title: "Workspace and Forge identity",
-    body: "Your active workspace decides where Forge, expenses, mileage, receipts, and sales records belong.",
+    title: "Workspace and Business identity",
+    body: "Your active workspace decides where Business, expenses, mileage, receipts, and sales records belong.",
     prompt: "Help me switch workspaces",
   },
   business_records: {
     title: "Business records",
-    body: "Forge organizes sales, expenses, receipts, mileage, and exports for review with your tax professional. It is not tax advice.",
-    prompt: "How do I use Forge for business records?",
+    body: "Business organizes sales, expenses, receipts, mileage, and exports for review with your tax professional. It is not tax advice.",
+    prompt: "How do I use Business for business records?",
   },
   tidepool: {
-    title: "Tidepool Community",
-    body: "Tidepool Community is for family-safe posts, helpful local updates, questions, events, and shop notes. New posts may wait for admin review.",
-    prompt: "What is Tidepool Community?",
+    title: "Community",
+    body: "Community is for family-safe posts, helpful local updates, questions, events, and shop notes. New posts may wait for admin review.",
+    prompt: "What is Community?",
   },
 };
 
 export const EMPTY_STATE_GUIDANCE = {
   hearth: {
-    title: "Your Hearth is ready.",
+    title: "Your Home is ready.",
     body: "Add one Vault item first, then choose a watched store or try one Market search when you are ready.",
     actionLabel: "Quick Add",
     actionTarget: "vault",
@@ -459,7 +492,7 @@ export const EMPTY_STATE_GUIDANCE = {
   },
   forge: {
     title: "Your workshop is ready.",
-    body: "Start tracking inventory, expenses, mileage, and planned sales. Forge keeps records organized for later review.",
+    body: "Start tracking inventory, expenses, mileage, and planned sales. Business keeps records organized for later review.",
     actionLabel: "Add Receipt",
     actionTarget: "forge",
     actions: [
@@ -467,7 +500,7 @@ export const EMPTY_STATE_GUIDANCE = {
       { label: "Add Product", actionTarget: "forge", primary: false },
       { label: "Add Mileage", actionTarget: "mileage", primary: false },
     ],
-    assistPrompt: "What belongs in Forge?",
+    assistPrompt: "What belongs in Business?",
   },
   expenses: {
     title: "No expenses recorded yet.",
@@ -491,14 +524,14 @@ export const EMPTY_STATE_GUIDANCE = {
     assistPrompt: "Help me add a sale",
   },
   scout: {
-    title: "Scout is ready for your first store.",
-    body: "Choose one watched store or submit a current report when you have real proof. Scout protects raw patterns and does not guarantee stock.",
+    title: "Restocks is ready for your first store.",
+    body: "Choose one watched store or submit a current report when you have real proof. Restocks protects raw patterns and does not guarantee stock.",
     actionLabel: "Choose Store",
     actionTarget: "stores",
     assistPrompt: "Help me submit a report",
   },
   drop_radar: {
-    title: "Ember Watch needs confirmed history.",
+    title: "Watch Center needs confirmed history.",
     body: "Estimated restock windows get better after confirmed restock history and real store reports. Until then, the app should say it needs more data.",
     actionLabel: "Submit Report",
     actionTarget: "scout_report",
@@ -516,14 +549,14 @@ export const EMPTY_STATE_GUIDANCE = {
   },
   notifications: {
     title: "No alerts yet.",
-    body: "Confirmed restocks, possible Ember Watch windows, Kids Program updates, admin message statuses, and Forge reminders will appear here in-app when useful. Local beta does not send push notifications.",
+    body: "Confirmed restocks, possible Watch Center windows, Kids Program updates, admin message statuses, and Business reminders will appear here in-app when useful. Local beta does not send push notifications.",
     actionLabel: "Alert Settings",
     actionTarget: "alerts",
     assistPrompt: "How do alerts work?",
   },
   tidepool: {
-    title: "The Tidepool is quiet right now.",
-    body: "Start the first Tidepool Community post and help keep collecting positive. New posts are reviewed before they appear publicly.",
+    title: "The Community is quiet right now.",
+    body: "Start the first Community post and help keep collecting positive. New posts are reviewed before they appear publicly.",
     actionLabel: "Start a Post",
     actionTarget: "tidepool",
     actions: [
@@ -534,7 +567,7 @@ export const EMPTY_STATE_GUIDANCE = {
   },
   admin: {
     title: "No items need review right now.",
-    body: "Scout reports, guesses, family-friendly shops, Spark requests, and support messages will appear here when they need a human check.",
+    body: "Restock reports, guesses, family-friendly shops, Spark requests, and support messages will appear here when they need a human check.",
     actionLabel: "Open Admin Queue",
     actionTarget: "admin",
     assistPrompt: "What needs review?",
@@ -559,7 +592,7 @@ export const EMPTY_STATE_GUIDANCE = {
   },
   quick_add: {
     title: "Quick Add is ready.",
-    body: "Choose Vault for the first saved item, Scout for a current report, or a manual path when the catalog misses something. Nothing saves until review.",
+    body: "Choose Vault for the first saved item, Restocks for a current report, or a manual path when the catalog misses something. Nothing saves until review.",
     actionLabel: "Open Quick Add",
     actionTarget: "vault",
     assistPrompt: "How do I add inventory?",
@@ -649,11 +682,33 @@ export function buildOnboardingChecklist(progress = {}, onboarding = {}) {
     alerts: Boolean(progress.alertsConfigured),
     ember_assist: Boolean(progress.emberAssistAsked),
   };
-  return ONBOARDING_CHECKLIST_ITEMS.map((item) => ({
-    ...item,
-    completed: Boolean(completeByKey[item.key] || manual.has(item.key)),
-    source: completeByKey[item.key] ? "app" : manual.has(item.key) ? "manual" : "pending",
-  }));
+  return ONBOARDING_CHECKLIST_ITEMS
+    .filter((item) => checklistItemAppliesTo(item, state.goals, completeByKey, manual))
+    .map((item) => ({
+      ...item,
+      completed: Boolean(completeByKey[item.key] || manual.has(item.key)),
+      source: completeByKey[item.key] ? "app" : manual.has(item.key) ? "manual" : "pending",
+    }));
+}
+
+// A person who said "I'm a parent with a binder" should not be asked to add a
+// Forge item or learn Tide Score. Core items show for everyone; goal-specific
+// items show only when the person picked that goal (or already finished them).
+// With no goals chosen we show the core set plus the lightest shared items.
+const NO_GOAL_CHECKLIST_KEYS = new Set(["profile", "vault", "market_research", "follow", "alerts", "ember_assist"]);
+
+export function checklistItemAppliesTo(item, goals = [], completeByKey = {}, manual = new Set()) {
+  if (!item) return false;
+  if (completeByKey[item.key] || manual.has(item.key)) return true;
+  if (item.core) return true;
+  const chosen = Array.isArray(goals) ? goals : [];
+  if (!chosen.length) return NO_GOAL_CHECKLIST_KEYS.has(item.key);
+  return (item.goals || []).some((goal) => chosen.includes(goal));
+}
+
+export function onboardingChecklistForGoals(goals = []) {
+  const keys = normalizeOnboardingGoalKeys(goals);
+  return ONBOARDING_CHECKLIST_ITEMS.filter((item) => checklistItemAppliesTo(item, keys));
 }
 
 export function onboardingChecklistSummary(checklist = []) {

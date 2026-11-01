@@ -1,4 +1,5 @@
 import { PrivateStorageImage } from "../../components/PrivateReceipt.jsx";
+import SetBinderView from "../../components/SetBinderView.jsx";
 // App owns state, authority and handlers; only this existing renderer is deferred.
 export default function VaultWorkspaceContent({ scope }) {
   const {
@@ -113,6 +114,7 @@ export default function VaultWorkspaceContent({ scope }) {
     setVaultSubTab,
     setVaultTypeFilter,
     setVaultValueFilter,
+    setFeatureSectionsOpen,
     shortDate,
     startEditingVaultItem,
     statusClass,
@@ -298,6 +300,22 @@ export default function VaultWorkspaceContent({ scope }) {
                         </span>
                       ))}
                     </div>
+                    {Number(vaultPriceReliabilityCards.find((card) => card.key === "missing_market")?.value || 0) > 0 ? (
+                      <div className="quick-actions" aria-label="Price these items">
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          onClick={() => {
+                            setVaultValueFilter("missing");
+                            setVaultSearch("");
+                            setFeatureSectionsOpen((current) => ({ ...current, vault_collection_items: true }));
+                          }}
+                        >
+                          Price these {vaultPriceReliabilityCards.find((card) => card.key === "missing_market")?.value} items
+                        </button>
+                        <small>Shows only items with no market value so you can add one from Market Watch or your receipt.</small>
+                      </div>
+                    ) : null}
                   </div>
                   <div className="inventory-insight-split">
                     <div>
@@ -537,7 +555,7 @@ export default function VaultWorkspaceContent({ scope }) {
                             actions={[
                               { label: "Open Profile", variant: "primary", onClick: () => setSelectedVaultDetailId(item.id) },
                               { label: "Save Price", onClick: () => openMarketPriceMemoryFlow(item, { source: "vault-sealed-shelf-save-price", seed: { itemName: item.name, price: totalValue || "", condition: conditionLabel } }) },
-                              !isWishlistLikeVaultItem(item) ? { label: "Add to Forge", onClick: () => openTradeValueFlow(item, { source: "vault-sealed-shelf", sourceKind: "vault" }) } : null,
+                              !isWishlistLikeVaultItem(item) ? { label: "Add to Business", onClick: () => openTradeValueFlow(item, { source: "vault-sealed-shelf", sourceKind: "vault" }) } : null,
                             ]}
                           />
                         );
@@ -781,7 +799,7 @@ export default function VaultWorkspaceContent({ scope }) {
                 <div className="compact-card-header">
                   <div>
                     <h2>Wishlist / ISO</h2>
-                    <p>Wanted items stay separate from owned Vault records and Forge business inventory. This is local planning only with no automatic matching or live seller offers.</p>
+                    <p>Wanted items stay separate from owned Vault records and Business inventory. This is local planning only with no automatic matching or live seller offers.</p>
                   </div>
                   <div className="quick-actions">
                     <button
@@ -1001,6 +1019,7 @@ export default function VaultWorkspaceContent({ scope }) {
                         {[
                           ["grid", "Grid"],
                           ["list", "List"],
+                          ["binder", "Binder"],
                         ].map(([value, label]) => (
                           <button key={value} type="button" className={vaultSetViewMode === value ? "active" : ""} onClick={() => setVaultSetViewMode(value)}>
                             {label}
@@ -1033,6 +1052,16 @@ export default function VaultWorkspaceContent({ scope }) {
                         </div>
                         <span className="status-badge">{selectedVaultSetView.cardRows.length} card{selectedVaultSetView.cardRows.length === 1 ? "" : "s"}</span>
                       </div>
+                      {vaultSetViewMode === "binder" ? (
+                        <SetBinderView
+                          rows={selectedVaultSetView.cardRows}
+                          setName={selectedVaultSet.name}
+                          imageFor={(row) => getCatalogImage(row.imageRecord || row.primaryRecord || {}) || vaultItemDisplayImage(row.imageRecord || row.primaryRecord || {})}
+                          onOpen={(row) => setSelectedVaultCardGroupKey(row.key)}
+                          onAddOwned={(row) => openProductAddFlow({ product: row.primaryRecord, source: "vault-set-binder-add-owned", destinations: { vault: true }, seed: buildWishlistAddSeed({ ...row.primaryRecord, name: row.title, setName: selectedVaultSet.name, cardNumber: row.cardNumber }) })}
+                          onAddWishlist={(row) => openProductAddFlow({ product: row.primaryRecord, source: "vault-set-binder-add-wishlist", destinations: { wishlist: true }, seed: buildWishlistAddSeed({ ...row.primaryRecord, name: row.title, setName: selectedVaultSet.name, cardNumber: row.cardNumber }) })}
+                        />
+                      ) : (
                       <div className={`vault-set-product-grid vault-set-card-row-grid${vaultSetViewMode === "list" ? " vault-set-product-grid--list" : ""}`}>
                         {selectedVaultSetView.cardRows.length ? selectedVaultSetView.cardRows.slice(0, 36).map((row) => (
                           <VaultSetCardRow
@@ -1050,6 +1079,7 @@ export default function VaultWorkspaceContent({ scope }) {
                           </div>
                         )}
                       </div>
+                      )}
                     </div>
                     ) : null}
 
@@ -1087,7 +1117,7 @@ export default function VaultWorkspaceContent({ scope }) {
                       <div className="compact-card-header">
                         <div>
                           <h3>Missing cards</h3>
-                          <p>{selectedVaultSet.missingSupported ? "Catalog cards not yet matched to your Vault." : "Missing count needs checklist data before this set can show true missing cards."}</p>
+                          <p>{selectedVaultSet.missingBasis === "numbers" ? `Card numbers from this ${selectedVaultSet.totalCards}-card set that are not in your Vault yet. Names show where the catalog knows them.` : selectedVaultSet.missingSupported ? "Catalog cards not yet matched to your Vault." : "Missing count needs checklist data before this set can show true missing cards."}</p>
                         </div>
                       </div>
                       <div className={`vault-set-product-grid vault-set-card-row-grid${vaultSetViewMode === "list" ? " vault-set-product-grid--list" : ""}`}>

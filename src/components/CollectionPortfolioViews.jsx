@@ -3,6 +3,7 @@ import ItemPhoto from "./ItemPhoto.jsx";
 import { BottomSheet } from "./operations/OperationsUI.jsx";
 import "./collection-portfolio.css";
 import { getRecordGameLabel } from "../utils/collectibleGames.mjs";
+import { collectionCopyDetails } from "../utils/collectionCopyDetails.mjs";
 
 const EMPTY_ITEMS = Object.freeze([]);
 const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
@@ -27,10 +28,17 @@ function itemValue(item, valueForItem) {
   return Number(value);
 }
 
-function visibleValue(item, { hidden, valueForItem, money }) {
+function visibleValue(item, { hidden, valueForItem, money, valuationForItem }) {
   if (hidden) return "Value hidden";
   const value = itemValue(item, valueForItem);
-  return value == null ? "Not valued" : formatMoney(value, money);
+  if (value == null) {
+    // F17: a saved estimate in another currency is shown in that currency,
+    // never relabeled as dollars or added to the USD total.
+    const valuation = valuationForItem?.(item);
+    if (valuation?.unconverted && valuation.unitValue != null) return `${valuation.unitValue} ${valuation.currency} (not converted)`;
+    return "Not valued";
+  }
+  return formatMoney(value, money);
 }
 
 export function PortfolioValueChart({ points = EMPTY_ITEMS, hidden = false, money, periodLabel = "Selected period" }) {
@@ -84,21 +92,22 @@ export function PortfolioValueChart({ points = EMPTY_ITEMS, hidden = false, mone
   </figure>;
 }
 
-export function PortfolioItemGrid({ items = EMPTY_ITEMS, resolveItemImage, onOpen, hidden = false, valueForItem, money, mode = "grid" }) {
+export function PortfolioItemGrid({ items = EMPTY_ITEMS, resolveItemImage, onOpen, hidden = false, valueForItem, valuationForItem, money, mode = "grid" }) {
+  const gridId = useId();
   return <ul className="collection-portfolio-grid" data-mode={mode === "list" ? "list" : "grid"} aria-label="Collection items">
-    {items.map((item, index) => <li key={item.id || `${itemTitle(item)}-${index}`}><button type="button" className="collection-portfolio-item" onClick={() => onOpen?.(item)} aria-label={`Open ${itemTitle(item)}`}>
+    {items.map((item, index) => { const copy = collectionCopyDetails(item); const detailsId = `${gridId}-copy-${index}`; return <li key={item.id || `${itemTitle(item)}-${index}`}><button type="button" className="collection-portfolio-item" onClick={() => onOpen?.(item)} aria-label={`Open ${itemTitle(item)}`} aria-describedby={detailsId}>
       <span className="collection-portfolio-item-media"><ItemPhoto src={resolveItemImage?.(item) || ""} fallbackClassName="collection-portfolio-photo-fallback" /></span>
-      <span className="collection-portfolio-item-copy"><strong className="collection-portfolio-item-name">{itemTitle(item)}</strong><span className="collection-portfolio-item-meta">{itemContext(item)}</span><span className="collection-portfolio-item-quantity">Qty {item.quantity ?? item.ownedQuantity ?? 1}{item.condition ? ` · ${item.condition}` : ""}</span><span className="collection-portfolio-item-value">{visibleValue(item, { hidden, valueForItem, money })}</span></span>
-    </button></li>)}
+      <span className="collection-portfolio-item-copy"><strong className="collection-portfolio-item-name">{itemTitle(item)}</strong><span className="collection-portfolio-item-meta">{itemContext(item)}</span><span className="collection-portfolio-item-quantity">Qty {item.quantity ?? item.ownedQuantity ?? 1}</span><span id={detailsId} className="collection-portfolio-copy-details">{copy.identity ? <span>{copy.identity}</span> : null}<span>Storage: {copy.storage || "Not recorded"}</span><span className="collection-portfolio-copy-note" title={copy.notes || undefined}>Note: {copy.notes || "Not recorded"}</span></span><span className="collection-portfolio-item-value">{visibleValue(item, { hidden, valueForItem, valuationForItem, money })}</span></span>
+    </button></li>; })}
   </ul>;
 }
 
-export function PortfolioMostValuable({ items = EMPTY_ITEMS, resolveItemImage, onOpen, hidden = false, valueForItem, money }) {
+export function PortfolioMostValuable({ items = EMPTY_ITEMS, resolveItemImage, onOpen, hidden = false, valueForItem, valuationForItem, money }) {
   return <section className="collection-portfolio-valuable-section"><div className="collection-portfolio-section-heading"><h2>Most valuable</h2><span>Saved estimates</span></div>{!items.length ? <p className="collection-portfolio-muted">Add a saved value to an item to see your most valuable pieces here.</p> : <ul className="collection-portfolio-most-valuable" aria-label="Most valuable items">
     {items.slice(0, 5).map((item, index) => <li key={item.id || `${itemTitle(item)}-${index}`}><button type="button" className="collection-portfolio-valuable-row" onClick={() => onOpen?.(item)} aria-label={`Open ${itemTitle(item)}`}>
       <span className="collection-portfolio-valuable-media"><ItemPhoto src={resolveItemImage?.(item) || ""} fallbackClassName="collection-portfolio-photo-fallback" /></span>
       <span className="collection-portfolio-valuable-copy"><strong>{itemTitle(item)}</strong><small>{itemContext(item)}</small></span>
-      <span className="collection-portfolio-valuable-value">{visibleValue(item, { hidden, valueForItem, money })}</span>
+      <span className="collection-portfolio-valuable-value">{visibleValue(item, { hidden, valueForItem, valuationForItem, money })}</span>
     </button></li>)}
   </ul>}</section>;
 }

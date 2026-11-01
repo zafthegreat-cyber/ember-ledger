@@ -93,17 +93,17 @@ export default function ProfileContent({ scope }) {
         key: "tidepool",
         icon: "pool",
         eyebrow: "Community",
-        title: "Tidepool access",
+        title: "Community access",
         body: "Events, trusted shops, donation drives, and family-safe community routes stay moderated.",
         status: "Guarded",
-        action: "Open Tidepool",
+        action: "Open Community",
         onClick: () => openUtilityPage("tidepool"),
       },
     ];
     const profileNorthStarStats = [
       { label: "Beta access", value: betaAccessAllowed() ? "Approved" : "Limited", helper: "Current gate" },
       { label: "Safety guard", value: settingsFamilyStatusLabel, helper: "Default protection" },
-      { label: "Scout trust", value: `${scoutGuessPoints} pts`, helper: "Report history" },
+      { label: "Restocks trust", value: `${scoutGuessPoints} pts`, helper: "Report history" },
       { label: "Setup", value: smartSetupRecommendation.label, helper: "Active app mode" },
     ];
     const profileAccessReviewSteps = [
@@ -149,12 +149,12 @@ export default function ProfileContent({ scope }) {
     const profileUsageRows = [
       { label: "Vault items", value: vaultItems.length, helper: "Collection records", icon: "vault" },
       { label: "Watched targets", value: workspaceWatchlist.length, helper: "Prices and restocks", icon: "bell" },
-      { label: "Scout trust", value: `${scoutGuessPoints} pts`, helper: "Report history", icon: "scout" },
+      { label: "Restocks trust", value: `${scoutGuessPoints} pts`, helper: "Report history", icon: "scout" },
       { label: "Plan", value: TIER_LABELS[currentTier] || "Free", helper: "Safety basics included", icon: "plan" },
       { label: "Family", value: "Protected", helper: "Parent controls ready", icon: "community" },
       { label: "Records", value: "Private", helper: "Archive and proof", icon: "data" },
       { label: "Settings", value: "Private", helper: "Security and preferences", icon: "settings" },
-      { label: "Tidepool", value: "Guarded", helper: "Events and trusted community", icon: "pool" },
+      { label: "Community", value: "Guarded", helper: "Events and trusted community", icon: "pool" },
     ];
     const profileOperationsRows = [
       { label: "Profile", title: "Identity", body: "Public label, avatar, account status, and private account data stay separated.", icon: "account", action: () => openUtilityPage("account") },

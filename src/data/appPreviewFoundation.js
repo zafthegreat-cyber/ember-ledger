@@ -1,11 +1,11 @@
 export const HEARTH_FOUNDATION_SCREEN = {
   key: "hearth",
-  title: "Hearth",
+  title: "Home",
   sections: [
     {
       title: "Today matters",
       items: [
-        { title: "Scout nearby restocks", detail: "3 Richmond signals with proof context.", status: "Worth checking", accent: "scout", icon: "scout" },
+        { title: "Restocks nearby restocks", detail: "3 Richmond signals with proof context.", status: "Worth checking", accent: "scout", icon: "scout" },
         { title: "Review a pending trade", detail: "Values are close. Parent approval recommended.", meta: "+50 pts", accent: "forge", icon: "trade" },
         { title: "Kids Trade Night", detail: "Friday at 6:00 PM, Richmond VA.", status: "Family event", accent: "spark", icon: "calendar" },
         { title: "Vault reminder", detail: "Add one item, then review before saving.", status: "Protected", accent: "vault", icon: "vault" },
@@ -28,7 +28,7 @@ export const MASTER_CARD_PREVIEW_SEEDS = [
   {
     id: "master-ember-dragon-006",
     name: "Ember Dragon ex",
-    setName: "Scarlet Hearth",
+    setName: "Scarlet Home",
     setCode: "SHR",
     cardNumber: "006",
     franchise: "tcg",

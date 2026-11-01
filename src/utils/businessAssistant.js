@@ -2,7 +2,7 @@ export const EMBER_ASSIST_THREAD_STORAGE_KEY = "et-ember-assist-thread";
 export const EMBER_ASSIST_CATEGORY = "ember_assist_admin_message";
 
 export const EMBER_ASSIST_VOICE = {
-  name: "Ember Assist",
+  name: "Business Assistant",
   stance: "founder-guided app helper",
   doesNotClaimToBeFounder: true,
   values: [
@@ -17,10 +17,10 @@ export const EMBER_ASSIST_VOICE = {
 export const EMBER_ASSIST_ESCALATION_CATEGORIES = [
   "App bug",
   "Missing product/catalog issue",
-  "Wrong Scout report/store",
+  "Wrong restock report/store",
   "Drop Radar question",
   "Market Watch question",
-  "Vault/Forge inventory question",
+  "Vault/Business inventory question",
   "The Spark/Kids Program question",
   "Expenses/receipts/mileage question",
   "Account/beta access question",
@@ -28,31 +28,31 @@ export const EMBER_ASSIST_ESCALATION_CATEGORIES = [
 ];
 
 const PAGE_PROMPTS = {
-  hearth: ["What should I do first today?", "How do Ember Points work?", "How do I customize Hearth?", "Why did this Spark disappear?"],
-  scout: ["What does this Scout signal mean?", "Why can't I see full history?", "How do I add proof?", "Can I change my watched store?", "Why was my report flagged?"],
+  hearth: ["What should I do first today?", "How do Daily Points work?", "How do I customize Home?", "Why did this Spark disappear?"],
+  scout: ["What does this restock signal mean?", "Why can't I see full history?", "How do I add proof?", "Can I change my watched store?", "Why was my report flagged?"],
   dropRadar: ["Explain this drop prediction", "What releases are coming up?", "What does confirmed vs predicted mean?", "Help me follow a store"],
   vault: ["How do I scan cards?", "How do I add a missing card?", "Why does this card need a photo?", "How do I track set completion?"],
   forge: ["What receipts am I missing?", "How do I add cost basis?", "How do I log mileage?", "What affects profit?"],
-  market: ["How do I scan a UPC?", "How do I compare prices?", "Can I add this to Vault?", "Can I add this to Forge?"],
+  market: ["How do I scan a UPC?", "How do I compare prices?", "Can I add this to Vault?", "Can I add this to Business?"],
   expenses: ["What receipts are missing?", "Summarize this year's expenses", "Help me categorize this expense", "What do I need for tax records?"],
   mileage: ["Summarize miles by vehicle", "Help me log a trip", "What mileage records are missing notes?", "Explain this vehicle summary"],
   spark: ["How do I build a kids pack?", "What donations can I add?", "How do Trusted Family Friends work?", "How do giveaways work?"],
-  tidepool: ["What is Tidepool Community?", "How do I post safely?", "Why is my post pending?", "How do I report a post?"],
-  settings: ["Help me switch workspaces", "Explain personal Forge vs Code 3 TCG Forge", "Help me update my profile", "Explain seller mode"],
-  admin: ["What needs review?", "Show duplicate Scout reports.", "How do I review shop applications?", "What reports were flagged?"],
-  permissionDenied: ["Why am I blocked?", "Explain this user status", "How do I message admin?", "Return to Hearth"],
-  general: ["What should I do first?", "How do I add inventory?", "How do I scan a barcode?", "What is Forge for?", "How do alerts work?", "How do I message admin?"],
+  tidepool: ["What is Community?", "How do I post safely?", "Why is my post pending?", "How do I report a post?"],
+  settings: ["Help me switch workspaces", "Explain personal Business vs Code 3 TCG Business", "Help me update my profile", "Explain seller mode"],
+  admin: ["What needs review?", "Show duplicate restock reports.", "How do I review shop applications?", "What reports were flagged?"],
+  permissionDenied: ["Why am I blocked?", "Explain this user status", "How do I message admin?", "Return to Home"],
+  general: ["What should I do first?", "How do I add inventory?", "How do I scan a barcode?", "What is Business for?", "How do alerts work?", "How do I message admin?"],
 };
 
 const CORE_PROMPTS = [
   "What should I do first?",
   "How do I add inventory?",
   "How do I scan a barcode?",
-  "What is the difference between Vault and Forge?",
-  "What is Forge for?",
-  "How do Scout points work?",
+  "What is the difference between Vault and Business?",
+  "What is Business for?",
+  "How do restock points work?",
   "How do alerts work?",
-  "How do I use Forge for business records?",
+  "How do I use Business for business records?",
   "How do I submit a restock report?",
   "What do tiers unlock?",
   "How do I message admin?",
@@ -187,61 +187,61 @@ function response(answer, options = {}) {
 
 function buildValuationResponse(text = "") {
   if (/\b(cost basis)\b/i.test(text)) {
-    return response("Cost basis is what you have tracked as the item cost. In Forge, it helps estimate planning profit and keep records organized for review with your tax professional.", {
-      actions: ["Go to Forge", "Open Expenses"],
-      category: "Vault/Forge inventory question",
+    return response("Cost basis is what you have tracked as the item cost. In Business, it helps estimate planning profit and keep records organized for review with your tax professional.", {
+      actions: ["Go to Business", "Open Expenses"],
+      category: "Vault/Business inventory question",
     });
   }
   if (/\b(msrp).*\b(market value|planned sale price|planned price|price)|\b(market value).*\b(msrp|planned sale price|planned price)|\b(planned sale price|planned price).*\b(msrp|market value)/i.test(text)) {
     return response("MSRP, market value, and planned sale price are separate. MSRP is the retail reference, market value is an estimate or reviewed value, and planned sale price is your own selling plan.", {
-      actions: ["Go to Vault", "Go to Forge"],
-      category: "Vault/Forge inventory question",
+      actions: ["Go to Vault", "Go to Business"],
+      category: "Vault/Business inventory question",
     });
   }
   if (/\b(manual price|manual value)\b/i.test(text)) {
     return response("Manual price means a user or admin entered or reviewed that value. It is useful for planning, but Code 3 TCG labels it so it does not look like a live guaranteed market price.", {
-      actions: ["Go to Forge", "Go to Vault"],
-      category: "Vault/Forge inventory question",
+      actions: ["Go to Business", "Go to Vault"],
+      category: "Vault/Business inventory question",
     });
   }
   if (/\b(stale price)\b/i.test(text)) {
     return response("Stale price means the value is old enough that it should be reviewed before you trust it too much. Open the item detail and update the market value when you have a better reference.", {
-      actions: ["Go to Forge", "Go to Vault"],
-      category: "Vault/Forge inventory question",
+      actions: ["Go to Business", "Go to Vault"],
+      category: "Vault/Business inventory question",
     });
   }
   if (/\b(exact value|guarantee.*value|guaranteed value)\b/i.test(text)) {
     return response("Code 3 TCG cannot promise an exact value. Prices are estimates or manually entered unless a trusted source is shown, so use them for planning instead of guarantees.", {
-      actions: ["Go to Vault", "Go to Forge"],
-      category: "Vault/Forge inventory question",
+      actions: ["Go to Vault", "Go to Business"],
+      category: "Vault/Business inventory question",
     });
   }
   if (/\b(review prices?|price review)\b/i.test(text)) {
     return response("Open the item detail and look for Price reliability. You can review market value, set a planned sale price, and keep MSRP separate from both.", {
-      actions: ["Go to Vault", "Go to Forge"],
-      category: "Vault/Forge inventory question",
+      actions: ["Go to Vault", "Go to Business"],
+      category: "Vault/Business inventory question",
     });
   }
   if (/\b(market value|collection worth|inventory worth)\b/i.test(text)) {
     return response("Market Watch value only shows when the item has a known value. If it is missing, the dashboard leaves it unknown instead of making up a number or showing $0.", {
-      actions: ["Go to Vault", "Go to Forge"],
-      category: "Vault/Forge inventory question",
+      actions: ["Go to Vault", "Go to Business"],
+      category: "Vault/Business inventory question",
     });
   }
   if (/\b(planned sale price|planned price)\b/i.test(text)) {
-    return response("Open the Forge item, then use Update Planned Price. It changes the planning number without changing the original purchase record.", {
-      actions: ["Go to Forge"],
-      category: "Vault/Forge inventory question",
+    return response("Open the Business item, then use Update Planned Price. It changes the planning number without changing the original purchase record.", {
+      actions: ["Go to Business"],
+      category: "Vault/Business inventory question",
     });
   }
   if (/\b(purchaser breakdown|zena and dillon|zena.*dillon)\b/i.test(text)) {
     return response("Open the grouped item details or the dashboard purchaser breakdown. It shows who bought what, like Zena - 4 and Dillon - 3, without turning that into official sharing math.", {
-      actions: ["Go to Vault", "Go to Forge"],
-      category: "Vault/Forge inventory question",
+      actions: ["Go to Vault", "Go to Business"],
+      category: "Vault/Business inventory question",
     });
   }
-  return response("Estimated profit is a planning view: planned sale total minus tracked cost basis, before final sale details like fees or shipping. Forge keeps records organized for planning and review with your tax professional.", {
-    actions: ["Go to Forge", "Open Expenses"],
+  return response("Estimated profit is a planning view: planned sale total minus tracked cost basis, before final sale details like fees or shipping. Business keeps records organized for planning and review with your tax professional.", {
+    actions: ["Go to Business", "Open Expenses"],
     category: "Expenses/receipts/mileage question",
   });
 }
@@ -252,29 +252,29 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
   const page = context.page || "general";
   if (!text) {
     return response("Ask me what you are trying to do, and I will point you to the cleanest next step.", {
-      actions: ["Open Quick Add", "Go to Vault", "Open Scout Report"],
+      actions: ["Open Quick Add", "Go to Vault", "Open Restocks Report"],
     });
   }
 
   if (context.permissionDenied || /\b(blocked|permission denied|admin role|why am i blocked|user status)\b/i.test(text)) {
-    return response("You may not have access to this area yet. Admin or moderator role may be required. If this looks wrong, message an admin or return to Hearth.", {
-      actions: ["Message Admin", "Return to Hearth"],
+    return response("You may not have access to this area yet. Admin or moderator role may be required. If this looks wrong, message an admin or return to Home.", {
+      actions: ["Message Admin", "Return to Home"],
       category: "Account/beta access question",
     });
   }
 
   if (TIER_WORDS.test(text)) {
-    return response("Code 3 TCG public plans are Free, Collector, Family, Seller, and Shop. Free is $0 and still lets users submit, confirm, and add proof/context to Scout reports. Collector is $1.99/month beta pricing with a planned 7-day free trial, later $2.99/month; it follows 3 Scout stores and unlocks deeper current details for selected stores. Family is $3.99/month beta pricing with a planned 7-day trial, later $4.99/month; it includes Collector plus 2 private, parent-managed kid profiles. Seller is $5.99/month beta pricing with a planned 7-day trial, later $7.99/month; it adds Forge business tools. Shop has Shop Basic at $19/month and Shop Plus at $39/month for shop profiles and directory tools. Add-ons are coming soon for extra kids, adults, Scout stores, business partners, staff seats, and shop locations. Beta is an early-access flag, Admin is internal, and checkout is not live yet, so ask admin to upgrade during beta. Paid tiers unlock better current selected-store details, not raw Scout history or restock pattern tools.", {
-      actions: ["Open Membership Foundation", "Message Admin", "Open Scout Report"],
+    return response("Code 3 TCG public plans are Free, Collector, Family, Seller, and Shop. Everything is free during beta: there is nothing to pay and no checkout yet. Prices are set when beta closes, and you will be told before anything costs money. To turn on Collector, Family, Seller or Shop features now, ask the Code 3 team from Settings or the Membership page and we enable it by hand.", {
+      actions: ["Open Membership Foundation", "Message Admin", "Open Restocks Report"],
       category: "Account/beta access question",
     });
   }
 
   if (page === "admin" && context.isAdmin) {
     if (/\b(duplicate|merge)\b/i.test(text)) {
-      return response("Open Admin Command Center, then Scout Report Review to compare suspected duplicates. Keep merges admin-only so normal users can flag problems without deleting reports.", {
+      return response("Open Admin Command Center, then Restocks Report Review to compare suspected duplicates. Keep merges admin-only so normal users can flag problems without deleting reports.", {
         actions: ["Open Admin Review"],
-        category: "Wrong Scout report/store",
+        category: "Wrong restock report/store",
       });
     }
     if (/\b(shop|application|applications)\b/i.test(text)) {
@@ -284,18 +284,18 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
       });
     }
     if (/\b(flag|flagged|reports?)\b/i.test(text)) {
-      return response("Start with flagged Scout reports because they affect community trust. Review wrong-store, wrong-time, duplicate, false, and unsafe reports before changing public status.", {
+      return response("Start with flagged restock reports because they affect community trust. Review wrong-store, wrong-time, duplicate, false, and unsafe reports before changing public status.", {
         actions: ["Open Admin Review"],
-        category: "Wrong Scout report/store",
+        category: "Wrong restock report/store",
       });
     }
     if (/\b(admin store tools|store management|manage stores)\b/i.test(text)) {
       return response("Admin Store Management is for reviewing suggestions, adding or editing local store metadata, marking stores inactive, and approving family-friendly or partner badges. Keep public copy clear: no guaranteed MSRP or inventory.", {
         actions: ["Open Admin Review", "Open Stores"],
-        category: "Wrong Scout report/store",
+        category: "Wrong restock report/store",
       });
     }
-    return response(`Start with the queues that can affect trust: Scout reports, beta access, Spark requests, listings, and app messages. You have ${context.counts?.adminOpenItems || 0} open review items in this local queue.`, {
+    return response(`Start with the queues that can affect trust: Restock reports, beta access, Spark requests, listings, and app messages. You have ${context.counts?.adminOpenItems || 0} open review items in this local queue.`, {
       actions: ["Open Admin Review"],
       category: "Other",
     });
@@ -316,14 +316,14 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
     return response("I do not want to guess and give you the wrong answer. Tell me what you expected to happen, and I can send it to Code 3 TCG for review.", {
       confidence: "low",
       shouldEscalate: true,
-      category: lower.includes("store") || lower.includes("scout") ? "Wrong Scout report/store" : lower.includes("product") || lower.includes("catalog") ? "Missing product/catalog issue" : "App bug",
+      category: lower.includes("store") || lower.includes("scout") ? "Wrong restock report/store" : lower.includes("product") || lower.includes("catalog") ? "Missing product/catalog issue" : "App bug",
       actions: ["Send Message to Admin"],
       reason: "Bug-like or missing-data phrase detected.",
     });
   }
 
   if (CONTACT_WORDS.test(text)) {
-    return response("Use Send Message to Admin when Ember Assist cannot solve it cleanly. I will include your question, current page, public username, and safe context so Code 3 TCG can review it in the admin inbox.", {
+    return response("Use Send Message to Admin when Business Assistant cannot solve it cleanly. I will include your question, current page, public username, and safe context so Code 3 TCG can review it in the admin inbox.", {
       actions: ["Send Message to Admin"],
       category: "Other",
     });
@@ -332,7 +332,7 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
   if (IDENTIFY_CARD_WORDS.test(text)) {
     return response("Use Quick Add, then Card or Photo. Take a clear photo, review the suggested match, and edit the card name, set, number, variant, and notes before saving. Nothing should be saved until you confirm.", {
       actions: ["Open Quick Add", "Go to Vault"],
-      category: "Vault/Forge inventory question",
+      category: "Vault/Business inventory question",
     });
   }
 
@@ -351,9 +351,9 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
   }
 
   if (COLLECTION_GUIDANCE_WORDS.test(text)) {
-    return response("Start by deciding what the item is for: personal collection, set completion, trade, donation, or seller inventory. Vault keeps protected collection records; Forge keeps business/seller records; Set Detail helps track owned and missing cards.", {
-      actions: ["Go to Vault", "Open Quick Add", "Go to Forge"],
-      category: "Vault/Forge inventory question",
+    return response("Start by deciding what the item is for: personal collection, set completion, trade, donation, or seller inventory. Vault keeps protected collection records; Business keeps business/seller records; Set Detail helps track owned and missing cards.", {
+      actions: ["Go to Vault", "Open Quick Add", "Go to Business"],
+      category: "Vault/Business inventory question",
     });
   }
 
@@ -365,16 +365,16 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
   }
 
   if (/\b(what should i do first|what do i do first|where do i start)\b/i.test(text)) {
-    return response("Start with the piece that matches why you came in. Vault is for collection tracking, Forge is for sellable/business inventory, Scout is for confirmed store reports, and The Spark is for kid/family interest.", {
-      actions: ["Open Quick Add", "Go to Vault", "Go to Forge"],
+    return response("Start with the piece that matches why you came in. Vault is for collection tracking, Business is for sellable/business inventory, Restocks is for confirmed store reports, and The Spark is for kid/family interest.", {
+      actions: ["Open Quick Add", "Go to Vault", "Go to Business"],
       category: "Other",
     });
   }
 
   if (QUICK_ADD_WORDS.test(text)) {
-    return response("Use the center plus or Quick Add to save something fast. Choose Vault for your collection, Forge for sellable/business inventory, Scout for a report, or Expenses/Mileage for records. You can add details later.", {
-      actions: ["Open Quick Add", "Go to Vault", "Go to Forge"],
-      category: "Vault/Forge inventory question",
+    return response("Use the center plus or Quick Add to save something fast. Choose Vault for your collection, Business for sellable/business inventory, Restocks for a report, or Expenses/Mileage for records. You can add details later.", {
+      actions: ["Open Quick Add", "Go to Vault", "Go to Business"],
+      category: "Vault/Business inventory question",
     });
   }
 
@@ -389,61 +389,61 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
     if (/\b(barcode|upc|sku|scan|scanner)\b/i.test(text)) {
       return response("Use Quick Add, then Barcode / UPC. You can scan with the camera when available or type the UPC/SKU manually. If there is no match, add it manually and the code stays attached.", {
         actions: ["Open Quick Add"],
-        category: "Vault/Forge inventory question",
+        category: "Vault/Business inventory question",
       });
     }
     if (/\b(receipt|photo)\b/i.test(text)) {
-      return response("Receipt review is structured, not magic OCR. Upload or paste receipt text, then mark each line as Vault, Forge, expense-only, supplies, mileage/gas, wishlist, or ignored before saving.", {
+      return response("Receipt review is structured, not magic OCR. Upload or paste receipt text, then mark each line as Vault, Business, expense-only, supplies, mileage/gas, wishlist, or ignored before saving.", {
         actions: ["Open Quick Add", "Open Expenses"],
         category: "Expenses/receipts/mileage question",
       });
     }
     if (/\b(bulk|import|paste list|multiple items)\b/i.test(text)) {
       return response("Use Bulk Add to paste rows or add manual rows for several items at once. Review destination, purchaser, cost, store, date, and UPC/code before confirming the batch.", {
-        actions: ["Open Quick Add", "Go to Forge"],
-        category: "Vault/Forge inventory question",
+        actions: ["Open Quick Add", "Go to Business"],
+        category: "Vault/Business inventory question",
       });
     }
     if (/\b(group|grouped|duplicate)\b/i.test(text)) {
       return response("Items group when they look like the same product in the same destination. The group keeps individual purchase records, so purchaser tallies like Zena - 4 and Dillon - 3 can still stay clean.", {
-        actions: ["Go to Vault", "Go to Forge"],
-        category: "Vault/Forge inventory question",
+        actions: ["Go to Vault", "Go to Business"],
+        category: "Vault/Business inventory question",
       });
     }
-    return response("If the catalog cannot find it, add it manually. Keep the product name, type, set, quantity, destination, purchaser, cost, planned sale price if it is Forge, UPC/code, and notes so the record stays useful.", {
+    return response("If the catalog cannot find it, add it manually. Keep the product name, type, set, quantity, destination, purchaser, cost, planned sale price if it is Business, UPC/code, and notes so the record stays useful.", {
       actions: ["Open Quick Add"],
-      category: "Vault/Forge inventory question",
+      category: "Vault/Business inventory question",
     });
   }
 
   if (/\b(ember points?|today'?s sparks?|spark disappear|spark disappeared|customize hearth)\b/i.test(text) || (page === "hearth" && GENERAL_PAGE_HELP_WORDS.test(text))) {
     if (/\b(customize hearth)\b/i.test(text)) {
-      return response("Use Customize Hearth to show the modules that matter to you and reset to recommended if the page feels too busy. Admin-only and seller-only modules stay hidden unless your account can use them.", {
-        actions: ["Return to Hearth"],
+      return response("Use Customize Home to show the modules that matter to you and reset to recommended if the page feels too busy. Admin-only and seller-only modules stay hidden unless your account can use them.", {
+        actions: ["Return to Home"],
         category: "Other",
       });
     }
     if (/\b(disappear|dismiss)\b/i.test(text)) {
-      return response("A Spark can disappear after it is completed through the real app action, dismissed for today, or rotated out by tomorrow's daily set. Dismissed Sparks do not earn Ember Points.", {
-        actions: ["Return to Hearth"],
+      return response("A Spark can disappear after it is completed through the real app action, dismissed for today, or rotated out by tomorrow's daily set. Dismissed Sparks do not earn Daily Points.", {
+        actions: ["Return to Home"],
         category: "Other",
       });
     }
-    return response("Ember Points come from real completed Sparks, like adding useful Scout proof or improving Vault records. Dismissing a Spark earns zero points, and rewards/redemption are planned for later.", {
-      actions: ["Return to Hearth", "Open Quick Add"],
+    return response("Daily Points come from real completed Sparks, like adding useful Restocks proof or improving Vault records. Dismissing a Spark earns zero points, and rewards/redemption are planned for later.", {
+      actions: ["Return to Home", "Open Quick Add"],
       category: "Other",
     });
   }
 
   if (SCOUT_POINTS_WORDS.test(text)) {
-    return response("Scout trust grows through useful confirmed reports and clean community help. Submit real store reports with clear store, product, time, and proof when you have it.", {
-      actions: ["Open Scout Report", "Open Stores"],
+    return response("Restocks trust grows through useful confirmed reports and clean community help. Submit real store reports with clear store, product, time, and proof when you have it.", {
+      actions: ["Open Restocks Report", "Open Stores"],
       category: "Drop Radar question",
     });
   }
 
   if (ALERT_WORDS.test(text)) {
-    return response("Ember Watch alerts are in-app only right now. Confirmed restocks, possible windows, community guesses, Kids Program updates, and admin statuses stay labeled so nothing sounds more certain than it is.", {
+    return response("Watch Center alerts are in-app only right now. Confirmed restocks, possible windows, community guesses, Kids Program updates, and admin statuses stay labeled so nothing sounds more certain than it is.", {
       actions: ["Open Settings", "Open Drop Radar"],
       category: "Account/beta access question",
     });
@@ -453,13 +453,13 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
     if (/\b(suggest a store|store suggestion|add a store|adding stores|missing store)\b/i.test(text)) {
       return response("Use Suggest Store from the store directory. It sends the name, type, city, state, region, and notes to admin review first, so the store does not become public automatically.", {
         actions: ["Open Stores", "Send to Admin"],
-        category: "Wrong Scout report/store",
+        category: "Wrong restock report/store",
       });
     }
     if (/\b(hidden store|inactive store|why is.*store hidden|closed store)\b/i.test(text)) {
       return response("Stores can be hidden when they are inactive, closed, not reportable, or still under admin review. Admins can see and edit those records, but normal users should only see active public-safe stores.", {
         actions: ["Open Stores", "Send to Admin"],
-        category: "Wrong Scout report/store",
+        category: "Wrong restock report/store",
       });
     }
     if (/\b(admin store tools|store management|manage stores)\b/i.test(text)) {
@@ -468,24 +468,24 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
         : "Store management is admin-only. You can still suggest a store, report bad store details, or message Code 3 TCG for review.",
         {
           actions: context.isAdmin ? ["Open Admin Review", "Open Stores"] : ["Open Stores", "Send to Admin"],
-          category: "Wrong Scout report/store",
+          category: "Wrong restock report/store",
         });
     }
     if (/\b(stores near me|find stores near me|browse by area|stores by region|nearby areas)\b/i.test(text)) {
       return response("Open Stores, then use Browse by Area or the State, Region, and City filters. Confirmed reports, predictions, and family-friendly shop badges stay labeled so nearby inventory never sounds guaranteed.", {
-        actions: ["Open Stores", "Open Scout Report"],
-        category: "Wrong Scout report/store",
+        actions: ["Open Stores", "Open Restocks Report"],
+        category: "Wrong restock report/store",
       });
     }
     if (/\b(add more stores|expand to another state|another state|new area|new region)\b/i.test(text)) {
-      return response("Code 3 TCG can expand when we have clean store data and community reports for that area. Suggest stores, add city/state/region details, and submit confirmed Scout reports so the area becomes useful over time.", {
+      return response("Code 3 TCG can expand when we have clean store data and community reports for that area. Suggest stores, add city/state/region details, and submit confirmed restock reports so the area becomes useful over time.", {
         actions: ["Open Stores", "Send to Admin"],
-        category: "Wrong Scout report/store",
+        category: "Wrong restock report/store",
       });
     }
     if (/\b(no predictions|why.*no.*prediction|no drop radar|no forecast)\b/i.test(text)) {
       return response("No predictions usually means the area needs more confirmed restock history. Community guesses can help planning, but they should not train Drop Radar as confirmed data.", {
-        actions: ["Open Scout Report", "Open Drop Radar"],
+        actions: ["Open Restocks Report", "Open Drop Radar"],
         category: "Drop Radar question",
       });
     }
@@ -502,13 +502,13 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
       });
     }
     if (/\b(report.*restock|submit.*restock|stock report)\b/i.test(text)) {
-      return response("Open the store profile, choose Report Stock or Report Empty, then save the Scout report with the product, time, and proof if you have it. Confirmed reports matter more than guesses.", {
-        actions: ["Open Scout Report", "Open Stores"],
-        category: "Wrong Scout report/store",
+      return response("Open the store profile, choose Report Stock or Report Empty, then save the restock report with the product, time, and proof if you have it. Confirmed reports matter more than guesses.", {
+        actions: ["Open Restocks Report", "Open Stores"],
+        category: "Wrong restock report/store",
       });
     }
     if (/\b(follow|favorite|watch)\b/i.test(text)) {
-      return response("Use Follow Store on a store profile to keep that location in your Scout watchlist. In-app favorite store alerts can use that later without turning predictions into promises.", {
+      return response("Use Follow Store on a store profile to keep that location in your Restocks watchlist. In-app favorite store alerts can use that later without turning predictions into promises.", {
         actions: ["Open Stores", "Open Settings"],
         category: "Other",
       });
@@ -521,70 +521,70 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
 
   if (TIDEPOOL_WORDS.test(text) || (page === "tidepool" && GENERAL_PAGE_HELP_WORDS.test(text))) {
     if (/\b(pending|review|why is my post)\b/i.test(text)) {
-      return response("Tidepool Community posts may wait for admin review because this is a family-centered space. Pending does not mean you did anything wrong; it means we are keeping public posts clean and safe.", {
-        actions: ["Open Tidepool", "Send to Admin"],
+      return response("Community posts may wait for admin review because this is a family-centered space. Pending does not mean you did anything wrong; it means we are keeping public posts clean and safe.", {
+        actions: ["Open Community", "Send to Admin"],
         category: "Other",
       });
     }
     if (/\b(report|flag|unsafe)\b/i.test(text)) {
-      return response("Use Report content on a Tidepool Community post when something feels unsafe, private, fake, or not family-friendly. It creates a moderation signal for admins without publicly showing who reported it.", {
-        actions: ["Open Tidepool", "Send to Admin"],
+      return response("Use Report content on a Community post when something feels unsafe, private, fake, or not family-friendly. It creates a moderation signal for admins without publicly showing who reported it.", {
+        actions: ["Open Community", "Send to Admin"],
         category: "Other",
       });
     }
     if (/\b(kids?|children|child)\b/i.test(text)) {
-      return response("Tidepool Community is family-friendly, but kids should not share private details or use private messaging. Parents and guardians should manage Kids Program and family posts.", {
-        actions: ["Open Tidepool", "Open The Spark"],
+      return response("Community is family-friendly, but kids should not share private details or use private messaging. Parents and guardians should manage Kids Program and family posts.", {
+        actions: ["Open Community", "Open The Spark"],
         category: "The Spark/Kids Program question",
       });
     }
-    return response("Tidepool Community is the Code 3 TCG community board for helpful local updates, questions, family-friendly wins, events, shop notes, and safe collecting talk. Posts stay kind, public-safe, and may go through review first.", {
-      actions: ["Open Tidepool", "Send to Admin"],
+    return response("Community is the Code 3 TCG community board for helpful local updates, questions, family-friendly wins, events, shop notes, and safe collecting talk. Posts stay kind, public-safe, and may go through review first.", {
+      actions: ["Open Community", "Send to Admin"],
       category: "Other",
     });
   }
 
   if (DROP_WORDS.test(text) || (page === "dropRadar" && GENERAL_PAGE_HELP_WORDS.test(text))) {
     if (/\b(no predictions|why.*no.*prediction|no forecast|no drop radar|my area)\b/i.test(text)) {
-      return response("No predictions in an area usually means Drop Radar needs more confirmed restock history there. Submit confirmed Scout reports when you spot stock; community guesses stay separate and should not count as proof.", {
-        actions: ["Open Scout Report", "Open Stores"],
+      return response("No predictions in an area usually means Drop Radar needs more confirmed restock history there. Submit confirmed restock reports when you spot stock; community guesses stay separate and should not count as proof.", {
+        actions: ["Open Restocks Report", "Open Stores"],
         category: "Drop Radar question",
       });
     }
-    return response("Drop Radar helps you see what might be coming, what was confirmed, and what stores are worth watching. Predictions are educated guesses, not promises. Confirmed Scout reports matter more.", {
-      actions: ["Open Drop Radar", "Open Scout Report", "Follow Store"],
+    return response("Drop Radar helps you see what might be coming, what was confirmed, and what stores are worth watching. Predictions are educated guesses, not promises. Confirmed restock reports matter more.", {
+      actions: ["Open Drop Radar", "Open Restocks Report", "Follow Store"],
       category: "Drop Radar question",
     });
   }
 
   if ((SCOUT_WORDS.test(text) && page !== "market") || (page === "scout" && (GENERAL_PAGE_HELP_WORDS.test(text) || /\b(full history|raw history|pattern|proof|watched store|watch store|flagged|signal)\b/i.test(text)))) {
     if (/\b(full history|raw history|pattern|patterns|restock history|why can'?t i see)\b/i.test(text)) {
-      return response("Scout protects raw history and restock patterns so the network stays fair. Normal users see current selected-store reports; admin can review deeper history for moderation.", {
+      return response("Restocks protects raw history and restock patterns so the network stays fair. Normal users see current selected-store reports; admin can review deeper history for moderation.", {
         actions: ["Open Stores", "Message Admin"],
         category: "Drop Radar question",
       });
     }
     if (/\b(add proof|proof)\b/i.test(text)) {
-      return response("Open a current Scout report and choose Add Proof. A short note, screenshot, or photo helps Scout trust the report, but proof is never silently submitted.", {
-        actions: ["Open Scout Report"],
-        category: "Wrong Scout report/store",
+      return response("Open a current restock report and choose Add Proof. A short note, screenshot, or photo helps Restocks trust the report, but proof is never silently submitted.", {
+        actions: ["Open Restocks Report"],
+        category: "Wrong restock report/store",
       });
     }
     if (/\b(watched store|watch store|change.*store|change my watched)\b/i.test(text)) {
       return response("Open My Watch Stores to change a watched store. Free users have one watched store, and paid tiers can watch more; store swaps may have a cooldown shown in the app.", {
         actions: ["Open Stores"],
-        category: "Wrong Scout report/store",
+        category: "Wrong restock report/store",
       });
     }
     if (/\b(flagged|flag report|why.*flag)\b/i.test(text)) {
       return response("A report can be flagged for duplicate, wrong store, wrong time, false, unsafe, or other issues. Flagging sends it to admin review; it does not delete the report.", {
-        actions: ["Open Scout Report", "Message Admin"],
-        category: "Wrong Scout report/store",
+        actions: ["Open Restocks Report", "Message Admin"],
+        category: "Wrong restock report/store",
       });
     }
-    return response("Scout signals summarize current community reports. Hot, Warm, Cool, and Calm should be treated as recent signals, not guarantees or raw restock patterns.", {
-      actions: ["Open Scout Report", "Open Stores"],
-      category: "Wrong Scout report/store",
+    return response("Restock signals summarize current community reports. Hot, Warm, Cool, and Calm should be treated as recent signals, not guarantees or raw restock patterns.", {
+      actions: ["Open Restocks Report", "Open Stores"],
+      category: "Wrong restock report/store",
     });
   }
 
@@ -615,13 +615,13 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
 
   if (TAX_WORDS.test(text) || ((page === "expenses" || page === "mileage") && GENERAL_PAGE_HELP_WORDS.test(text))) {
     if (/\b(log mileage|mileage)\b/i.test(text)) {
-      return response("Open Forge mileage tools to record the date, purpose, route or store, miles, and notes. Mileage stays a recordkeeping helper, not tax advice.", {
-        actions: ["Open Mileage", "Open Forge"],
+      return response("Open Business mileage tools to record the date, purpose, route or store, miles, and notes. Mileage stays a recordkeeping helper, not tax advice.", {
+        actions: ["Open Mileage", "Open Business"],
         category: "Expenses/receipts/mileage question",
       });
     }
     return response("These are organized records for year-end review, not tax advice. I can help you find missing receipts, mileage gaps, and cost records before you review everything with a tax professional.", {
-      actions: ["Open Expenses", "Open Mileage", "Open Forge"],
+      actions: ["Open Expenses", "Open Mileage", "Open Business"],
       category: "Expenses/receipts/mileage question",
     });
   }
@@ -630,42 +630,42 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
     if (page === "vault" && /\b(scan cards?|card scan)\b/i.test(text)) {
       return response("Use Quick Add, then Scan Cards. The current flow is review-first: add or correct card rows before anything saves to Vault.", {
         actions: ["Open Quick Add", "Go to Vault"],
-        category: "Vault/Forge inventory question",
+        category: "Vault/Business inventory question",
       });
     }
     if (page === "vault" && /\b(missing card|missing item)\b/i.test(text)) {
       return response("Use Request Missing Item or Add Card Manually. Keep the card name, set, number, variant, condition, and notes editable before saving.", {
         actions: ["Open Quick Add", "Go to Vault"],
-        category: "Vault/Forge inventory question",
+        category: "Vault/Business inventory question",
       });
     }
     if (page === "vault" && /\b(photo|image)\b/i.test(text)) {
       return response("Cards need photos when the record is useful but still lacks visual proof or condition context. Add photos when you can; the item should stay editable without pretending the photo exists.", {
         actions: ["Go to Vault"],
-        category: "Vault/Forge inventory question",
+        category: "Vault/Business inventory question",
       });
     }
     if (page === "vault" && /\b(set completion|track set|binder)\b/i.test(text)) {
       return response("Set completion should count canonical cards carefully and avoid double-counting variants. Use Set Detail to review owned, missing, wishlist, variants, and sealed items when checklist data supports it.", {
         actions: ["Go to Vault"],
-        category: "Vault/Forge inventory question",
+        category: "Vault/Business inventory question",
       });
     }
     if (page === "forge" && /\b(receipts? missing|missing receipts?)\b/i.test(text)) {
-      return response("Forge highlights records that need receipts or proof. Open Receipts or the item detail to attach proof before relying on the record for review.", {
-        actions: ["Open Expenses", "Open Forge"],
+      return response("Business highlights records that need receipts or proof. Open Receipts or the item detail to attach proof before relying on the record for review.", {
+        actions: ["Open Expenses", "Open Business"],
         category: "Expenses/receipts/mileage question",
       });
     }
     if (page === "forge" && /\b(affects profit|profit)\b/i.test(text)) {
-      return response("Profit depends on tracked cost basis, sale price, fees, shipping, receipts, and notes. Forge is a planning and recordkeeping view, not financial advice.", {
-        actions: ["Go to Forge", "Open Expenses"],
+      return response("Profit depends on tracked cost basis, sale price, fees, shipping, receipts, and notes. Business is a planning and recordkeeping view, not financial advice.", {
+        actions: ["Go to Business", "Open Expenses"],
         category: "Expenses/receipts/mileage question",
       });
     }
-    return response("If it is for your personal collection, keep it in Vault. If you plan to sell it, prep it in Forge. You can move it later, and purchaser tallies help keep the records clean.", {
-      actions: ["Go to Vault", "Go to Forge", "Open Quick Add"],
-      category: "Vault/Forge inventory question",
+    return response("If it is for your personal collection, keep it in Vault. If you plan to sell it, prep it in Business. You can move it later, and purchaser tallies help keep the records clean.", {
+      actions: ["Go to Vault", "Go to Business", "Open Quick Add"],
+      category: "Vault/Business inventory question",
     });
   }
 
@@ -683,7 +683,7 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
       });
     }
     if (/\b(add.*vault|add.*forge)\b/i.test(text)) {
-      return response("Market items should go through Review before saving. Collector flows default to Vault; seller tools can route to Forge when enabled.", {
+      return response("Market items should go through Review before saving. Collector flows default to Vault; seller tools can route to Business when enabled.", {
         actions: ["Open Market", "Open Quick Add"],
         category: "Market Watch question",
       });
@@ -713,7 +713,7 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
       });
     }
     if (/\b(seller trust|trusted seller|badges|seller identity)\b/i.test(text)) {
-      return response("Seller trust is based on public username, safe badges, Scout level, and community contribution signals. Private email and admin moderation notes should not appear publicly.", {
+      return response("Seller trust is based on public username, safe badges, Restocks level, and community contribution signals. Private email and admin moderation notes should not appear publicly.", {
         actions: ["Open Market", "Open Settings"],
         category: "Market Watch question",
       });
@@ -725,15 +725,15 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
   }
 
   if (SETTINGS_WORDS.test(text) || (page === "settings" && GENERAL_PAGE_HELP_WORDS.test(text))) {
-    return response("Settings is where you keep account, workspace, seller mode, notifications, and public identity straight. Personal collection work belongs in Vault; seller or business work belongs in Forge.", {
-      actions: ["Open Settings", "Open Forge"],
+    return response("Settings is where you keep account, workspace, seller mode, notifications, and public identity straight. Personal collection work belongs in Vault; seller or business work belongs in Business.", {
+      actions: ["Open Settings", "Open Business"],
       category: "Account/beta access question",
     });
   }
 
   if (HEARTH_WORDS.test(text) || (page === "hearth" && GENERAL_PAGE_HELP_WORDS.test(text)) || (page === "general" && GENERAL_PAGE_HELP_WORDS.test(text))) {
-    return response("Hearth is your home base: check Your Next Move, then use Quick Add, Scout, Vault, Forge, or Market Watch depending on what needs attention next.", {
-      actions: ["Open Quick Add", "Open Scout Report", "Go to Vault"],
+    return response("Home is your home base: check Your Next Move, then use Quick Add, Restocks, Vault, Business, or Market Watch depending on what needs attention next.", {
+      actions: ["Open Quick Add", "Open Restocks Report", "Go to Vault"],
       category: "Other",
     });
   }
@@ -742,7 +742,7 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
     confidence: "low",
     shouldEscalate: true,
     category: "Other",
-    reason: "No local Ember Assist help topic matched.",
+    reason: "No local Business Assistant help topic matched.",
     actions: ["Send Message to Admin"],
   });
 }
@@ -782,7 +782,7 @@ export function makeEmberAssistAdminMessage({
       timestamp: now,
       deliveryMode: "local_admin_inbox",
     },
-    notes: "Submitted from Ember Assist. Admin notes stay private.",
+    notes: "Submitted from Business Assistant. Admin notes stay private.",
     status: "Submitted",
     source: "ember-assist",
     visibility: "admin_review",

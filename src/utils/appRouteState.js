@@ -1,12 +1,13 @@
 import { BETA_LOCAL_STORAGE_KEYS, safeReadBrowserJson } from "./betaDataCleanup.js";
 import { WORKSPACE_IDS } from "../config/workspaceRegistry.js";
+import { readMarketSearchRoute } from "./marketRouteState.mjs";
 
 export const APP_ROUTE_STORAGE_KEY = BETA_LOCAL_STORAGE_KEYS.routeState;
 
 export const EXCHANGE_SECTION_TABS = [
   { key: "market", label: "Market", helper: "Research and price memory" },
   { key: "harbor", label: "Harbor", helper: "Listings and offers" },
-  { key: "forge", label: "Forge", helper: "Trades and private ledger" },
+  { key: "forge", label: "Business", helper: "Trades and private ledger" },
 ];
 
 export function normalizeExchangeSection(value = "overview") {
@@ -313,14 +314,13 @@ export function loadInitialRouteState(win = typeof window !== "undefined" ? wind
   const saved = safeReadBrowserJson(win.localStorage, APP_ROUTE_STORAGE_KEY, {});
   const route = routeStateFromPath(win.location.pathname);
   const params = new URLSearchParams(win.location.search || "");
-  const marketQuery = String(params.get("q") || "").trim().slice(0, 140);
   const vaultQuery = String(params.get("vaultQ") || "").trim().slice(0, 140);
   const vaultFilter = String(params.get("filter") || "").trim();
   return {
     ...saved,
     ...route,
-    ...((route.activeTab === "market" || route.activeTab === "catalog" || (route.activeTab === "exchange" && normalizeExchangeSection(route.exchangeSection) === "market")) && marketQuery
-      ? { catalogSearch: marketQuery, submittedCatalogSearch: marketQuery }
+    ...((route.activeTab === "market" || route.activeTab === "catalog" || (route.activeTab === "exchange" && normalizeExchangeSection(route.exchangeSection) === "market"))
+      ? readMarketSearchRoute(win.location.search)
       : {}),
     ...(route.activeTab === "vault" && vaultQuery ? { vaultSearch: vaultQuery } : {}),
     ...(route.activeTab === "vault" && vaultFilter ? { vaultFilter } : {}),

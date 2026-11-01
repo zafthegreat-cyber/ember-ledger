@@ -127,11 +127,11 @@ export default function MultiDestinationContent({ scope }) {
       },
       {
         key: "forge",
-        title: "Forge",
+        title: "Business",
         helper: showForgeDestinationForThisFlow
-          ? `Business inventory in ${activeForgeWorkspace.name || "Forge"}.`
+          ? `Business inventory in ${activeForgeWorkspace.name || "Business"}.`
           : scanFoundationSourceActive
-            ? "Turn on seller tools to add scanned or searched items to Forge."
+            ? "Turn on seller tools to add scanned or searched items to Business."
             : forgeWorkspaceUnavailableMessage,
         disabled: !showForgeDestinationForThisFlow,
       },
@@ -294,7 +294,7 @@ export default function MultiDestinationContent({ scope }) {
           </div>
           <div>
             <span>Destination</span>
-            <strong>{selectedDestinationOptions.length ? selectedDestinationOptions.map((option) => option.title).join(", ") : "Choose Vault or Forge next"}</strong>
+            <strong>{selectedDestinationOptions.length ? selectedDestinationOptions.map((option) => option.title).join(", ") : "Choose Vault or Business next"}</strong>
           </div>
         </div>
         {marketAddFlowActive && selectedCatalog && multiDestinationStep !== "item" ? (
@@ -323,7 +323,7 @@ export default function MultiDestinationContent({ scope }) {
             {multiDestinationStep === "destination" ? (
               <div className="market-add-inline-destination-actions" aria-label="Market add destination choices">
                 <button type="button" className={multiDestinationForm.destinations.vault && !multiDestinationForm.destinations.forge && !multiDestinationForm.destinations.wishlist ? "active" : ""} onClick={() => applyDestinationPreset("vault")}>Add to Vault</button>
-                <button type="button" className={multiDestinationForm.destinations.forge && !multiDestinationForm.destinations.vault ? "active" : ""} disabled={!activeForgeWorkspace} onClick={() => applyDestinationPreset("forge")}>Add to Forge</button>
+                <button type="button" className={multiDestinationForm.destinations.forge && !multiDestinationForm.destinations.vault ? "active" : ""} disabled={!activeForgeWorkspace} onClick={() => applyDestinationPreset("forge")}>Add to Business</button>
                 <button type="button" className={multiDestinationForm.destinations.vault && multiDestinationForm.destinations.forge ? "active" : ""} disabled={!activeForgeWorkspace} onClick={() => applyDestinationPreset("both")}>Add to both</button>
               </div>
             ) : null}
@@ -371,7 +371,7 @@ export default function MultiDestinationContent({ scope }) {
         <section className="flow-form-section">
           <div className="add-item-step-heading">
             <h3>Select the item first</h3>
-            <p>Search Market Watch, pick a recent item, or use manual add when the product is not in the catalog yet. You will choose Vault, Forge, Wishlist, or Market Watch on the next step.</p>
+            <p>Search Market Watch, pick a recent item, or use manual add when the product is not in the catalog yet. You will choose Vault, Business, Wishlist, or Market Watch on the next step.</p>
           </div>
           <div className="flow-form-grid">
             <div className="catalog-selector-panel add-item-search-panel">
@@ -680,7 +680,7 @@ export default function MultiDestinationContent({ scope }) {
           <h3>Destinations</h3>
           <div className="quick-add-destination-helper">
             <strong>Where should this item go?</strong>
-            <span>{marketAddFlowActive ? "Review before saving. Choose the destination now, then correct quantity, owner, notes, price, and source details before submit." : "Vault is for your collection. Forge is for business inventory. Wishlist and Market Watch are optional tracking destinations."}</span>
+            <span>{marketAddFlowActive ? "Review before saving. Choose the destination now, then correct quantity, owner, notes, price, and source details before submit." : "Vault is for your collection. Business is for business inventory. Wishlist and Market Watch are optional tracking destinations."}</span>
           </div>
           {fieldError("destination") ? (
             <p className="field-error destination-field-error" role="alert" data-validation-field="destination">
@@ -695,7 +695,7 @@ export default function MultiDestinationContent({ scope }) {
           {marketAddFlowActive ? (
             <div className="market-add-destination-presets" aria-label="Common Market add destinations">
               <button type="button" className={multiDestinationForm.destinations.vault && !multiDestinationForm.destinations.forge && !multiDestinationForm.destinations.wishlist ? "active" : ""} onClick={() => applyDestinationPreset("vault")}>Add to Vault</button>
-              <button type="button" className={multiDestinationForm.destinations.forge && !multiDestinationForm.destinations.vault ? "active" : ""} disabled={!activeForgeWorkspace} onClick={() => applyDestinationPreset("forge")}>Add to Forge</button>
+              <button type="button" className={multiDestinationForm.destinations.forge && !multiDestinationForm.destinations.vault ? "active" : ""} disabled={!activeForgeWorkspace} onClick={() => applyDestinationPreset("forge")}>Add to Business</button>
               <button type="button" className={multiDestinationForm.destinations.vault && multiDestinationForm.destinations.forge ? "active" : ""} disabled={!activeForgeWorkspace} onClick={() => applyDestinationPreset("both")}>Add to both</button>
               <button type="button" className={multiDestinationForm.destinations.wishlist || multiDestinationForm.destinations.tidetradr ? "active" : ""} onClick={() => applyDestinationPreset("watch")}>Wishlist / Watch</button>
             </div>
@@ -814,10 +814,10 @@ export default function MultiDestinationContent({ scope }) {
 
         {multiDestinationForm.destinations.forge ? (
           <section className="flow-form-section destination-settings">
-            <h3>Forge Settings</h3>
+            <h3>Business Settings</h3>
             <div className="flow-form-grid">
-              {renderDestinationWorkspaceField("forge", "Forge Workspace")}
-              <Field label="Quantity for Forge" fieldId="forge-quantity" error={fieldError("forge-quantity")}>
+              {renderDestinationWorkspaceField("forge", "Business Workspace")}
+              <Field label="Quantity for Business" fieldId="forge-quantity" error={fieldError("forge-quantity")}>
                 <input aria-invalid={Boolean(fieldError("forge-quantity"))} type="number" min="1" value={multiDestinationForm.forge.quantity} onChange={(event) => updateMultiDestinationSection("forge", "quantity", event.target.value)} />
               </Field>
               <Field label="Cost Basis" fieldId="forge-unit-cost" error={fieldError("forge-unit-cost")} help={INFO_TOOLTIP_COPY.costBasis}>
@@ -864,8 +864,8 @@ export default function MultiDestinationContent({ scope }) {
                   ))}
                 </select>
               </Field>
-              <Field label="Forge Notes">
-                <textarea value={multiDestinationForm.forge.notes} onChange={(event) => updateMultiDestinationSection("forge", "notes", event.target.value)} placeholder="Business inventory notes for Forge only." />
+              <Field label="Business Notes">
+                <textarea value={multiDestinationForm.forge.notes} onChange={(event) => updateMultiDestinationSection("forge", "notes", event.target.value)} placeholder="Business inventory notes for Business only." />
               </Field>
             </div>
           </section>
@@ -925,7 +925,7 @@ export default function MultiDestinationContent({ scope }) {
         {!selectedDestinationOptions.length ? (
           <section className="flow-form-section destination-settings">
             <h3>No destination selected</h3>
-            <p className="compact-subtitle">Go back to Choose Where and select Forge, Vault, Wishlist, or Market Watch before adding details.</p>
+            <p className="compact-subtitle">Go back to Choose Where and select Business, Vault, Wishlist, or Market Watch before adding details.</p>
           </section>
         ) : null}
         </>
@@ -997,7 +997,7 @@ export default function MultiDestinationContent({ scope }) {
               </div>
               {multiDestinationForm.destinations.forge ? (
                 <div className="wizard-summary-card">
-                  <span>Forge</span>
+                  <span>Business</span>
                   <strong>Qty {multiDestinationForm.forge.quantity || 1}</strong>
                   <small>{[multiDestinationForm.forge.source, multiDestinationForm.forge.physicalLocation || DEFAULT_FORGE_PHYSICAL_LOCATION, multiDestinationForm.forge.unitCost ? `Cost ${money(Number(multiDestinationForm.forge.unitCost))}` : "", multiDestinationForm.forge.plannedSellPrice ? `List ${money(Number(multiDestinationForm.forge.plannedSellPrice))}` : ""].filter(Boolean).join(" | ") || "Business inventory draft"}</small>
                 </div>

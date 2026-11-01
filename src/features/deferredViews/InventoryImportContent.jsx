@@ -1,4 +1,6 @@
 import { PrivateStorageImage } from "../../components/PrivateReceipt.jsx";
+import { ImportCopyReview, ImportRowIssues } from "../../components/ImportCopyReview.jsx";
+import { buildRejectedImportCsv, importCopyContext, importRowIssues, importFieldId, sameImportCopy } from "../../utils/importReviewSafety.mjs";
 // Rendering is deferred; the owning App retains record state and action handlers.
 export default function InventoryImportContent({ scope }) {
   const {
@@ -22,6 +24,8 @@ export default function InventoryImportContent({ scope }) {
     createManualCatalogItemFromImport,
     defaultImportDestination,
     findImportDuplicate,
+    findImportDuplicateCandidates,
+    exportRejectedImportRows,
     getImportSourceGuide,
     handleImportFileUpload,
     importAssistantOpen,
@@ -38,6 +42,7 @@ export default function InventoryImportContent({ scope }) {
     importManualRow,
     importOptions,
     importRows,
+    importSaving,
     importSourceType,
     importText,
     removeImportRow,
@@ -61,14 +66,17 @@ export default function InventoryImportContent({ scope }) {
     if (!importAssistantOpen) return null;
     const currentGuide = getImportSourceGuide();
     const sourceOptions = IMPORT_SOURCE_GUIDES.filter((guide) => guide.mode === batchIntakeMode || guide.value === importSourceType);
-    const reviewableRows = importRows.filter((row) => row.importStatus !== "skipped" && row.destination !== "Skip");
+    const reviewableRows = importRows.filter((row) => !["skipped", "imported"].includes(row.importStatus) && row.destination !== "Skip");
+    const invalidRows = reviewableRows.filter(row => importRowIssues(row).length);
+    const rejectedCount = buildRejectedImportCsv(importRows, importLastBatchResult?.failures || []).count;
     const unresolvedRows = reviewableRows.filter((row) => row.needsReview && row.importStatus !== "reviewed");
     const duplicateCount = reviewableRows.reduce((count, row) => {
       const destinations = row.destination === "Both" ? ["Forge", "Vault"] : [row.destination || defaultImportDestination()];
       return count + (destinations.some((destination) => destination !== "Skip" && findImportDuplicate(row, destination)) ? 1 : 0);
     }, 0);
     return (
-      <section className="panel import-assistant-panel batch-intake-panel">
+      <section className="panel import-assistant-panel batch-intake-panel" aria-busy={Boolean(importSaving)}>
+        <fieldset aria-label="Import review controls" disabled={Boolean(importSaving)} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
         <div className="compact-card-header">
           <div>
             <h2>{batchIntakeMode === BATCH_INTAKE_MODES.BULK_ADD ? "Bulk Add Review" : "Import / Transfer Collection"}</h2>
@@ -276,7 +284,7 @@ export default function InventoryImportContent({ scope }) {
             </Field>
           </div>
           <div className="quick-actions">
-            <button type="button" className="secondary-button" onClick={applyImportBulkUpdates}>Apply to Review Rows</button>
+            <button type="button" className="secondary-button" onClick={() => applyImportBulkUpdates()}>Apply to Review Rows</button>
           </div>
           <div className="toggle-list">
             <label className="toggle-row">
@@ -300,10 +308,39 @@ export default function InventoryImportContent({ scope }) {
           </div>
         </div>
 
-        {importBatchMessage ? <p className="compact-subtitle">{importBatchMessage}</p> : null}
+        {importBatchMessage ? <p className="compact-subtitle" role="status">{importBatchMessage}</p> : null}
+        {invalidRows.length ? (
+          <div className="drawer-info-card" role="status">
+            <p><strong>{invalidRows.length} row{invalidRows.length === 1 ? "" : "s"} need{invalidRows.length === 1 ? "s" : ""} a fix before you confirm.</strong></p>
+            <ul className="compact-subtitle" style={{ margin: "4px 0 0 18px" }}>
+              {invalidRows.slice(0, 8).map((row) => {
+                const issue = importRowIssues(row)[0];
+                return <li key={`issue-${row.importedItemId}`}>Row {row.sourceLine || "?"}{row.itemName ? ` (${row.itemName})` : ""}: {issue?.message || "needs review"}{issue?.field === "quantity" && row.quantity ? ` You typed "${row.quantity}"; use a number like 2.` : ""}</li>;
+              })}
+              {invalidRows.length > 8 ? <li>…and {invalidRows.length - 8} more; they are highlighted below.</li> : null}
+            </ul>
+          </div>
+        ) : null}
+        {reviewableRows.length > 1 ? (
+          <div className="quick-actions" aria-label="Set a destination for every row">
+            <span className="compact-subtitle">Send every row to:</span>
+            {IMPORT_DESTINATION_OPTIONS.filter((option) => option.value !== "Skip").map((option) => (
+              <button
+                key={`all-${option.value}`}
+                type="button"
+                className="secondary-button"
+                onClick={() => { setImportBulkApply((current) => ({ ...current, destination: option.value })); applyImportBulkUpdates({ destination: option.value }); }}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {rejectedCount ? <div className="drawer-info-card"><p>The correction CSV lists only the rows that need fixing, with the problem spelled out in a "Correction needed" column. It also keeps each original source row (including columns you ignored) so you can find it in your own file. Keep it private and check the source for sensitive information before sharing. The app does not add account credentials. Amounts use the app's USD import fields.</p><button type="button" className="secondary-button" onClick={exportRejectedImportRows}>Export {rejectedCount} rejected rows for correction</button></div> : null}
         {importLastBatchResult?.failures?.length ? (
           <div className="empty-state small-empty-state">
             <h3>Partial save issue</h3>
+            <p>Completed destinations stay recorded in this review. If a save could not be confirmed, check the saved collection before retrying that row.</p>
             {importLastBatchResult.failures.map((failure) => <p key={failure.rowId}>{failure.itemName}: {failure.error}</p>)}
           </div>
         ) : null}
@@ -313,45 +350,53 @@ export default function InventoryImportContent({ scope }) {
             {importRows.map((row) => {
               const rowDestinations = row.destination === "Both" ? ["Forge", "Vault"] : [row.destination || defaultImportDestination()];
               const duplicate = rowDestinations.map((destination) => findImportDuplicate(row, destination)).find(Boolean);
+              const candidates = [...new Map(rowDestinations.flatMap(destination => findImportDuplicateCandidates(row, destination)).map(item => [item.id, item])).values()];
+              const issues = importRowIssues(row);
+              const fieldProps = field => ({ id: importFieldId(row, field), "aria-invalid": issues.some(issue => issue.field === field) || undefined });
               return (
-              <div className={`inventory-card compact-card ${row.importStatus === "skipped" ? "is-muted" : ""}`} key={row.importedItemId}>
+              <fieldset aria-label={`Review ${row.itemName || "unnamed row"}`} disabled={row.importStatus === "imported"} className={`inventory-card compact-card ${row.importStatus === "skipped" ? "is-muted" : ""}`} key={row.importedItemId}>
                 <div className="compact-card-header">
                   <div>
                     <h3>{row.itemName}</h3>
                     <p>{row.possibleMatchName ? `Match: ${row.possibleMatchName}` : "No catalog match yet"}</p>
                     <small>{row.confidenceLabel || importConfidenceLabel(row.confidenceScore)} confidence ({row.confidenceScore}%) | {row.needsReview ? "Needs Review" : "Good Match"} | {row.sourceType}</small>
-                    <small>Original: {row.originalText}</small>
+                    <small id={importFieldId(row, "originalText")} tabIndex={-1}>Original source row {row.sourceLine || "—"}: {row.originalText}</small>
                     {duplicate ? <small className="danger-text">Duplicate possible: {duplicate.name}</small> : null}
                   </div>
                   <span className="status-badge">{row.importStatus}</span>
                 </div>
+                <ImportRowIssues row={row} />
+                <ImportCopyReview row={row} candidates={candidates} />
+                {row.completedDestinations?.length ? <p>Already completed: {row.completedDestinations.join(", ")}. A retry only attempts the remaining destinations.</p> : null}
                 <div className="form import-review-grid">
                   <Field label="Item Name">
-                    <input value={row.itemName} onChange={(event) => updateImportRow(row.importedItemId, { itemName: event.target.value, importStatus: "reviewed" })} />
+                    <input {...fieldProps("itemName")} value={row.itemName} onChange={(event) => updateImportRow(row.importedItemId, { itemName: event.target.value, importStatus: "reviewed" })} />
                   </Field>
                   <Field label="Destination">
-                    <select value={row.destination} onChange={(event) => updateImportRow(row.importedItemId, { destination: event.target.value, importStatus: "reviewed" })}>
+                    <select {...fieldProps("destination")} value={row.destination} onChange={(event) => updateImportRow(row.importedItemId, { destination: event.target.value, importStatus: "reviewed" })}>
                       {IMPORT_DESTINATION_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                     </select>
                   </Field>
                   <Field label="Catalog Match">
-                    <select value={row.matchedCatalogItemId || ""} onChange={(event) => selectImportRowCatalogMatch(row.importedItemId, event.target.value)}>
+                    <select {...fieldProps("matchedCatalogItemId")} value={row.matchedCatalogItemId || ""} onChange={(event) => selectImportRowCatalogMatch(row.importedItemId, event.target.value)}>
                       <option value="">No match / add manually</option>
-                      {(row.alternateMatches || []).map((product) => <option key={product.id} value={product.id}>{catalogTitle(product)}</option>)}
+                      {(row.alternateMatches || []).map((product) => { const context = importCopyContext(product); return <option key={product.id} value={product.id}>{[catalogTitle(product), context.set, context.number, context.printing, context.language, context.condition, context.gradingCompany, context.grade].filter(Boolean).join(" · ")}</option>; })}
                     </select>
+                    {row.identityAmbiguous && !row.matchedCatalogItemId ? <button type="button" className="secondary-button" onClick={() => selectImportRowCatalogMatch(row.importedItemId, "")}>Use as manual item without a catalog match</button> : null}
                   </Field>
                   <Field label="Quantity">
-                    <input type="number" min="1" value={row.quantity} onChange={(event) => updateImportRow(row.importedItemId, { quantity: event.target.value, importStatus: "reviewed" })} />
+                    <input {...fieldProps("quantity")} inputMode="numeric" value={row.quantity} onChange={(event) => updateImportRow(row.importedItemId, { quantity: event.target.value, importStatus: "reviewed" })} />
                   </Field>
                   <Field label="Purchaser">
                     <input value={row.purchaserName || ""} onChange={(event) => updateImportRow(row.importedItemId, { purchaserName: event.target.value, importStatus: "reviewed" })} />
                   </Field>
                   <Field label="Cost Paid">
-                    <input type="number" step="0.01" value={row.costPaid} onChange={(event) => updateImportRow(row.importedItemId, { costPaid: event.target.value, importStatus: "reviewed" })} />
+                    <input {...fieldProps("costPaid")} inputMode="decimal" value={row.costPaid} onChange={(event) => updateImportRow(row.importedItemId, { costPaid: event.target.value, importStatus: "reviewed" })} />
                   </Field>
                   <Field label="Market Value">
-                    <input type="number" step="0.01" value={row.marketValue} onChange={(event) => updateImportRow(row.importedItemId, { marketValue: event.target.value, importStatus: "reviewed" })} />
+                    <input {...fieldProps("marketValue")} inputMode="decimal" value={row.marketValue} onChange={(event) => updateImportRow(row.importedItemId, { marketValue: event.target.value, importStatus: "reviewed" })} />
                   </Field>
+                  <Field label="MSRP"><input {...fieldProps("msrp")} inputMode="decimal" value={row.msrp ?? ""} onChange={event => updateImportRow(row.importedItemId, { msrp: event.target.value, importStatus: "reviewed" })} /></Field>
                   <Field label="Product Type">
                     <input value={row.productType} onChange={(event) => updateImportRow(row.importedItemId, { productType: event.target.value, importStatus: "reviewed" })} />
                   </Field>
@@ -366,11 +411,14 @@ export default function InventoryImportContent({ scope }) {
                   <Field label="Variant">
                     <input value={row.variant || ""} onChange={(event) => updateImportRow(row.importedItemId, { variant: event.target.value, importStatus: "reviewed" })} />
                   </Field>
+                  <Field label="Language"><input value={row.language || ""} onChange={event => updateImportRow(row.importedItemId, { language: event.target.value, importStatus: "reviewed" })} /></Field>
+                  <Field label="Grading company"><input value={row.gradingCompany || ""} onChange={event => updateImportRow(row.importedItemId, { gradingCompany: event.target.value, importStatus: "reviewed" })} /></Field>
+                  <Field label="Grade"><input value={row.grade || ""} onChange={event => updateImportRow(row.importedItemId, { grade: event.target.value, importStatus: "reviewed" })} /></Field>
                   <Field label="Store/source">
                     <input value={row.store || row.location || ""} onChange={(event) => updateImportRow(row.importedItemId, { store: event.target.value, location: event.target.value, importStatus: "reviewed" })} />
                   </Field>
                   <Field label="Purchase date">
-                    <input type="date" value={row.purchaseDate || ""} onChange={(event) => updateImportRow(row.importedItemId, { purchaseDate: event.target.value, importStatus: "reviewed" })} />
+                    <input {...fieldProps("purchaseDate")} placeholder="YYYY-MM-DD" value={row.purchaseDate || ""} onChange={(event) => updateImportRow(row.importedItemId, { purchaseDate: event.target.value, importStatus: "reviewed" })} />
                   </Field>
                   <Field label="UPC/SKU">
                     <input value={row.upcSku || ""} onChange={(event) => updateImportRow(row.importedItemId, { upcSku: event.target.value, importStatus: "reviewed" })} />
@@ -380,6 +428,11 @@ export default function InventoryImportContent({ scope }) {
                       {IMPORT_DUPLICATE_ACTIONS.map((action) => <option key={action.value} value={action.value}>{action.label}</option>)}
                     </select>
                   </Field>
+                  {["increase_quantity", "skip_duplicate"].includes(row.duplicateAction || importOptions.duplicateAction) ? rowDestinations.map(destination => {
+                    const matches = findImportDuplicateCandidates(row, destination).filter(item => sameImportCopy(row, item));
+                    if (matches.length < 2 || row.completedDestinations?.includes(destination)) return null;
+                    return <Field key={destination} label={`Matching item already in your ${destination === "Forge" ? "Business inventory" : destination === "Vault" ? "Collection" : destination}`}><select value={row.duplicateTargetIds?.[destination] || ""} onChange={event => updateImportRow(row.importedItemId, { duplicateTargetIds: { ...row.duplicateTargetIds, [destination]: event.target.value } })}><option value="">Choose the existing copy explicitly</option>{matches.map(item => <option key={item.id} value={item.id}>{[item.name, `Qty ${item.quantity}`, item.storageLocation || item.physicalLocation || "No storage recorded", item.notes || item.actionNotes || "No notes recorded", `ID ${item.id}`].join(" · ")}</option>)}</select></Field>;
+                  }) : null}
                   <Field label="Notes">
                     <input value={row.notes} onChange={(event) => updateImportRow(row.importedItemId, { notes: event.target.value, importStatus: "reviewed" })} />
                   </Field>
@@ -390,7 +443,7 @@ export default function InventoryImportContent({ scope }) {
                   <button type="button" className="secondary-button" onClick={() => removeImportRow(row.importedItemId)}>Remove</button>
                   <button type="button" className="secondary-button" onClick={() => createManualCatalogItemFromImport(row)}>Create Manual Catalog Item</button>
                 </div>
-              </div>
+              </fieldset>
             );})}
           </div>
         ) : (
@@ -401,9 +454,10 @@ export default function InventoryImportContent({ scope }) {
         )}
 
         <div className="quick-actions">
-          <button type="button" disabled={!importRows.length} onClick={confirmInventoryImport}>Confirm Import</button>
+          <button type="button" disabled={!reviewableRows.length || invalidRows.length > 0 || Boolean(importSaving)} onClick={confirmInventoryImport}>{importSaving ? "Saving reviewed rows…" : "Confirm Import"}</button>
           <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>Cancel</button>
         </div>
+        </fieldset>
       </section>
     );
   }

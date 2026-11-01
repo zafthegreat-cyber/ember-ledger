@@ -14,7 +14,7 @@ import {
 } from "./suggestionReviewUtils.js";
 
 export const ADMIN_STORE_PERSISTENCE_NOTE =
-  "Store admin changes use the existing local Scout/shared store data in this beta build. Cloud-backed creation would need a shared stores table with name, chain, type, city, state, region, active, reportable, partner, and review-status columns.";
+  "Store admin changes use the existing local Restocks/shared store data in this beta build. Cloud-backed creation would need a shared stores table with name, chain, type, city, state, region, active, reportable, partner, and review-status columns.";
 
 export const STORE_SUGGESTION_REVIEW_COPY =
   "Store suggestions are queued for admin review and do not become public automatically.";

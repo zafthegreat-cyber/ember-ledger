@@ -14,7 +14,7 @@ import {
   normalizeStoreExpansionFields,
 } from "./storeExpansionUtils.js";
 
-export const IN_APP_ALERT_DISCLOSURE = "In-app alerts only. Push, email, and SMS delivery are not connected yet.";
+export const IN_APP_ALERT_DISCLOSURE = "Alerts appear here in the app. Turn on device alerts to also get a notification on this device while Code 3 TCG is open or installed to your home screen. Nothing is sent while the app is fully closed, and email and SMS are not connected yet.";
 
 export const NOTIFICATION_CATEGORIES = {
   CONFIRMED_RESTOCK: "confirmed_restock",
@@ -41,7 +41,7 @@ export const NOTIFICATION_CATEGORY_LABELS = {
   [NOTIFICATION_CATEGORIES.KIDS_PROGRAM_UPDATE]: "Kids Program",
   [NOTIFICATION_CATEGORIES.ADMIN_MESSAGE_STATUS]: "Admin Message",
   [NOTIFICATION_CATEGORIES.SYSTEM_ANNOUNCEMENT]: "System Announcement",
-  [NOTIFICATION_CATEGORIES.BUSINESS_FORGE_REMINDER]: "Forge Reminder",
+  [NOTIFICATION_CATEGORIES.BUSINESS_FORGE_REMINDER]: "Business Reminder",
 };
 
 export const NOTIFICATION_PREFERENCE_ROWS = [
@@ -49,7 +49,7 @@ export const NOTIFICATION_PREFERENCE_ROWS = [
     key: "confirmed_restocks",
     category: NOTIFICATION_CATEGORIES.CONFIRMED_RESTOCK,
     label: "Confirmed restocks",
-    description: "Real Scout/admin restock reports only.",
+    description: "Real Restocks/admin restock reports only.",
   },
   {
     key: "predicted_windows",
@@ -84,13 +84,13 @@ export const NOTIFICATION_PREFERENCE_ROWS = [
   {
     key: "ember_assist_admin_replies",
     category: NOTIFICATION_CATEGORIES.ADMIN_MESSAGE_STATUS,
-    label: "Ember Assist/admin replies",
+    label: "Business Assistant/admin replies",
     description: "Status changes on questions sent to Code 3 TCG.",
   },
   {
     key: "business_forge_reminders",
     category: NOTIFICATION_CATEGORIES.BUSINESS_FORGE_REMINDER,
-    label: "Business/Forge reminders",
+    label: "Business/Business reminders",
     description: "Missing receipts and year-end record reminders.",
   },
   {
@@ -311,10 +311,10 @@ export function buildConfirmedRestockNotification(report = {}, options = {}) {
   return makeNotification({
     category: NOTIFICATION_CATEGORIES.CONFIRMED_RESTOCK,
     title: `Confirmed restock reported at ${storeName}.`,
-    message: `${productName}${retailer ? ` at ${retailer}` : ""}. This is a confirmed Scout/admin restock report.`,
+    message: `${productName}${retailer ? ` at ${retailer}` : ""}. This is a confirmed Restocks/admin restock report.`,
     priority: "high",
     route: "/scout/reports",
-    actionLabel: "Open Scout",
+    actionLabel: "Open Restocks",
     relatedStoreId: firstValue(report.storeId, report.store_id),
     relatedReportId: reportId(report),
     relatedProductId: firstValue(report.productId, report.product_id, report.catalogProductId),
@@ -380,13 +380,13 @@ export function buildScoutReportStatusNotification(report = {}, options = {}) {
   const storeName = reportStoreName(report);
   return makeNotification({
     category: NOTIFICATION_CATEGORIES.SCOUT_REPORT_STATUS,
-    title: `Scout report ${status.toLowerCase()}: ${storeName}.`,
+    title: `Restock report ${status.toLowerCase()}: ${storeName}.`,
     message: status === "Confirmed"
       ? "Admin review marked this report confirmed, so it can help Drop Radar."
       : "This report will not feed Drop Radar predictions.",
     priority: status === "Confirmed" ? "normal" : "low",
     route: "/scout/reports",
-    actionLabel: "Open Scout",
+    actionLabel: "Open Restocks",
     relatedReportId: reportId(report),
     relatedStoreId: firstValue(report.storeId, report.store_id),
     createdAt: firstValue(report.adminReviewedAt, report.updatedAt, reportTimestamp(report), options.now),
@@ -479,9 +479,9 @@ export function buildEmberAssistStatusNotification(message = {}, options = {}) {
   if (status === "New") return null;
   return makeNotification({
     category: NOTIFICATION_CATEGORIES.ADMIN_MESSAGE_STATUS,
-    title: `Ember Assist message ${status.toLowerCase()}.`,
+    title: `Business Assistant message ${status.toLowerCase()}.`,
     message: status === "Resolved"
-      ? "An admin marked your question resolved. Open Ember Assist or Help if you still need support."
+      ? "An admin marked your question resolved. Open Business Assistant or Help if you still need support."
       : "Your question sent to Code 3 TCG has a new review status.",
     priority: status === "Resolved" ? "normal" : "low",
     route: firstValue(message.submittedData?.route, message.route, "/settings"),

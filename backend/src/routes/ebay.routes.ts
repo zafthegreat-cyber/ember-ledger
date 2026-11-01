@@ -6,6 +6,9 @@ import {
   searchEbayListings,
 } from "../services/ebayBrowse.service";
 import { ownerSecurity } from "../auth/ownerAuthorization";
+import { createPostgresDeletionStore } from "../ebayDeletion/service";
+import { createOwnerRateLimit } from "../code3/rateLimit";
+import { createSoldCompsRouter } from "./soldComps.routes";
 
 type OwnerMiddleware = typeof ownerSecurity.requireOwner;
 
@@ -30,6 +33,21 @@ function sendEbayError(res: Response, error: unknown) {
 export function createEbayRouter(requireOwner: OwnerMiddleware = ownerSecurity.requireOwner) {
   const router = Router();
   router.use(requireOwner);
+  router.use("/sold", createSoldCompsRouter());
+
+  // Private device reconciliation. The public webhook never serves this data.
+  router.post("/deletion/sanitize", createOwnerRateLimit({ maximumRequests: 20 }), async (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    try {
+      const data = req.body?.data;
+      if (!data || typeof data !== "object" || Array.isArray(data) || Buffer.byteLength(JSON.stringify(data)) > 3_000_000) {
+        return res.status(400).json({ ok: false, error: { code: "ebay_deletion_invalid_snapshot" } });
+      }
+      return res.json({ ok: true, data: await createPostgresDeletionStore().sanitize(data) });
+    } catch {
+      return res.status(503).json({ ok: false, error: { code: "ebay_deletion_unavailable", message: "eBay privacy cleanup is unavailable. Try again when connected." } });
+    } finally { req.body = undefined; }
+  });
 
   router.get("/health", async (req, res) => {
     try {
@@ -54,7 +72,7 @@ export function createEbayRouter(requireOwner: OwnerMiddleware = ownerSecurity.r
       }
       const result = await searchEbayListings(req.body || {}, configuration.config);
       res.setHeader("Cache-Control", "no-store");
-      return res.json(result);
+      return res.json(process.env.EBAY_DELETION_ENABLED === "true" ? await createPostgresDeletionStore().sanitize(result) : result);
     } catch (error) {
       return sendEbayError(res, error);
     }

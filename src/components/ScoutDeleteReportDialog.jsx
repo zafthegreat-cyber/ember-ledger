@@ -79,7 +79,7 @@ export default function ScoutDeleteReportDialog({ storeName, onCancel, onConfirm
       >
         <header className="scout-delete-report-dialog__header">
           <div>
-            <p>Delete Scout report</p>
+            <p>Delete restock report</p>
             <h2 id="scout-page-delete-title">Delete this report?</h2>
           </div>
           <button type="button" className="scout-delete-report-dialog__close" aria-label="Close delete confirmation" onClick={onCancel}>

@@ -1,3 +1,5 @@
+import { catalogCardQueryMatchesRow } from "../utils/catalogResultIdentity.mjs";
+
 const STOP_WORDS = new Set(["the", "and", "of", "pokemon", "tcg"]);
 
 export function normalizeSearchQuery(value = "") {
@@ -7,7 +9,7 @@ export function normalizeSearchQuery(value = "") {
     .replace(/pok(?:e|Ã©|é)mon/gi, "pokemon")
     .replace(/&/g, " and ")
     .replace(/[’']/g, "")
-    .replace(/[+_:/\\|]/g, " ")
+    .replace(/[+_:\\|]/g, " ")
     .replace(/[\u2010-\u2015]/g, "-")
     .replace(/-/g, " ")
     .replace(/[.,%()[\]{}"!?]/g, " ")
@@ -437,6 +439,7 @@ function textIncludes(text, needle) {
 }
 
 export function scoreCatalogSearchRow(row = {}, analysis = analyzeCatalogSearch(""), exactTerm = "") {
+  if (!catalogCardQueryMatchesRow(exactTerm || analysis.normalized, row)) return { score: 0, reasons: ["different card identity"] };
   const rowText = normalizeRowText(row);
   const exact = normalizeSearchQuery(exactTerm || analysis.normalized);
   let score = 0;

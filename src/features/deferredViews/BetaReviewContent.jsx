@@ -111,7 +111,7 @@ export default function BetaReviewContent({ scope }) {
             <div className="compact-card-header">
               <div>
                 <h3>User Management</h3>
-                <p>Admin-only profile access queue. Approvals update real backend beta fields; private Vault/Forge data is not exposed here.</p>
+                <p>Admin-only profile access queue. Approvals update real backend beta fields; private Vault/Business data is not exposed here.</p>
               </div>
               <input value={userManagementSearch} onChange={(event) => setUserManagementSearch(event.target.value)} placeholder="Search name or email" />
             </div>
@@ -438,9 +438,9 @@ export default function BetaReviewContent({ scope }) {
                     <DetailItem label="Source" value={receipt.source || "manual"} />
                     <DetailItem label="Workspace" value={receipt.workspaceId || receipt.workspace_id || "Personal"} />
                   </div>
-                  <p className="compact-subtitle">Receipt images and raw OCR are not shown in this summary. Open Forge receipt review before changing records.</p>
+                  <p className="compact-subtitle">Receipt images and raw OCR are not shown in this summary. Open Business receipt review before changing records.</p>
                   <div className="quick-actions">
-                    <button type="button" className="secondary-button" onClick={() => { setActiveTab("expenses"); setForgeSubTab("expenses"); }}>Open Forge Expenses</button>
+                    <button type="button" className="secondary-button" onClick={() => { setActiveTab("expenses"); setForgeSubTab("expenses"); }}>Open Business Expenses</button>
                   </div>
                 </article>
               )) : (

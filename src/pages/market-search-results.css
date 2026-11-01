@@ -1,0 +1,22 @@
+.market-result-navigation { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-block: 14px; min-width: 0; }
+.market-result-navigation p { flex-basis: 100%; margin: 0; color: var(--text-secondary); overflow-wrap: anywhere; }
+.market-result-navigation button { min-height: 44px; white-space: normal; }
+.market-result-navigation button:focus-visible { outline: 3px solid var(--focus-ring, #247080); outline-offset: 3px; }
+
+.market-command-only-route .market-v4-result-row {
+  grid-template-columns: 56px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  padding: 14px;
+}
+.market-command-only-route .market-v4-result-row > div { min-width: 0; }
+.market-command-only-route .market-v4-result-row > div:nth-child(2) { grid-column: 2; grid-row: 1; }
+.market-command-only-route .market-v4-result-row .market-v4-thumb { grid-column: 1; grid-row: 1 / span 2; }
+.market-command-only-route .market-v4-result-row .market-v4-result-value { grid-column: 2; grid-row: 2; }
+.market-command-only-route .market-v4-result-row .market-v4-result-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
+.market-command-only-route .market-v4-result-row :is(strong, small, span) { overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; line-height: 1.45; }
+.market-command-only-route .market-v4-result-row strong { font-size: 16px; }
+.market-command-only-route .market-v4-result-row small { font-size: 13px; }
+.market-command-only-route .market-v4-result-row span { font-size: 12px; }
+.market-command-only-route .market-v4-result-value b { display: block; margin-bottom: 4px; font-size: 19px; }
+.market-command-only-route .market-v4-result-actions button { min-height: 44px; }

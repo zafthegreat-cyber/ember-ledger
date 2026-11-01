@@ -18,9 +18,13 @@ import MigrationReadinessPanel from "./MigrationReadinessPanel.jsx";
 import AccountOpsRecoveryPanel from "./AccountOpsRecoveryPanel.jsx";
 import { createPrivateFileClient } from "../privateFiles/privateFileClient.js";
 import BackupReviewFindings from "./BackupReviewFindings.jsx";
+import RestoreReviewSummary from "./RestoreReviewSummary.jsx";
+import ExportDisclosure from "../../components/ExportDisclosure.jsx";
 import { createBackupReviewReport, displayReviewValue, downloadBackupReviewReport, RESTORE_FINDING_GROUPS } from "./reviewPresentation.js";
 import { exportFile, exportFileStatus, exportFileError } from "../../native/nativeFiles.js";
 import { useCloudWorkspace } from "../persistence/CloudWorkspaceContext.js";
+
+const CURRENT_APP_VERSION = typeof __EMBER_TIDE_APP_VERSION__ === "undefined" ? "unknown" : __EMBER_TIDE_APP_VERSION__;
 
 function statusTone(status) {
   if (status === BACKUP_COVERAGE.COMPLETE || status === "READY_FOR_FUTURE_RESTORE") return "success";
@@ -89,7 +93,7 @@ function BackupRecoveryContent({ localDevelopment }) {
       const result = await createVerifiedBackup({
         localStorage: globalThis.localStorage,
         sessionStorage: globalThis.sessionStorage,
-        applicationVersion: typeof __EMBER_TIDE_APP_VERSION__ === "undefined" ? "unknown" : __EMBER_TIDE_APP_VERSION__,
+        applicationVersion: CURRENT_APP_VERSION,
         sourceCommit: "not supplied to browser build",
         configuredSourceIds: isSupabaseConfigured ? ["supabase-owner-data"] : [],
         remoteExportResult,
@@ -98,9 +102,9 @@ function BackupRecoveryContent({ localDevelopment }) {
       setExportResult(result);
       recordActivity(result.activity);
       if (!result.verified) {
-        setMessage(result.integrityVerified
+        setMessage(result.verificationSummary || (result.integrityVerified
           ? "Backup coverage failed. No verified backup download was produced."
-          : "Backup verification failed. No success claim or download was produced.");
+          : "Backup verification failed. No success claim or download was produced."));
         return;
       }
       const saved = await downloadJson(result.fileName, result.json, () => assertExportCurrent(request));
@@ -155,7 +159,7 @@ function BackupRecoveryContent({ localDevelopment }) {
         localStorage: globalThis.localStorage,
         sessionStorage: globalThis.sessionStorage,
       });
-      const result = await previewBackupRestore(raw, { currentSources: currentSnapshot.sources });
+      const result = await previewBackupRestore(raw, { currentSources: currentSnapshot.sources, currentApplicationVersion: CURRENT_APP_VERSION });
       if (request !== lifetime.current) return;
       if (currentSnapshot.warnings.length) {
         result.warnings = [...(result.warnings || []), ...currentSnapshot.warnings.map((warning) => warning.message)];
@@ -186,14 +190,15 @@ function BackupRecoveryContent({ localDevelopment }) {
   return (
     <section className="backup-recovery" aria-labelledby="backup-recovery-title">
       <header className="backup-recovery__header">
-        <div><h2 id="backup-recovery-title">Data &amp; Backup</h2><p>Create an integrity-checked JSON backup or inspect a backup without writing any records.</p></div>
+        <div><h2 id="backup-recovery-title">Data &amp; Backup</h2><p>Create an integrity-checked JSON backup or inspect a backup without writing any records.</p><p className="compact-subtitle">A complete backup is two files: the record backup (this button) and the private files export further down (photos, receipts). Do both and keep them together.</p></div>
         <StatusBadge tone="warning">Owner Only</StatusBadge>
       </header>
       <div className="backup-actions">
-        <PrimaryButton onClick={exportBackup} disabled={Boolean(busy)}>{busy === "export" ? "Verifying…" : "Export verified backup"}</PrimaryButton>
+        <PrimaryButton onClick={exportBackup} disabled={Boolean(busy)} aria-describedby="verified-backup-export-disclosure">{busy === "export" ? "Verifying…" : "Export verified backup"}</PrimaryButton>
         <SecondaryButton ref={previewTriggerRef} onClick={() => inputRef.current?.click()} disabled={Boolean(busy)}>{busy === "preview" ? "Inspecting…" : "Preview restore"}</SecondaryButton>
         <input ref={inputRef} hidden tabIndex={-1} type="file" accept="application/json,.json" onChange={previewFile} aria-label="Select a Code 3 JSON backup for restore preview" disabled={Boolean(busy)} />
       </div>
+      <ExportDisclosure id="verified-backup-export-disclosure" kind="verified-backup" format="json" />
       <p className="backup-no-write"><strong>No data will be changed during restore preview.</strong> JSON files stay in this browser and are not uploaded.</p>
       {message ? <p className="backup-message" role="status">{message}</p> : null}
 
@@ -224,6 +229,9 @@ function BackupRecoveryContent({ localDevelopment }) {
         <StatusRow label="Matching records" value={preview.matchingRecords ?? 0} />
         <StatusRow label="Potential updates" value={preview.potentialUpdates ?? 0} />
         <StatusRow label="Writes performed" value={preview.writesPerformed ?? 0} />
+        {preview.compatibility ? <details open={preview.compatibility.status !== "COMPATIBLE"} className="backup-review-findings"><summary>Compatibility and dry-run summary</summary><div className="backup-details">
+          <RestoreReviewSummary compatibility={preview.compatibility} dryRun={preview.dryRun || null} headingLevel="h4" idPrefix="preview-review" />
+        </div></details> : null}
         <details open={(preview.errors || []).length > 0}><summary>Validation details</summary><div className="backup-details">
           <details><summary>Source coverage</summary><div className="backup-details">
           {Array.isArray(preview.includedSources) && preview.includedSources.length ? <ul>{preview.includedSources.map((source, index) => <li key={index}><strong>{displayReviewValue(source?.displayName, displayReviewValue(source?.sourceId))}</strong>: {displayReviewValue((typeof source?.sourceId === "string" ? preview.recordCounts?.[source.sourceId] : undefined) ?? source?.recordCount ?? 0)} records</li>)}</ul> : <p>No registered sources were included.</p>}
@@ -243,7 +251,7 @@ function BackupRecoveryContent({ localDevelopment }) {
       {activity.length ? <details className="backup-activity"><summary>Session activity</summary><ul>{activity.map((entry, index) => <li key={`${entry?.type}-${index}`}>{entry?.type === "BACKUP_EXPORT_COMPLETED" ? "Export completed" : "Restore preview completed"}: {entry?.coverageStatus || entry?.result || "Recorded"}</li>)}</ul><p>Activity is kept in memory only so preview remains zero-write.</p></details> : null}
       <MigrationReadinessPanel remoteAdapter={remoteAdapter} />
       <AccountOpsRecoveryPanel />
-      <section className="backup-result" aria-label="Private file backup"><h3>Private files</h3><p>Export verified attachment bytes separately from the record backup. Missing or damaged files prevent a successful file backup.</p><SecondaryButton disabled={Boolean(busy)} onClick={exportFiles}>{busy === "files" ? "Verifying files…" : "Export private files"}</SecondaryButton></section>
+      <section className="backup-result" aria-label="Private file backup"><h3>Private files (step 2 of a complete backup)</h3><p>Photos and receipts are not inside the record backup; export them here as the second file. Missing or damaged files prevent a successful file backup.</p><SecondaryButton disabled={Boolean(busy)} aria-describedby="private-files-export-disclosure" onClick={exportFiles}>{busy === "files" ? "Verifying files…" : "Export private files"}</SecondaryButton><ExportDisclosure id="private-files-export-disclosure" kind="private-files-backup" format="json" /></section>
     </section>
   );
 }

@@ -15,7 +15,7 @@ import { hasConfirmedScoutReportStatus } from "./scoutReportVerification.mjs";
 export const SCOUT_REPUTATION_LEVELS = [
   {
     key: "new_scout",
-    label: "New Scout",
+    label: "New Reporter",
     minScoutPoints: 0,
     minConfirmedReports: 0,
     canSubmitCommunityGuesses: false,
@@ -23,7 +23,7 @@ export const SCOUT_REPUTATION_LEVELS = [
   },
   {
     key: "active_scout",
-    label: "Active Scout",
+    label: "Active Reporter",
     minScoutPoints: 10,
     minConfirmedReports: 1,
     canSubmitCommunityGuesses: false,
@@ -31,7 +31,7 @@ export const SCOUT_REPUTATION_LEVELS = [
   },
   {
     key: "trusted_scout",
-    label: "Trusted Scout",
+    label: "Trusted Reporter",
     minScoutPoints: MIN_SCOUT_POINTS_FOR_GUESS,
     minConfirmedReports: 3,
     canSubmitCommunityGuesses: true,
@@ -39,7 +39,7 @@ export const SCOUT_REPUTATION_LEVELS = [
   },
   {
     key: "veteran_scout",
-    label: "Veteran Scout",
+    label: "Veteran Restocks",
     minScoutPoints: 75,
     minConfirmedReports: 12,
     canSubmitCommunityGuesses: true,
@@ -51,21 +51,21 @@ export const SCOUT_REPUTATION_LEVELS = [
     minScoutPoints: 150,
     minConfirmedReports: 25,
     canSubmitCommunityGuesses: true,
-    description: "A high-trust helper for fair collecting and local Scout quality.",
+    description: "A high-trust helper for fair collecting and local Restocks quality.",
   },
 ];
 
 export const COMMUNITY_TRUST_BADGES = {
   OFFICIAL_ADMIN: { key: "official_admin", label: "Official Admin", tone: "official" },
   TEAM: { key: "team", label: "Founder / Code 3 TCG Team", tone: "official" },
-  VERIFIED_SCOUT: { key: "verified_scout", label: "Verified Scout", tone: "success" },
+  VERIFIED_SCOUT: { key: "verified_scout", label: "Verified Restocks", tone: "success" },
   TRUSTED_REPORTER: { key: "trusted_reporter", label: "Trusted Reporter", tone: "tide" },
   HELPFUL_PARENT: { key: "helpful_parent", label: "Helpful Parent", tone: "gold" },
   KID_FRIENDLY_SUPPORTER: { key: "kid_friendly_supporter", label: "Kid-Friendly Supporter", tone: "gold" },
   FAMILY_FRIENDLY_SHOP: { key: "family_friendly_shop", label: "Family-Friendly Shop", tone: "gold" },
   LOCAL_SHOP_PARTNER: { key: "local_shop_partner", label: "Local Shop Partner", tone: "ember" },
   TOP_CONTRIBUTOR: { key: "top_contributor", label: "Top Contributor", tone: "ember" },
-  NEW_SCOUT: { key: "new_scout", label: "New Scout", tone: "muted" },
+  NEW_SCOUT: { key: "new_scout", label: "New Reporter", tone: "muted" },
   MARKETPLACE_SELLER: { key: "marketplace_seller", label: "Marketplace Seller", tone: "tide" },
 };
 
@@ -271,6 +271,6 @@ export function buildPublicCommunityProfile(profile = {}, context = {}) {
     guessThreshold: MIN_SCOUT_POINTS_FOR_GUESS,
     publicBio: safeBio,
     isOfficialAdminIdentity: Boolean(identity.isOfficialAdminIdentity || officialUsername(profile)),
-    contributionLine: `${summary.confirmedReports} confirmed report${summary.confirmedReports === 1 ? "" : "s"} | ${summary.communityGuesses} community guess${summary.communityGuesses === 1 ? "" : "es"} | ${summary.scoutPoints} Scout points`,
+    contributionLine: `${summary.confirmedReports} confirmed report${summary.confirmedReports === 1 ? "" : "s"} | ${summary.communityGuesses} community guess${summary.communityGuesses === 1 ? "" : "es"} | ${summary.scoutPoints} Restock points`,
   };
 }

@@ -247,7 +247,21 @@ export function groupMileageByVehicle(trips = [], vehicles = [], options = {}) {
   })).sort((a, b) => String(b.lastTripDate).localeCompare(String(a.lastTripDate)) || a.vehicleName.localeCompare(b.vehicleName));
 }
 
-export function buildMileageExportRows(vehicleGroups = []) {
+// #33-#35: exports can leave people's names and free-text notes out. The
+// default keeps them (bookkeeping needs them); the UI offers the switch.
+const PRIVATE_SALE_FIELDS = ["buyerName", "buyer_name", "customerName", "customer_name", "buyerEmail", "buyer_email", "buyerPhone", "buyer_phone", "shippingAddress", "shipping_address", "notes", "sellerNotes", "internalNotes"];
+
+export function stripPrivateSaleFields(sale = {}) {
+  const copy = { ...sale };
+  PRIVATE_SALE_FIELDS.forEach((field) => { if (field in copy) copy[field] = ""; });
+  return copy;
+}
+
+export function stripPrivateTripFields(trip = {}) {
+  return { ...trip, driver: "", notes: "" };
+}
+
+export function buildMileageExportRows(vehicleGroups = [], { includePrivateFields = true } = {}) {
   const rows = [];
   vehicleGroups.forEach((group) => {
     rows.push({
@@ -284,7 +298,9 @@ export function buildMileageExportRows(vehicleGroups = []) {
         tripCount: 1,
         totalVehicleCost: toNumber(trip.totalVehicleCost || trip.total_vehicle_cost),
         mileageValue: toNumber(trip.mileageValue || trip.mileage_value),
-        notes: cleanText([trip.purpose, trip.driver, trip.notes].filter(Boolean).join(" | ")),
+        notes: includePrivateFields
+          ? cleanText([trip.purpose, trip.driver, trip.notes].filter(Boolean).join(" | "))
+          : cleanText(normalizeMileagePurpose(trip.purpose || trip.category || "")),
       });
     });
   });
@@ -302,6 +318,70 @@ export const SALES_PLATFORM_OPTIONS = [
   "Code 3 TCG",
   "Other",
 ];
+
+// A59 (2026-10-31): sales channel profiles. Typical fee shapes per channel so a
+// new sale is pre-filled instead of typed from scratch. These are estimates
+// from the channels' published seller fees and are always editable; the exact
+// fee is whatever the payout statement says.
+export const SALES_CHANNEL_DEFAULTS = {
+  "Whatnot": { feePercent: 0.08, processingPercent: 0.029, processingFixed: 0.30, shipsItems: true, note: "Whatnot takes about 8% plus payment processing; shipping labels are bought through the app." },
+  "eBay": { feePercent: 0.1325, processingPercent: 0, processingFixed: 0.30, shipsItems: true, note: "eBay's final value fee for trading cards is about 13.25% of the total plus $0.30 per order (managed payments included)." },
+  "TCGplayer": { feePercent: 0.1075, processingPercent: 0.025, processingFixed: 0.30, shipsItems: true, note: "TCGplayer charges about 10.75% commission plus 2.5% + $0.30 processing; Direct orders differ." },
+  "Facebook Marketplace": { feePercent: 0.05, processingPercent: 0, processingFixed: 0, shipsItems: true, note: "Facebook charges a selling fee on shipped checkout orders; local cash sales have no fee." },
+  "Instagram": { feePercent: 0, processingPercent: 0.029, processingFixed: 0.30, shipsItems: true, note: "No platform fee; payment-app processing applies if you invoice." },
+  "In-person": { feePercent: 0, processingPercent: 0, processingFixed: 0, shipsItems: false, note: "Cash or card at the table; card readers add their own processing." },
+  "Local card show/event": { feePercent: 0, processingPercent: 0, processingFixed: 0, shipsItems: false, note: "Table fees belong in Expenses, not on each sale." },
+  "Code 3 TCG": { feePercent: 0, processingPercent: 0, processingFixed: 0, shipsItems: true, note: "No platform fee during beta." },
+  "Other": { feePercent: 0, processingPercent: 0, processingFixed: 0, shipsItems: true, note: "" },
+};
+
+export function getSalesChannelDefaults(platform = "") {
+  return SALES_CHANNEL_DEFAULTS[normalizeSalesPlatform(platform)] || SALES_CHANNEL_DEFAULTS.Other;
+}
+
+/** Fee estimate for a channel: {platformFees, paymentProcessingFees, note}. */
+export function estimateChannelFees(platform = "", grossSale = 0) {
+  const defaults = getSalesChannelDefaults(platform);
+  const gross = Math.max(0, toNumber(grossSale, 0));
+  const round = (value) => Math.round(value * 100) / 100;
+  return {
+    platformFees: round(gross * defaults.feePercent + (defaults.processingPercent ? 0 : defaults.processingFixed)),
+    paymentProcessingFees: round(defaults.processingPercent ? gross * defaults.processingPercent + defaults.processingFixed : 0),
+    note: defaults.note,
+    shipsItems: defaults.shipsItems,
+  };
+}
+
+// A57/A58: shipping and return tracking on a sale record.
+export const SHIP_STATUS_OPTIONS = ["Not shipped", "Label bought", "Shipped", "Delivered", "Local pickup", "Not applicable"];
+export const SALE_STATUS_OPTIONS = ["Completed", "Payment pending", "Partially refunded", "Returned", "Cancelled"];
+
+export function normalizeShipStatus(value = "") {
+  const text = cleanText(value);
+  return SHIP_STATUS_OPTIONS.find((option) => option.toLowerCase() === text.toLowerCase()) || (text ? titleCase(text) : "Not shipped");
+}
+
+export function normalizeSaleStatus(value = "") {
+  const text = cleanText(value);
+  return SALE_STATUS_OPTIONS.find((option) => option.toLowerCase() === text.toLowerCase()) || (text ? titleCase(text) : "Completed");
+}
+
+/** Build the return/refund correction for a sale: keeps the original amounts and records what came back. */
+export function applySaleReturn(sale = {}, { refundAmount = 0, quantityReturned = 0, returnDate = "", reason = "" } = {}) {
+  const refund = Math.max(0, toNumber(refundAmount, 0));
+  const gross = toNumber(sale.grossSale ?? sale.gross_sale, 0);
+  const full = refund >= gross - 0.005 || toNumber(quantityReturned, 0) >= toNumber(sale.quantitySold ?? sale.quantity_sold, 1);
+  return {
+    ...sale,
+    saleStatus: full ? "Returned" : "Partially refunded",
+    discountsRefunds: Math.max(0, toNumber(sale.discountsRefunds ?? sale.discounts_refunds, 0) + refund),
+    returnDate: cleanText(returnDate) || new Date().toISOString().slice(0, 10),
+    returnReason: cleanText(reason),
+    quantityReturned: Math.max(0, toNumber(quantityReturned, 0)),
+    originalGrossSale: toNumber(sale.originalGrossSale, 0) || gross,
+    updatedAt: new Date().toISOString(),
+  };
+}
 
 const SALES_PLATFORM_RULES = [
   { label: "Whatnot", pattern: /^what\s*not\b|^whatnot\b/ },
@@ -397,14 +477,35 @@ export function validateManualSaleDraft(form = {}, options = {}) {
   const itemName = cleanText(form.manualItemName || form.itemName || linkedItem.name || "");
   const hasLinkedItem = Boolean(form.itemId || form.item_id || linkedItem.id);
   const totals = calculateSalesRecordTotals(form, linkedItem);
-  if (!hasLinkedItem && !itemName) errors.itemName = "Enter an item name or choose Forge inventory.";
+  if (!hasLinkedItem && !itemName) errors.itemName = "Enter an item name or choose Business inventory.";
   if (totals.quantitySold <= 0) errors.quantitySold = "Quantity sold must be greater than zero.";
   if (totals.grossSale <= 0) errors.grossSale = "Enter a sale amount greater than zero.";
   ["shippingCharged", "platformFees", "paymentProcessingFees", "shippingCost", "suppliesCost", "discountsRefunds", "costBasis"].forEach((field) => {
     if (toNumber(form[field], 0) < 0) errors[field] = "Use zero or a positive amount.";
   });
   if (!cleanText(form.platform)) errors.platform = "Choose a sales channel.";
+  // #36/#37: a sale needs a real date, otherwise it cannot be placed in a tax
+  // year and used to show up in every year's report.
+  const saleDateError = validateSaleDate(form.saleDate ?? form.sale_date ?? form.date ?? form.soldAt ?? form.sold_at, options);
+  if (saleDateError) errors.saleDate = saleDateError;
   return { valid: Object.keys(errors).length === 0, errors, totals };
+}
+
+export function validateSaleDate(value, { now = new Date(), required = true } = {}) {
+  const text = cleanText(value);
+  if (!text) return required ? "Enter the sale date so it lands in the right year's report." : "";
+  const date = new Date(text.includes("T") ? text : `${text}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return "Enter a valid sale date (YYYY-MM-DD).";
+  const today = new Date(now);
+  today.setHours(23, 59, 59, 999);
+  if (date.getTime() > today.getTime() + 24 * 60 * 60 * 1000) return "Sale date cannot be in the future.";
+  if (date.getFullYear() < 2000) return "Sale date looks wrong; check the year.";
+  return "";
+}
+
+/** Sales with no usable date: reported separately instead of in every year. */
+export function undatedSales(sales = []) {
+  return (Array.isArray(sales) ? sales : []).filter((sale) => !recordDateValue(sale));
 }
 
 export function normalizeSalesRecord(row = {}, linkedItem = {}) {
@@ -440,6 +541,15 @@ export function normalizeSalesRecord(row = {}, linkedItem = {}) {
     receiptImage: row.receiptImage || row.receipt_image || row.receiptImageUrl || row.receipt_image_url || row.referenceImage || row.reference_image || "",
     receiptImageUrl: row.receiptImageUrl || row.receipt_image_url || row.receiptImage || row.receipt_image || row.referenceImage || row.reference_image || "",
     referenceId: row.referenceId || row.reference_id || row.orderId || row.order_id || row.transactionId || row.transaction_id || "",
+    shipCarrier: cleanText(row.shipCarrier || row.ship_carrier || row.carrier || ""),
+    trackingNumber: cleanText(row.trackingNumber || row.tracking_number || row.tracking || ""),
+    shipStatus: normalizeShipStatus(row.shipStatus || row.ship_status || ""),
+    shippedAt: row.shippedAt || row.shipped_at || "",
+    saleStatus: normalizeSaleStatus(row.saleStatus || row.sale_status || ""),
+    returnDate: row.returnDate || row.return_date || "",
+    returnReason: cleanText(row.returnReason || row.return_reason || ""),
+    quantityReturned: Math.max(0, toNumber(row.quantityReturned ?? row.quantity_returned, 0)),
+    originalGrossSale: toNumber(row.originalGrossSale ?? row.original_gross_sale, 0),
     workspaceId: row.workspaceId || row.workspace_id || "",
     workspace_id: row.workspace_id || row.workspaceId || "",
     workspaceName: row.workspaceName || row.workspace_name || "",
@@ -483,7 +593,7 @@ export function summarizeSalesRecords(sales = [], options = {}) {
   const selectedYear = options.year ? String(options.year) : "";
   const normalized = sales
     .map((sale) => normalizeSalesRecord(sale))
-    .filter((sale) => !selectedYear || !recordDateValue(sale) || recordYear(sale) === selectedYear);
+    .filter((sale) => !selectedYear || recordYear(sale) === selectedYear);
   const byPlatform = {};
   const byMonth = {};
   normalized.forEach((sale) => {
@@ -738,9 +848,9 @@ export function buildSalesReviewView(sales = [], options = {}) {
   };
 }
 
-export function buildSalesExportRows(sales = []) {
+export function buildSalesExportRows(sales = [], { includePrivateFields = true } = {}) {
   return sales.map((sale) => {
-    const normalized = normalizeSalesRecord(sale);
+    const normalized = normalizeSalesRecord(includePrivateFields ? sale : stripPrivateSaleFields(sale));
     return {
       section: "Sale record",
       date: normalized.saleDate,
@@ -758,7 +868,10 @@ export function buildSalesExportRows(sales = []) {
       costBasis: normalized.costBasis,
       estimatedProfitLoss: normalized.estimatedProfitLoss,
       receiptOrReference: saleHasReference(normalized) ? "Attached/reference present" : "Missing",
-      notes: normalized.notes,
+      saleStatus: normalized.saleStatus,
+      shipStatus: normalized.shipStatus,
+      returnDate: normalized.returnDate,
+      notes: includePrivateFields ? normalized.notes : "",
     };
   });
 }
@@ -784,7 +897,10 @@ export function buildYearEndTaxSummary({ year, expenses = [], mileageTrips = [],
   const yearlyExpenses = expenses.filter((expense) => recordYear(expense) === selectedYear);
   const yearlyMileageTrips = mileageTrips.filter((trip) => recordYear(trip) === selectedYear);
   const yearlyInventoryItems = inventoryItems.filter((item) => !recordDateValue(item) || recordYear(item) === selectedYear);
-  const yearlySales = sales.filter((sale) => !recordDateValue(sale) || recordYear(sale) === selectedYear);
+  // Undated sales are listed separately (undatedSaleCount) rather than counted
+  // in every year's totals.
+  const yearlySales = sales.filter((sale) => recordYear(sale) === selectedYear);
+  const undatedSaleRows = undatedSales(sales);
   const salesSummary = summarizeSalesRecords(yearlySales, { year: selectedYear });
   const expenseGroups = groupExpensesByVendor(yearlyExpenses);
   const mileageGroups = groupMileageByVehicle(yearlyMileageTrips, vehicles, { year: selectedYear });
@@ -802,6 +918,11 @@ export function buildYearEndTaxSummary({ year, expenses = [], mileageTrips = [],
     year: selectedYear,
     generatedAt: new Date().toISOString(),
     disclaimer: "Tax records summary for review with your tax professional. Code 3 TCG does not provide tax advice.",
+    undatedSaleCount: undatedSaleRows.length,
+    undatedSaleIds: undatedSaleRows.map((sale) => sale.id || "").filter(Boolean),
+    undatedSaleNote: undatedSaleRows.length
+      ? `${undatedSaleRows.length} sale${undatedSaleRows.length === 1 ? " has" : "s have"} no date and ${undatedSaleRows.length === 1 ? "is" : "are"} left out of every year's totals until you add one.`
+      : "",
     expenses: {
       total: expenseTotal,
       count: yearlyExpenses.length,

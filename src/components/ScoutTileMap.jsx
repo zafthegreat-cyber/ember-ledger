@@ -141,7 +141,7 @@ function normalizeRows(rows = []) {
   return rows.map((row, index) => {
     const coordinates = getRowCoordinates(row) || inferAreaCoordinates(row, index);
     const store = row.store || row.profile?.store || {};
-    const name = row.name || row.profile?.name || store.nickname || store.name || store.storeName || "Scout store";
+    const name = row.name || row.profile?.name || store.nickname || store.name || store.storeName || "Watched store";
     const retailer = row.retailer || store.retailer || store.chain || row.profile?.retailer || "Store";
     return {
       ...row,
@@ -160,9 +160,9 @@ export default function ScoutTileMap({
   rows = [],
   className = "",
   compact = false,
-  label = "Local Scout map",
+  label = "Local restock map",
   mapLabel = "Local map",
-  emptyTitle = "No mapped Scout stores yet",
+  emptyTitle = "No mapped watched stores yet",
   emptyDetail = "Add store coordinates to plot real map pins.",
   maxPins = 12,
   interactive = false,

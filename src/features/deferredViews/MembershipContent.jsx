@@ -1,3 +1,6 @@
+import StripeSandboxBilling from "../../components/StripeSandboxBilling.jsx";
+import { isNativePlatform } from "../../native/nativeRuntime.js";
+
 // Rendering is deferred; the owning App retains record state and action handlers.
 export default function MembershipContent({ scope }) {
   const {
@@ -59,21 +62,21 @@ export default function MembershipContent({ scope }) {
       },
       {
         title: "Trade review",
-        detail: "Basic trade analyzer, deck/list builder, and review-first Forge planning stay available.",
-        meta: "Forge",
+        detail: "Basic trade analyzer, deck/list builder, and review-first Business planning stay available.",
+        meta: "Business",
         icon: "forge",
         tone: "forge",
       },
       {
-        title: "Scout starter access",
-        detail: `Manual Scout reports, screenshot review, proof review, and ${freeStoreSlots} watched store${Number(freeStoreSlots) === 1 ? "" : "s"} stay included.`,
-        meta: "Scout",
+        title: "Restocks starter access",
+        detail: `Manual restock reports, screenshot review, proof review, and ${freeStoreSlots} watched store${Number(freeStoreSlots) === 1 ? "" : "s"} stay included.`,
+        meta: "Restocks",
         icon: "scout",
         tone: "scout",
       },
       {
         title: "Family and community",
-        detail: "Tidepool read/report, The Spark view, Business Assistant prompts, and safety basics stay included.",
+        detail: "Community read/report, The Spark view, Business Assistant prompts, and safety basics stay included.",
         meta: "Safe",
         icon: "spark",
         tone: "gold",
@@ -100,6 +103,7 @@ export default function MembershipContent({ scope }) {
     const lockPreviews = lockPreviewKeys.map((featureKey) => getLockedFeatureDetails(featureKey));
     return (
       <div className="membership-command-only-route membership-v4-route" data-qa="tier-pricing-explainer">
+        {import.meta.env.VITE_CODE3_STRIPE_SANDBOX_ENABLED === "true" && !isPreview && !isNativePlatform() && <StripeSandboxBilling />}
         <CommandBoardV4
           accent="you"
           className="membership-v4-command-board"
@@ -110,12 +114,12 @@ export default function MembershipContent({ scope }) {
           primaryAction={{ label: "Compare Plans", icon: "plan", onClick: () => document.getElementById("membership-plan-grid")?.scrollIntoView({ behavior: "smooth", block: "start" }) }}
           secondaryActions={[
             { label: "Ask Admin", icon: "help", onClick: () => requestLockedFeatureAccess("seller_tools") },
-            { label: "Back to Hearth", icon: "home", onClick: () => setActiveTab("dashboard") },
+            { label: "Back to Home", icon: "home", onClick: () => setActiveTab("dashboard") },
           ]}
           statusItems={[
             { key: "plan", icon: "plan", label: planHeading, value: planLabel, detail: planDetail },
-            { key: "scout", icon: "scout", label: "Scout stores", value: String(tierAccess.scoutStoreSlots), detail: tierAccess.scoutStoreSwapDays ? `${tierAccess.scoutStoreSwapDays}-day changes` : "Admin managed" },
-            { key: "details", icon: "data", label: "Scout details", value: planScoutDetailsAllowed ? "Selected" : "Limited", detail: "Fair current access" },
+            { key: "scout", icon: "scout", label: "Watched stores", value: String(tierAccess.scoutStoreSlots), detail: tierAccess.scoutStoreSwapDays ? `${tierAccess.scoutStoreSwapDays}-day changes` : "Admin managed" },
+            { key: "details", icon: "data", label: "Restock details", value: planScoutDetailsAllowed ? "Selected" : "Limited", detail: "Fair current access" },
             { key: "history", icon: "vault", label: "Raw history", value: tierAccess.canViewRawScoutHistory ? "Admin" : "Protected", detail: "Not paywalled" },
             { key: "checkout", icon: "help", label: "Checkout", value: "Off", detail: "Admin-managed beta" },
           ]}
@@ -123,8 +127,8 @@ export default function MembershipContent({ scope }) {
             label: "Access Model",
             title: "Free stays useful. Paid tiers add scale and support.",
             items: [
-              { key: "free", icon: "vault", label: "Core collecting", detail: "Vault, Market, Forge basics" },
-              { key: "scout", icon: "scout", label: "Fair Scout", detail: "Reports stay current and safe", action: () => document.getElementById("membership-scout-guardrails")?.scrollIntoView({ behavior: "smooth", block: "start" }) },
+              { key: "free", icon: "vault", label: "Core collecting", detail: "Vault, Market, Business basics" },
+              { key: "scout", icon: "scout", label: "Fair Restocks", detail: "Reports stay current and safe", action: () => document.getElementById("membership-scout-guardrails")?.scrollIntoView({ behavior: "smooth", block: "start" }) },
               { key: "family", icon: "community", label: "Family access", detail: "Special needs and kid support path" },
               { key: "seller", icon: "market", label: "Seller scale", detail: "Locked until enabled" },
             ],
@@ -135,7 +139,7 @@ export default function MembershipContent({ scope }) {
           }}
           routes={[
             { key: "vault", icon: "vault", label: "Vault", title: "Core app", detail: "Collection basics", action: () => setActiveTab("vault") },
-            { key: "scout", icon: "scout", label: "Scout", title: "Fair reports", detail: "Watch limits", action: () => setActiveTab("scout") },
+            { key: "scout", icon: "scout", label: "Restocks", title: "Fair reports", detail: "Watch limits", action: () => setActiveTab("scout") },
             { key: "exchange", icon: "market", label: "Exchange", title: "Seller tiers", detail: "No checkout", action: () => setActiveTab("market") },
             { key: "spark", icon: "spark", label: "Spark", title: "Family support", detail: "Access path", action: () => setActiveTab("kidsProgram") },
             { key: "you", icon: "account", label: "You", title: "Plan controls", detail: "Profile and billing", action: () => setActiveTab("menu") },
@@ -145,23 +149,23 @@ export default function MembershipContent({ scope }) {
           <CommandBoardSection
             className="membership-v4-status"
             kicker="Current access"
-            title={isPreview ? "Preview plan and Scout limits" : "Current plan and Scout limits"}
-            detail="Free access remains a complete collector app. Paid tiers add scale and convenience without exposing raw Scout history."
+            title={isPreview ? "Preview plan and Restocks limits" : "Current plan and Restocks limits"}
+            detail="Free access remains a complete collector app. Paid tiers add scale and convenience without exposing raw restock history."
             action={<span className="status-badge">{planHeading}: {planLabel}</span>}
           >
             <CommandMetricGrid
               className="membership-v4-status-grid"
               items={[
                 { key: "plan", label: planHeading, value: planLabel, detail: planDetail },
-                { key: "stores", label: "Scout watch stores", value: String(tierAccess.scoutStoreSlots), detail: tierAccess.scoutStoreSwapDays ? `Change every ${tierAccess.scoutStoreSwapDays} days.` : "Admin moderation access." },
-                { key: "details", label: "Current Scout details", value: planScoutDetailsAllowed ? "Selected" : "Limited", detail: planScoutDetailsAllowed ? "Selected-store current details." : "Limited to keep Scout fair." },
-                { key: "history", label: "Raw Scout history", value: tierAccess.canViewRawScoutHistory ? "Admin" : "Protected", detail: "No hidden history behind paid locks." },
+                { key: "stores", label: "Restocks watch stores", value: String(tierAccess.scoutStoreSlots), detail: tierAccess.scoutStoreSwapDays ? `Change every ${tierAccess.scoutStoreSwapDays} days.` : "Admin moderation access." },
+                { key: "details", label: "Current restock details", value: planScoutDetailsAllowed ? "Selected" : "Limited", detail: planScoutDetailsAllowed ? "Selected-store current details." : "Limited to keep Restocks fair." },
+                { key: "history", label: "Raw restock history", value: tierAccess.canViewRawScoutHistory ? "Admin" : "Protected", detail: "No hidden history behind paid locks." },
                 { key: "patterns", label: "Pattern tools", value: tierAccess.canViewPatternTools ? "Admin" : "Protected", detail: "Protected from non-admin users." },
               ]}
             />
-            <div id="membership-scout-guardrails" className="membership-v4-guardrail-rack" aria-label="Scout membership guardrails">
+            <div id="membership-scout-guardrails" className="membership-v4-guardrail-rack" aria-label="Restocks membership guardrails">
               {[
-                `${tierAccess.scoutStoreSlots} Scout watch store${Number(tierAccess.scoutStoreSlots) === 1 ? "" : "s"}`,
+                `${tierAccess.scoutStoreSlots} Restocks watch store${Number(tierAccess.scoutStoreSlots) === 1 ? "" : "s"}`,
                 tierAccess.scoutStoreSwapDays ? `${tierAccess.scoutStoreSwapDays}-day store changes` : "Store changes managed by admin",
                 planScoutDetailsAllowed ? "Selected-store current details" : "Current details limited",
                 tierAccess.canViewRawScoutHistory ? "Raw history restricted to admin" : "Raw history protected",
@@ -208,7 +212,7 @@ export default function MembershipContent({ scope }) {
                   <h3>{tier.price}</h3>
                   <p>{tier.summary}</p>
                   <div className="membership-v4-plan-rules">
-                    <span>{tier.access.scoutStoreSlots} Scout store{Number(tier.access.scoutStoreSlots) === 1 ? "" : "s"}</span>
+                    <span>{tier.access.scoutStoreSlots} Watched store{Number(tier.access.scoutStoreSlots) === 1 ? "" : "s"}</span>
                     <span>{tier.access.scoutStoreSwapDays ? `${tier.access.scoutStoreSwapDays}-day changes` : "Admin changes"}</span>
                     <span>{tier.access.canViewPatternTools ? "Admin patterns" : "Patterns protected"}</span>
                   </div>

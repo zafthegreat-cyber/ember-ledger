@@ -1,4 +1,5 @@
 import { PrivateStorageImage } from "../../components/PrivateReceipt.jsx";
+import { tidepoolPendingReviewCopy } from "../../utils/tidepoolCommunity.js";
 // Rendering is deferred; the owning App retains record state and action handlers.
 export default function CommunityContent({ scope }) {
   const {
@@ -105,7 +106,7 @@ export default function CommunityContent({ scope }) {
       { title: "Tips", detail: "Binder care, fair value, scam awareness, and collecting help for newer families.", status: "Helpful" },
     ];
     const tidepoolModerationCards = [
-      { title: "Read and report", detail: "Free users can read Tidepool and report unsafe content. Posting stays beta-reviewed." },
+      { title: "Read and report", detail: "Free users can read Community and report unsafe content. Posting stays beta-reviewed." },
       { title: "Not a rush feed", detail: "No vendor schedules, raw restock pattern history, or guaranteed-stock language belongs here." },
       { title: "Adult-guided community", detail: "No unmoderated kid messaging, public child profiles, or private family details." },
     ];
@@ -174,7 +175,7 @@ export default function CommunityContent({ scope }) {
       {
         type: "Tip post",
         title: "How to check a fair sealed price",
-        body: "Compare Market fair range, recent source freshness, and MSRP before buying. Tidepool is not an auto-buy or profit feed.",
+        body: "Compare Market fair range, recent source freshness, and MSRP before buying. Community is not an auto-buy or profit feed.",
         meta: "Marketplace tip | No checkout",
         badge: "Tip",
       },
@@ -191,20 +192,20 @@ export default function CommunityContent({ scope }) {
       <EtMockupPageShell
         accent="tidepool"
         className="tidepool-mockup-rebuild"
-        ariaLabel="Tidepool safe collecting community"
+        ariaLabel="Community safe collecting community"
       >
         <div className="et-mockup-main-column tidepool-mockup-main">
           <CommandBoardV4
             accent="tidepool"
             className="tidepool-command-board"
-            ariaLabel="Tidepool community hub"
-            label="Tidepool"
-            title="Tidepool Community Center"
+            ariaLabel="Community community hub"
+            label="Community"
+            title="Community Center"
             description="Family-friendly posts, trusted shop updates, event notes, proof-based confirmations, and local collecting help. General areas only, with no private child data or guaranteed stock."
             primaryAction={{ label: "Start a Post", icon: "plus", onClick: openTidepoolCreatePostFlow, disabled: !canCreateTidepoolPost }}
             secondaryActions={[
-              { label: "Scout Signals", icon: "scout", onClick: () => setActiveTab("scout") },
-              { label: "Report Issue", icon: "help", onClick: () => openFeedbackDialog("bug", { page: "Tidepool Community" }) },
+              { label: "Restocks Signals", icon: "scout", onClick: () => setActiveTab("scout") },
+              { label: "Report Issue", icon: "help", onClick: () => openFeedbackDialog("bug", { page: "Community" }) },
             ]}
             statusItems={[
               { key: "posts", icon: "community", label: "Visible posts", value: visiblePosts, detail: "Moderated feed" },
@@ -219,8 +220,8 @@ export default function CommunityContent({ scope }) {
               items: [
                 { key: "post", icon: "plus", label: "Start post", detail: "Review-first", action: openTidepoolCreatePostFlow, disabled: !canCreateTidepoolPost },
                 { key: "circle", icon: "account", label: "Trusted Circle", detail: "Private notes", action: openTidepoolTrustedCircleFlow },
-                { key: "scout", icon: "scout", label: "Scout signal", detail: "Local intel", action: () => setActiveTab("scout") },
-                { key: "report", icon: "help", label: "Report issue", detail: "Safety review", action: () => openFeedbackDialog("bug", { page: "Tidepool Community" }) },
+                { key: "scout", icon: "scout", label: "Restock signal", detail: "Local intel", action: () => setActiveTab("scout") },
+                { key: "report", icon: "help", label: "Report issue", detail: "Safety review", action: () => openFeedbackDialog("bug", { page: "Community" }) },
               ],
               actions: [
                 { label: "Open Composer", icon: "plus", onClick: openTidepoolCreatePostFlow, disabled: !canCreateTidepoolPost },
@@ -236,7 +237,7 @@ export default function CommunityContent({ scope }) {
               { key: "spark", icon: "spark", label: "Spark", title: "Support", detail: "Donation drives", action: () => setActiveTab("kidsProgram") },
             ]}
           >
-            <div className="tidepool-mockup-guardrail-strip" aria-label="Tidepool guardrails">
+            <div className="tidepool-mockup-guardrail-strip" aria-label="Community guardrails">
               <span>Safe community posts</span>
               <span>Proof-based confirmations</span>
               <span>General areas only</span>
@@ -248,22 +249,22 @@ export default function CommunityContent({ scope }) {
 
           <EtMockupSectionCard
             title="Community pulse"
-            detail="Tidepool is for trusted collecting activity, not rush alerts. Posts stay helpful, moderated, and family-friendly."
+            detail="Community is for trusted collecting activity, not rush alerts. Posts stay helpful, moderated, and family-friendly."
             className="tidepool-mockup-pulse"
             action={<EtMockupPill tone="beta">Public beta</EtMockupPill>}
           >
-            <div className="et-mockup-stat-grid tidepool-mockup-stat-grid" aria-label="Tidepool stats">
+            <div className="et-mockup-stat-grid tidepool-mockup-stat-grid" aria-label="Community stats">
               {tidepoolStats.map((stat) => (
                 <EtMockupStatCard key={stat.label} label={stat.label} value={stat.value} detail={stat.label === "Local" ? "General areas" : stat.label === "Replies" ? "Reviewed replies" : "Safe posts"} tone="collector" />
               ))}
             </div>
             <div className="tidepool-mockup-action-row">
               <button type="button" className="et-mockup-button et-mockup-button-primary tidepool-mockup-start-post" onClick={openTidepoolCreatePostFlow} disabled={!canCreateTidepoolPost}>Start a Post</button>
-              <EtMockupButton variant="secondary" onClick={() => setActiveTab("scout")}>Scout Signals</EtMockupButton>
-              <EtMockupButton variant="ghost" onClick={() => openFeedbackDialog("bug", { page: "Tidepool Community" })}>Report an issue</EtMockupButton>
+              <EtMockupButton variant="secondary" onClick={() => setActiveTab("scout")}>Restocks Signals</EtMockupButton>
+              <EtMockupButton variant="ghost" onClick={() => openFeedbackDialog("bug", { page: "Community" })}>Report an issue</EtMockupButton>
             </div>
-            {!canCreateTidepoolPost ? <p className="tidepool-mockup-access-note">Tidepool posting opens after beta access is approved. Published posts remain visible when allowed.</p> : null}
-            <div className="tidepool-mockup-trust-grid" aria-label="Tidepool trust and safety">
+            {!canCreateTidepoolPost ? <p className="tidepool-mockup-access-note">Community posting opens after beta access is approved. Published posts remain visible when allowed.</p> : null}
+            <div className="tidepool-mockup-trust-grid" aria-label="Community trust and safety">
               {tidepoolTrustCards.map((card) => (
                 <EtMockupActionCard key={card.title} title={card.title} detail={card.detail} icon="pool" tone="collector" />
               ))}
@@ -271,12 +272,12 @@ export default function CommunityContent({ scope }) {
           </EtMockupSectionCard>
 
           <EtMockupSectionCard
-            title="Tidepool trust dashboard"
+            title="Community trust dashboard"
             detail="Local trust notes, follow-ups, and safety reminders for community collecting. Planning only; no verification or invitations are connected."
             className="tidepool-trust-dashboard-card"
             action={<EtMockupPill tone="beta">Local beta</EtMockupPill>}
           >
-            <div className="tidepool-trust-dashboard-grid" aria-label="Tidepool trust dashboard cards">
+            <div className="tidepool-trust-dashboard-grid" aria-label="Community trust dashboard cards">
               {tidepoolTrustDashboardCards.map((card) => (
                 <article className="tidepool-trust-dashboard-item" key={card.title}>
                   <span>{card.title}</span>
@@ -355,7 +356,7 @@ export default function CommunityContent({ scope }) {
             className="tidepool-community tidepool-mockup-feed"
             action={<EtMockupPill tone="collector">{visiblePosts} visible</EtMockupPill>}
           >
-          <div className="standard-page-header-tabs tidepool-mockup-tabs" aria-label="Tidepool navigation">
+          <div className="standard-page-header-tabs tidepool-mockup-tabs" aria-label="Community navigation">
             {visibleTidepoolFilters.map((filter) => (
               <button
                 key={filter}
@@ -368,7 +369,7 @@ export default function CommunityContent({ scope }) {
             ))}
           </div>
 
-          <div className="tidepool-live-section-grid" aria-label="Tidepool safe community sections">
+          <div className="tidepool-live-section-grid" aria-label="Community safe community sections">
             {tidepoolSectionCards.map((card) => (
               <article className="tidepool-live-section-card" key={card.title}>
                 <span className="status-badge">{card.status}</span>
@@ -378,7 +379,7 @@ export default function CommunityContent({ scope }) {
             ))}
           </div>
 
-          <div className="tidepool-moderation-grid" aria-label="Tidepool moderation guardrails">
+          <div className="tidepool-moderation-grid" aria-label="Community moderation guardrails">
             {tidepoolModerationCards.map((card) => (
               <article className="tidepool-moderation-card" key={card.title}>
                 <strong>{card.title}</strong>
@@ -387,7 +388,7 @@ export default function CommunityContent({ scope }) {
             ))}
           </div>
 
-          <div className="tidepool-preview-feed" aria-label="Tidepool moderated examples">
+          <div className="tidepool-preview-feed" aria-label="Community moderated examples">
             {tidepoolPreviewCards.map((card) => (
               <article className="tidepool-preview-card" key={card.title}>
                 <div className="compact-card-header">
@@ -399,7 +400,7 @@ export default function CommunityContent({ scope }) {
                 </div>
                 <p>{card.body}</p>
                 <small>{card.meta}</small>
-                <button type="button" className="secondary-button" onClick={() => openFeedbackDialog("feedback", { page: "Tidepool Community", whatHappened: `${card.type}: ` })}>Report or ask for review</button>
+                <button type="button" className="secondary-button" onClick={() => openFeedbackDialog("feedback", { page: "Community", whatHappened: `${card.type}: ` })}>Report or ask for review</button>
               </article>
             ))}
           </div>
@@ -410,8 +411,8 @@ export default function CommunityContent({ scope }) {
               <span>Report unsafe posts from each post&apos;s Safety menu. Use feedback for app issues or moderation questions.</span>
             </div>
             <div className="tidepool-support-actions">
-              <button type="button" className="secondary-button" onClick={() => openFeedbackDialog("feedback", { page: "Tidepool Community" })}>Send feedback</button>
-              <button type="button" className="secondary-button" onClick={() => openFeedbackDialog("bug", { page: "Tidepool Community" })}>Report an issue</button>
+              <button type="button" className="secondary-button" onClick={() => openFeedbackDialog("feedback", { page: "Community" })}>Send feedback</button>
+              <button type="button" className="secondary-button" onClick={() => openFeedbackDialog("bug", { page: "Community" })}>Report an issue</button>
             </div>
           </div>
 
@@ -419,17 +420,17 @@ export default function CommunityContent({ scope }) {
             {filteredTidepoolPosts.length === 0 ? (
               <div className="empty-state tidepool-empty-state">
                 <h3>The community table is ready.</h3>
-                <p>Start a family-friendly question, local collecting tip, event note, or proof-backed Scout confirmation. Keep it general, kind, and useful. Tidepool is for trusted collecting activity, not rush alerts.</p>
+                <p>Start a family-friendly question, local collecting tip, event note, or proof-backed Restocks confirmation. Keep it general, kind, and useful. Community is for trusted collecting activity, not rush alerts.</p>
                 <div className="quick-actions">
                   <button type="button" onClick={openTidepoolCreatePostFlow} disabled={!canCreateTidepoolPost}>Start a Post</button>
-                  <button type="button" className="secondary-button" onClick={() => setActiveTab("scout")}>View Scout Signals</button>
+                  <button type="button" className="secondary-button" onClick={() => setActiveTab("scout")}>View Restocks Signals</button>
                 </div>
               </div>
             ) : null}
             {pagedTidepoolPosts.items.map((post) => {
               const postComments = tidepoolComments.filter((comment) => comment.postId === post.postId && !comment.parentCommentId && comment.status !== "removed");
               const locationParts = [post.city, post.state].filter(Boolean);
-              const locationLabel = locationParts.length ? locationParts.join(", ") : post.state ? post.state : "Tidepool area";
+              const locationLabel = locationParts.length ? locationParts.join(", ") : post.state ? post.state : "Community area";
               const postDate = post.createdAt ? new Date(post.createdAt).toLocaleDateString() : "No date";
               const publicSummary = publicTidepoolPostSummary(post);
               const preview = publicSummary.bodyPreview || "No post body yet.";
@@ -470,12 +471,12 @@ export default function CommunityContent({ scope }) {
                       <OverflowMenu
                         buttonLabel="Admin"
                         actions={[
-                          { label: "Publish", onClick: () => runTidepoolAdminPostAction(post, "Publish", { status: "Published", moderationReason: "Approved for Tidepool." }) },
+                          { label: "Publish", onClick: () => runTidepoolAdminPostAction(post, "Publish", { status: "Published", moderationReason: "Approved for Community." }) },
                           { label: "Needs Edit", onClick: () => runTidepoolAdminPostAction(post, "Needs Edit", { status: "Needs Edit", moderationReason: "Needs author edit before publishing." }, { confirm: true }) },
                           { label: "Reject", danger: true, onClick: () => runTidepoolAdminPostAction(post, "Reject", { status: "Rejected", moderationReason: "Rejected by admin review." }, { confirm: true, danger: true }) },
                           { label: "Archive", onClick: () => runTidepoolAdminPostAction(post, "Archive", { status: "Archived", moderationReason: "Archived by admin review." }, { confirm: true, message: "This hides the post without hard-deleting beta data." }) },
                           { label: "Lock Comments", onClick: () => runTidepoolAdminPostAction(post, "Lock Comments", { commentsLocked: true }, { confirm: true }) },
-                          { label: "View Audit", onClick: () => setVaultToast("Tidepool audit details are not available in this beta UI yet.") },
+                          { label: "View Audit", onClick: () => setVaultToast("Community audit details are not available in this beta UI yet.") },
                         ]}
                       />
                     ) : null}
@@ -498,7 +499,7 @@ export default function CommunityContent({ scope }) {
                       <p className="compact-subtitle">{[post.storeReference, post.productReference].filter(Boolean).join(" | ")}</p>
                     ) : null}
                     {showStatusToViewer && postStatus === "Pending Review" ? (
-                      <p className="compact-subtitle">Pending review: admins will check it before it appears publicly.</p>
+                      <p className="compact-subtitle">{tidepoolPendingReviewCopy(post)}</p>
                     ) : null}
                     <div className="tidepool-proof-row" aria-label="Post trust details">
                       <span>{proofLabel}</span>
@@ -576,8 +577,8 @@ export default function CommunityContent({ scope }) {
           />
 
           <div className="tidepool-rules-card">
-            <strong>Family-safe Tidepool</strong>
-            <p>Keep it kind, helpful, and general. Use report/block if something feels off. Tidepool is not a restock leak feed.</p>
+            <strong>Family-safe Community</strong>
+            <p>Keep it kind, helpful, and general. Use report/block if something feels off. Community is not a restock leak feed.</p>
             <div className="tidepool-guideline-list">
               {TIDEPOOL_FAMILY_SAFE_RULES.slice(0, 3).map((guideline) => <span key={guideline}>{guideline}</span>)}
             </div>
@@ -587,7 +588,7 @@ export default function CommunityContent({ scope }) {
 
         <EtMockupRightRail
           title="Safety stays visible"
-          detail="Tidepool is moderated, proof-based, and designed for family-safe collecting help."
+          detail="Community is moderated, proof-based, and designed for family-safe collecting help."
           className="tidepool-mockup-rail"
         >
           <EtMockupSectionCard
@@ -604,11 +605,11 @@ export default function CommunityContent({ scope }) {
           </EtMockupSectionCard>
 
           <EtMockupSectionCard
-            title="What Tidepool avoids"
+            title="What Community avoids"
             detail="Community help without scalper-friendly or child-sensitive details."
             className="tidepool-mockup-rail-card"
           >
-            <div className="tidepool-mockup-rail-rules" aria-label="Tidepool safety guardrails">
+            <div className="tidepool-mockup-rail-rules" aria-label="Community safety guardrails">
               {[
                 "No private child data.",
                 "No vendor schedules.",
@@ -623,8 +624,8 @@ export default function CommunityContent({ scope }) {
 
           <EtMockupEmptyState
             title="Current help, not rush alerts."
-            detail="Tidepool keeps Scout-adjacent community discussion proof-based, moderated, and general-area only."
-            action={<EtMockupButton variant="secondary" onClick={() => setActiveTab("scout")}>View Scout Signals</EtMockupButton>}
+            detail="Community keeps Restocks-adjacent community discussion proof-based, moderated, and general-area only."
+            action={<EtMockupButton variant="secondary" onClick={() => setActiveTab("scout")}>View Restocks Signals</EtMockupButton>}
           />
         </EtMockupRightRail>
       </EtMockupPageShell>
