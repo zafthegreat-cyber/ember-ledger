@@ -241,7 +241,7 @@ const registry = [
     includedInPhase1AExport: true,
     exportAdapter: "json-key",
     validationAdapter: "generic-local-json",
-    recordPaths: ["stores", "reports", "tidepoolReports", "tidepoolEvents", "items", "routes", "restockIntel", "restockPatterns", "intelImportReviews", "storeAliases", "bestBuyStockResults", "bestBuyStockHistory", "bestBuyStoreStock", "bestBuyAlerts", "bestBuyNightlyReports"],
+    recordPaths: ["stores", "reports", "tidepoolReports", "tidepoolEvents", "items", "routes", "restockIntel", "restockPatterns", "intelImportReviews", "storeAliases", "bestBuyStockResults", "bestBuyStockHistory", "bestBuyStoreStock", "bestBuyAlerts", "bestBuyNightlyReports", "historicalRestockHistory.archive.observations", "historicalRestockHistory.archive.snapshotOnlyClaims"],
     referenceDependencies: ["owner-center"],
     containsSecurityOrSessionState: false,
     affectsCoverage: true,
