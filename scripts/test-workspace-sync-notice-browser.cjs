@@ -93,7 +93,11 @@ createRoot(document.getElementById('root')).render(<Fixture />);
         if (url.pathname === "/__qa/notice") return route.fulfill({ contentType: "text/html", body: `<!doctype html><html data-theme="${theme}"><head><title>Sync notice verification</title><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/__qa/fixture.css"></head><body><div id="root"></div><script type="module" src="/__qa/fixture.js"></script></body></html>` });
         if (url.pathname === "/__qa/fixture.js") return route.fulfill({ contentType: "text/javascript", body: fs.readFileSync(path.join(output, "fixture.js")) });
         if (url.pathname === "/__qa/fixture.css") return route.fulfill({ contentType: "text/css", body: fs.readFileSync(path.join(output, "fixture.css")) });
-        // Static artwork/fonts are irrelevant to this fixture; never fall through to a real server.
+        // The production stylesheet imports semantic tokens; missing tokens make
+        // focus and contrast checks meaningless even in a standalone fixture.
+        if (url.pathname === "/assets/brand-system/code3-tokens.css") return route.fulfill({ contentType: "text/css", body: fs.readFileSync(path.resolve("public/assets/brand-system/code3-tokens.css")) });
+        if (url.pathname.startsWith("/assets/fonts/") && fs.existsSync(path.resolve("public", url.pathname.slice(1)))) return route.fulfill({ path: path.resolve("public", url.pathname.slice(1)) });
+        // Unused artwork never falls through to a real server.
         return route.fulfill({ status: 404, body: "Isolated fixture asset" });
       });
       await context.addInitScript((bytes) => {

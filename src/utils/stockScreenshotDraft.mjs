@@ -149,15 +149,17 @@ const NEGATED_DEPLETION = /\b(?:never|wasnt|werent|isnt|arent|hasnt|havent|hadnt
 function statusFor(line) {
   let value = normalize(line);
   const statuses = new Set();
+  // A present-tense "not out of stock" / "not sold out" is an availability
+  // report; check it before F06 so the denial rule does not swallow it.
+  if (/\b(?:not out of stock|not sold out)\b/.test(value)) {
+    statuses.add("stock_on_shelf");
+    value = value.replace(/\b(?:not out of stock|not sold out)\b/g, " ");
+  }
   if (NEGATED_DEPLETION.test(value)) {
     // Strip the negated phrase so it neither reads as "sold out" nor as proof
     // of stock; the reporter reviews the line instead.
     value = value.replace(NEGATED_DEPLETION, " ");
     statuses.add("__review__");
-  }
-  if (/\b(?:not out of stock|not sold out)\b/.test(value)) {
-    statuses.add("stock_on_shelf");
-    value = value.replace(/\b(?:not out of stock|not sold out)\b/g, " ");
   }
   if (/\b(?:not in stock|isnt in stock|arent in stock|no longer in stock|sold out|out of stock|no stock|empty shelves|shelves are empty|nothing left)\b/.test(value)) {
     statuses.add("no_stock");

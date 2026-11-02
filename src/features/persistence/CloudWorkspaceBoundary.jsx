@@ -13,6 +13,7 @@ import { confirmAccountOperation, consumeAccountConfirmation } from "../../servi
 import WorkspaceRecoverySignIn from "./WorkspaceRecoverySignIn.jsx";
 import WorkspaceSupportDetails from "./WorkspaceSupportDetails.jsx";
 import WorkspaceSyncNotice from "./WorkspaceSyncNotice.jsx";
+import { requestCloudSyncReview } from "./useCloudSyncReviewNavigation.js";
 import PublicPrivacyRoute from "../privacy/PublicPrivacyRoute.jsx";
 import { publicPrivacyRoute } from "../../config/privacyPolicy.js";
 import "../../styles/theme.css";
@@ -298,7 +299,7 @@ function ProtectedCloudWorkspaceBoundary({ children, client = supabase, configur
   if (screen.phase === "signedout") return <CloudWorkspaceContext.Provider value={null}><WorkspaceLease onError={fail}>{children}</WorkspaceLease></CloudWorkspaceContext.Provider>;
   if (screen.phase === "restore") return <WorkspaceScreen title="Recover your saved records"><WorkspaceRestorePanel userId={screen.user.id} onRestore={restore} onRestoreCloud={restoreCloud} onCancel={() => window.location.reload()} /></WorkspaceScreen>;
   if (screen.phase === "ready") return <CloudWorkspaceContext.Provider value={value}><WorkspaceLease onError={fail}>{children}
-    <WorkspaceSyncNotice status={syncState} ownerId={screen.user.id} onLoadNewer={value.loadNewer} />
+    <WorkspaceSyncNotice status={syncState} ownerId={screen.user.id} onLoadNewer={value.loadNewer} onReviewChanges={requestCloudSyncReview} />
   </WorkspaceLease></CloudWorkspaceContext.Provider>;
   if (screen.phase === "checking" || screen.phase === "operation") return <WorkspaceScreen title={screen.phase === "operation" ? "Protecting and updating your records" : "Checking your account"}><p>Please keep this page open.</p></WorkspaceScreen>;
   return <WorkspaceScreen title={screen.phase === "claim" ? "Keep your existing records" : screen.phase === "switch" ? "Open this account’s records" : storageFailure(screen.code) ? "Device storage needs attention" : screen.code === "RECOVERY_REQUIRED" ? "Your saved records need recovery" : "Your records are safe"}>

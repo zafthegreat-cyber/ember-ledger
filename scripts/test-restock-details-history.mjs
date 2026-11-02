@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { createRestockDetailsHistory, RESTOCK_DETAILS_HISTORY_KEY as marker } from "../src/utils/restockDetailsHistory.mjs";
+import { writeMarketSearchRoute } from "../src/utils/marketRouteState.mjs";
 
 // Exercise real controller code against queued browser traversal, rather than
 // pretending history.back() synchronously fires popstate. No app storage, DOM,
@@ -341,7 +342,7 @@ check("App history sync refreshes applied location even when no push or replace 
   const calls = [], location = { pathname: "/scout/reports", search: "?betaLocalMode=true", hash: "#proof" };
   const env = {
     window: { location, history: { state: { custom: "keep" }, pushState: () => calls.push("push"), replaceState: () => calls.push("replace") } },
-    URLSearchParams, activeTab: "scout", catalogSearch: "", vaultSearch: "", vaultFilter: "all", exchangeSection: "", routePathForHistory: "/scout/reports",
+    URLSearchParams, writeMarketSearchRoute, routeState: { catalogSearch: "" }, activeTab: "scout", catalogSearch: "", vaultSearch: "", vaultFilter: "all", exchangeSection: "", routePathForHistory: "/scout/reports",
     routeNavigationModeRef: { current: "replace" }, appliedRouteLocationRef: { current: "stale" }, canonicalPathForPath: value => value,
   };
   new Function(...Object.keys(env), tail)(...Object.values(env));

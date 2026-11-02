@@ -7,7 +7,6 @@ import { availableQuantity, projectedResaleTotal, projectedResaleTotalNote, quan
 import {
   BottomSheet,
   EmptyState,
-  FilterButton,
   MetricCard,
   PageHeader,
   PrimaryButton,
@@ -45,12 +44,16 @@ import { resolveExperiencePresentation } from "../utils/experiencePresentation.j
 import { getItemImageUrl } from "../utils/productDisplayUtils.js";
 import ItemPhoto from "../components/ItemPhoto.jsx";
 import CollectionPortfolio from "../components/CollectionPortfolio.jsx";
+import CollectionProductDetail from "../components/CollectionProductDetail.jsx";
+import { groupCollectionCopies } from "../utils/collectionCopyGroups.mjs";
+import { getPortfolioItemKey } from "../utils/collectionPortfolio.mjs";
 import CollectionSets from "../components/CollectionSets.jsx";
 import CollectionGameFilter from "../components/CollectionGameFilter.jsx";
 import { COLLECTIBLE_GAMES, assignCollectibleGame, getRecordGame, getRecordGameLabel, matchesRecordGame } from "../utils/collectibleGames.mjs";
 import { POKEMON_SETS } from "../data/pokemonSetCatalog.js";
 import { buildCollectionSetRows } from "../utils/collectionSets.mjs";
 import { createCollectionSetsNavigation } from "../utils/collectionSetsNavigation.mjs";
+import { BUSINESS_INVENTORY_STOCK_FILTERS, filterBusinessInventory } from "../utils/businessInventorySearch.mjs";
 import "./everyday-workspaces.css";
 
 const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
@@ -388,12 +391,26 @@ function CollectionItemDetail({ item, onBack, onPurpose, onEdit, onDelete, value
   return <RecordDetailPage eyebrow="Collection item" title={recordTitle(item)} status={normalized.ownedItemPurpose.replaceAll("_", " ").toLowerCase()} statusTone={normalized.ownedItemPurpose === OWNED_ITEM_PURPOSES.UNASSIGNED ? "warning" : "info"} image={resolveItemImage(item)} identity={[item.productClassification, item.setName, item.cardNumber].filter(Boolean).join(" · ") || "Identification is incomplete."} summary={[{ label: "Acquisition cost", value: !showValues ? VALUE_HIDDEN : cost == null ? "Not recorded" : money(cost), numeric: true }, { label: valueLabel, value: showValues ? money(item.projectedResaleMid) : VALUE_HIDDEN }, { label: "Condition", value: item.condition || "Not recorded" }, { label: "Storage", value: item.storageLocation || "Not assigned" }]} primaryAction={managed ? null : <PrimaryButton onClick={() => onPurpose(item, OWNED_ITEM_PURPOSES.FOR_RESALE)}>Sell This Item</PrimaryButton>} secondaryActions={managed ? null : <><QuietButton onClick={() => onEdit(item)}>Edit</QuietButton>{item._recordOrigin === "repository" ? <QuietButton className="ops-button--danger" onClick={() => onDelete(item)}>Delete</QuietButton> : null}</>} sections={[...itemDetailSections(item, valueLabel, showValues), ...(managed ? [{ title: "Acquisition provenance", description: "This owner-confirmed lot can be corrected only through append-only Inventory adjustments.", children: <DetailList items={[{ label: "Purchase", value: item.purchaseId }, { label: "Inventory lot", value: item.inventoryLotId }]} /> }] : [{ title: "Purpose assignment", description: "Purpose controls where this owned item appears.", children: <PurposeActions item={item} onChange={onPurpose} /> }])]} timeline={itemTimeline(item)} onBack={onBack} />;
 }
 
+function isCollectionCopy(item) {
+  return [OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION, OWNED_ITEM_PURPOSES.HOLD].includes(inferOwnedItemPurpose(item));
+}
+
+function collectionNavigationPosition(opener) {
+  const main = document.querySelector(".main");
+  return { key: opener?.getAttribute("data-copy-record-key") || opener?.getAttribute("data-collection-product-key"), valuable: opener?.classList.contains("collection-portfolio-valuable-row"), x: window.scrollX, y: window.scrollY, mainX: main?.scrollLeft || 0, mainY: main?.scrollTop || 0 };
+}
+
 export function CollectionWorkspace({ items = [], catalogProducts = EMPTY_CATALOG, initialView = "collection", onViewChange, onChangePurpose, onSellItem, featureControls = EMPTY_FEATURE_CONTROLS, experiencePresentation, resolveItemImage = recordImage, portfolioScope = "", portfolioFeatures = EMPTY_FEATURE_CONTROLS, onLockedFeature }) {
   const presentation = experiencePresentation || resolveExperiencePresentation();
   const valueLabel = presentation.showBusinessTools || presentation.showAdminTools ? "Projected resale" : "Estimated value";
   const { state, error, saveRecord, removeRecord } = useBusinessRepository();
   const [view, setView] = useState(initialView);
   const [selected, setSelected] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [productDetailTab, setProductDetailTab] = useState("overview");
+  const collectionNavigationRef = useRef(null);
+  const productOpenerRef = useRef(null);
+  const copyOpenerRef = useRef(null);
   const [form, setForm] = useState(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -410,13 +427,55 @@ export function CollectionWorkspace({ items = [], catalogProducts = EMPTY_CATALO
     setPreviousView(initialView);
     setView(initialView);
     setSelected(null);
+    setSelectedProduct(null);
     setForm(null);
     setFiltersOpen(false);
   }
   const allItems = useMemo(() => mergeRecords(state.inventory, items).map(normalizeOwnedItem), [items, state.inventory]);
   const visible = useMemo(() => allItems.filter((item) => (!query || businessRecordMatchesQuery(item, query)) && (!conditionFilter || item.condition === conditionFilter)), [allItems, conditionFilter, query]);
-  const collectionItems = visible.filter((item) => item.ownedItemPurpose === OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION && matchesRecordGame(item, collectionGame));
+  const collectionItems = visible.filter((item) => isCollectionCopy(item) && matchesRecordGame(item, collectionGame));
+  const collectionPortfolioItems = useMemo(() => allItems.filter(isCollectionCopy), [allItems]);
   const personalCollectionItems = useMemo(() => allItems.filter((item) => item.ownedItemPurpose === OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION), [allItems]);
+  const selectedProductGroup = useMemo(() => {
+    if (!selectedProduct) return null;
+    const current = new Map(allItems.map(item => [getPortfolioItemKey(item), item]).filter(([key]) => key));
+    const copies = selectedProduct.records.map(item => {
+      const key = getPortfolioItemKey(item);
+      return key ? current.get(key) : item;
+    }).filter(item => item && isCollectionCopy(item));
+    return groupCollectionCopies(copies).find(group => group.key === selectedProduct.key) || null;
+  }, [allItems, selectedProduct]);
+  useEffect(() => {
+    if (!collectionNavigationRef.current) return undefined;
+    const frame = window.requestAnimationFrame(() => {
+      const navigation = collectionNavigationRef.current;
+      collectionNavigationRef.current = null;
+      const container = document.querySelector(navigation.kind === "copy" ? ".manual-lifecycle-detail .ops-record-detail" : ".collection-product-detail");
+      if (navigation.kind === "product" || navigation.kind === "copy") {
+        const heading = container?.querySelector("h1");
+        heading?.setAttribute("tabindex", "-1");
+        heading?.focus({ preventScroll: true });
+        container?.scrollIntoView({ block: "start", behavior: "instant" });
+        return;
+      }
+      const position = navigation.kind === "copies-return" ? copyOpenerRef.current : productOpenerRef.current;
+      const selector = navigation.kind === "copies-return" ? "[data-copy-record-key]" : position?.valuable ? ".collection-portfolio-valuable-row[data-collection-product-key]" : ".collection-portfolio-item[data-collection-product-key]";
+      const attribute = navigation.kind === "copies-return" ? "data-copy-record-key" : "data-collection-product-key";
+      const target = [...document.querySelectorAll(selector)].find(button => button.getAttribute(attribute) === position?.key);
+      if (target) {
+        target.focus({ preventScroll: true });
+        window.scrollTo(position.x, position.y);
+        const main = document.querySelector(".main");
+        if (main) { main.scrollLeft = position.mainX; main.scrollTop = position.mainY; }
+      } else {
+        const heading = document.querySelector(".collection-product-copies h2, .collection-product-detail h1, .everyday-workspace h1");
+        heading?.setAttribute("tabindex", "-1");
+        heading?.focus({ preventScroll: true });
+        heading?.scrollIntoView({ block: "center", behavior: "instant" });
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [selected, selectedProduct, form]);
   const heldItems = visible.filter((item) => item.ownedItemPurpose === OWNED_ITEM_PURPOSES.HOLD);
   const unassigned = allItems.filter((item) => item.ownedItemPurpose === OWNED_ITEM_PURPOSES.UNASSIGNED);
   const grading = visible.filter((item) => item.gradingCompany || item.grade || /graded/i.test(item.productClassification || ""));
@@ -436,6 +495,7 @@ export function CollectionWorkspace({ items = [], catalogProducts = EMPTY_CATALO
         const previousSelection = setSelectionRef.current;
         setSelectionRef.current = selection;
         setSelected(selection?.item || null);
+        setSelectedProduct(null);
         setSetBrowserState((current) => ({ ...current, selectedId: selection?.row.id || "" }));
         window.requestAnimationFrame(() => {
           if (selection?.item) return;
@@ -455,7 +515,7 @@ export function CollectionWorkspace({ items = [], catalogProducts = EMPTY_CATALO
   }, [view, portfolioScope]);
   const secondaryDestinations = [{ key: "sets", label: "Sets & Binders" }, { key: "wishlist", label: "Wishlist" }, featureControls.grading !== false ? { key: "grading", label: "Grading" } : null].filter(Boolean);
   const collectionMoreItems = [...secondaryDestinations, ...(unassigned.length ? [{ key: "unassigned", label: `Unassigned Review (${unassigned.length})` }] : [])];
-  const changeView = (next) => { setSelected(null); setSetBrowserState((current) => ({ ...current, selectedId: "" })); setView(next); onViewChange?.(next); };
+  const changeView = (next) => { setSelected(null); setSelectedProduct(null); setSetBrowserState((current) => ({ ...current, selectedId: "" })); setView(next); onViewChange?.(next); };
   const chooseCollectionUtility = (next) => {
     if (next === "unassigned") {
       changeView("unassigned");
@@ -475,10 +535,11 @@ export function CollectionWorkspace({ items = [], catalogProducts = EMPTY_CATALO
     } else if (nextPurpose === OWNED_ITEM_PURPOSES.FOR_RESALE) onSellItem?.(item);
   };
   if (form) return <RecordForm key={`${form.type}-${form.seed?.id || "new"}`} type={form.type} seed={form.seed} state={state} onSave={async (collection, record, message) => { const saved = await saveRecord(collection, record, message); if (saved) setSelected(view === "sets" && setBrowserState.selectedId && !form.seed?.id ? null : { ...saved, _recordOrigin: "repository" }); return saved; }} onCancel={() => setForm(null)} />;
-  if (selected) return <div className="manual-lifecycle-detail"><CollectionItemDetail resolveItemImage={resolveItemImage} item={selected} valueLabel={valueLabel} showValues={!portfolioViewState.hidden} onBack={() => { if (view === "sets") setNavigationRef.current?.back({ setId: setBrowserState.selectedId }); else setSelected(null); }} onPurpose={changePurpose} onEdit={(item) => setForm({ type: "collection", seed: item })} onDelete={async (item) => { if (await removeRecord("inventory", item)) setSelected(null); }} />{selected._recordOrigin === "repository" ? <ManualLifecycles key={selected.id} types={featureControls.grading !== false ? ["assignment", "grading"] : ["assignment"]} title="Item organization" itemId={selected.id} /> : null}</div>;
+  if (selected) return <div className="manual-lifecycle-detail"><CollectionItemDetail resolveItemImage={resolveItemImage} item={selected} valueLabel={valueLabel} showValues={!portfolioViewState.hidden} onBack={() => { if (view === "sets") setNavigationRef.current?.back({ setId: setBrowserState.selectedId }); else { if (selectedProduct) collectionNavigationRef.current = { kind: "copies-return" }; setSelected(null); } }} onPurpose={changePurpose} onEdit={(item) => setForm({ type: "collection", seed: item })} onDelete={async (item) => { if (await removeRecord("inventory", item)) { if (selectedProduct) collectionNavigationRef.current = { kind: "copies-return" }; setSelected(null); } }} />{selected._recordOrigin === "repository" ? <ManualLifecycles key={selected.id} types={featureControls.grading !== false ? ["assignment", "grading"] : ["assignment"]} title="Item organization" itemId={selected.id} /> : null}</div>;
+  if (selectedProductGroup) return <CollectionProductDetail group={selectedProductGroup} onBack={() => { collectionNavigationRef.current = { kind: "grid-return" }; setSelectedProduct(null); }} onOpenRecord={(item, opener) => { copyOpenerRef.current = collectionNavigationPosition(opener); collectionNavigationRef.current = { kind: "copy" }; setSelected(item); }} resolveItemImage={resolveItemImage} getAcquisitionCost={acquisitionCost} activeTab={productDetailTab} onTabChange={setProductDetailTab} hiddenValues={portfolioViewState.hidden} />;
   const cardsFor = (records) => records.map((item) => <RecordListCard key={item.id} resolveItemImage={resolveItemImage} record={item} eyebrow={[item.setName, item.productClassification].filter(Boolean).join(" · ") || "Owned item"} status={item.ownedItemPurpose === OWNED_ITEM_PURPOSES.UNASSIGNED ? "Needs purpose" : ""} statusTone="warning" facts={[{ label: item.condition ? "Condition" : "Quantity", value: item.condition || item.quantity || 1 }, { label: "Estimated value", value: portfolioViewState.hidden ? VALUE_HIDDEN : item.projectedResaleMid !== "" && item.projectedResaleMid != null ? money(item.projectedResaleMid) : "" }]} onOpen={setSelected} />);
   return <main className="everyday-workspace" data-testid="collection-workspace">
-    <PageHeader eyebrow={view === "sets" ? "" : "Made for collecting"} title={view === "sets" ? "Card sets" : view === "collection" ? "Collection" : secondaryDestinations.find((item) => item.key === view)?.label || "Collection"} description={view === "collection" ? "The cards, sealed products, and finds you choose to keep." : ""} actions={<PrimaryButton onClick={() => setForm({ type: "collection", seed: { ...((view === "sets" ? setBrowserState.game : collectionGame) !== "all" ? { tcgGame: view === "sets" ? setBrowserState.game : collectionGame } : {}) } })}>Add Item</PrimaryButton>} />
+    <PageHeader eyebrow={view === "sets" ? "" : "Made for collecting"} title={view === "sets" ? "Card sets" : view === "collection" ? "Collection" : secondaryDestinations.find((item) => item.key === view)?.label || "Collection"} description={view === "collection" ? "Your personal collection and held copies, grouped by product." : ""} actions={<PrimaryButton onClick={() => setForm({ type: "collection", seed: { ...((view === "sets" ? setBrowserState.game : collectionGame) !== "all" ? { tcgGame: view === "sets" ? setBrowserState.game : collectionGame } : {}) } })}>Add Item</PrimaryButton>} />
     {view !== "collection" ? <div className="everyday-secondary-navigation"><button type="button" onClick={() => changeView("collection")}>Back to Collection</button><WorkspaceMoreMenu items={collectionMoreItems} active={view} onChange={chooseCollectionUtility} /></div> : null}
     {error ? <p className="compatibility-note" role="alert">{error}</p> : null}
     {view === "collection" ? <CollectionPortfolio
@@ -486,7 +547,7 @@ export function CollectionWorkspace({ items = [], catalogProducts = EMPTY_CATALO
       preferenceScope={portfolioScope}
       viewState={portfolioViewState}
       onViewStateChange={setPortfolioViewState}
-      items={personalCollectionItems}
+      items={collectionPortfolioItems}
       visibleItems={collectionItems}
       query={query}
       onQueryChange={setQuery}
@@ -494,6 +555,7 @@ export function CollectionWorkspace({ items = [], catalogProducts = EMPTY_CATALO
       onOpenFilters={() => setFiltersOpen(true)}
       onClearFilters={() => { setQuery(""); setConditionFilter(""); setCollectionGame("all"); }}
       onOpenItem={setSelected}
+      onOpenGroup={(group, opener) => { productOpenerRef.current = collectionNavigationPosition(opener); collectionNavigationRef.current = { kind: "product" }; setSelected(null); setSelectedProduct(group); setProductDetailTab("overview"); }}
       onAddItem={() => setForm({ type: "collection", seed: collectionGame !== "all" ? { tcgGame: collectionGame } : {} })}
       resolveItemImage={resolveItemImage}
       moreActions={<WorkspaceMoreMenu items={collectionMoreItems} active={view} onChange={chooseCollectionUtility} />}
@@ -568,15 +630,16 @@ export function BusinessWorkspace({ items = [], purchases = [], sales = [], expe
   };
   const [selected, setSelected] = useState(null);
   const [form, setForm] = useState(null);
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [inventoryStockFilter, setInventoryStockFilter] = useState("all");
+  const [inventoryVisibleCount, setInventoryVisibleCount] = useState(24);
+  const inventorySearchRef = useRef(null);
   const [previousView, setPreviousView] = useState(initialView);
   if (previousView !== initialView) {
     setPreviousView(initialView);
     setView(initialView);
     setSelected(null);
     setForm(null);
-    setFiltersOpen(false);
   }
   const [previousMoneyView, setPreviousMoneyView] = useState(initialMoneyView);
   if (previousMoneyView !== initialMoneyView) {
@@ -586,6 +649,20 @@ export function BusinessWorkspace({ items = [], purchases = [], sales = [], expe
   const allPurchases = useMemo(() => mergeRecords(state.purchases, purchases), [purchases, state.purchases]);
   const allInventory = useMemo(() => mergeRecords(state.inventory, items).filter((item) => inferOwnedItemPurpose(item) === OWNED_ITEM_PURPOSES.FOR_RESALE), [items, state.inventory]);
   const allSales = useMemo(() => mergeRecords(state.sales, sales), [sales, state.sales]);
+  const matchingInventory = useMemo(() => {
+    // F09/F10: saved identifiers (SKU, barcode, UPC, catalog IDs) and metadata are searchable too.
+    const stockMatches = filterBusinessInventory(allInventory, { stockFilter: inventoryStockFilter, getAvailableQuantity: row => availableInventoryQuantity(row, allSales) });
+    if (!query.trim()) return stockMatches;
+    const textMatches = new Set(filterBusinessInventory(stockMatches, { query }));
+    return stockMatches.filter(row => textMatches.has(row) || businessRecordMatchesQuery(row, query));
+  }, [allInventory, allSales, inventoryStockFilter, query]);
+  const inventoryHasFilters = Boolean(query.trim()) || inventoryStockFilter !== "all";
+  const inventoryShownCount = Math.min(inventoryVisibleCount, matchingInventory.length);
+  const updateInventoryQuery = value => { setQuery(value); setInventoryVisibleCount(24); };
+  const clearInventoryFilters = () => {
+    setQuery(""); setInventoryStockFilter("all"); setInventoryVisibleCount(24);
+    inventorySearchRef.current?.querySelector("input")?.focus();
+  };
   const allExpenses = useMemo(() => mergeRecords(state.expenses, expenses), [expenses, state.expenses]);
   const allMileage = useMemo(() => mergeRecords(state.mileage, mileage), [mileage, state.mileage]);
   const businessDestinations = [{ key: "purchases", label: "Purchases", detail: "Owner-reviewed drafts and receiving" }, { key: "inventory", label: "Inventory", detail: "Items for resale" }, { key: "sales", label: "Sales", detail: "Proceeds and profit" }, { key: "money", label: "Money", detail: "Expenses and records" }, { key: "compliance", label: "Compliance", detail: "Registration, taxes, licenses, deadlines" }];
@@ -619,9 +696,6 @@ export function BusinessWorkspace({ items = [], purchases = [], sales = [], expe
   if (form) return <RecordForm key={`${form.type}-${form.seed?.id || "new"}`} type={form.type} seed={form.seed} state={formState} onSave={saveRecord} onCancel={() => setForm(null)} />;
   if (selected) return <div className="manual-lifecycle-detail"><BusinessDetail resolveItemImage={resolveItemImage} type={selected.type} record={findRecord(selected.type, selected.record)} state={formState} onBack={() => setSelected(null)} onEdit={editRecord} onDelete={deleteRecord} onMoveToCollection={moveToCollection} onOpenRelated={openDetail} onAllocate={allocateLot} />{selected.record._recordOrigin !== "legacy" && selected.type === "inventory" ? <><ManualLifecycles key={selected.record.id} types={["processing", "listing"]} title="Prepare, store & list" itemId={selected.record.id} /><InventoryLabelPreview item={findRecord(selected.type, selected.record)} state={state} /></> : null}{selected.record._recordOrigin !== "legacy" && selected.type === "sale" ? <ManualLifecycles key={selected.record.id} types={["shipment", "saleReturn"]} title="Fulfillment & returns" saleId={selected.record.id} ownerSession={ownerSession} /> : null}</div>;
   if (view === "compliance") return <BusinessCompliancePage onBack={() => changeView("overview")} />;
-  // F09/F10: saved identifiers (SKU, barcode, UPC, catalog IDs) and metadata
-  // (game, language, edition, grader, storage fields) are searchable.
-  const filtered = (records) => records.filter((record) => !query || businessRecordMatchesQuery(record, query));
   const purchaseCost = allPurchases.reduce((sum, row) => sum + number(row.totalPurchaseCost), 0);
   const inventoryCost = allInventory.reduce((sum, row) => sum + number(acquisitionCost(row, allSales)), 0);
   // F14: per-unit midpoint × remaining units; explicit $0 estimates count, and
@@ -644,8 +718,11 @@ export function BusinessWorkspace({ items = [], purchases = [], sales = [], expe
     { label: "Sales drafts", count: draftSales.length, view: "sales" },
     { label: "Expenses missing receipts", count: missingReceipts.length, view: "money", moneyView: "expenses" },
   ].filter((row) => row.count > 0 && (showOperationalTools || row.view === "sales"));
-  const recordCards = (type, records, facts) => <RevealMoreList key={`${type}-${query}`} records={filtered(records)} label={{ purchase: "purchases", lot: "lots", inventory: "items", sale: "sales", expense: "expenses", mileage: "trips" }[type]}>{(rows) => rows.map((record) => <RecordListCard key={record.id} resolveItemImage={resolveItemImage} record={record} eyebrow={{ purchase: "Purchase", lot: "Purchase lot", inventory: record.productClassification || "Inventory", sale: record.salesChannel || "Sale", expense: record.category || "Expense", mileage: "Mileage" }[type]} status={type === "lot" ? reconcileLotAllocations(record.totalLotCost, state.inventory.filter((item) => item.lotId === record.id)).reconciled ? "Reconciled" : "Needs allocation" : record.status || "Recorded"} statusTone={type === "lot" && !reconcileLotAllocations(record.totalLotCost, state.inventory.filter((item) => item.lotId === record.id)).reconciled ? "warning" : "neutral"} facts={facts(record)} onOpen={(row) => openDetail(type, row)} />)}</RevealMoreList>;
-  return <main className="everyday-workspace everyday-business-records" data-testid="business-workspace">
+  const recordCard = (type, facts) => (record) => <RecordListCard key={record.id} resolveItemImage={resolveItemImage} record={record} eyebrow={{ purchase: "Purchase", lot: "Purchase lot", inventory: record.productClassification || "Inventory", sale: record.salesChannel || "Sale", expense: record.category || "Expense", mileage: "Mileage" }[type]} status={type === "lot" ? reconcileLotAllocations(record.totalLotCost, state.inventory.filter((item) => item.lotId === record.id)).reconciled ? "Reconciled" : "Needs allocation" : record.status || "Recorded"} statusTone={type === "lot" && !reconcileLotAllocations(record.totalLotCost, state.inventory.filter((item) => item.lotId === record.id)).reconciled ? "warning" : "neutral"} facts={facts(record)} onOpen={(row) => openDetail(type, row)} />;
+  const recordCards = (type, records, facts) => type === "inventory"
+    ? records.slice(0, inventoryVisibleCount).map(recordCard(type, facts))
+    : <RevealMoreList key={type} records={records} label={{ purchase: "purchases", lot: "lots", sale: "sales", expense: "expenses", mileage: "trips" }[type]}>{(rows) => rows.map(recordCard(type, facts))}</RevealMoreList>;
+  return <main className={`everyday-workspace everyday-business-records${view === "inventory" ? " business-inventory-view" : ""}`} data-testid="business-workspace">
     <PageHeader
       eyebrow={showOperationalTools ? "Keep things moving" : "From your collection"}
       title={view === "overview" ? workspaceTitle : primaryDestinations.find((item) => item.key === view)?.label || businessDestinations.find((item) => item.key === view)?.label || workspaceTitle}
@@ -661,9 +738,33 @@ export function BusinessWorkspace({ items = [], purchases = [], sales = [], expe
     {view === "overview" ? <><nav className="business-destination-grid" aria-label={showOperationalTools ? "Business destinations" : "Selling destinations"}>{primaryDestinations.map((item, index) => <button key={item.key} type="button" onClick={() => changeView(item.key)}><span className="business-destination-icon" aria-hidden="true"><AppNavIcon kind={({ purchases: "clipboard", inventory: "inventory", sales: "sell", money: "business", compliance: "admin" })[item.key]} /></span><span className="business-destination-copy"><strong>{item.label}</strong><span>{item.detail}</span></span><span className="business-destination-arrow" aria-hidden="true">↗</span>{showOperationalTools && index < 3 ? <small className="business-destination-step"><span className="business-destination-index" aria-hidden="true">0{index + 1}</span>{["Receive & record", "Prepare & organize", "Sell & track"][index]}</small> : null}</button>)}</nav>{savedRecordDestinations.length ? <div className="everyday-secondary-navigation"><WorkspaceMoreMenu label="More saved records" items={savedRecordDestinations} active={view} onChange={changeView} /></div> : null}{businessAttention.length ? <section className="business-attention-section"><SectionHeader title="Needs Attention" /><div className="business-attention-list">{businessAttention.map((item) => <button key={item.label} type="button" onClick={() => { if (item.moneyView) setMoneyView(item.moneyView); changeView(item.view); }}><span>{item.label}</span><strong>{item.count}</strong><span aria-hidden="true">›</span></button>)}</div></section> : null}</> : <button type="button" className="everyday-back-button" onClick={() => changeView("overview")}>Back to {workspaceTitle}</button>}
     {error ? <p className="compatibility-note" role="alert">{error}</p> : null}
     {view === "purchases" ? <><section className="everyday-action-section"><SectionHeader title="Purchases" description="Acquisitions, lots, and cost allocation." actions={<PrimaryButton onClick={() => setForm({ type: "purchase", seed: {} })}>Record Purchase</PrimaryButton>} /></section>{unallocatedLots.length ? <section className="everyday-attention"><SectionHeader title="Needs attention" description={`${unallocatedLots.length} purchase lot${unallocatedLots.length === 1 ? " has" : "s have"} unreconciled cost.`} actions={<PrimaryButton onClick={() => openDetail("lot", unallocatedLots[0].lot)}>Review Allocation</PrimaryButton>} /></section> : null}<MetricRow items={[{ label: "Purchases", value: allPurchases.length }, { label: "Capital recorded", value: money(purchaseCost), numeric: true }, { label: "Purchase lots", value: state.lots.length }, { label: "Unallocated lots", value: unallocatedLots.length, tone: unallocatedLots.length ? "warning" : "neutral" }]} /><section><SectionHeader title="Recent purchases" description="Open a purchase to process its lots and related inventory." />{allPurchases.length ? recordCards("purchase", allPurchases, (row) => [{ label: "Cost", value: money(row.totalPurchaseCost) }, { label: "Date", value: dateLabel(row.purchaseDate) }, { label: "Source", value: row.source || "Not recorded" }]) : <EmptyState title="No purchases recorded" action={<PrimaryButton onClick={() => setForm({ type: "purchase", seed: {} })}>Record Purchase</PrimaryButton>}>Record a real acquisition when inventory is purchased.</EmptyState>}</section><section><SectionHeader title="Lot processing" description="Split purchases and reconcile cost without changing the original purchase." actions={<QuietButton onClick={() => setForm({ type: "lot", seed: {} })}>Create Lot</QuietButton>} />{state.lots.length ? recordCards("lot", state.lots, (row) => { const result = reconcileLotAllocations(row.totalLotCost, state.inventory.filter((item) => item.lotId === row.id)); return [{ label: "Lot cost", value: money(result.totalCost) }, { label: "Allocated", value: money(result.allocatedCost) }, { label: "Unallocated", value: money(result.unallocatedCost) }]; }) : <EmptyState title="No purchase lots">Create a lot only when a purchase must be split into multiple inventory records.</EmptyState>}</section></> : null}
-    {view === "inventory" ? <>{missingInventoryCost.length ? <section className="everyday-attention"><SectionHeader title="Needs attention" description={`${missingInventoryCost.length} inventory item${missingInventoryCost.length === 1 ? " is" : "s are"} missing an acquisition cost.`} actions={<PrimaryButton onClick={() => openDetail("inventory", missingInventoryCost[0])}>Review Item</PrimaryButton>} /></section> : null}<MetricRow items={[{ label: "Inventory records", value: allInventory.length }, { label: "Units on hand", value: unitsOnHand.missing ? `${unitsOnHand.total} (+${unitsOnHand.missing} item${unitsOnHand.missing === 1 ? "" : "s"} without a saved quantity)` : unitsOnHand.total }, { label: "Recorded cost", value: money(inventoryCost), numeric: true }, { label: "Projected resale", value: projectedResale.hasEstimates ? money(projectedResale.total) : "Not enough data", helper: projectedResaleTotalNote(projectedResale), numeric: true }]} /><section><SectionHeader title="Current inventory" description="Open an item for cost, storage, purpose, and sales history." actions={<FilterButton active={filtersOpen} onClick={() => setFiltersOpen(true)}>Search</FilterButton>} />{allInventory.length ? recordCards("inventory", allInventory, (row) => [{ label: "Quantity available", value: quantityLabel(availableInventoryQuantity(row, allSales)) }, { label: "Available cost", value: money(acquisitionCost(row, allSales)) }, { label: "Projected resale (per unit)", value: money(row.projectedResaleMid) }, { label: "Storage", value: row.storageLocation || "Not assigned" }]) : <EmptyState title="No resale inventory" action={<PrimaryButton onClick={() => setForm({ type: "inventory", seed: {} })}>Add Resale Inventory</PrimaryButton>}>Move a Collection item to resale or add acquired inventory.</EmptyState>}</section></> : null}
+    {view === "inventory" ? <>
+      <section className="business-inventory-section" aria-label="Current inventory">
+        <SectionHeader title="Current inventory" description="Find an item or open its details." />
+        <div className="business-inventory-toolbar">
+          <div ref={inventorySearchRef}><SearchField label="Search inventory" value={query} onChange={updateInventoryQuery} placeholder="Name, set, card number or storage" enterKeyHint="search" autoComplete="off" /></div>
+          <QuietButton disabled={!inventoryHasFilters} onClick={clearInventoryFilters}>Clear filters</QuietButton>
+        </div>
+        <div className="business-inventory-filters" role="group" aria-label="Inventory stock filters">
+          {BUSINESS_INVENTORY_STOCK_FILTERS.map(filter => <button key={filter.key} type="button" className="business-inventory-filter" aria-pressed={inventoryStockFilter === filter.key} onClick={() => { setInventoryStockFilter(filter.key); setInventoryVisibleCount(24); }}>{filter.label}</button>)}
+        </div>
+        <p className="business-inventory-filter-help">Availability uses the quantity remaining after recorded sales and returns.</p>
+        <p className="business-inventory-results" role="status">Showing {inventoryShownCount} of {matchingInventory.length} {inventoryHasFilters ? "matching " : ""}inventory records{inventoryHasFilters ? ` · ${allInventory.length} total` : ""}.</p>
+        <details className="business-inventory-totals">
+          <summary><span>All inventory totals</span><span>{allInventory.length} record{allInventory.length === 1 ? "" : "s"}</span></summary>
+          <div role="group" aria-label="All inventory totals">
+            <MetricRow items={[{ label: "Inventory records", value: allInventory.length }, { label: "Units on hand", value: unitsOnHand.missing ? `${unitsOnHand.total} (+${unitsOnHand.missing} item${unitsOnHand.missing === 1 ? "" : "s"} without a saved quantity)` : unitsOnHand.total }, { label: "Recorded cost", value: money(inventoryCost), numeric: true }, { label: "Projected resale", value: projectedResale.hasEstimates ? money(projectedResale.total) : "Not enough data", helper: projectedResaleTotalNote(projectedResale), numeric: true }]} />
+          </div>
+        </details>
+        {missingInventoryCost.length ? <section className="everyday-attention"><SectionHeader title="Needs attention" description={`${missingInventoryCost.length} item${missingInventoryCost.length === 1 ? " across all inventory is" : "s across all inventory are"} missing an acquisition cost.`} actions={<PrimaryButton onClick={() => openDetail("inventory", missingInventoryCost[0])}>Review Item</PrimaryButton>} /></section> : null}
+        {!allInventory.length ? <EmptyState title="No resale inventory" action={<PrimaryButton onClick={() => setForm({ type: "inventory", seed: {} })}>Add Resale Inventory</PrimaryButton>}>Move a Collection item to resale or add acquired inventory.</EmptyState>
+          : matchingInventory.length ? <>
+            <div className="everyday-record-list">{recordCards("inventory", matchingInventory, row => [{ label: "Quantity available", value: quantityLabel(availableInventoryQuantity(row, allSales)) }, { label: "Available cost", value: money(acquisitionCost(row, allSales)) }, { label: "Projected resale (per unit)", value: money(row.projectedResaleMid) }, { label: "Storage", value: row.storageLocation || "Not assigned" }])}</div>
+            {inventoryShownCount < matchingInventory.length ? <div className="business-inventory-more"><QuietButton onClick={() => setInventoryVisibleCount(count => count + 24)}>Show more inventory</QuietButton></div> : null}
+          </> : <EmptyState title="No matching inventory" action={<QuietButton onClick={clearInventoryFilters}>Clear filters</QuietButton>}>Try another search or stock filter. Your {allInventory.length} inventory record{allInventory.length === 1 ? " is" : "s are"} still saved.</EmptyState>}
+      </section>
+    </> : null}
     {view === "sales" ? <>{draftSales.length ? <section className="everyday-attention"><SectionHeader title="Needs attention" description={`${draftSales.length} sale draft${draftSales.length === 1 ? " is" : "s are"} not completed.`} actions={<PrimaryButton onClick={() => openDetail("sale", draftSales[0])}>Review Draft</PrimaryButton>} /></section> : null}<MetricRow items={[{ label: "Completed sales", value: completedSales.length }, { label: "Gross revenue", value: money(grossSales), numeric: true }, { label: "Realized profit", value: money(realizedProfit), numeric: true }, { label: "COGS adjustment", value: money(realizedCogsAdjustment), numeric: true }]} /><section><SectionHeader title="Recent sales" description="Open a sale for original proceeds and cost plus any append-only reporting reconciliation." />{allSales.length ? recordCards("sale", allSales, (row) => { const reporting = getSaleReportingProjection(row, formState); return [{ label: "Gross", value: money(row.grossSalePrice) }, { label: "Net", value: money(reporting.effectiveNetProceeds) }, { label: "Profit", value: money(reporting.effectiveProfit) }, { label: "Date", value: dateLabel(row.saleDate) }]; }) : <EmptyState title="No sales recorded" action={<PrimaryButton onClick={() => setForm({ type: "sale", seed: {} })}>Record Sale</PrimaryButton>}>Record a real transaction or save a draft.</EmptyState>}</section></> : null}
     {view === "money" ? <><div className="everyday-money-navigation"><WorkspaceTabs id={moneyTabsId} label="Money sections" tabs={moneyTabs} active={moneyView} onChange={setMoneyView} /><WorkspaceMoreMenu label="More" items={[{ key: "reconciliation", label: "Reconciliation" }]} active={moneyView} onChange={setMoneyView} /></div><WorkspaceTabPanel id={moneyTabsId} value="expenses" active={moneyView}><section className="everyday-action-section"><SectionHeader title="Expenses" description="Business records and bookkeeping estimates, not tax conclusions." actions={<PrimaryButton onClick={() => setForm({ type: "expense", seed: {} })}>Add Expense</PrimaryButton>} /></section>{missingReceipts.length ? <section className="everyday-attention"><SectionHeader title="Needs attention" description={`${missingReceipts.length} expense${missingReceipts.length === 1 ? " is" : "s are"} missing a receipt reference.`} actions={<PrimaryButton onClick={() => openDetail("expense", missingReceipts[0])}>Review Expense</PrimaryButton>} /></section> : null}<MetricRow items={[{ label: "Expenses", value: allExpenses.length }, { label: "Recorded amount", value: money(allExpenses.reduce((sum, row) => sum + number(row.amount), 0)), numeric: true }, { label: "Missing receipts", value: missingReceipts.length }]} /><section><SectionHeader title="Recent expenses" />{allExpenses.length ? recordCards("expense", allExpenses, (row) => [{ label: "Amount", value: money(row.amount) }, { label: "Merchant", value: row.merchant || "Not recorded" }, { label: "Date", value: dateLabel(row.date) }]) : <EmptyState title="No expenses recorded" action={<PrimaryButton onClick={() => setForm({ type: "expense", seed: {} })}>Add Expense</PrimaryButton>}>Add actual business expenses and receipt references.</EmptyState>}</section></WorkspaceTabPanel><WorkspaceTabPanel id={moneyTabsId} value="mileage" active={moneyView}><section className="everyday-action-section"><SectionHeader title="Mileage" description="Factual trip records for bookkeeping review." actions={<PrimaryButton onClick={() => setForm({ type: "mileage", seed: {} })}>Add Mileage</PrimaryButton>} /></section><MetricRow items={[{ label: "Trips", value: allMileage.length }, { label: "Recorded miles", value: `${allMileage.reduce((sum, row) => sum + number(row.miles), 0).toFixed(1)} mi`, numeric: true }]} /><section><SectionHeader title="Recent trips" />{allMileage.length ? recordCards("mileage", allMileage, (row) => [{ label: "Miles", value: `${number(row.miles)} mi` }, { label: "Date", value: dateLabel(row.date) }, { label: "Destination", value: row.destination || "Not recorded" }]) : <EmptyState title="No mileage recorded" action={<PrimaryButton onClick={() => setForm({ type: "mileage", seed: {} })}>Add Mileage</PrimaryButton>}>Record sourcing, pickup, delivery, or other business trips.</EmptyState>}</section></WorkspaceTabPanel><WorkspaceTabPanel id={moneyTabsId} value="reports" active={moneyView}><section className="everyday-action-section"><SectionHeader title="Reports" description="Summaries use completed real records only." /></section><MetricRow items={[{ label: "Capital recorded", value: money(purchaseCost) }, { label: "Revenue", value: money(grossSales) }, { label: "Realized profit", value: money(realizedProfit) }, { label: "Expenses", value: money(allExpenses.reduce((sum, row) => sum + number(row.amount), 0)) }]} /><EmptyState title="Detailed reporting needs more completed records">Source and time-period reports will remain unavailable until their required records can be reconciled.</EmptyState><BoothStatement state={state} /></WorkspaceTabPanel>{moneyView === "reconciliation" ? <section className="everyday-money-region" role="region" aria-label="Reconciliation" tabIndex={0}><section className="everyday-action-section"><SectionHeader title="Reconciliation" description="Resolve cost and receipt gaps before relying on reports." /></section>{unallocatedLots.length || missingInventoryCost.length || missingReceipts.length ? <div className="reconciliation-list">{unallocatedLots.map(({ lot }) => <RecordCard key={lot.id}><h3>{lot.title}</h3><p>Lot allocation does not reconcile.</p><PrimaryButton onClick={() => openDetail("lot", lot)}>Review Lot</PrimaryButton></RecordCard>)}{missingInventoryCost.map((row) => <RecordCard key={row.id}><h3>{recordTitle(row)}</h3><p>Inventory cost is missing.</p><PrimaryButton onClick={() => openDetail("inventory", row)}>Review Item</PrimaryButton></RecordCard>)}{missingReceipts.map((row) => <RecordCard key={row.id}><h3>{recordTitle(row)}</h3><p>Receipt reference is missing.</p><PrimaryButton onClick={() => openDetail("expense", row)}>Review Expense</PrimaryButton></RecordCard>)}</div> : <EmptyState title="Nothing to reconcile">Recorded lot allocations, inventory costs, and receipt references reconcile.</EmptyState>}</section> : null}</> : null}
-    <BottomSheet open={filtersOpen} title="Inventory search" onClose={() => setFiltersOpen(false)}><SearchField label="Search inventory" value={query} onChange={setQuery} enterKeyHint="search" autoComplete="off" /><QuietButton onClick={() => { setQuery(""); setFiltersOpen(false); }}>Clear Search</QuietButton></BottomSheet>
   </main>;
 }

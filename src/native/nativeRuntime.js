@@ -28,7 +28,7 @@ export function resolveApiBase({ native = isNativePlatform(), configured = env.V
 export const getApiBase = () => resolveApiBase();
 
 export function getNativeAuthRedirect(kind = "signin") {
-  if (!["signin", "recovery"].includes(kind)) throw new Error("Unsupported account link.");
+  if (!["signin", "recovery", "oauth"].includes(kind)) throw new Error("Unsupported account link.");
   return `${NATIVE_AUTH_CALLBACK}?flow=${kind}`;
 }
 
@@ -40,7 +40,7 @@ export function parseNativeAuthCallback(value) {
   const keys = [...url.searchParams.keys()];
   if (new Set(keys).size !== keys.length || keys.some(key => !["code", "flow", "error", "error_code", "error_description"].includes(key))) return null;
   const flow = url.searchParams.get("flow") || "signin";
-  if (!["signin", "recovery"].includes(flow)) return null;
+  if (!["signin", "recovery", "oauth"].includes(flow)) return null;
   if (url.searchParams.has("error")) return { error: true, flow };
   const code = url.searchParams.get("code") || "";
   // Only PKCE codes are accepted. Never accept bearer/refresh tokens in a link.

@@ -254,7 +254,7 @@ html body .app.app-command-shell[data-theme] .business-destination-step { paddin
   html body .app.app-command-shell[data-theme] .everyday-workspace[data-testid="collection-workspace"] > .ops-page-header p { grid-area:description !important; margin:0; font-size:14px; }
   html body .app.app-command-shell[data-theme] .everyday-workspace[data-testid="collection-workspace"] > .ops-page-header .ops-page-actions { grid-area:action !important; }
   html body .app.app-command-shell[data-theme] .collection-portfolio > div:first-child { gap:12px; }
-  html body .app.app-command-shell[data-theme] .collection-portfolio-heading { grid-template-columns:minmax(0,1fr) auto; gap:4px 10px; padding:0; }
+  html body .app.app-command-shell[data-theme] .collection-portfolio-heading { grid-template-columns:minmax(min-content,1fr) auto; gap:4px 10px; padding:0; }
   html body .app.app-command-shell[data-theme] .collection-portfolio-heading .collection-portfolio-select { gap:4px; padding:0; }
   html body .app.app-command-shell[data-theme] .collection-portfolio-heading .collection-portfolio-select > span:first-child { font-size:12px; }
   html body .app.app-command-shell[data-theme] .collection-portfolio-heading .collection-portfolio-select strong { font-size:16px; }

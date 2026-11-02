@@ -405,6 +405,64 @@ html body .app.app-command-shell .business-destination-grid button:nth-child(n+4
 .app.app-command-shell .business-attention-list button { min-height: 56px; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 8px 0; border: 0 !important; border-bottom: 1px solid var(--border-subtle) !important; background: transparent !important; color: var(--text-primary) !important; text-align: left; }
 .business-attention-list button strong { color: var(--status-warning); font-variant-numeric: tabular-nums; }
 .everyday-money-navigation .everyday-tabs { flex: 1; padding: 0; }
+
+/* Inventory search is view state only; totals continue to describe all records. */
+.business-inventory-totals { min-width: 0; border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-primary); }
+.business-inventory-totals > summary { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; min-width: 0; min-height: 48px; padding: 10px 14px; color: var(--text-primary); font: 600 14px/1.5 var(--font-ui); list-style: none; cursor: pointer; }
+.business-inventory-totals > summary::-webkit-details-marker { display: none; }
+.business-inventory-totals > summary > span:last-child { color: var(--text-secondary); font-weight: 400; font-variant-numeric: tabular-nums; }
+.business-inventory-totals > summary::after { content: ""; flex: 0 0 7px; width: 7px; height: 7px; margin-left: auto; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); }
+.business-inventory-totals[open] > summary::after { transform: rotate(225deg); }
+.business-inventory-totals > div { padding: 0 12px 12px; }
+.business-inventory-section { display: grid; gap: 14px; min-width: 0; }
+.business-inventory-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 12px; }
+.business-inventory-toolbar > div { min-width: 0; }
+.business-inventory-toolbar .ops-field { font-size: 14px; }
+.business-inventory-toolbar .ops-input-wrap { min-height: 46px; }
+.business-inventory-toolbar input { min-height: 44px; font-size: 16px; }
+.business-inventory-toolbar > button { min-width: 44px; min-height: 46px; }
+.business-inventory-filters { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.app.app-command-shell .business-inventory-filter {
+  min-width: 44px;
+  min-height: 44px;
+  max-width: 100%;
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  background: var(--surface-primary);
+  color: var(--text-secondary);
+  font: 600 14px/1.4 var(--font-ui);
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.app.app-command-shell .business-inventory-filter:hover { border-color: var(--action-primary); }
+.app.app-command-shell .business-inventory-filter[aria-pressed="true"] {
+  border-color: var(--action-primary);
+  background: var(--selection-background, var(--surface-secondary));
+  color: var(--action-primary);
+  box-shadow: inset 0 -2px var(--action-primary) !important;
+}
+.business-inventory-filter-help { margin: 0; color: var(--text-secondary); font: 400 13px/1.5 var(--font-ui); }
+.business-inventory-results { margin: 0; color: var(--text-primary); font: 600 14px/1.5 var(--font-ui); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.business-inventory-more { display: flex; justify-content: center; padding-top: 2px; }
+html body .app.app-command-shell[data-theme] .business-inventory-view > .everyday-back-button { justify-self: start; min-height: 44px; padding: 4px 0; border: 0; background: transparent !important; color: var(--text-secondary) !important; box-shadow: none !important; font-size: 14px; }
+@media (max-width: 700px) {
+  html body .app.app-command-shell[data-theme] .everyday-business-records.business-inventory-view { gap: 12px; }
+  html body .app.app-command-shell[data-theme] .business-inventory-view > .ops-page-header { display: grid !important; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "eyebrow eyebrow" "title action" "description description"; gap: 6px 10px; padding-bottom: 0; }
+  html body .app.app-command-shell[data-theme] .business-inventory-view > .ops-page-header > div:first-child { display: contents; }
+  html body .app.app-command-shell[data-theme] .business-inventory-view > .ops-page-header .ops-eyebrow { grid-area: eyebrow; }
+  html body .app.app-command-shell[data-theme] .business-inventory-view > .ops-page-header h1 { grid-area: title; align-self: center; margin: 0; font-size: 28px; }
+  html body .app.app-command-shell[data-theme] .business-inventory-view > .ops-page-header p { grid-area: description; margin: 0; font-size: 14px; }
+  html body .app.app-command-shell[data-theme] .business-inventory-view > .ops-page-header .ops-page-actions { grid-area: action; align-self: center; }
+  html body .app.app-command-shell[data-theme] .business-inventory-view > .ops-page-header .ops-page-actions button { padding-inline: 10px; font-size: 13px; }
+  .business-inventory-section { gap: 12px; }
+}
+@media (max-width: 520px) {
+  .business-inventory-toolbar { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .business-inventory-toolbar > button { justify-self: end; }
+  .app.app-command-shell .business-inventory-filter { flex: 1 1 90px; padding-inline: 10px; }
+}
 @media (max-width: 859px) {
   .app.app-command-shell .everyday-workspace { padding: 24px 20px 112px; gap: 20px; }
   .business-destination-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }

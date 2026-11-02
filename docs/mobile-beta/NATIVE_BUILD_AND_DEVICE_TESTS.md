@@ -1,5 +1,7 @@
 # Native beta build and device verification
 
+**October 24 status:** build 7 Android debug compilation and unsigned iPhone simulator compilation/launch passed in [cloud run 40121840615](https://github.com/zafthegreat-cyber/ember-ledger/actions/runs/40121840615). Both exact native API origins pass public CORS checks. The production privacy migrations are installed and receipt storage is private. An approved server key is stored only as a Vercel Production Secret; subsequent deployments receive it, while account deletion remains disabled pending authenticated service acceptance. See [current privacy readiness](PRIVACY_READINESS_2026-10-24.md). Developer enrollment, signed store distribution and physical phone acceptance remain outstanding; phone testing is paused at the owner's request. The October 18 evidence below is historical.
+
 Updated 2026-10-18. Run commands from the repository root. This runbook describes the local native implementation; it does not claim a store upload, successful physical-device test, or a production configuration change.
 
 For the owner's Android/iPhone handoff, the no-Mac TestFlight path and a fill-in physical test record, use [Phone test quickstart](./PHONE_TEST_QUICKSTART.md). Run `node scripts/native-phone-preflight.mjs` against existing artifacts before distribution; add `--hosted` only for the documented read-only public endpoint probes. Passing automated checks never marks the manual/device rows complete.
@@ -70,7 +72,7 @@ Neither the Supabase redirect change nor the production flag was applied by thes
 
 Account deletion has separate migration, staging, provider-retention and feature-flag requirements. Follow [Account deletion rollout](./ACCOUNT_DELETION_ROLLOUT.md); native CORS activation must not implicitly activate deletion.
 
-That rollout also documents a read-only production metadata finding: the receipt bucket is currently public. The authenticated private-attachment resolver must be staged and released before applying `20261018174916_code3_private_attachment_reads.sql`. Verify current owners retain access and former public URLs reject anonymous requests; preserve every existing object/path and record reference. This production privacy work is not complete merely because the local migration and synthetic tests pass.
+That rollout also documents a read-only production metadata finding: the receipt bucket is currently public. The authenticated private-attachment resolver must be staged and released before applying `20261024234513_code3_private_attachment_reads.sql`. Verify current owners retain access and former public URLs reject anonymous requests; preserve every existing object/path and record reference. This production privacy work is not complete merely because the local migration and synthetic tests pass.
 
 ## Android debug and signed release
 

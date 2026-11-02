@@ -3,7 +3,7 @@ import { PRIVACY_PUBLISHER } from "../../config/privacyPolicy.js";
 import { privacySupportDraft, SUPPORT_TOPICS } from "./privacySupport.js";
 
 export default function PrivacySupportContact({ topic: initialTopic = "general", allowTopicChoice = false, publisher = PRIVACY_PUBLISHER }) {
-  const [topic, setTopic] = useState(initialTopic);
+  const [topic, setTopic] = useState(() => Object.hasOwn(SUPPORT_TOPICS, initialTopic) ? initialTopic : "general");
   const [note, setNote] = useState("");
   const [copyStatus, setCopyStatus] = useState("");
   const messageRef = useRef(null);

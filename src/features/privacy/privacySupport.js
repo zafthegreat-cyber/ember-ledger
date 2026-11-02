@@ -1,5 +1,9 @@
 export const SUPPORT_TOPICS = Object.freeze({
   general: { label: "General help", request: "I need help with Code 3 TCG." },
+  howto: { label: "How to use a feature", request: "I need instructions for a Code 3 TCG feature." },
+  bug: { label: "Report a bug", request: "I found a possible app or bot bug. Here is my goal, what happened, and what I expected." },
+  safety: { label: "Safety or harassment concern", request: "I need a private review of a safety or harassment concern. Please explain how to share only the necessary details." },
+  shop: { label: "Shop participation", request: "I would like to discuss shop participation in Code 3 TCG. Here is my shop’s public name and what we need." },
   access: { label: "Account access", request: "I need help accessing my Code 3 TCG account." },
   records: { label: "Saved records or device sync", request: "I need help with saved records or device sync. Please help me keep my existing data." },
   privacy: { label: "Privacy, export, or correction", request: "I have a question about my information, an export, or a correction." },

@@ -2,6 +2,7 @@ import { loadEnv, build } from "vite";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { resolveNativeBuildNumber } from "./native-build-number.mjs";
+import { releasedProviders } from "../src/features/auth/socialAuth.mjs";
 
 const settings = { ...loadEnv("native", process.cwd(), "VITE_"), ...process.env };
 const smoke = process.argv.includes("--smoke");
@@ -27,6 +28,8 @@ Object.assign(process.env, {
   VITE_NATIVE_BUILD: "true",
   VITE_SUPABASE_URL: smoke ? "" : settings.VITE_SUPABASE_URL,
   VITE_SUPABASE_ANON_KEY: smoke ? "" : settings.VITE_SUPABASE_ANON_KEY,
+  VITE_AUTH_VERIFIED_PROVIDERS: smoke ? "" : releasedProviders(settings.VITE_AUTH_VERIFIED_PROVIDERS).join(","),
+  VITE_AUTH_ACCOUNT_LINKING_VERIFIED: !smoke && settings.VITE_AUTH_ACCOUNT_LINKING_VERIFIED === "true" ? "true" : "false",
 });
 await build({
   mode: "native",
@@ -40,6 +43,8 @@ writeFileSync(resolve("artifacts/native/web-build.json"), JSON.stringify({
   builtAt: new Date().toISOString(), mode: smoke ? "configuration-smoke-only" : "native-beta",
   buildNumber, sourceCommit: process.env.GITHUB_SHA || null,
   apiOrigin: process.env.VITE_API_BASE_URL, accountServicesConfigured: !smoke,
+  socialProviders: releasedProviders(process.env.VITE_AUTH_VERIFIED_PROVIDERS),
+  accountLinkingEnabled: process.env.VITE_AUTH_ACCOUNT_LINKING_VERIFIED === "true",
   storeSigned: false, physicalDeviceTested: false,
 }, null, 2));
 console.log(smoke ? "Native web smoke bundle built; sign-in is deliberately unconfigured. Do not distribute." : "Native web bundle built. Next: npm run native:sync.");

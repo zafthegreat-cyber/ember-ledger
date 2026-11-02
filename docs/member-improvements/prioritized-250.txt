@@ -1,0 +1,1504 @@
+Code 3 TCG — prioritized 250 improvements
+Original suggestions are synthetic planning prompts, not real member findings. Ranking is product judgment based on the current code audit, not a statistical score or a delivery-date promise.
+First: audited join/recovery, privacy, feedback and first-task gaps. Next: data resilience and report/notification trust. Then: workflow refinements. Existing baseline safeguards and work needing credentials, policy or real device/member evidence are retained with dependencies rather than counted as new work. Original IMP identifiers and wording remain unchanged.
+Best Buy: Paused; no inventory polling or alert activation authorized
+
+1. IMP015 — Make recovery status messages useful without revealing whether someone else's email is registered.
+   P0 · current batch | Implemented and locally verified; release details in RELEASE-REVIEW.md
+   Why: Closes an audited open-registration, first-task, feedback, or source-clarity gap with no new provider credentials, retailer polling, or database permissions.
+   Dependency: Existing auth, collection, support, feedback, and account boundaries; no new source activation.
+   Acceptance: Recovery returns the same account-neutral response for registered, unregistered, and confirmed-email provider errors; upstream diagnostics never reach the UI.
+
+2. IMP011 — Explain the expected confirmation step and show a safe route to resend it.
+   P0 · current batch | Implemented and locally verified; release details in RELEASE-REVIEW.md
+   Why: Closes an audited open-registration, first-task, feedback, or source-clarity gap with no new provider credentials, retailer polling, or database permissions.
+   Dependency: Existing auth, collection, support, feedback, and account boundaries; no new source activation.
+   Acceptance: Confirmation help calls the real signup resend API with the existing platform callback, validates email, blocks duplicate requests, and explains the next step without staff approval.
+
+3. IMP013 — Make expired-link screens explain how to request a fresh link.
+   P0 · current batch | Implemented and locally verified; release details in RELEASE-REVIEW.md
+   Why: Closes an audited open-registration, first-task, feedback, or source-clarity gap with no new provider credentials, retailer polling, or database permissions.
+   Dependency: Existing auth, collection, support, feedback, and account boundaries; no new source activation.
+   Acceptance: Recognized expired email links show fresh-link instructions; recovery and confirmation actions remain distinct. OAuth callbacks retain their separate verification boundary.
+
+4. IMP007 — Explain which signup fields are private and which become visible to other members.
+   P0 · current batch | Implemented and locally verified; release details in RELEASE-REVIEW.md
+   Why: Closes an audited open-registration, first-task, feedback, or source-clarity gap with no new provider credentials, retailer polling, or database permissions.
+   Dependency: Existing auth, collection, support, feedback, and account boundaries; no new source activation.
+   Acceptance: All three signup renderers explain public usernames versus account name, email, and password before submission.
+
+5. IMP222 — Clearly disclose who can review submitted feedback.
+   P0 · current batch | Implemented and locally verified; release details in RELEASE-REVIEW.md
+   Why: Closes an audited open-registration, first-task, feedback, or source-clarity gap with no new provider credentials, retailer polling, or database permissions.
+   Dependency: Existing auth, collection, support, feedback, and account boundaries; no new source activation.
+   Acceptance: The actual feedback form explains staff review, private versus community publication, local fallback, and when staff have not received a response.
+
+6. IMP224 — Return a useful submission reference and preserve drafts after temporary failures.
+   P0 · current batch | Implemented and locally verified; release details in RELEASE-REVIEW.md
+   Why: Closes an audited open-registration, first-task, feedback, or source-clarity gap with no new provider credentials, retailer polling, or database permissions.
+   Dependency: Existing auth, collection, support, feedback, and account boundaries; no new source activation.
+   Acceptance: Feedback has a stable UUID receipt matching its cloud row, optional account-scoped tab drafts, draft restore/removal, and truthful local-fallback status after failure.
+
+7. IMP231 — Distinguish general how-to help, account support, bug reports, and safety concerns.
+   P0 · current batch | Implemented and locally verified; release details in RELEASE-REVIEW.md
+   Why: Closes an audited open-registration, first-task, feedback, or source-clarity gap with no new provider credentials, retailer polling, or database permissions.
+   Dependency: Existing auth, collection, support, feedback, and account boundaries; no new source activation.
+   Acceptance: Public support separates feature instructions, account access, bugs, safety, and shop requests; each produces an editable private email draft.
+
+8. IMP166 — Show source coverage and paused status clearly, including the current Best Buy pause.
+   P0 · current batch | Implemented and locally verified; release details in RELEASE-REVIEW.md
+   Why: Closes an audited open-registration, first-task, feedback, or source-clarity gap with no new provider credentials, retailer polling, or database permissions.
+   Dependency: Existing auth, collection, support, feedback, and account boundaries; no new source activation.
+   Acceptance: Scout and public support display retailer coverage and explicitly label Best Buy paused for this release.
+
+9. IMP168 — Avoid implying that a paused source is continuously checking inventory.
+   P0 · current batch | Implemented and locally verified; release details in RELEASE-REVIEW.md
+   Why: Closes an audited open-registration, first-task, feedback, or source-clarity gap with no new provider credentials, retailer polling, or database permissions.
+   Dependency: Existing auth, collection, support, feedback, and account boundaries; no new source activation.
+   Acceptance: Coverage explains that paused Best Buy performs no inventory checks and sends no automatic retailer alerts; backend pause and inactive cron are read-only verified.
+
+10. IMP167 — Distinguish approved automated sources from manually submitted community observations.
+   P0 · current batch | Implemented and locally verified; release details in RELEASE-REVIEW.md
+   Why: Closes an audited open-registration, first-task, feedback, or source-clarity gap with no new provider credentials, retailer polling, or database permissions.
+   Dependency: Existing auth, collection, support, feedback, and account boundaries; no new source activation.
+   Acceptance: Coverage distinguishes time-stamped community observations, reviewed reports, and automatic retailer sources without claiming retailer guarantees.
+
+11. IMP001 — Lead with one concrete collecting outcome and place secondary workflows beneath it.
+   P0 · current batch | Implemented and locally verified; release details in RELEASE-REVIEW.md
+   Why: Closes an audited open-registration, first-task, feedback, or source-clarity gap with no new provider credentials, retailer polling, or database permissions.
+   Dependency: Existing auth, collection, support, feedback, and account boundaries; no new source activation.
+   Acceptance: The visitor introduction leads with saving one owned item and seeing it in Vault rather than multiple competing outcomes.
+
+12. IMP004 — Separate the collector introduction from the seller and shop introductions.
+   P0 · current batch | Implemented and locally verified; release details in RELEASE-REVIEW.md
+   Why: Closes an audited open-registration, first-task, feedback, or source-clarity gap with no new provider credentials, retailer polling, or database permissions.
+   Dependency: Existing auth, collection, support, feedback, and account boundaries; no new source activation.
+   Acceptance: The signed-in introduction has separate collector, seller, and shop paths with suitable next actions; choosing one grants no authority.
+
+13. IMP005 — Give first-time visitors a single recommended action with a visible result.
+   P0 · current batch | Implemented and locally verified; release details in RELEASE-REVIEW.md
+   Why: Closes an audited open-registration, first-task, feedback, or source-clarity gap with no new provider credentials, retailer polling, or database permissions.
+   Dependency: Existing auth, collection, support, feedback, and account boundaries; no new source activation.
+   Acceptance: The default guide has one recommended collection action wired to the existing Vault add flow and states its visible result.
+
+14. IMP027 — Make the first recommended task small enough to finish in about a minute.
+   P0 · current batch | Implemented and locally verified; release details in RELEASE-REVIEW.md
+   Why: Closes an audited open-registration, first-task, feedback, or source-clarity gap with no new provider credentials, retailer polling, or database permissions.
+   Dependency: Existing auth, collection, support, feedback, and account boundaries; no new source activation.
+   Acceptance: The default first task asks for one item and allows optional photos, prices, and extra details to wait.
+
+15. IMP028 — Allow the introduction to be skipped and reopened later.
+   P0 · current batch | Implemented and locally verified; release details in RELEASE-REVIEW.md
+   Why: Closes an audited open-registration, first-task, feedback, or source-clarity gap with no new provider credentials, retailer polling, or database permissions.
+   Dependency: Existing auth, collection, support, feedback, and account boundaries; no new source activation.
+   Acceptance: Members can skip the new guide and reopen it from Home or Account without resetting existing onboarding or collection records.
+
+16. IMP030 — Remember completed onboarding choices within the correct account.
+   P0 · current batch | Implemented and locally verified; release details in RELEASE-REVIEW.md
+   Why: Closes an audited open-registration, first-task, feedback, or source-clarity gap with no new provider credentials, retailer polling, or database permissions.
+   Dependency: Existing auth, collection, support, feedback, and account boundaries; no new source activation.
+   Acceptance: Only introduction path and dismissal are stored under a validated account UUID; another account cannot inherit them, and blocked storage has a usable fallback.
+
+17. IMP029 — Explain that area preferences personalize content rather than determine permission to join.
+   P0 · current batch | Implemented and locally verified; release details in RELEASE-REVIEW.md
+   Why: Closes an audited open-registration, first-task, feedback, or source-clarity gap with no new provider credentials, retailer polling, or database permissions.
+   Dependency: Existing auth, collection, support, feedback, and account boundaries; no new source activation.
+   Acceptance: Guide navigation explains optional area preferences, separate Online interests, and optional device location without imposing join eligibility.
+
+18. IMP031 — Pair themed names with short functional labels such as Vault — My collection.
+   P0 · current batch | Implemented and locally verified; release details in RELEASE-REVIEW.md
+   Why: Closes an audited open-registration, first-task, feedback, or source-clarity gap with no new provider credentials, retailer polling, or database permissions.
+   Dependency: Existing auth, collection, support, feedback, and account boundaries; no new source activation.
+   Acceptance: The guide pairs six themed destinations with plain functions, and each first-task action names its destination.
+
+19. IMP216 — Explain the purpose of each group beside its invitation link.
+   P0 · current batch | Implemented and locally verified; release details in RELEASE-REVIEW.md
+   Why: Closes an audited open-registration, first-task, feedback, or source-clarity gap with no new provider credentials, retailer polling, or database permissions.
+   Dependency: Existing auth, collection, support, feedback, and account boundaries; no new source activation.
+   Acceptance: Community links describe their distinct discussion, feedback, restock-submission, and alert purposes; external accounts remain optional.
+
+20. IMP219 — Treat joining and notifications as separate voluntary choices.
+   P0 · current batch | Implemented and locally verified; release details in RELEASE-REVIEW.md
+   Why: Closes an audited open-registration, first-task, feedback, or source-clarity gap with no new provider credentials, retailer polling, or database permissions.
+   Dependency: Existing auth, collection, support, feedback, and account boundaries; no new source activation.
+   Acceptance: Community guidance separates group membership and Discord sign-in from game/area role opt-ins, app alerts, and device notifications.
+
+21. IMP048 — Make retries preserve drafts and avoid duplicate writes.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+22. IMP050 — Use bounded requests with clear recovery actions instead of indefinite waiting.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+23. IMP186 — Explain the difference between locally saved, pending, synced, and conflict states.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+24. IMP188 — Preserve both versions when changes cannot be merged safely.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+25. IMP191 — Describe which tasks remain safe during a connection interruption.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+26. IMP193 — Explain backup contents, exclusions, and attachment availability clearly.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+27. IMP194 — Require review before applying recovered records to an existing workspace.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+28. IMP196 — Explain which profile fields are public before they are saved.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+29. IMP197 — Use a suitable public nickname rather than exposing an account email.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+30. IMP111 — Explain why location would help before requesting permission.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+31. IMP112 — Keep manual area selection available as a complete alternative.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+32. IMP113 — Use public business identifiers and addresses to disambiguate store locations.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+33. IMP117 — Explain the difference between submitting a report and notifying interested members.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+34. IMP119 — Preview the public report before final submission.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+35. IMP120 — Return a private submission reference with a clear review status.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+36. IMP122 — Remind contributors to exclude faces, children, receipts, and other unnecessary personal information.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+37. IMP123 — Keep observation context and time attached to supporting images.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+38. IMP124 — Allow text-only reports with appropriately labeled confidence.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+39. IMP125 — Separate evidence review from the decision to publish an image publicly.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+40. IMP128 — Make important corrections visible wherever the original report was distributed.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+41. IMP130 — Use clear review queues and escalation paths for time-sensitive or disputed reports.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+42. IMP131 — Show observation time separately from publication and later update times.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+43. IMP132 — Keep the original freshness context when a report is copied into another channel.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+44. IMP133 — Make sold-out and corrected states visibly supersede older claims.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+45. IMP134 — Use uncertainty language appropriate to the source and age of the observation.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+46. IMP135 — Display dates and times in a way that remains understandable across time zones.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+47. IMP136 — Keep Online visibly separate in role menus, report forms, and channel routing.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+48. IMP137 — Identify shipping, pickup, and physical store observations explicitly.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+49. IMP138 — Ask members separately about online and area-specific notifications.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+50. IMP139 — Preserve the observation type when reports move between the app and Discord.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+51. IMP140 — Validate that a selected destination matches the report's actual online or local scope.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+52. IMP146 — Explain the visibility and notification effects of each optional role.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+53. IMP147 — Keep choose-roles, rules, support, and important safety information consistently discoverable.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+54. IMP148 — Use a new-member account to verify channel visibility rather than relying on the owner view.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+55. IMP149 — Group role choices into understandable game, location, and optional topic sections.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+56. IMP150 — Confirm that removing an interest hides only the intended rooms.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+57. IMP151 — Explain the difference between role mentions, channel settings, and device push notifications.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+58. IMP152 — Keep alert audiences limited to explicitly selected interests and appropriate rooms.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+59. IMP153 — Include a short reason or category explaining why the member received an alert.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+60. IMP154 — Use consented notification tests without presenting synthetic reports as real stock.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+61. IMP156 — Deduplicate substantially identical updates before notifying members again.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+62. IMP157 — Explain the notification frequency available for each supported alert type.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+63. IMP158 — Provide realistic quiet-hour guidance where Discord itself controls delivery.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+64. IMP159 — Separate important corrections from routine informational updates.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+65. IMP160 — Keep notification preferences reversible without requiring members to leave the community.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+66. IMP161 — Explain exactly which optional interests a notification reset affects.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+67. IMP162 — Require confirmation for a broad reset while keeping individual opt-outs simple.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+68. IMP163 — Verify that removed interests stop matching future notifications.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+69. IMP164 — Keep resets private and preserve unrelated membership and staff roles.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+70. IMP165 — Offer a direct route back to the role menu after completion.
+   P1 · reliability and report trust | Backlog; scope and baseline must be checked before implementation
+   Why: Protect saved data and make report routing, freshness, visibility, and notification choices dependable before expanding optional features.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+71. IMP041 — Pair every meaningful color state with a readable text description.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+72. IMP042 — Give icon actions explicit accessible names and visible labels where practical.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+73. IMP043 — Test signup, reporting, and account settings using only a keyboard.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+74. IMP044 — Keep essential instructions readable when text is enlarged substantially.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+75. IMP045 — Respect reduced-motion preferences in transitions and notification effects.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+76. IMP036 — Keep primary mobile actions reachable without requiring precise taps.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+77. IMP037 — Review form behavior with the keyboard open on short phone screens.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+78. IMP038 — Use readable stacked summaries when a table becomes too narrow.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+79. IMP039 — Maintain comfortable spacing between confirmation, cancel, and destructive controls.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+80. IMP040 — Check safe-area spacing and overflow across common phone widths.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+81. IMP046 — Describe the current loading step when an operation takes noticeably longer than expected.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+82. IMP047 — Distinguish an empty result from a result that has not loaded yet.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+83. IMP049 — Explain whether a failed operation changed anything before offering another attempt.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+84. IMP051 — Prioritize the minimum fields needed to save a useful collection entry.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+85. IMP052 — Reveal advanced item details progressively instead of crowding the first form.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+86. IMP053 — Show the new item in its destination with a clear saved confirmation.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+87. IMP054 — Make the collection-versus-sale destination explicit before saving.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+88. IMP055 — Reuse appropriate defaults while making inherited values easy to review.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+89. IMP061 — Support common abbreviations, partial identifiers, and reasonable spelling variations.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+90. IMP062 — Keep selected game and set filters visible throughout the search journey.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+91. IMP063 — Preserve search position when returning from an item detail page.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+92. IMP064 — Display enough set information to distinguish similarly named releases.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+93. IMP065 — Offer useful next steps when no confident match is found.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+94. IMP066 — Differentiate saved interests, priority wants, and active collecting goals.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+95. IMP067 — Ask separately before using wishlist items to create alerts.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+96. IMP068 — Keep wishlist visibility private by default and explain sharing choices.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+97. IMP070 — Make it easy to archive a goal that no longer matches the member's interests.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+98. IMP076 — Preview import changes with clear counts for additions, conflicts, and skipped rows.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+99. IMP077 — Explain column mapping using familiar collection examples.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+100. IMP078 — Require explicit review before resolving possible duplicates.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+101. IMP079 — Document which record types and attachments each export includes.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+102. IMP080 — Preserve the original input file and existing records until an import is confirmed.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+103. IMP081 — Display valuation sources, observation dates, and meaningful uncertainty together.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+104. IMP082 — Keep purchase cost distinct from estimated market value.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+105. IMP083 — Avoid applying prices from a different condition, language, or variant without disclosure.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+106. IMP084 — Explain why a price changed when a new source or matching rule is used.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+107. IMP085 — Describe estimates without implying guaranteed returns or professional financial advice.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+108. IMP116 — Keep retailer, public location, game, observation type, and observation time easy to enter.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+109. IMP118 — Let uncertain observations remain explicitly uncertain instead of forcing an in-stock claim.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+110. IMP121 — Explain evidence visibility before an image is attached.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+111. IMP221 — Ask for the user's goal, what happened, and what they expected in concise fields.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+112. IMP226 — Separate ideas, under-review requests, active work, and released changes.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+113. IMP227 — Explain current priorities without assigning unsupported completion dates.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+114. IMP228 — Link release notes to the user problems they address.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+115. IMP229 — Close the loop when feedback is declined, deferred, or superseded.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+116. IMP230 — Keep a manageable public roadmap rather than exposing every internal task.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+117. IMP232 — Keep known issues dated and include practical workarounds when verified.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+118. IMP233 — Route sensitive account cases away from public channels.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+119. IMP234 — Explain support availability and reasonable follow-up expectations without guarantees.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+120. IMP235 — Keep related messages tied to one private case reference where possible.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+121. IMP032 — Keep the most common destinations stable across mobile and desktop.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+122. IMP033 — Group advanced seller tools without obscuring the basic collecting path.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+123. IMP034 — Use consistent words for reports, alerts, collections, and workspaces throughout the product.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+124. IMP035 — Make menu search recognize ordinary task descriptions and common synonyms.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+125. IMP220 — Keep key community guidance consistent across the website, app, Discord, and Facebook.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+126. IMP246 — Translate the fair-collecting mission into clear, consistently applied community expectations.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+127. IMP247 — Keep time-sensitive reporting separate from showcases, gameplay discussion, and casual reactions.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+128. IMP248 — Use discoverable names for original or appropriately licensed themed emoji.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+129. IMP250 — Provide private reporting paths for harassment, coercion, and other community safety concerns.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+130. IMP114 — Avoid exposing member movement histories or private home locations.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+131. IMP115 — Make location settings easy to review and change independently of account access.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+132. IMP201 — Explain current sessions and available sign-out controls in plain language.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+133. IMP202 — Describe deletion scope, retained records, and separate device copies before confirmation.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+134. IMP236 — Clearly describe what is available free today and what remains only a plan.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+135. IMP237 — Show meaningful limits before users invest substantial time in a workflow.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+136. IMP240 — Use concrete feature descriptions instead of ambiguous tier advantages.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+137. IMP002 — Show a short example connecting a store report to a personal collecting decision.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+138. IMP003 — Describe family safeguards through specific actions rather than broad safety language.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+139. IMP026 — Separate essential account setup from optional interests and community participation.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+140. IMP056 — Show edition, language, finish, and set identifiers together when reviewing a match.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+141. IMP057 — Distinguish catalog identity from copy-specific details such as condition and acquisition notes.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+142. IMP058 — Mark uncertain variant matches before they influence summaries.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+143. IMP059 — Keep manual condition opinions visibly separate from professional grading information.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+144. IMP060 — Explain whether an edit affects one copy or an entire grouped entry.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+145. IMP071 — Show recognition uncertainty and require review before saving an identified item.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+146. IMP072 — Explain practical ways to reduce glare and improve framing.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+147. IMP074 — Explain photo handling before requesting camera or upload permissions.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+148. IMP075 — Separate identification photos from any optional images shared with the community.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+149. IMP087 — Identify exact variants and conditions in proposed trade records.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+150. IMP088 — Clearly separate draft discussions, agreed terms, and completed exchanges.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+151. IMP089 — Keep reporting and blocking routes visible wherever trade contact is offered.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+152. IMP090 — Preserve guardian review and appropriate restrictions for child-sensitive participation.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+153. IMP091 — Make transfers between personal and seller records explicit and reviewable.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+154. IMP092 — Keep seller-specific language out of collector-only starting screens.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+155. IMP094 — Distinguish listed, reserved, sold, canceled, and returned item states clearly.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+156. IMP095 — Let summary figures link back to the records that support them.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+157. IMP096 — Explain receipt visibility before upload and keep attachments bound to the correct account.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+158. IMP097 — Use clear cost categories with optional advanced detail.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+159. IMP098 — State the limits of business summaries without presenting them as professional accounting conclusions.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+160. IMP099 — Include attachment availability and export coverage in record review.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+161. IMP100 — Provide an explicit distinction between personal collecting costs and seller expenses.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+162. IMP101 — Label shop-authored updates distinctly from community observations.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+163. IMP102 — Explain what a partner badge verifies and what it does not guarantee.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+164. IMP103 — Keep promotional submissions subject to clear community relevance rules.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+165. IMP104 — Publish a practical shop participation checklist and review process.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+166. IMP105 — Make correcting public business details easier than repeatedly contacting staff.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+167. IMP106 — Keep game, area, online status, and freshness filters easy to inspect together.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+168. IMP107 — Explain empty results and offer a clear way to broaden the current filters.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+169. IMP108 — Preserve a member's chosen feed view without overriding explicit changes.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+170. IMP109 — Make observation timestamps and report types visible before opening a card.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+171. IMP110 — Use factual labels instead of unsupported urgency or guaranteed-trip language.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+172. IMP126 — Define trust labels in terms of specific evidence and review actions.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+173. IMP127 — Distinguish a reviewed community observation from retailer-confirmed availability.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+174. IMP129 — Give contributors a concise reason when a report needs more information.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+175. IMP141 — Use explicit game names consistently across roles, reports, and filters.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+176. IMP142 — Explain whether broad interests add to or replace individual game selections.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+177. IMP143 — Keep independent choices independent when another game is added or removed.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+178. IMP144 — Require clear handling of reports that genuinely cover multiple games.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+179. IMP145 — Provide a readable summary of the member's current game alert subscriptions.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+180. IMP155 — Keep ordinary members and unrelated automation from broadcasting to all roles.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+181. IMP169 — Publish source limitations and meaningful health updates without exposing credentials.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+182. IMP171 — Link release information to official or clearly identified sources.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+183. IMP172 — Differentiate confirmed, estimated, changed, and region-specific dates.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+184. IMP173 — Preserve context when an event date is corrected.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+185. IMP175 — Explain that a release date does not guarantee local or retailer availability.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+186. IMP176 — Keep the welcome focused on choosing interests, finding help, and understanding community expectations.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+187. IMP177 — Provide direct links to the role menu, reporting instructions, and support.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+188. IMP179 — Use short rule summaries backed by accessible detailed guidance.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+189. IMP181 — Use action-oriented command descriptions and explicit confirmation messages.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+190. IMP182 — Keep preference, report-reference, and account-help responses private where appropriate.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+191. IMP184 — Explain expired controls and offer a current route to complete the task.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+192. IMP187 — Bind cached records and drafts to the verified account that owns them.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+193. IMP189 — Show the last successful synchronization time in an understandable place.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+194. IMP192 — Preserve local changes and existing versions before any recovery operation.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+195. IMP195 — Avoid recommending storage-clearing actions without a verified preservation path.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+196. IMP241 — Explain unfamiliar terms near the workflow where members encounter them.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+197. IMP242 — Link product and rules references to authoritative sources where appropriate.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+198. IMP243 — Separate collecting guidance, gameplay rules, and individual opinions.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+199. IMP244 — Organize beginner help around common tasks rather than an undifferentiated document library.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+200. IMP245 — Tailor examples to the selected game while keeping shared concepts understandable.
+   P2 · workflow refinement | Backlog; scope and baseline must be checked before implementation
+   Why: Refine a coherent collecting workflow after join reliability and core data/report trust; validate the hypothetical need with actual members.
+   Dependency: Baseline audit, scoped acceptance criteria, and ordinary-member validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+201. IMP069 — Celebrate meaningful progress without encouraging urgency or excessive spending.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+202. IMP218 — Make official community identity and external navigation clear.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+203. IMP249 — Review unused rooms with member input before proposing any archive changes.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+204. IMP198 — Keep private collection and account information separate from public community identity.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+205. IMP199 — Make visibility choices understandable at the point of sharing.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+206. IMP200 — Provide a coherent privacy-settings overview rather than scattered unexplained controls.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+207. IMP206 — Explain parent-controlled actions separately from ordinary collection viewing.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+208. IMP207 — Minimize child information and avoid unnecessary public identity details.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+209. IMP208 — Keep child-sensitive community and trade actions subject to appropriate guardian controls.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+210. IMP209 — Make household sharing boundaries and record ownership visible to the responsible adult.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+211. IMP210 — Use clear explanations when a family safeguard limits an action.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+212. IMP238 — Separate membership concepts from actual purchasable offers.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+213. IMP010 — Review the signup journey with a person who has no Discord or Facebook account.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+214. IMP012 — Keep confirmation and password-recovery messages consistent with the app's name and domain.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+215. IMP014 — Preserve the intended destination across confirmation without allowing external redirects.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+216. IMP017 — Explain the limited identity information needed for social sign-in.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+217. IMP020 — Provide a safe return path after a member cancels provider consent.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+218. IMP025 — Make the account connection history understandable without exposing provider credentials.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+219. IMP073 — Keep a clear manual-search fallback beside the scanning action.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+220. IMP086 — Define each verification label and avoid implying a transaction guarantee.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+221. IMP093 — Display workspace ownership and member permissions near sensitive actions.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+222. IMP170 — Require owner approval and successful validation before activating a paused retailer integration.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Best Buy remains locked paused. Resumption requires a new explicit owner instruction and validation.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+223. IMP174 — Keep release reminders opt-in and scoped to selected interests.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+224. IMP178 — Explain which activities belong in the app and which belong in Discord.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+225. IMP180 — Test orientation with a member unfamiliar with Discord terminology.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+226. IMP183 — Handle repeated clicks without repeating the underlying action.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+227. IMP185 — Keep bot permissions limited to the capabilities it actually needs.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+228. IMP190 — Test account switching on shared devices without assuming all local records belong to the next user.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+229. IMP211 — Keep program applications explicitly optional and separate from ordinary app access.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+230. IMP212 — Explain allocation criteria, availability limits, and review expectations plainly.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+231. IMP213 — Collect only information needed for responsible program administration.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+232. IMP214 — Share aggregate program outcomes without exposing private family circumstances.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+233. IMP215 — Describe contributions accurately without unsupported charitable or tax-related promises.
+   Assess dependencies first | Backlog; scope and baseline must be checked before implementation
+   Why: Needs real member/device evidence, external account configuration, owner policy, or a separately reviewed operational rollout before completion can be claimed.
+   Dependency: Evidence or explicit operational scope required; not authorization to activate a provider or source.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+234. IMP223 — Keep feedback optional and independent of ordinary account access.
+   Maintain existing safeguards | Existing baseline; retain and expand acceptance checks, not counted as new work
+   Why: The present build already supplies the core safeguard. Additional validation and discoverability can follow the current gaps.
+   Dependency: Preserve existing verification, ownership and provider gates.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+235. IMP225 — Remind members not to include passwords, tokens, private child information, or payment details.
+   Maintain existing safeguards | Existing baseline; retain and expand acceptance checks, not counted as new work
+   Why: The present build already supplies the core safeguard. Additional validation and discoverability can follow the current gaps.
+   Dependency: Preserve existing verification, ownership and provider gates.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+236. IMP217 — Keep essential app support available without a social-network account.
+   Maintain existing safeguards | Existing baseline; retain and expand acceptance checks, not counted as new work
+   Why: The present build already supplies the core safeguard. Additional validation and discoverability can follow the current gaps.
+   Dependency: Preserve existing verification, ownership and provider gates.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+237. IMP203 — Keep sensitive actions tied to verified ownership and appropriate fresh confirmation.
+   Maintain existing safeguards | Existing baseline; retain and expand acceptance checks, not counted as new work
+   Why: The present build already supplies the core safeguard. Additional validation and discoverability can follow the current gaps.
+   Dependency: Preserve existing verification, ownership and provider gates.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+238. IMP204 — Explain how social-login members can complete password-protected account actions.
+   Maintain existing safeguards | Existing baseline; retain and expand acceptance checks, not counted as new work
+   Why: The present build already supplies the core safeguard. Additional validation and discoverability can follow the current gaps.
+   Dependency: Preserve existing verification, ownership and provider gates.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+239. IMP205 — Report sensitive-operation outcomes accurately without exposing credentials or session tokens.
+   Maintain existing safeguards | Existing baseline; retain and expand acceptance checks, not counted as new work
+   Why: The present build already supplies the core safeguard. Additional validation and discoverability can follow the current gaps.
+   Dependency: Preserve existing verification, ownership and provider gates.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+240. IMP239 — Keep essential privacy, security, and record-access explanations independent of promotional copy.
+   Maintain existing safeguards | Existing baseline; retain and expand acceptance checks, not counted as new work
+   Why: The present build already supplies the core safeguard. Additional validation and discoverability can follow the current gaps.
+   Dependency: Preserve existing verification, ownership and provider gates.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+241. IMP006 — Keep Create Account visually prominent beside the existing login action.
+   Maintain existing safeguards | Existing baseline; retain and expand acceptance checks, not counted as new work
+   Why: The present build already supplies the core safeguard. Additional validation and discoverability can follow the current gaps.
+   Dependency: Preserve existing verification, ownership and provider gates.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+242. IMP008 — Introduce optional community participation after the core account has been created.
+   Maintain existing safeguards | Existing baseline; retain and expand acceptance checks, not counted as new work
+   Why: The present build already supplies the core safeguard. Additional validation and discoverability can follow the current gaps.
+   Dependency: Preserve existing verification, ownership and provider gates.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+243. IMP009 — Use plain language to explain confirmation without suggesting staff approval is required.
+   Maintain existing safeguards | Existing baseline; retain and expand acceptance checks, not counted as new work
+   Why: The present build already supplies the core safeguard. Additional validation and discoverability can follow the current gaps.
+   Dependency: Preserve existing verification, ownership and provider gates.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+244. IMP016 — Show each social provider only after its real login and return path are verified.
+   Maintain existing safeguards | Existing baseline; retain and expand acceptance checks, not counted as new work
+   Why: The present build already supplies the core safeguard. Additional validation and discoverability can follow the current gaps.
+   Dependency: Preserve existing verification, ownership and provider gates.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+245. IMP018 — Keep email login available alongside optional social methods.
+   Maintain existing safeguards | Existing baseline; retain and expand acceptance checks, not counted as new work
+   Why: The present build already supplies the core safeguard. Additional validation and discoverability can follow the current gaps.
+   Dependency: Preserve existing verification, ownership and provider gates.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+246. IMP019 — Use the same provider names and account guidance on mobile and desktop.
+   Maintain existing safeguards | Existing baseline; retain and expand acceptance checks, not counted as new work
+   Why: The present build already supplies the core safeguard. Additional validation and discoverability can follow the current gaps.
+   Dependency: Preserve existing verification, ownership and provider gates.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+247. IMP021 — Explain that existing members should sign in first and connect additional methods from Account.
+   Maintain existing safeguards | Existing baseline; retain and expand acceptance checks, not counted as new work
+   Why: The present build already supplies the core safeguard. Additional validation and discoverability can follow the current gaps.
+   Dependency: Preserve existing verification, ownership and provider gates.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+248. IMP022 — Show a clear connected-method confirmation after server verification succeeds.
+   Maintain existing safeguards | Existing baseline; retain and expand acceptance checks, not counted as new work
+   Why: The present build already supplies the core safeguard. Additional validation and discoverability can follow the current gaps.
+   Dependency: Preserve existing verification, ownership and provider gates.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+249. IMP023 — Keep the current account active when provider consent is canceled.
+   Maintain existing safeguards | Existing baseline; retain and expand acceptance checks, not counted as new work
+   Why: The present build already supplies the core safeguard. Additional validation and discoverability can follow the current gaps.
+   Dependency: Preserve existing verification, ownership and provider gates.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.
+
+250. IMP024 — Explain relay-email handling without encouraging automatic account merging.
+   Maintain existing safeguards | Existing baseline; retain and expand acceptance checks, not counted as new work
+   Why: The present build already supplies the core safeguard. Additional validation and discoverability can follow the current gaps.
+   Dependency: Preserve existing verification, ownership and provider gates.
+   Acceptance: Define a scoped implementation and meaningful acceptance checks before marking done.

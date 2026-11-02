@@ -180,3 +180,4 @@
 .collection-portfolio-value-note { display: block; margin-top: 2px; font-size: 0.72rem; font-weight: 500; letter-spacing: 0; color: var(--ops-muted, #8a95a5); }
 .collection-portfolio-value-hidden { letter-spacing: 0.06em; opacity: 0.8; }
 .collection-portfolio-value-unvalued { font-style: italic; color: var(--ops-muted, #8a95a5); }
+.collection-product-value-label { display: block; color: var(--text-secondary); font: 400 12px/1.5 var(--font-ui); margin-bottom: 2px; }

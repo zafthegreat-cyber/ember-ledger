@@ -263,8 +263,8 @@ export default function CommunityContent({ scope }) {
               <EtMockupButton variant="secondary" onClick={() => setActiveTab("scout")}>Restocks Signals</EtMockupButton>
               <EtMockupButton variant="ghost" onClick={() => openFeedbackDialog("bug", { page: "Community" })}>Report an issue</EtMockupButton>
             </div>
-            {!canCreateTidepoolPost ? <p className="tidepool-mockup-access-note">Community posting opens after beta access is approved. Published posts remain visible when allowed.</p> : null}
-            <div className="tidepool-mockup-trust-grid" aria-label="Community trust and safety">
+            {!canCreateTidepoolPost ? <p className="tidepool-mockup-access-note">Sign in with a verified account to post in Tidepool. Published posts remain visible when allowed.</p> : null}
+            <div className="tidepool-mockup-trust-grid" aria-label="Tidepool trust and safety">
               {tidepoolTrustCards.map((card) => (
                 <EtMockupActionCard key={card.title} title={card.title} detail={card.detail} icon="pool" tone="collector" />
               ))}

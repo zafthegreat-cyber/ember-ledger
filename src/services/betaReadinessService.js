@@ -87,7 +87,7 @@ export const POKEMON_AFFILIATION_NOTICE =
   "Pokémon is a trademark of its respective owner. Code 3 TCG is not affiliated with or endorsed by The Pokémon Company, Nintendo, Game Freak, or Creatures.";
 
 export const SIGNUP_TERMS_TEXT = "I agree to the Terms of Use and Privacy Policy.";
-export const SIGNUP_BETA_ACK_TEXT = "I understand Code 3 TCG is currently in beta and features may change.";
+export const SIGNUP_BETA_ACK_TEXT = "I understand Code 3 TCG is in development and features may change.";
 
 export const BETA_ACCESS_MODES = ["open_beta", "invite_only", "waitlist"];
 export const BETA_ACCESS_STATUSES = ["pending", "approved", "paused", "denied"];

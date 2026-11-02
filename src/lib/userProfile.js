@@ -3,6 +3,7 @@ import { PLAN_TYPES, USER_ROLES, normalizeTier, normalizeUserRole } from "../con
 import { normalizeBetaStatus, normalizeLittleSparksStatus } from "../services/shorelineAccessService";
 import { publicUsernameFromProfile } from "../utils/publicIdentity";
 import { APP_ROLES, appRoleForProfile } from "../utils/rolePermissions";
+import { withVerifiedAppAccess } from "../features/auth/memberAccess.mjs";
 
 const ADMIN_EMAILS = String(import.meta.env.VITE_ADMIN_EMAILS || import.meta.env.ADMIN_EMAILS || "")
   .split(",")
@@ -200,8 +201,8 @@ export async function getCurrentUserProfile(user = null) {
   if (!user || !isSupabaseConfigured || !supabase) return makeFallbackUserProfile(user);
   const { data, error } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
   if (error) return makeFallbackUserProfile(user);
-  if (!data) return createUserProfileIfMissing(user);
-  return mapProfileRow(data, user);
+  const profile = data ? mapProfileRow(data, user) : await createUserProfileIfMissing(user);
+  return withVerifiedAppAccess(profile, user, supabase);
 }
 
 export async function createUserProfileIfMissing(user = null, { client = supabase, configured = isSupabaseConfigured } = {}) {

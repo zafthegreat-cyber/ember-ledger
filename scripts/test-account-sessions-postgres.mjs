@@ -166,7 +166,62 @@ try {
   await claims(); assert.equal(await rpc("code3_current_session_valid"),false); checks++;
   await db.query("reset role"); await db.query("update auth.users set banned_until=null,deleted_at=now() where id=$1",[userA]);
   await claims(); assert.equal(await rpc("code3_current_session_valid"),false); checks++;
-  console.log(JSON.stringify({passed:checks,database,realPostgres:true,realProviderCredentialsUsed:false,existingProfilesPreserved:true}));
+  // Open enrollment changes this one eligibility predicate. The actual session
+  // migration, profile-authority triggers and own-row policies stay installed.
+  const originalChecks = checks;
+  await db.query("reset role");
+  await db.query("select set_config('request.jwt.claims','{}',false)");
+  const profilesBeforeOpen = (await db.query("select * from public.profiles order by id")).rows;
+  const oldAccess = (await db.query("select pg_get_functiondef('code3_private.has_full_app_access()'::regprocedure) as definition")).rows[0].definition;
+  await db.query("create policy test_enrollment_guard on public.store_user_watchlist as restrictive for all to authenticated using(public.has_full_app_access()) with check(public.has_full_app_access())");
+  await claims(userC,sidC);
+  assert.equal(await rpc("has_full_app_access"),false); checks++;
+  await assert.rejects(db.query("insert into public.store_user_watchlist(user_id,notes) values($1,'new collector')",[userC]),/row-level security/); checks++;
+  await db.query("reset role");
+  const openMigration = await readFile(new URL("../supabase/migrations/20261030155049_code3_open_member_registration.sql",import.meta.url),"utf8");
+  await db.query(openMigration);
+  assert.deepEqual((await db.query("select * from public.profiles order by id")).rows,profilesBeforeOpen); checks++;
+  await claims(userC,sidC);
+  assert.equal(await rpc("has_full_app_access"),true); checks++;
+  assert.equal(await rpc("is_admin_or_moderator"),false); checks++;
+  await db.query("insert into public.store_user_watchlist(user_id,notes) values($1,'new collector')",[userC]); checks++;
+  assert.equal((await db.query("select * from public.store_user_watchlist")).rows.length,1); checks++;
+  assert.equal((await db.query("update public.store_user_watchlist set notes='forged' where user_id=$1",[userA])).rowCount,0); checks++;
+  await assert.rejects(db.query("insert into public.store_user_watchlist(user_id,notes) values($1,'forged')",[userA]),/row-level security/); checks++;
+  await db.query("update public.profiles set app_role='owner',tier='pro' where id=$1",[userC]).then(()=>assert.fail("Role/plan escalation accepted"),()=>{ checks++; });
+  for (const status of ["pending","waitlist","denied"]) {
+    await db.query("reset role"); await db.query("select set_config('request.jwt.claims','{}',false)");
+    await db.query("update public.profiles set beta_status=$1,beta_access_status=$1 where id=$2",[status,userC]);
+    await claims(userC,sidC); assert.equal(await rpc("has_full_app_access"),status!=="denied"); checks++;
+  }
+  await db.query("reset role"); await db.query("select set_config('request.jwt.claims','{}',false)");
+  await db.query("update public.profiles set beta_status='denied',beta_access_status='approved',app_access=true where id=$1",[userC]);
+  await claims(userC,sidC); assert.equal(await rpc("has_full_app_access"),false); checks++;
+  await claims(); assert.equal(await rpc("has_full_app_access"),false); checks++;
+  await db.query("reset role"); await db.query("select set_config('request.jwt.claims','{}',false)");
+  await db.query("update public.profiles set beta_status='not_requested',beta_access_status='not_requested',app_access=false where id=$1",[userC]);
+  await claims(userC,sidC,{exp:Date.now()/1000-10}); assert.equal(await rpc("has_full_app_access"),false); checks++;
+  await claims(userC,sidC,{is_anonymous:true}); assert.equal(await rpc("has_full_app_access"),false); checks++;
+  await db.query("reset role"); await db.query("update auth.users set email_confirmed_at=null where id=$1",[userC]);
+  await claims(userC,sidC); assert.equal(await rpc("has_full_app_access"),false); checks++;
+  await db.query("reset role"); await db.query("update auth.users set email_confirmed_at=now() where id=$1",[userC]);
+  await claims(userC,sidC); await rpc("code3_register_account_session",["Open signup test"]);
+  await db.query("reset role"); await db.query("update code3_private.account_sessions set revoked_at=now() where user_id=$1",[userC]);
+  await claims(userC,sidC); assert.equal(await rpc("has_full_app_access"),false); checks++;
+  await db.query("reset role"); await db.query("update code3_private.account_sessions set revoked_at=null where user_id=$1",[userC]);
+  const userD=randomUUID(),sidD=randomUUID();
+  await db.query("insert into auth.users(id,email_confirmed_at) values($1,now())",[userD]);
+  await db.query("insert into auth.sessions values($1,$2,null)",[sidD,userD]);
+  await claims(userD,sidD); assert.equal(await rpc("has_full_app_access"),false); checks++;
+  await db.query("insert into public.profiles(id) values($1)",[userD]);
+  assert.equal(await rpc("has_full_app_access"),true); checks++;
+  assert.deepEqual((await db.query("select app_role,tier,app_access,beta_access_status from public.profiles where id=$1",[userD])).rows[0],{app_role:"user",tier:"free",app_access:false,beta_access_status:"not_requested"}); checks++;
+  await claims(userB,sidB); assert.equal(await rpc("is_admin"),true); assert.equal(await rpc("has_full_app_access"),true); checks++;
+  await db.query("reset role"); await db.query(oldAccess);
+  await claims(userD,sidD); assert.equal(await rpc("has_full_app_access"),false); checks++;
+  await db.query("reset role"); await db.query(openMigration); await db.query(openMigration);
+  await claims(userD,sidD); assert.equal(await rpc("has_full_app_access"),true); checks++;
+  console.log(JSON.stringify({passed:checks,existingSessionChecks:originalChecks,openRegistrationChecks:checks-originalChecks,database,realPostgres:true,realProviderCredentialsUsed:false,existingProfilesPreserved:true,rollbackVerified:true}));
 } finally {
   await db.end().catch(()=>{});
   if (!/^code3_test_accounts_[a-f0-9]{32}$/.test(database)) throw new Error("Unsafe test database cleanup refused");
