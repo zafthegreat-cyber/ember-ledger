@@ -485,7 +485,9 @@ function applyFilters(query, filters = {}) {
   if (rarity !== "All") next = next.eq("rarity", rarity);
   if (dataFilter === "Has market price") next = next.gt("market_price", 0);
   if (dataFilter === "Missing price") next = next.or("market_price.is.null,market_price.eq.0");
-  if (dataFilter === "Has image") next = next.not("image_url", "is", null).neq("image_url", "");
+  // A103 (2026-11-01): "Has image" means any saved image column, and the client
+  // re-checks the page so no image-less row slips through from a cache.
+  if (dataFilter === "Has image") next = next.or("image_url.not.is.null,image_small.not.is.null,image_large.not.is.null,image_small_url.not.is.null,image_large_url.not.is.null");
   if (productGroup === "Sealed") next = next.or(SEALED_PRODUCT_DB_OR_CLAUSE);
 
   return next;
@@ -877,11 +879,13 @@ async function runTextSearchAgainstSource({ supabase, sourceName, query, barcode
   if (collectorQuery) {
     // The name and number usually live in separate columns. Retrieve bounded
     // number candidates, then require the full identity before ranking them.
-    const numberPattern = collectorQuery.collectorNumber.split("/").map(part => {
-      const [, prefix, digits, suffix] = /^([a-z]*)(\d+)([a-z]*)$/.exec(part);
-      return [prefix, digits, suffix].filter(Boolean).join("%");
-    }).join("%/%");
-    dbQuery = dbQuery.or(`card_number.ilike.%${numberPattern}%`);
+    // A104/A105 (2026-11-01): search the card's own number alone; the stored
+    // column may or may not include the "/total" part. The full identity is
+    // still required client-side before a row ranks.
+    const [firstPart] = collectorQuery.collectorNumber.split("/");
+    const [, prefix, digits, suffix] = /^([a-z]*)(\d+)([a-z]*)$/.exec(firstPart) || [null, "", firstPart, ""];
+    const numberPattern = [prefix, digits, suffix].filter(Boolean).join("%");
+    dbQuery = dbQuery.or(`card_number.ilike.${numberPattern},card_number.ilike.${numberPattern}/%,card_number.ilike.%0${numberPattern},card_number.ilike.%0${numberPattern}/%`);
   } else if (remoteSearchTerms.length) {
     const orClauses = remoteSearchTerms.flatMap((term) =>
       remoteTextFields.map((field) => `${field}.ilike.${matchMode === "prefix" ? `${safeOrTerm(term)}%` : `%${safeOrTerm(term)}%`}`)

@@ -20,9 +20,10 @@ function ProviderGuidance({ provider }) {
     <div className="bot-setup-guidance" data-testid="bot-provider-guidance">
       <div className="bot-ops-card-heading">
         <div><p className="ops-eyebrow">Selected bot</p><h3>{provider.displayName}</h3></div>
-        <span data-testid="bot-provider-connection"><StatusBadge tone="neutral">Not connected</StatusBadge></span>
+        <span data-testid="bot-provider-connection"><StatusBadge tone="neutral">Tracking only</StatusBadge></span>
       </div>
       <p>{setup.summary || "Keep a local record of this bot while its integration options are reviewed."}</p>
+      <p className="bot-setup-note">There is nothing to configure here on purpose: Code 3 has no connection to {provider.displayName}. Set the bot up in its own app; this page only keeps your notes and results.</p>
       <dl className="bot-setup-steps">
         <div><dt>Available in Code 3 TCG</dt><dd>{setup.availableNow || "Save an installation name, device label, and version on this device."}</dd></div>
         <div><dt>Next step for connection</dt><dd>{setup.nextStep || "A documented provider interface and its access requirements need to be verified first."}</dd></div>

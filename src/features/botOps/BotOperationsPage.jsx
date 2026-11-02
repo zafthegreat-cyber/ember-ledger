@@ -209,7 +209,7 @@ function BotOperationsPageContent({
 
   return (
     <div className="bot-ops" data-testid="bot-operations" data-persistence-mode={service.mode}>
-      <PageHeader eyebrow="Owner-only workspace" title="Bot Operations" description="Track products, plans, and progress across your bots. Live integrations are not connected." />
+      <PageHeader eyebrow="Owner-only workspace" title="Bot Operations" description="A tracking log for the bots you run elsewhere: products, plans and results. Code 3 does not start, stop or configure bots — do that in each bot's own app, then record the outcome here." />
       <OperationsWorkspace label="Bot Operations" navigation={SECTIONS.map((item) => ({ ...item, count: counts[item.key] }))} activeKey={section} onNavigate={chooseSection} className="bot-ops-workspace" sidebarFooter={<p className="bot-ops-rail-note">Local tracking<br />No live bot connection</p>}>
       {section === "overview" ? <BotTrackingOverview tracking={tracking} onOpen={chooseSection} onTrack={openTracker} /> : null}
       {section === "bots" ? <BotProviderSetup providers={providers} installations={snapshot.installations} onSave={saveInstallation} onTrack={openTracker} /> : null}

@@ -583,14 +583,20 @@ export function scoutFreshnessGuidance(report = {}, now = Date.now()) {
   return { label: "Expired", tone: "muted", helper: "Very unlikely to find." };
 }
 
-export function scoutTrustGuidance(report = {}) {
+export function scoutTrustGuidance(report = {}, now = Date.now()) {
   const status = normalizedKey(report.trust_state || report.trustState || report.status || report.verification_status || report.verificationStatus);
-  if (report.verified || status.includes("verified")) return { label: "Verified", tone: "success", helper: "Store confirmed." };
+  // "unverified" contains "verified": only a real verified state counts (A89).
+  if (report.verified === true || (status.includes("verified") && !status.includes("unverified"))) return { label: "Verified", tone: "success", helper: "Store confirmed." };
   if (report.admin_reviewed || report.adminReviewed || status.includes("admin")) return { label: "Admin reviewed", tone: "info", helper: "Reviewed by admin." };
   const confirmations = countValue(report.confirmations || report.confirmation_count || report.confirmationCount);
   if (confirmations > 0 || status.includes("community")) return { label: "Community", tone: "info", helper: "Community confirmed." };
   if (status.includes("need") || status.includes("pending")) return { label: "Needs confirmation", tone: "warning", helper: "Waiting for confirmation." };
-  return { label: "Unverified", tone: "warning", helper: "Needs more reports." };
+  // A89 (2026-11-01): "Unverified" is not a permanent mark. While the report
+  // is fresh it is awaiting a second reporter; once it has expired it simply
+  // was never confirmed. Both say what would change the label.
+  const freshness = scoutFreshnessGuidance(report, now);
+  if (freshness.label === "Expired") return { label: "Never confirmed", tone: "muted", helper: "No one else confirmed this report before it expired. It is still shown as history." };
+  return { label: "Awaiting confirmation", tone: "warning", helper: "Shown to everyone now. It becomes Community-confirmed when another person confirms it." };
 }
 
 export function marketValueGuidance(item = {}, state = {}) {

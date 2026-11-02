@@ -39,6 +39,15 @@ const download = (content, name, type) => {
   const anchor = document.createElement("a"); anchor.href = url; anchor.download = name; anchor.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
+// A113 (2026-11-01): grading submissions can leave the device as a plain CSV.
+const csvCell = (value) => `"${String(value ?? "").replace(/^[=+@-]/, "'$&").replace(/"/g, '""')}"`;
+function gradingSubmissionCsv(record = {}, state = {}) {
+  const item = (state.inventory || []).find((row) => row.id === record.itemId);
+  const itemName = item ? (item.name || item.title || item.cardName || item.productName || record.itemId) : record.itemId || "";
+  const header = ["Submission reference", "Company", "Item", "Unit", "Declared cost USD", "Status", "Grade", "Certificate"];
+  const row = [record.submissionReference || "", record.company || "", itemName, record.unit ?? "", Number.isFinite(Number(record.costMinor)) ? (Number(record.costMinor) / 100).toFixed(2) : "", record.status || "", record.grade || "", record.certificate || ""];
+  return `\uFEFF${[header, row].map((cells) => cells.map(csvCell).join(",")).join("\r\n")}`;
+}
 const localTime = (value) => value ? new Date(new Date(value).getTime() - new Date(value).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : "";
 
 function initialValues(type, record) {
@@ -105,6 +114,7 @@ function RecordReview({ record, state, service, isOwnerAuthorized, onApplied, on
     {record.type === "binder" ? <BinderPreview state={state} binder={record} /> : null}
     {coverage ? <section><h3>Set coverage · {coverage.owned} / {coverage.total}</h3><ul>{coverage.targets.map((target) => <li key={target.key}>{target.key} — {target.matches.length ? `Owned (${target.matches.length} records)` : "Missing"}</li>)}</ul></section> : null}
     {record.type === "wish" ? <section><h3>Matching owned records</h3>{matches.length ? <ul>{matches.map((item) => <li key={item.id}>{titleFor(item)} · {item.id}</li>)}</ul> : <p>No exact matching owned item. This target does not add to Inventory.</p>}</section> : null}
+    {record.type === "grading" ? <><QuietButton aria-describedby="grading-submission-export-disclosure" onClick={() => download(gradingSubmissionCsv(record, state), `code3-grading-${record.id.replace(/[^a-zA-Z0-9-]/g, "")}.csv`, "text/csv;charset=utf-8")}>Download submission sheet (CSV)</QuietButton><ExportDisclosure id="grading-submission-export-disclosure" format="csv" fields={["Submission reference", "Company", "Item", "Unit", "Declared cost USD", "Status", "Grade", "Certificate"]} recordCount={1} redactions={["your notes", "purchase price", "storage location"]} /><p className="manual-lifecycle-note">A one-row sheet you can send to your grader. Your notes and costs other than the declared grading cost stay out of it.</p></> : null}
     {record.type === "event" ? <><QuietButton aria-describedby="event-calendar-export-disclosure" onClick={() => download(eventCalendar(record), `code3-event-${record.id.replace(/[^a-zA-Z0-9-]/g, "")}.ics`, "text/calendar")}>Download calendar entry</QuietButton><ExportDisclosure id="event-calendar-export-disclosure" kind="calendar-event" format="ics" recordCount={1} /></> : null}
     {record.type === "saleReturn" ? <SaleReturnSettlement key={`${record.id}-${record.recordVersion}`} record={record} service={service} isOwnerAuthorized={isOwnerAuthorized} onApplied={onApplied} /> : null}
     <details><summary>History ({record.history.length})</summary><ol className="manual-lifecycle-history">{record.history.slice().reverse().map((entry) => <li key={entry.version}><strong>Revision {entry.version} · {new Date(entry.at).toLocaleString()}</strong><DetailList items={Object.entries(entry.values).filter(([, value]) => value !== "").map(([key, value]) => ({ label: LABELS[key], value: MONEY_FIELDS.has(key) ? formatMoney(value) : relatedName(key, value) }))} /></li>)}</ol></details>

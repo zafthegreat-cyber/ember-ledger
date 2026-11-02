@@ -20,3 +20,6 @@
 .market-command-only-route .market-v4-result-row span { font-size: 12px; }
 .market-command-only-route .market-v4-result-value b { display: block; margin-bottom: 4px; font-size: 19px; }
 .market-command-only-route .market-v4-result-actions button { min-height: 44px; }
+
+/* A98: old prices are called out. */
+.market-v4-result-stale { color: #b45309; font-weight: 600; }

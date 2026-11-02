@@ -590,14 +590,15 @@ export function getLockedFeatureDetails(featureKey) {
   if (isProtectedScoutFeature(featureKey)) {
     return {
       label,
-      title: "Protected for fair access",
-      statusLabel: "Admin protected",
+      title: "Patterns are not shown to anyone",
+      statusLabel: "Kept private",
       requiredTier,
       tierLabel: "Admin",
       description,
-      benefit: "Restocks stays focused on current reports, selected stores, confirmations, and proof the community can review.",
-      action: "Submit or confirm a current report instead, or ask the Code 3 team if you need moderation access.",
-      guardrail: "This lock never reveals raw restock history, exact pattern windows, or all-store data.",
+      // A93 (2026-11-01): say why, in plain words, and what is available instead.
+      benefit: "Restock timing patterns are kept out of the app on purpose, including for the people who reported them, so resellers cannot use Code 3 to beat families to the shelf. What you can see: current reports for your stores, who confirmed them, and photos the community can review.",
+      action: "Check the latest reports for your watched stores, or submit and confirm reports to help everyone.",
+      guardrail: "No one sees raw restock history, exact pattern windows, or all-store timing data; only the Code 3 team can review it for moderation.",
       cta: "Ask the Code 3 team for review access",
     };
   }

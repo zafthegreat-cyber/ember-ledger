@@ -70,7 +70,7 @@ export default function OperationsHome({
     { key: "ship", label: "Items to ship", count: state.sales.filter((row) => /paid|ready|ship/i.test(row.status || "") && !/shipped|complete/i.test(row.status || "")).length, detail: "Sales not marked shipped", action: () => openFind("records", "sales") },
     { key: "receipts", label: "Missing receipts", count: state.expenses.filter((row) => !row.receiptReference).length, detail: "Expenses without receipt references", action: () => openFind("records", "expenses") },
     { key: "allocation", label: "Unallocated lot costs", count: unallocatedLots, detail: "Lot allocations do not reconcile", action: () => openFind("records", "inventory") },
-    { key: "stale", label: "Stale inventory", count: summary.agingCount, detail: "Unsold for at least 90 days", action: () => openFind("records", "inventory") },
+    { key: "stale", label: "Stale inventory", count: summary.agingCount, detail: summary.agingBuckets ? `90+ days: ${summary.agingBuckets.days90} · 180+ days: ${summary.agingBuckets.days180}${summary.agingBuckets.undated ? ` · ${summary.agingBuckets.undated} without a purchase date (not counted)` : ""}` : "Unsold for at least 90 days", action: () => openFind("records", "inventory") },
   ].filter((row) => row.count > 0).slice(0, 5);
   const bestDeal = state.deals.find((deal) => /strong|exceptional/i.test(deal.status || deal.recommendation || ""));
   const bestDealPrice = bestDeal?.currentBid ?? bestDeal?.askingPrice;

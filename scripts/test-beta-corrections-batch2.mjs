@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 
 async function load(entry, name) {
@@ -15,7 +16,7 @@ async function load(entry, name) {
     api.onResolve({ filter: /^@(supabase|capacitor)\// }, (args) => ({ path: args.path, namespace: "stub" }));
     api.onLoad({ filter: /.*/, namespace: "stub" }, () => ({ contents: "export default {}; export const createClient = () => null; export const Capacitor = { isNativePlatform: () => false, getPlatform: () => 'web' }; export const registerPlugin = () => ({}); export const supabase = null;", loader: "js" }));
   } }], nodePaths: [join(process.cwd(), "node_modules")] });
-  return import(out);
+  return import(pathToFileURL(out).href);
 }
 
 const plain = await load("src/config/plainLanguage.js", "plain");

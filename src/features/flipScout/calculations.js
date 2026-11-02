@@ -95,7 +95,13 @@ function scenario(input, expectedResalePrice) {
   const netProceeds = calculateExpectedNetProceeds(scenarioInput);
   const landedCost = calculateLandedCost(scenarioInput);
   const profit = netProceeds - landedCost;
-  return { expectedResalePrice: nonNegative(expectedResalePrice), netProceeds, profit, roi: calculateRoi(profit, landedCost) };
+  // A121 (2026-11-01): margin = profit as a share of the sale price (ROI is profit over cost).
+  return { expectedResalePrice: nonNegative(expectedResalePrice), netProceeds, profit, roi: calculateRoi(profit, landedCost), margin: calculateMargin(profit, expectedResalePrice) };
+}
+
+export function calculateMargin(profit, expectedResalePrice) {
+  const price = nonNegative(expectedResalePrice);
+  return price > 0 ? profit / price : null;
 }
 
 export function analyzeListing(input = {}) {

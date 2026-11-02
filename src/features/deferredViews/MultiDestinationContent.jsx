@@ -1,4 +1,5 @@
 import { PrivateStorageImage } from "../../components/PrivateReceipt.jsx";
+import { knownStorageLocations } from "../../utils/storageLocations.mjs";
 // App owns state, authority and handlers; only this existing renderer is deferred.
 export default function MultiDestinationContent({ scope }) {
   const {
@@ -757,7 +758,7 @@ export default function MultiDestinationContent({ scope }) {
                 <input type="date" value={multiDestinationForm.vault.purchaseDate} onChange={(event) => updateMultiDestinationSection("vault", "purchaseDate", event.target.value)} />
               </Field>
               <Field label="Storage Location">
-                <input value={multiDestinationForm.vault.storageLocation} onChange={(event) => updateMultiDestinationSection("vault", "storageLocation", event.target.value)} placeholder="Binder, shelf, box, display case..." />
+                <input value={multiDestinationForm.vault.storageLocation} onChange={(event) => updateMultiDestinationSection("vault", "storageLocation", event.target.value)} placeholder="Binder, shelf, box, display case..." list="code3-storage-location-options-add" /><datalist id="code3-storage-location-options-add">{knownStorageLocations(items || []).map((location) => <option key={location} value={location} />)}</datalist>
               </Field>
               <Field label="Vault Notes">
                 <textarea value={multiDestinationForm.vault.notes} onChange={(event) => updateMultiDestinationSection("vault", "notes", event.target.value)} placeholder="Owned item notes for Vault only." />

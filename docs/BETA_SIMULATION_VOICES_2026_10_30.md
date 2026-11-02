@@ -11,9 +11,14 @@ Sections: 250 negative first reactions · 250 improvements · 250 questions ·
 
 > **Status (October 31):** items A1–A39 were corrected in the
 > "tester-reaction corrections, batch 1" entry of
-> `APP_IMPROVEMENTS_100_2026_10_25.md`; A41–A80 in batch 2 (same file). Still
+> `APP_IMPROVEMENTS_100_2026_10_25.md`; A41–A80 in batch 2 (same file);
+> A81–A121 in batch 3 (November 1, same file). Still
 > open from those ranges: A40 (#82 chunk size), A43 (Vercel name), A61/A63/A64
-> (cross-listing, live bids, trip planner: unbuilt features), A76, A80.
+> (cross-listing, live bids, trip planner: unbuilt features), A76, A80, A81
+> (owner center tab count), A86/A87 (report fields are the trust minimum),
+> A96 (map tiles), A100/A101 (comparable sales need a licensed source), A106
+> (one shared GTIN normalizer), A112 (Japanese ↔ English set aliases), A118
+> (purchase returns: feature).
 > The names Forge and Scout were retired from user-facing copy in the same
 > batch (Forge → Business, Scout → Restocks); the lines below keep the wording
 > testers would have seen at the time.

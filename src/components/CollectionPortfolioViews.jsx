@@ -29,14 +29,15 @@ function itemValue(item, valueForItem) {
 }
 
 function visibleValue(item, { hidden, valueForItem, money, valuationForItem }) {
-  if (hidden) return "Value hidden";
+  // A108 (2026-11-01): hidden and unvalued are visually distinct states.
+  if (hidden) return <span className="collection-portfolio-value-hidden" aria-label="Value hidden"><span aria-hidden="true">•••</span> hidden</span>;
   const value = itemValue(item, valueForItem);
   if (value == null) {
     // F17: a saved estimate in another currency is shown in that currency,
     // never relabeled as dollars or added to the USD total.
     const valuation = valuationForItem?.(item);
     if (valuation?.unconverted && valuation.unitValue != null) return `${valuation.unitValue} ${valuation.currency} (not converted)`;
-    return "Not valued";
+    return <span className="collection-portfolio-value-unvalued">Not valued</span>;
   }
   return formatMoney(value, money);
 }

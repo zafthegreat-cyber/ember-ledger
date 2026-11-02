@@ -29,6 +29,9 @@ export function getMarketQuoteContext(product = {}, info = {}) {
   return {
     source: info.sourceName || product.marketSource || product.sourceName || "Source not supplied",
     asOf: timestamp && Number.isFinite(date.getTime()) ? date.toISOString() : "",
+    // A98 (2026-11-01): old prices say so instead of quietly showing a stale date.
+    ageDays: timestamp && Number.isFinite(date.getTime()) ? Math.max(0, Math.floor((Date.now() - date.getTime()) / 86400000)) : null,
+    stale: Boolean(info.marketDataStale) || (timestamp && Number.isFinite(date.getTime()) ? Date.now() - date.getTime() > 30 * 86400000 : false),
     currency: /^[A-Z]{3}$/.test(currency) ? currency : "",
     condition: product.condition || "Condition not specified",
     printing: product.variant || product.priceSubtype || "Printing not specified",

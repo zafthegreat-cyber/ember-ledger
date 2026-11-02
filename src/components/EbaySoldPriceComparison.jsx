@@ -3,6 +3,15 @@ import { getEbaySoldHealth, searchEbaySoldComparables } from "../features/flipSc
 import { supabase } from "../supabaseClient.js";
 import "./market-source-comparison.css";
 
+// A102 (2026-11-01): plain words instead of a raw authorization error.
+function friendlyEbayError(error) {
+  const message = String(error?.message || "");
+  if (/owner access|sign in is required|401|403|unauthori[sz]ed|forbidden/i.test(message)) {
+    return "eBay sold comps are in an owner-only beta right now, so this section cannot load for your account yet. Saved market estimates and your own sale records still work.";
+  }
+  return message || "Sold comps could not load. Your records are unchanged.";
+}
+
 const PRINTINGS = [["non_holo", "Non-holo"], ["holo", "Holo"], ["reverse_holo", "Reverse holo"], ["first_edition", "First edition"], ["shadowless", "Shadowless"]];
 const LANGUAGES = [["en", "English"], ["ja", "Japanese"], ["ko", "Korean"], ["zh", "Chinese"], ["de", "German"], ["fr", "French"], ["it", "Italian"], ["es", "Spanish"], ["pt", "Portuguese"]];
 const CONDITIONS = [["NM", "Near mint"], ["LP", "Lightly played"], ["MP", "Moderately played"], ["HP", "Heavily played"], ["DMG", "Damaged"]];
@@ -43,7 +52,7 @@ export default function EbaySoldPriceComparison({ item, name }) {
   useEffect(() => {
     const request = new AbortController();
     getEbaySoldHealth({ signal: request.signal }).then(next => { if (!request.signal.aborted) setHealth(next); }).catch(requestError => {
-      if (!request.signal.aborted) { setHealth({ configured: false }); setError(requestError.message); }
+      if (!request.signal.aborted) { setHealth({ configured: false }); setError(friendlyEbayError(requestError)); }
     });
     const subscription = supabase?.auth.onAuthStateChange((_event, session) => {
       const next = session?.user?.id || "";

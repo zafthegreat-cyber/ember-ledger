@@ -51,6 +51,8 @@ import { VIRGINIA_STORES_SEED, VIRGINIA_STORE_SEED_STATUS, loadVirginiaStoresSee
 import { BEST_BUY_ALERT_TYPES, BEST_BUY_NIGHTLY_DEFAULTS, BEST_BUY_STOCK_STATUSES } from "../data/bestBuyStockSeed";
 import { SCOUT_CONFIDENCE_LEVELS, SCOUT_HISTORICAL_INTEL_SEED, SCOUT_SOURCE_TYPES, SCOUT_STORE_ALIASES, SCOUT_VISIBILITY_COPY, buildScoutRestockPatterns } from "../data/scoutRestockIntelSeed";
 import { DROP_RADAR_GUESS_LOCKED_MESSAGE, MIN_SCOUT_POINTS_FOR_GUESS, canSubmitScoutGuess, getScoutPoints, shouldUseDropRadarSeed } from "../utils/dropRadarUtils.mjs";
+import { normalizeCityLabel } from "../utils/regionalBrowsingUtils.js";
+const MISSING_STORE_STATES = ["Virginia", "North Carolina", "Maryland", "West Virginia", "Tennessee", "Kentucky", "District of Columbia", "Other"];
 import {
   cacheBestBuyStockResult,
   createBestBuyStockAlert,
@@ -393,6 +395,17 @@ function normalizeStoreDetailRecord(store) {
     ...(store.reviewStatus !== undefined ? { reviewStatus: store.reviewStatus } : {}),
     ...(store.review_status !== undefined ? { review_status: store.review_status } : {}),
   };
+}
+
+// A92 (2026-11-01): Store Detail shows only facts that are actually known.
+// Empty rows are collapsed into one "help fill this in" line instead of a
+// column of "Unknown".
+function storeFact(label, value) {
+  if (value === "" || value === null || value === undefined) return null;
+  return <div className="scout-store-record-fact" style={styles.intelligenceRow}><span>{label}</span><strong>{value}</strong></div>;
+}
+function countMissingStoreFacts(store = {}) {
+  return [store.restockDays || store.stockDays, store.truckDays || store.truckDay, store.purchaseLimits || store.limitPolicy, store.lastVerifiedDate || store.lastVerified].filter((value) => value === "" || value === null || value === undefined).length;
 }
 
 function resolveScoutStoreRecord(storeId, stores, detailRecords, adminMode) {
@@ -1367,6 +1380,7 @@ export default function Scout({
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [confirmNotice, setConfirmNotice] = useState("");
 
   const [reportPhoto, setReportPhoto] = useState(null);
   const [isEditingStore, setIsEditingStore] = useState(false);
@@ -1482,6 +1496,7 @@ export default function Scout({
     address: "",
     city: "",
     region: DEFAULT_VIRGINIA_REGION,
+    state: VIRGINIA_STORE_STATE,
     zip: "",
     notes: "",
   });
@@ -2260,8 +2275,9 @@ function submitMissingStoreForReview(event) {
     storeGroup: missingStoreForm.retailer || "Other",
     address: missingStoreForm.address,
     city: missingStoreForm.city,
-    state: VIRGINIA_STORE_STATE,
-    region: missingStoreForm.region || DEFAULT_VIRGINIA_REGION,
+    // A91 (2026-11-01): stores outside Virginia can be suggested too.
+    state: missingStoreForm.state || VIRGINIA_STORE_STATE,
+    region: missingStoreForm.state && missingStoreForm.state !== VIRGINIA_STORE_STATE ? (missingStoreForm.region === DEFAULT_VIRGINIA_REGION ? "" : missingStoreForm.region) : (missingStoreForm.region || DEFAULT_VIRGINIA_REGION),
     zip: missingStoreForm.zip,
     notes: missingStoreForm.notes,
     source: "user-review",
@@ -2607,6 +2623,10 @@ function confirmTidepoolReport(reportId) {
     helpfulVotes: Number(scoutProfile.helpfulVotes || 0) + 1,
   });
   setError("");
+  // A90 (2026-11-01): say what the confirmation did.
+  const count = Number(report.verifiedByCount || 0) + 1;
+  setConfirmNotice(`Thanks — your confirmation counts. ${count} ${count === 1 ? "person has" : "people have"} confirmed this report${count >= 2 ? "; it is now marked Community-confirmed" : ""}. +1 Daily Point.`);
+  window.setTimeout(() => setConfirmNotice(""), 6000);
 }
 
 function disputeTidepoolReport(reportId) {
@@ -3540,7 +3560,8 @@ async function handleUpdateStore(e) {
   }, [stores]);
 
   const cityOptions = useMemo(() => {
-    const cities = Array.from(new Set(stores.map((s) => s.city).filter(Boolean)));
+    // A97 (2026-11-01): one entry per city regardless of capitalization.
+    const cities = Array.from(new Set(stores.map((s) => normalizeCityLabel(s.city)).filter(Boolean)));
     return ["All", ...cities.sort()];
   }, [stores]);
 
@@ -3566,7 +3587,7 @@ async function handleUpdateStore(e) {
       const matchesState = selectedState === "All" || storeState === selectedState;
       const matchesChain = selectedChain === "All" || normalizedStore.chain === selectedChain || normalizedStore.retailer === selectedChain || storeGroup === selectedChain;
       const matchesRegion = selectedRegion === "All" || storeRegion === selectedRegion;
-      const matchesCity = selectedCity === "All" || normalizedStore.city === selectedCity;
+      const matchesCity = selectedCity === "All" || normalizeCityLabel(normalizedStore.city) === selectedCity;
       const matchesType = selectedStoreType === "All" || storeType === selectedStoreType;
       const matchesCounty = selectedCounty === "All" || normalizedStore.county === selectedCounty;
       const storeLikelihood = normalizedStore.pokemonStockLikelihood || normalizedStore.pokemon_stock_likelihood || normalizedStore.pokemonConfidence;
@@ -4784,6 +4805,9 @@ async function handleUpdateStore(e) {
           </CommandBoardV4>
         ) : null}
 
+        {confirmNotice ? (
+          <div role="status" style={{ ...styles.card, border: "1px solid #bbf7d0", background: "#f0fdf4", color: "#166534" }}>{confirmNotice}</div>
+        ) : null}
         {error ? (
           <div
             style={{
@@ -4811,9 +4835,12 @@ async function handleUpdateStore(e) {
                 <input style={styles.input} value={missingStoreForm.city} onChange={(event) => setMissingStoreForm((current) => ({ ...current, city: event.target.value }))} placeholder="City" />
                 <input style={styles.input} value={missingStoreForm.zip} onChange={(event) => setMissingStoreForm((current) => ({ ...current, zip: event.target.value }))} placeholder="ZIP" />
               </div>
-              <select style={styles.input} value={missingStoreForm.region} onChange={(event) => setMissingStoreForm((current) => ({ ...current, region: event.target.value }))}>
-                {VIRGINIA_REGIONS.map((region) => <option key={region} value={region}>{region}</option>)}
+              <select style={styles.input} aria-label="State" value={missingStoreForm.state} onChange={(event) => setMissingStoreForm((current) => ({ ...current, state: event.target.value }))}>
+                {MISSING_STORE_STATES.map((state) => <option key={state} value={state}>{state}</option>)}
               </select>
+              {missingStoreForm.state === VIRGINIA_STORE_STATE ? <select style={styles.input} aria-label="Virginia region" value={missingStoreForm.region} onChange={(event) => setMissingStoreForm((current) => ({ ...current, region: event.target.value }))}>
+                {VIRGINIA_REGIONS.map((region) => <option key={region} value={region}>{region}</option>)}
+              </select> : <input style={styles.input} value={missingStoreForm.region === DEFAULT_VIRGINIA_REGION ? "" : missingStoreForm.region} onChange={(event) => setMissingStoreForm((current) => ({ ...current, region: event.target.value }))} placeholder="Area or region (optional)" />}
               <textarea style={styles.textarea} value={missingStoreForm.notes} onChange={(event) => setMissingStoreForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Notes" />
               <div style={styles.row}>
                 <button type="submit" style={styles.buttonPrimary}>Submit for Review</button>
@@ -4963,8 +4990,8 @@ async function handleUpdateStore(e) {
                   <b>{report.freshness}</b>
                 </div>
                 <p className="scout-overview-report-summary">{report.summary}</p>
-                <div className="scout-command-confidence-row">
-                  <span>{report.confidenceLabel}</span>
+                <div className="scout-command-confidence-row" title={`Confidence comes from how many people confirmed this report and how recent it is${report.verifiedByCount != null ? ` (${report.verifiedByCount} confirmation${Number(report.verifiedByCount) === 1 ? "" : "s"})` : ""}.`}>
+                  <span>{report.confidenceLabel}{report.verifiedByCount != null ? ` · ${report.verifiedByCount} confirmed` : ""}</span>
                   <i aria-hidden="true"><b style={{ width: `${report.confidenceScore}%` }} /></i>
                 </div>
                 <div className="scout-command-status-row">
@@ -5239,8 +5266,9 @@ async function handleUpdateStore(e) {
 
             <div style={styles.card}>
               <h2 style={styles.sectionTitle}>Best Buy Nightly Report Settings</h2>
+              {!adminMode ? <p style={{ ...styles.empty, padding: 0 }}>Best Buy monitoring is paused during beta. These settings are saved for when it turns on; nothing runs yet.</p> : null}
               <div style={styles.formGrid}>
-                <label style={styles.tiny}><input type="checkbox" checked={bestBuyNightlySettings.enabled} onChange={(e) => updateBestBuySetting("enabled", e.target.checked)} /> Nightly reports on</label>
+                <label style={styles.tiny}><input type="checkbox" checked={bestBuyNightlySettings.enabled} disabled={!adminMode} onChange={(e) => updateBestBuySetting("enabled", e.target.checked)} /> {adminMode ? "Nightly reports on" : "Nightly reports (paused)"}</label>
                 <input style={styles.input} type="time" value={bestBuyNightlySettings.reportTime} onChange={(e) => updateBestBuySetting("reportTime", e.target.value)} />
                 <input style={styles.input} value={bestBuyNightlySettings.zip} onChange={(e) => updateBestBuySetting("zip", e.target.value)} placeholder="ZIP for report" />
                 <input style={styles.input} type="number" value={bestBuyNightlySettings.radiusMiles} onChange={(e) => updateBestBuySetting("radiusMiles", e.target.value)} placeholder="Radius miles" />
@@ -6816,11 +6844,12 @@ async function handleUpdateStore(e) {
                 <div className="scout-store-record-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))", gap: "16px" }}>
                   <div className="scout-store-record-section scout-store-record-intelligence" style={styles.card}>
                     <h2 style={styles.sectionTitle}>Store Intelligence</h2>
-                    <div className="scout-store-record-fact" style={styles.intelligenceRow}><span>Reported restock days</span><strong>{selectedStore.restockDays || selectedStore.stockDays || "Unknown"}</strong></div>
-                    <div className="scout-store-record-fact" style={styles.intelligenceRow}><span>Common report days</span><strong>{getMostCommon(visibleReports.map((report) => dayName(report.reportDate || report.report_date)))[0] || "Unknown"}</strong></div>
-                    <div className="scout-store-record-fact" style={styles.intelligenceRow}><span>Truck days</span><strong>{selectedStore.truckDays || selectedStore.truckDay || "Unknown"}</strong></div>
-                    <div className="scout-store-record-fact" style={styles.intelligenceRow}><span>Purchase limits</span><strong>{selectedStore.purchaseLimits || selectedStore.limitPolicy || "Unknown"}</strong></div>
-                    <div className="scout-store-record-fact" style={{ ...styles.intelligenceRow, borderBottom: "none" }}><span>Last verified</span><strong>{selectedStore.lastVerifiedDate || selectedStore.lastVerified || "Unknown"}</strong></div>
+                    {storeFact("Reported restock days", selectedStore.restockDays || selectedStore.stockDays)}
+                    {storeFact("Common report days", getMostCommon(visibleReports.map((report) => dayName(report.reportDate || report.report_date)))[0])}
+                    {storeFact("Truck days", selectedStore.truckDays || selectedStore.truckDay)}
+                    {storeFact("Purchase limits", selectedStore.purchaseLimits || selectedStore.limitPolicy)}
+                    {storeFact("Last verified", selectedStore.lastVerifiedDate || selectedStore.lastVerified)}
+                    {countMissingStoreFacts(selectedStore) ? <p style={styles.tiny}>{countMissingStoreFacts(selectedStore)} store fact{countMissingStoreFacts(selectedStore) === 1 ? " is" : "s are"} not recorded yet. Know this store? Use "Suggest store details" below to help fill them in.</p> : null}
                     {selectedStore.stockNotes || selectedStore.userTips || selectedStore.notes ? <p style={styles.tiny}>Notes: {selectedStore.stockNotes || selectedStore.userTips || selectedStore.notes}</p> : null}
                     <div className="scout-store-record-actions" style={styles.row}>
                       <button type="button" className="scout-store-action-secondary" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({

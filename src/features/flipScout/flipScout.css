@@ -167,7 +167,7 @@
 .flip-result-metrics span, .flip-auction-calculation span, .flip-comparison-grid span, .flip-lot-totals span { display: block; color: var(--flip-muted); font-size: 0.68rem; }
 .flip-result-metrics strong { display: block; margin-top: 7px; color: var(--flip-gold); font-size: 1.05rem; }
 .flip-scenario-table { overflow: hidden; border: 1px solid var(--flip-line); border-radius: 14px; }
-.flip-scenario-table > div { display: grid; grid-template-columns: 1.1fr repeat(3, 1fr); gap: 6px; align-items: center; padding: 11px 8px; border-bottom: 1px solid var(--flip-line); font-size: 0.7rem; }
+.flip-scenario-table > div { display: grid; grid-template-columns: 1.1fr repeat(4, 1fr); gap: 6px; align-items: center; padding: 11px 8px; border-bottom: 1px solid var(--flip-line); font-size: 0.7rem; }
 .flip-scenario-table > div:last-child { border-bottom: 0; }
 .flip-scenario-table__head { color: var(--flip-muted); background: rgba(255,255,255,0.035); }
 .flip-scenario-table small { display: block; margin-top: 2px; color: #7892a4; }

@@ -1,23 +1,11 @@
 import { useState } from "react";
 import { PrivateStorageImage } from "./PrivateReceipt.jsx";
+import { buildBinderPages } from "../utils/binderPages.js";
 import "./set-binder-view.css";
 
 // #21: a binder view for a set. Nine-pocket pages in card-number order, with
 // owned cards shown and missing numbers as empty pockets. Pure presentation:
 // the rows come from buildSetCardRows and the actions from the set detail.
-
-export const BINDER_POCKETS_PER_PAGE = 9;
-
-function buildBinderPages(rows = [], pocketsPerPage = BINDER_POCKETS_PER_PAGE) {
-  const ordered = [...(Array.isArray(rows) ? rows : [])];
-  const pages = [];
-  for (let index = 0; index < ordered.length; index += pocketsPerPage) {
-    const pocketRows = ordered.slice(index, index + pocketsPerPage);
-    while (pocketRows.length < pocketsPerPage) pocketRows.push(null);
-    pages.push({ number: pages.length + 1, pockets: pocketRows });
-  }
-  return pages.length ? pages : [{ number: 1, pockets: Array.from({ length: pocketsPerPage }, () => null) }];
-}
 
 export default function SetBinderView({ rows = [], setName = "", imageFor, onOpen, onAddOwned, onAddWishlist }) {
   const pages = buildBinderPages(rows);

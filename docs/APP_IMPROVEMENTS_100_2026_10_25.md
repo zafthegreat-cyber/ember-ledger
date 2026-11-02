@@ -595,3 +595,82 @@ below rewrites saved records, routes, DB keys or code symbols.
   portfolio test updated for the new valuation fields; beta-corrections (22)
   and export-disclosure (7) pass; all `src/` files parse. Build and ESLint
   still need the development machine.
+
+### November 1: tester-reaction corrections, batch 3 (items A81–A121)
+
+Source: `docs/BETA_SIMULATION_VOICES_2026_10_30.md`, section A. Additive
+only; no routes, DB names or code symbols changed.
+
+- **A82–A83 bots.** Bot Operations says plainly that it is a tracking log
+  and that bots are started and configured in their own apps; provider badge
+  reads "Tracking only" with a note that there is nothing to configure.
+- **A85 Best Buy.** Nightly reports default to off; the settings card says
+  monitoring is paused during beta and the toggle is disabled outside admin.
+- **A88 shelf photo.** The photo/source controls are open on the details
+  step instead of collapsed behind "Optional".
+- **A89 unverified.** `scoutTrustGuidance` now says "Awaiting confirmation"
+  (with what changes it) while fresh and "Never confirmed" once expired. Also
+  fixed a real bug: `"unverified".includes("verified")` made unverified
+  reports show the Verified badge.
+- **A90 confirmations.** Confirming a report shows "Thanks — your
+  confirmation counts. N people have confirmed… +1 Daily Point."
+- **A91 missing store.** The Submit Missing Store form has a state select
+  (the seven open states + Other); Virginia keeps its region list.
+- **A92 Store Detail.** Facts render only when known (`storeFact`); one line
+  says how many facts are missing and points to "Suggest store details".
+- **A93 patterns.** The lock card explains in plain words why restock
+  patterns are shown to no one and what is available instead.
+- **A94–A95.** Prediction confidence badges say "High confidence · 4
+  confirmed restocks, last …"; the report confidence bar shows the
+  confirmation count and a tooltip; the home cue "Worth the trip" became
+  "Recent reports".
+- **A97 cities.** City filter options and matching go through
+  `normalizeCityLabel`, so one city appears once.
+- **A98 stale prices.** `getMarketQuoteContext` adds `ageDays`/`stale`
+  (>30 days or the app's stale flag); Market rows say "Old price — last
+  checked … May be out of date."
+- **A99 "manual".** Reports with no saved proof type read "Proof type not
+  recorded"; imports without a value no longer get `marketSource: "Manual"`.
+- **A102 eBay comps.** Authorization errors read "owner-only beta" instead
+  of the raw provider message.
+- **A103 Has image.** Server filter checks every image column; the cached
+  fallback applies the filter too.
+- **A104–A105 search.** `catalogCardQueryMatchesRow` matches "Charizard
+  4/102" against rows that store only "4"/"004" (and still requires the full
+  fraction when the row has one); the server query searches the card's own
+  number with and without a "/total" suffix.
+- **A107 $0.** Blank price inputs save as null (`blankToNull`) in Add
+  Anything, admin catalog create and import; no invented $0.
+- **A108–A109 portfolio.** "Hidden by you" (masked dots) and "Not valued
+  yet" (muted, with the next step) are distinct states; coverage line says
+  wishlist budgets and items for sale are not included.
+- **A110 totals.** Business totals skip copies whose status is Personal
+  collection / Disposed, so a copy belongs to one total.
+- **A111 set completion.** Checklist counts one card per number; secret
+  rares past the printed total and other-print variants are listed as
+  optional, not missing. By-number estimates only run when every owned card
+  has a number inside the printed total.
+- **A113 grading.** Grading submissions download as a one-row CSV
+  submission sheet with an export disclosure.
+- **A114–A116.** Feature matrix rows for Labels/QR (text-only SVG, no QR),
+  aging and margin now say exactly what exists; aging reports
+  30/60/90/180-day buckets plus "undated" (`agingBuckets`) and the Stale
+  inventory tile shows them.
+- **A115 storage.** New `utils/storageLocations.mjs`: inputs offer known
+  locations and saves adopt the existing spelling for the same place.
+- **A117 processing.** "Done" status added; `TERMINAL_STATUS` /
+  `isTerminalLifecycleStatus` exported.
+- **A119–A120 lots.** Relative-value lots with unpriced lines fall back to
+  quantity weight; allocations are whole cents by largest remainder
+  (`allocateCents`) so lines sum to the lot; reconciliation names lines with
+  no cost (`missingItemIds`).
+- **A121 margin.** `calculateMargin` (profit ÷ sale price) on every
+  scenario; Deal Analysis shows a Profit margin tile and column.
+- Not changed: A81, A84, A86–A87 (the four required fields are the trust
+  minimum), A96, A100–A101, A106, A112, A118 — see the voices doc note.
+- Verification: `npm run test:beta-corrections` now runs batches 1–3 (33
+  tests); flip-scout, profit dashboard, inventory valuation, grouped
+  inventory, manual lifecycles, set mastery, regional browsing, catalog
+  identity (test updated for the new number clause), export disclosure,
+  portfolio, feedback-20 and inspected-returns suites pass; all `src/` files
+  parse. Build and ESLint still need the development machine.

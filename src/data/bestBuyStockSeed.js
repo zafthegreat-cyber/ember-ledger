@@ -31,7 +31,8 @@ export const BEST_BUY_ALERT_TYPES = [
 ];
 
 export const BEST_BUY_NIGHTLY_DEFAULTS = {
-  enabled: true,
+  // A85 (2026-11-01): Best Buy monitoring is paused; nothing is "on" by default.
+  enabled: false,
   reportTime: "21:00",
   zip: "23435",
   radiusMiles: 25,

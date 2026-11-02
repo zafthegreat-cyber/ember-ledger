@@ -777,15 +777,34 @@ export function deriveSetCompletionSummary({ items = [], wishlistItems = [], cat
     const catalogCards = uniqueBy(row.catalogCards, cardIdentityKey).sort((a, b) => compareSetMasteryRows(a, b, "cardNumber"));
     const catalogSealedProducts = uniqueBy(row.catalogSealedProducts, explicitProductKey).sort((a, b) => compareSetMasteryRows(a, b, "name"));
     const checklistAvailable = Boolean(row.checklistAvailable || (row.totalCards > 0 && catalogCards.length >= row.totalCards));
-    const checklistMissingCards = checklistAvailable ? catalogCards.filter((product) => {
+    // A111 (2026-11-01): the base checklist is one card per card number. Variant
+    // rows of the same number (reverse holo, promo stamps) and secret rares
+    // numbered past the printed set total are not counted as missing; they are
+    // listed separately as optional extras.
+    const checklistBaseCards = uniqueBy(catalogCards, (product) => {
+      const cardNumber = getCardNumber(product);
+      return cardNumber ? `number:${compactKey(cardNumber)}` : cardIdentityKey(product);
+    });
+    const withinPrintedTotal = (product) => {
+      if (!(row.totalCards > 0)) return true;
+      const ordinal = cardNumberOrdinal(getCardNumber(product));
+      return !ordinal || ordinal <= row.totalCards;
+    };
+    const isMissing = (product) => {
       const productKey = cardIdentityKey(product);
       const cardNumber = getCardNumber(product);
       return !ownedCardKeys.has(productKey) && !(cardNumber && ownedCardNumberKeys.has(compactKey(cardNumber)));
-    }) : [];
-    const numberMissingCards = !checklistAvailable && row.totalCards > 0 && row.ownedCardItems.length > 0
+    };
+    const checklistMissingCards = checklistAvailable ? checklistBaseCards.filter((product) => withinPrintedTotal(product) && isMissing(product)) : [];
+    const optionalMissingCards = checklistAvailable ? checklistBaseCards.filter((product) => !withinPrintedTotal(product) && isMissing(product)) : [];
+    // The by-number estimate is only honest when every owned card has a
+    // number inside the printed total; otherwise fall back to "needs checklist".
+    const ownedOrdinals = row.ownedCardItems.map((item) => cardNumberOrdinal(getCardNumber(item)));
+    const numbersReliable = row.totalCards > 0 && row.ownedCardItems.length > 0 && ownedOrdinals.every((ordinal) => ordinal && ordinal <= row.totalCards);
+    const numberMissingCards = !checklistAvailable && numbersReliable
       ? buildMissingNumberCards(row, { ownedCardItems: row.ownedCardItems, catalogCards, totalCards: row.totalCards })
       : [];
-    const missingBasis = checklistAvailable ? "checklist" : numberMissingCards.length || (row.totalCards > 0 && row.ownedCardItems.length > 0) ? "numbers" : "none";
+    const missingBasis = checklistAvailable ? "checklist" : numbersReliable ? "numbers" : "none";
     const missingCards = missingBasis === "checklist" ? checklistMissingCards : numberMissingCards;
     const missingSupported = missingBasis !== "none";
     const ownedCount = ownedCardGroups.length;
@@ -800,6 +819,8 @@ export function deriveSetCompletionSummary({ items = [], wishlistItems = [], cat
       catalogSealedProducts,
       sealedProducts: catalogSealedProducts,
       missingCards,
+      optionalMissingCards,
+      optionalMissingCount: optionalMissingCards.length,
       missingBasis,
       missingSupported,
       missingCount,
@@ -823,7 +844,7 @@ export function deriveSetCompletionSummary({ items = [], wishlistItems = [], cat
           ? `${percent}% complete`
           : `${percent}% completion estimate`,
       progressCopy: checklistAvailable
-        ? `${ownedCount} owned of ${row.totalCards || catalogCards.length} cards.`
+        ? `${ownedCount} owned of ${row.totalCards || checklistBaseCards.length} cards.${optionalMissingCards.length ? ` ${optionalMissingCards.length} secret rare${optionalMissingCards.length === 1 ? "" : "s"} past the set total and other-print variants are not counted as missing.` : ""}`
         : missingBasis === "numbers"
           ? `${ownedCount} owned of ${row.totalCards} card numbers; ${missingCount} still missing by number.`
           : row.totalCards > 0

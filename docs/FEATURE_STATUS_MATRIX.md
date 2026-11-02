@@ -105,7 +105,7 @@ Test abbreviations: **FS** `test:flip-scout`; **OC** `test:owner-center`; **EB**
 | Decision summary | same | IMPLEMENTED | `AppraiserScreen.jsx`, `dealIntelligence.js` | calculation/intelligence result | FS, INT, BR, REG | New recommendation is advisory and explainable; preserve approved minimal order |
 | Landed cost / net / profit / ROI | same | IMPLEMENTED | `src/features/flipScout/calculations.js` | pure inputs | FS | Target adds payment fees/gross/margin/tolls/labor etc.; Phase 7 |
 | Maximum offer | same | IMPLEMENTED | calculations utility | pure inputs | FS | Target minor-unit model later |
-| Profit margin | same | MISSING | no canonical calculation found | none | None focused | Add with complete sales semantics; Phase 7/8 |
+| Profit margin | same | IMPLEMENTED (2026-11-01) | `calculateMargin` in flipScout/calculations.js (profit ÷ sale price); shown as a tile and column in Deal Analysis | none | test-beta-corrections-batch3 | Realized margin on completed sales still to add |
 | Target expanded cost model | same | PARTIALLY_IMPLEMENTED | calculation/forms | local appraisal inputs | FS | Missing several definitive cost fields and gross-collected semantics; Phase 7 |
 | Comparable Records | conceptual `/find/deals/:id/comparables` | MISSING | Phase 1C valuation v2 accepts typed/conditioned evidence but has no record workflow/source | none authoritative | INT contract only | Licensed source and repository/detail UI remain required; active asks stay separate; unknown/incompatible comparable conditions are excluded |
 | Projection comparison set preservation | Deal Analysis | CLIENT_LOCAL_ONLY | `valuation.js`, `analysisHistory.js` | tagged card-appraisal revision retains input/evidence/system result | INT | Matched-condition sales are not adjusted again and only explicit `NM` baselines may be adjusted; no canonical comparable entity or licensed feed |
@@ -217,7 +217,7 @@ Test abbreviations: **FS** `test:flip-scout`; **OC** `test:owner-center`; **EB**
 | Inventory Item Detail | business detail | PARTIALLY_IMPLEMENTED | Records/App detail renderers | local item/purchase/sales | FS/REG | Available/reserved/history canonical detail incomplete |
 | Processing Queue | conceptual | PARTIALLY_IMPLEMENTED | status filters/forms | local inventory | FS | Full status workflow Phase 7 |
 | Storage Locations | conceptual | PARTIALLY_IMPLEMENTED | storage text fields/legacy settings | local records | legacy tests | Hierarchical entity and move audit Phase 7 |
-| Labels and QR Codes | conceptual | IMPLEMENTED_DIFFERENTLY | legacy label/print utilities if present | local item fields | legacy tests | Canonical Rollo sizes/preview/reprint and no-state-change tests Phase 7 |
+| Labels and QR Codes | conceptual | PARTIAL (text label only) | `InventoryLabelPreview` makes a 600×240 text-only SVG (title, ID, storage) you can download; there is no QR code and no Rollo/label-printer sizing yet | local item fields | legacy tests | Add QR of the item ID and Rollo 2×1 / 4×6 sizes Phase 7 |
 | Inventory Aging | Business/reports | PARTIALLY_IMPLEMENTED | dashboard/report calculations | local inventory dates | FS/REG | Dedicated configurable aging view Phase 8 |
 | Quantity validation / no double sale | sale form | IMPLEMENTED | `src/features/flipScout/inventory.js` | inventory/sales | FS | Server transaction/constraint Phase 7 |
 

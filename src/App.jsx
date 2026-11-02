@@ -9,6 +9,12 @@ import { useCloudWorkspace } from "./features/persistence/CloudWorkspaceContext.
 import { canUseHostedAppSupplement, selectHostedAppSupplement } from "./features/persistence/hostedAppSupplement.js";
 import { focusFlowModalContent } from "./features/deferredViews/flowModalFocus.js";
 import { lazy, Suspense, useCallback, useDeferredValue, useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from "react";
+// A107 (2026-11-01): money inputs left blank are saved as null, never coerced to 0.
+function blankToNull(value) {
+  if (value === "" || value === null || value === undefined) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
 import "./App.css";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 import { encodeScoutReportCloudNotes, decodeScoutReportCloudNotes, mergeScoutReportCloudSave } from "./utils/scoutReportCloudContext.mjs";
@@ -13024,9 +13030,11 @@ export default function App() {
       if (requestId !== supabaseCatalogRequestId.current) return;
       if (error?.name === "AbortError") return;
       if (catalogProducts.length) {
+        // A103: the cached fallback honors the data filter too.
+        const cachedPool = catalogDataFilter === "Has image" ? catalogProducts.filter((product) => getCatalogImage(product)) : catalogProducts;
         const cachedMatches = cleanedSearch || barcode
-          ? getLocalCatalogSeedMatches(cleanedSearch || barcode, pageSize, catalogProducts)
-          : catalogProducts.slice(0, pageSize);
+          ? getLocalCatalogSeedMatches(cleanedSearch || barcode, pageSize, cachedPool)
+          : cachedPool.slice(0, pageSize);
         setCatalogSearchHasRun(true);
         setCatalogPagedResultIds(cachedMatches.map((product) => String(product.id)));
         setSupabaseCatalogStatus({
@@ -15117,8 +15125,9 @@ export default function App() {
       productType: row.productType,
       barcode: "",
       sku: "",
-      marketPrice: Number(importMoneyDraft(row.marketValue) || 0),
-      marketSource: "Manual",
+      marketPrice: blankToNull(importMoneyDraft(row.marketValue)),
+      // A99/A107: no invented source when no value was imported.
+      marketSource: importMoneyDraft(row.marketValue) ? "Manual" : "",
       marketLastUpdated: now,
       marketConfidenceLevel: "Manual",
       sourceType: "manual",
@@ -23066,8 +23075,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       itemImageSourceUrl: selectedCatalog?.imageSourceUrl || selectedCatalogKnown.sourceUrl || "",
       itemImageLastUpdated: selectedCatalog?.imageLastUpdated || selectedCatalog?.lastUpdated || selectedCatalog?.updatedAt || selectedCatalog?.updated_at || "",
       itemImageNeedsReview: Boolean(selectedCatalog?.imageNeedsReview),
-      marketPrice: Number(multiDestinationForm.marketPrice || selectedCatalog?.marketPrice || selectedCatalog?.midPrice || 0),
-      msrpPrice: Number(multiDestinationForm.msrpPrice || selectedCatalog?.msrpPrice || 0),
+      // A107 (2026-11-01): a blank price stays blank instead of becoming $0.
+      marketPrice: blankToNull(multiDestinationForm.marketPrice || selectedCatalog?.marketPrice || selectedCatalog?.midPrice),
+      msrpPrice: blankToNull(multiDestinationForm.msrpPrice || selectedCatalog?.msrpPrice),
       setCode: selectedCatalogKnown.setCode || "",
       setName: multiDestinationForm.setName || selectedCatalogKnown.setName || multiDestinationForm.tidetradr.setName,
       expansion: multiDestinationForm.setName || selectedCatalogKnown.setName || multiDestinationForm.tidetradr.setName,
@@ -23233,7 +23243,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
             barcode: multiDestinationForm.tidetradr.upc || multiDestinationForm.upcSku,
             sku: multiDestinationForm.tidetradr.sku,
             msrpPrice: Number(multiDestinationForm.tidetradr.msrpPrice || multiDestinationForm.msrpPrice || 0),
-            marketPrice: Number(multiDestinationForm.marketPrice || 0),
+            marketPrice: blankToNull(multiDestinationForm.marketPrice),
             releaseDate: multiDestinationForm.tidetradr.releaseDate,
             sourceUrl: multiDestinationForm.tidetradr.sourceUrl,
             notes: [multiDestinationForm.tidetradr.correctionNotes, multiDestinationForm.notes].filter(Boolean).join(" "),
@@ -33723,7 +33733,9 @@ function renderForgeBusinessLedgerPanel() {
     if (type.includes("photo") || type.includes("stock_photo")) return "Proof photo";
     if (type.includes("receipt")) return "Receipt";
     if (type.includes("called_store")) return "Called store";
-    if (type.includes("manual")) return "Manual report";
+    // A99 (2026-11-01): "manual" was the default for every report with no
+    // proof type saved; say what that actually means.
+    if (type.includes("manual")) return explicit || report.sourceType || report.source_type || report.proofType || report.proof_type ? "Typed by the reporter" : "Proof type not recorded";
     return scoutSourceTypeLabel(type);
   }
 
@@ -34126,7 +34138,8 @@ function renderForgeBusinessLedgerPanel() {
     confidenceScore: row.confidenceKey === "high" ? 82 : row.confidenceKey === "medium" ? 62 : row.confidenceKey === "low" ? 38 : 15,
     sourceType: "manual_training_restock",
     sourceLabel: row.sourceLabel || "Confirmed Restocks/restock history",
-    badges: ["Predicted", row.confidenceLabel, row.patternStrength === "strong" ? "Strong Pattern" : row.patternStrength === "developing" ? "Developing Pattern" : "Needs Data"],
+    // A94 (2026-11-01): the confidence badge says what it is based on.
+    badges: ["Predicted", `${row.confidenceLabel} confidence · ${row.trainingCount || 0} confirmed restock${row.trainingCount === 1 ? "" : "s"}${row.lastConfirmedRestockLabel ? `, last ${row.lastConfirmedRestockLabel}` : ""}`, row.patternStrength === "strong" ? "Strong Pattern" : row.patternStrength === "developing" ? "Developing Pattern" : "Needs Data"],
     days: [row.commonDay].filter(Boolean),
     groupLabel: row.commonDay || "Needs more data",
     windowLabel: row.nextLikelyWindow,

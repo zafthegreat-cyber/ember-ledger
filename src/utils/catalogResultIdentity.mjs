@@ -20,7 +20,20 @@ export function catalogCardQueryMatchesRow(query, row = {}) {
   const number = row.cardNumber ?? row.card_number ?? row.collectorNumber ?? row.collector_number;
   const name = [row.name, row.productName, row.product_name, row.cardName, row.card_name].filter(Boolean).join(" ");
   const titleNumber = getCatalogCollectorQuery(name)?.collectorNumber;
-  if ((number ? normalizedNumber(number) : titleNumber) !== identity.collectorNumber) return false;
+  const rowNumber = number ? normalizedNumber(number) : titleNumber;
+  if (!rowNumber) return false;
+  // A104/A105 (2026-11-01): catalog rows often store only the card's own
+  // number ("4", "004") without the set total. "Charizard 4/102" must match
+  // such a row by its first number; a row that does carry a total must match
+  // the whole fraction.
+  const [queryNumber, queryTotal] = identity.collectorNumber.split("/");
+  const [rowFirst, rowTotal] = rowNumber.split("/");
+  if (rowTotal) { if (rowNumber !== identity.collectorNumber) return false; }
+  else if (rowFirst !== queryNumber) return false;
+  else if (queryTotal) {
+    const printedTotal = row.setTotal ?? row.set_total ?? row.printedTotal ?? row.printed_total ?? row.totalCards ?? row.total_cards;
+    if (printedTotal && normalizedNumber(String(printedTotal)) !== queryTotal) return false;
+  }
   const rowWords = new Set(words([name, row.setName, row.set_name, row.expansion, row.setCode, row.set_code, row.language, row.variant, row.variantName, row.rarity].filter(Boolean).join(" ")));
   return identity.requiredWords.every(word => rowWords.has(word));
 }

@@ -247,7 +247,7 @@ function FeatureSummary({ screen }) {
       <MagicCard className="ets-feature-card ets-home-feature">
         <FeatureTitle feature={feature} />
         <div className="ets-home-cues">
-          <span><Icon name="scout" /><strong>Restocks</strong><small>Worth the trip</small></span>
+          <span><Icon name="scout" /><strong>Restocks</strong><small>Recent reports</small></span>
           <span><Icon name="vault" /><strong>Vault</strong><small>Protect value</small></span>
           <span><Icon name="spark" /><strong>Spark</strong><small>Give back</small></span>
         </div>

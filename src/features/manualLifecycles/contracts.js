@@ -22,7 +22,8 @@ const ENUMS = {
   grading: { status: ["Draft", "Submitted", "Received", "Completed", "Cancelled"] },
   auctionLink: { pickupStatus: ["Planned", "Ready", "Collected", "Cancelled"] },
   visit: { outcome: ["Planned", "Visited", "Purchased", "No purchase", "Cancelled"] },
-  processing: { status: ["Unprocessed", "Identified", "Cleaned", "Photographed", "Ready", "Stored"] },
+  // A117 (2026-11-01): "Done" is the end of the processing queue.
+  processing: { status: ["Unprocessed", "Identified", "Cleaned", "Photographed", "Ready", "Stored", "Done"] },
   listing: { status: ["Draft", "Active", "Reserved", "Sold", "Withdrawn"] },
   shipment: { status: ["Packed", "Shipped", "Delivered", "Cancelled"] },
   saleReturn: { status: ["Requested", "Received", "Inspected", "Closed"], disposition: ["Quarantine", "Restock review", "Dispose", "No physical return"] },
@@ -34,6 +35,8 @@ const TRANSITIONS = {
   shipment: { Packed: ["Packed", "Shipped", "Cancelled"], Shipped: ["Shipped", "Delivered"], Delivered: ["Delivered"], Cancelled: ["Cancelled"] },
   saleReturn: { Requested: ["Requested", "Received"], Received: ["Received", "Inspected"], Inspected: ["Inspected", "Closed"], Closed: ["Closed"] },
 };
+export const TERMINAL_STATUS = { grading: ["Completed", "Cancelled"], shipment: ["Delivered", "Cancelled"], saleReturn: ["Closed"], processing: ["Done"], listing: ["Sold", "Withdrawn"], wish: ["Archived"], visit: ["Visited", "Purchased", "No purchase", "Cancelled"] };
+export const isTerminalLifecycleStatus = (type, status) => (TERMINAL_STATUS[type] || []).includes(status);
 const INITIAL_STATUS = { grading: "Draft", shipment: "Packed", saleReturn: "Requested" };
 const BASE_KEYS = ["id", "type", "recordVersion", "createdAt", "updatedAt", "history"];
 const fail = (message) => { throw new Error(message); };

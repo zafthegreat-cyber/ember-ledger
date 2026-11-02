@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 
 // Most modules under src/ use extensionless imports, so bundle them for Node.
@@ -18,7 +19,7 @@ async function load(entry, name) {
     } }], resolveExtensions: [".js", ".jsx", ".mjs"], loader: { ".js": "jsx" }, jsx: "automatic", nodePaths: [join(process.cwd(), "node_modules")] });
   // Stub CSS imports so component modules load in Node.
 
-  return import(out);
+  return import(pathToFileURL(out).href);
 }
 
 const onboarding = await load("src/utils/onboardingGuidance.js", "onboarding");
@@ -34,7 +35,7 @@ const plain = await load("src/config/plainLanguage.js", "plain");
 const canonical = await load("src/features/backup/canonicalJson.js", "canonical");
 const backupFormat = await load("src/features/backup/backupFormat.js", "backupFormat");
 const storage = await load("src/features/persistence/legacyAppStorage.js", "storage");
-const binder = await load("src/components/SetBinderView.jsx", "binder");
+const binder = await load("src/utils/binderPages.js", "binder");
 const device = await load("src/utils/deviceNotifications.js", "device");
 
 test("#1-2 more states review instead of waitlist, and the copy explains the human review", () => {
@@ -108,7 +109,7 @@ test("#13-15 scout-earned unlock and points explainer", () => {
 
 test("#20 missing cards are listed by number when the checklist is incomplete", () => {
   const rows = sets.deriveSetCompletionSummary({
-    items: [{ name: "Pikachu", setName: "Test Set", cardNumber: "025/102", catalogType: "card", productType: "Card" }],
+    items: [{ name: "Pikachu", setName: "Test Set", cardNumber: "002/102", catalogType: "card", productType: "Card" }],
     knownSets: [{ id: "test", name: "Test Set", totalCards: 5 }],
     catalogProducts: [{ name: "Charizard", setName: "Test Set", cardNumber: "004/102", catalogType: "card", productType: "Card" }],
   });

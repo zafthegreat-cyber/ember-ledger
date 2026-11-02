@@ -34,7 +34,7 @@
     "test:code3-restore-preview": "node --no-warnings scripts/test-code3-restore-preview.mjs",
     "test:restore-compatibility": "node --no-warnings --test scripts/test-restore-compatibility.mjs",
     "test:export-disclosure": "node --no-warnings --test scripts/test-export-disclosure.mjs",
-    "test:beta-corrections": "node --no-warnings --test scripts/test-beta-corrections-batch1.mjs scripts/test-beta-corrections-batch2.mjs",
+    "test:beta-corrections": "node --no-warnings --test scripts/test-beta-corrections-batch1.mjs scripts/test-beta-corrections-batch2.mjs scripts/test-beta-corrections-batch3.mjs",
     "test:feedback-20-findings": "node --no-warnings --test scripts/test-feedback-20-findings.mjs",
     "test:legacy-backup-validation": "node scripts/test-legacy-backup-validation.mjs",
     "test:account-ops-restore": "node --no-warnings scripts/test-account-ops-restore.mjs",

@@ -178,8 +178,12 @@ export function getDashboardSummary(state = {}, now = new Date()) {
     return (!end || end >= now.getTime()) && !["won", "lost", "cancelled"].includes(String(auction.outcome || "").toLowerCase());
   });
   const completedSales = sales.filter((sale) => String(sale.status || "").toLowerCase() === "completed");
-  const inventoryCost = inventory.reduce((total, item) => total + availableInventoryCostMajorUnits(item, sales), 0);
-  const projectedInventoryValue = inventory.reduce((total, item) => {
+  // A110 (2026-11-01): one owner per item. Copies whose status says they are
+  // back in the personal collection or disposed belong to the Collection
+  // totals, not the Business totals; Listed copies count once, here.
+  const businessInventory = inventory.filter((item) => !["personal collection", "disposed", "returned to collection"].includes(String(item.status || "").trim().toLowerCase()));
+  const inventoryCost = businessInventory.reduce((total, item) => total + availableInventoryCostMajorUnits(item, sales), 0);
+  const projectedInventoryValue = businessInventory.reduce((total, item) => {
     const available = Math.max(0, nonNegative(item.quantity) - soldQuantityForInventory(item.id, sales));
     return total + nonNegative(item.projectedResaleMid) * available;
   }, 0);
@@ -189,11 +193,20 @@ export function getDashboardSummary(state = {}, now = new Date()) {
   const realizedCogs = saleAccounting.reduce((total, projection) => total + projection.effectiveCogs, 0);
   const realizedCogsAdjustment = saleAccounting.reduce((total, projection) => total + projection.cogsAdjustment, 0);
   const expenseTotal = expenses.reduce((total, expense) => total + nonNegative(expense.amount) * Math.min(1, nonNegative(expense.businessPercentage || 100) / 100), 0);
-  const agingCount = inventory.filter((item) => {
-    if (soldQuantityForInventory(item.id, sales) >= nonNegative(item.quantity)) return false;
+  // A116 (2026-11-01): aging is reported in buckets, and items with no
+  // purchase date are counted separately instead of silently left out.
+  const agingBuckets = { days30: 0, days60: 0, days90: 0, days180: 0, undated: 0 };
+  for (const item of businessInventory) {
+    if (soldQuantityForInventory(item.id, sales) >= nonNegative(item.quantity)) continue;
     const purchased = new Date(item.purchaseDate || item.createdAt || "").getTime();
-    return Number.isFinite(purchased) && (now.getTime() - purchased) / 86400000 >= 90;
-  }).length;
+    if (!Number.isFinite(purchased)) { agingBuckets.undated += 1; continue; }
+    const days = (now.getTime() - purchased) / 86400000;
+    if (days >= 180) agingBuckets.days180 += 1;
+    else if (days >= 90) agingBuckets.days90 += 1;
+    else if (days >= 60) agingBuckets.days60 += 1;
+    else if (days >= 30) agingBuckets.days30 += 1;
+  }
+  const agingCount = agingBuckets.days90 + agingBuckets.days180;
   return {
     awaitingReview: deals.filter((deal) => ["new", "needs review"].includes(String(deal.status || "").toLowerCase())).length
       + providerListings.filter((listing) => ["Pending Review", "Needs Re-review"].includes(listing.reviewStatus)).length,
@@ -213,5 +226,6 @@ export function getDashboardSummary(state = {}, now = new Date()) {
     realizedCogsAdjustment,
     expenseTotal,
     agingCount,
+    agingBuckets,
   };
 }

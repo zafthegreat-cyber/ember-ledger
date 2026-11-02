@@ -267,7 +267,7 @@ export default function MarketPage(props) {
                     <div className="market-v4-result-value">
                       <b>{formatMarketValue(product)}</b>
                       <small>{context.source}</small>
-                      <small>{context.asOf ? `As of ${new Date(context.asOf).toLocaleString()}` : "Price date not supplied"}</small>
+                      <small className={context.stale ? "market-v4-result-stale" : undefined}>{context.asOf ? context.stale ? `Old price — last checked ${new Date(context.asOf).toLocaleDateString()}${context.ageDays != null ? ` (${context.ageDays} days ago)` : ""}. May be out of date.` : `As of ${new Date(context.asOf).toLocaleString()}` : "Price date not supplied"}</small>
                       <small>{context.currency || "Currency not supplied"} · {context.condition} · {context.printing}</small>
                       {formatMarketValue(product) === "Value unknown" ? <small>Open Details to review sources or enter a manual value.</small> : null}
                     </div>

@@ -1162,8 +1162,8 @@ export default function ScoutSubmitContent({ scope }) {
                 {renderNotesField()}
               </details>
             )}
-            <details className="scout-report-disclosure scout-proof-disclosure" open={currentType.isGuess || Boolean(quickScoutReportForm.photoUrl || quickScoutReportForm.proofText || quickScoutReportForm.proofType !== "manual") || undefined}>
-              <summary>Add photo or source <span>Optional</span></summary>
+            <details className="scout-report-disclosure scout-proof-disclosure" open>
+              <summary>Add your shelf photo or source <span>Optional, but it helps others trust the report</span></summary>
               <p>{currentType.isGuess ? "Add the source or context behind your planning note. This remains a guess, not confirmed stock." : "A shelf photo or source helps others assess the report. Share only what you observed."}</p>
             <div className="scout-stock-status-grid" role="group" aria-label="How you know this report">
               {SCOUT_QUICK_PROOF_TYPES.map((option) => {

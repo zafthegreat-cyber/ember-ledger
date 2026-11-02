@@ -69,6 +69,7 @@ test("remote card lookup queries the number column and excludes wrong names befo
   assert.deepEqual(result.rows.map(row => row.id), [charizard.id]);
   assert.equal(result.count, 1);
   assert.equal(result.hasMore, false);
-  assert.ok(clauses.includes("card_number.ilike.%4%/%102%"));
+  // A104/A105: the number is searched alone (with and without a "/total" suffix) so rows that store only "4" or "004" are found.
+  assert.ok(clauses.some(clause => clause.includes("card_number.ilike.4,") && clause.includes("card_number.ilike.4/%") && clause.includes("card_number.ilike.%04")));
   assert.equal(clauses.some(clause => clause.includes("Charizard Base Set")), false);
 });
