@@ -11,6 +11,7 @@ import { formatCurrency, getDashboardSummary } from "../features/flipScout/selec
 import { rankAdaptivePageItems } from "../utils/adaptivePageItems.js";
 import { resolveExperiencePresentation } from "../utils/experiencePresentation.js";
 import "./home-layout.css";
+import RegionalCommunityBanner from "../components/RegionalCommunityBanner.jsx";
 
 const FIND_DESTINATION_KEY = "private-business-hub.flip-scout.destination";
 
@@ -124,6 +125,7 @@ export default function OperationsHome({
       </div>
       <div className="home-restock-art"><CollectibleMotif /></div>
     </section>
+    <RegionalCommunityBanner primaryLabel="Browse restocks" onPrimary={onOpenRestockReports} />
     {sellerVisible && (isVisible("forgeSummary") || !manualHome) && attentionRows.length ? <section className="ops-home-section ops-attention-panel home-attention-pending">
       <SectionHeader title="Needs Attention" />
       {attentionRows.length ? <div className="ops-attention-list">{attentionRows.map((row) => <button type="button" key={row.key} onClick={row.action} aria-label={`${row.label}: ${row.count}. ${row.detail}`}><span className="ops-attention-count">{row.count}</span><span><strong>{row.label}</strong><small>{row.detail}</small></span><span aria-hidden="true">›</span></button>)}</div> : <p className="ops-compact-success"><span className="home-status-check" aria-hidden="true">✓</span><span>Nothing needs attention.</span></p>}

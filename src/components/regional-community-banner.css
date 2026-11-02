@@ -1,0 +1,26 @@
+.app.app-command-shell .regional-community-banner {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin: 0 0 24px;
+  padding: 20px;
+  border: 1px solid var(--border-subtle, #55515d);
+  border-inline-start: 3px solid var(--accent-tide, #53bdb2);
+  border-radius: 12px;
+  background: var(--surface-primary, #211f28);
+  color: var(--text-primary, #fbf4e6);
+}
+
+.app.app-command-shell .regional-community-banner__copy { flex: 1; min-width: 0; }
+.app.app-command-shell .regional-community-banner__eyebrow { color: var(--text-secondary, #d3ced8); font: 600 11px/1.5 var(--font-ui, sans-serif); letter-spacing: .08em; }
+.app.app-command-shell .regional-community-banner h2 { margin: 6px 0 8px; color: var(--text-primary, #fbf4e6); font: 650 18px/1.35 var(--font-ui, sans-serif); }
+.app.app-command-shell .regional-community-banner p { margin: 0; color: var(--text-secondary, #d3ced8); font: 400 14px/1.6 var(--font-ui, sans-serif); overflow-wrap: anywhere; }
+.app.app-command-shell .regional-community-banner__actions { display: flex; flex-wrap: wrap; gap: 8px; flex: 0 1 170px; }
+.app.app-command-shell .regional-community-banner__actions .ops-button { min-height: 44px; justify-content: center; text-align: center; text-decoration: none; }
+.app.app-command-shell .regional-community-banner__actions a:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
+
+@media (max-width: 700px) {
+  .app.app-command-shell .regional-community-banner { flex-direction: column; align-items: stretch; gap: 16px; padding: 16px; }
+  .app.app-command-shell .regional-community-banner__actions { flex-basis: auto; }
+  .app.app-command-shell .regional-community-banner__actions .ops-button { flex: 1 1 130px; }
+}
