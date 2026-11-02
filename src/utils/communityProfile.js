@@ -39,7 +39,7 @@ export const SCOUT_REPUTATION_LEVELS = [
   },
   {
     key: "veteran_scout",
-    label: "Veteran Restocks",
+    label: "Veteran Reporter",
     minScoutPoints: 75,
     minConfirmedReports: 12,
     canSubmitCommunityGuesses: true,
@@ -58,7 +58,7 @@ export const SCOUT_REPUTATION_LEVELS = [
 export const COMMUNITY_TRUST_BADGES = {
   OFFICIAL_ADMIN: { key: "official_admin", label: "Official Admin", tone: "official" },
   TEAM: { key: "team", label: "Founder / Code 3 TCG Team", tone: "official" },
-  VERIFIED_SCOUT: { key: "verified_scout", label: "Verified Restocks", tone: "success" },
+  VERIFIED_SCOUT: { key: "verified_scout", label: "Verified Reporter", tone: "success" },
   TRUSTED_REPORTER: { key: "trusted_reporter", label: "Trusted Reporter", tone: "tide" },
   HELPFUL_PARENT: { key: "helpful_parent", label: "Helpful Parent", tone: "gold" },
   KID_FRIENDLY_SUPPORTER: { key: "kid_friendly_supporter", label: "Kid-Friendly Supporter", tone: "gold" },

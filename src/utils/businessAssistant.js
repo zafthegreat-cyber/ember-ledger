@@ -264,7 +264,7 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
   }
 
   if (TIER_WORDS.test(text)) {
-    return response("Code 3 TCG public plans are Free, Collector, Family, Seller, and Shop. Everything is free during beta: there is nothing to pay and no checkout yet. Prices are set when beta closes, and you will be told before anything costs money. To turn on Collector, Family, Seller or Shop features now, ask the Code 3 team from Settings or the Membership page and we enable it by hand.", {
+    return response("Code 3 TCG public plans are Free, Collector, Family, Seller, and Shop. Everything is free during beta: there is nothing to pay and no checkout yet. Prices are set when beta closes, and you will be told before anything costs money. To turn on Collector, Family, Seller or Shop features now, ask the Code 3 team from Settings or the Membership page and we enable it by hand. Raw restock history and restock pattern tools stay private on every plan.", {
       actions: ["Open Membership Foundation", "Message Admin", "Open Restocks Report"],
       category: "Account/beta access question",
     });
@@ -416,7 +416,7 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
     });
   }
 
-  if (/\b(ember points?|today'?s sparks?|spark disappear|spark disappeared|customize hearth)\b/i.test(text) || (page === "hearth" && GENERAL_PAGE_HELP_WORDS.test(text))) {
+  if (/\b(ember points?|daily points?|today'?s sparks?|spark disappear|spark disappeared|customize hearth)\b/i.test(text) || (page === "hearth" && GENERAL_PAGE_HELP_WORDS.test(text))) {
     if (/\b(customize hearth)\b/i.test(text)) {
       return response("Use Customize Home to show the modules that matter to you and reset to recommended if the page feels too busy. Admin-only and seller-only modules stay hidden unless your account can use them.", {
         actions: ["Return to Home"],

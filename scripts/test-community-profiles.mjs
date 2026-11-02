@@ -59,7 +59,7 @@ const trustedProfile = buildPublicCommunityProfile({
     { userId: "trusted-1", moderationStatus: "Approved as Community Guess" },
   ],
 });
-assert.equal(trustedProfile.scoutLevel.label, "Trusted Scout");
+assert.equal(trustedProfile.scoutLevel.label, "Trusted Reporter");
 assert.equal(trustedProfile.canSubmitCommunityGuesses, true);
 assert.ok(trustedProfile.badges.some((badge) => badge.label === "Trusted Reporter"));
 assert.equal(trustedProfile.confirmedReports, 3);

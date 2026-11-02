@@ -4297,7 +4297,7 @@ async function handleUpdateStore(e) {
 
   const scoutBadge =
     scoutProfile.verifiedReportCount >= 30 || scoutProfile.trustScore >= 90
-      ? "Verified Restocks"
+      ? "Verified Reporter"
       : scoutProfile.verifiedReportCount >= 15 || scoutProfile.trustScore >= 82
         ? "Trusted Reporter"
         : scoutProfile.verifiedReportCount >= 5
@@ -5145,7 +5145,7 @@ async function handleUpdateStore(e) {
             <div className="scout-command-chip-row">
               <span>New Reporter</span>
               <span>Trusted Reporter</span>
-              <span>Verified Restocks</span>
+              <span>Verified Reporter</span>
               <span>Deal Finder</span>
             </div>
             <div className="scout-command-callout-card">
@@ -6096,7 +6096,7 @@ async function handleUpdateStore(e) {
           <div style={styles.card}>
             <h2 style={styles.sectionTitle}>Community Access</h2>
             <p style={styles.empty}>Free users get limited/basic report views. Paid users can unlock fuller real-time feed and alerts later. Trusted users can earn extra access through verified reports.</p>
-            <p style={styles.tiny}>Examples: 5 verified reports = extra views, 15 = faster alerts, 30 = Trusted/Verified Restocks path.</p>
+            <p style={styles.tiny}>Examples: 5 verified reports = extra views, 15 = faster alerts, 30 = Trusted/Verified Reporter path.</p>
           </div>
         </div>
 

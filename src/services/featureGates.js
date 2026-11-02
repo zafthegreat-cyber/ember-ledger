@@ -506,7 +506,7 @@ export const FEATURE_LABELS = {
   scout_submit_reports: "Submit Restocks Reports",
   scout_alerts: "Restocks Alerts",
   scout_predictions: "Protected Restocks Predictions",
-  scout_verified_tips: "Verified Restocks Tips",
+  scout_verified_tips: "Verified Reporter Tips",
   alerts_advanced: "Advanced Alerts",
   seller_tools: "Seller / Business Tools",
   forge_sales: "Business Sales",

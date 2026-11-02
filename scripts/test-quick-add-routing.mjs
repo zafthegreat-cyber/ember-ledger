@@ -24,7 +24,7 @@ assert.deepEqual(
   { vault: true, wishlist: false, forge: false, tidetradr: false }
 );
 
-assert.deepEqual(quickAddDestinationNames({ vault: true, forge: true }), ["Vault", "Forge"]);
+assert.deepEqual(quickAddDestinationNames({ vault: true, forge: true }), ["Vault", "Business"]);
 
 const releaseEvent = {
   title: "Chaos Rising Booster Bundle",
@@ -147,13 +147,13 @@ assert.match(addFlowSource, /Scan Binder/);
 assert.match(addFlowSource, /Scan Slab/);
 assert.match(addFlowSource, /Scan Receipt/);
 assert.match(addFlowSource, /add-anything-option--locked/);
-assert.match(addFlowSource, /Scout screenshot\/photo review/);
+assert.match(addFlowSource, /Restocks screenshot\/photo review/);
 assert.match(appSource, /quickAddScoutScanValidation/);
 assert.match(appSource, /scoutScanSourceText/);
 assert.match(appSource, /extractTextFromScoutScanImage/);
 assert.match(appSource, /window\.TextDetector/);
 assert.match(appSource, /buildScoutScanExtractionPatch/);
-assert.match(addFlowSource, /Review Scout Scan/);
+assert.match(addFlowSource, /Review Restocks Scan/);
 assert.match(addFlowSource, /We filled what we could\. Review before saving\. Nothing is saved yet\./);
 assert.match(addFlowSource, /Re-run Extraction/);
 assert.match(addFlowSource, /Browser text extraction and pasted text only prefill this draft/);

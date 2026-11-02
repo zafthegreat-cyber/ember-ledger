@@ -25,12 +25,12 @@ export default function CommunityRestockFeed({compact=false,onOpenMap}) {
   function refresh(){setData(null);setState('loading');setReload(value=>value+1);}
   return <section className="community-scout" aria-labelledby={`${id}-title`}>
     <div className="community-scout__masthead">
-      <div><span className="community-scout__eyebrow">Code 3 TCG · together</span><h2 id={`${id}-title`}>A good find is worth sharing.</h2><p>Reviewed community observations, from Discord to Scout. Check the observed time before making a trip.</p></div>
+      <div><span className="community-scout__eyebrow">Code 3 TCG · together</span><h2 id={`${id}-title`}>A good find is worth sharing.</h2><p>Reviewed community observations, from Discord to Restocks. Check the observed time before making a trip.</p></div>
       <div className="community-scout__seal" aria-hidden="true"><AppNavIcon kind="scout"/><span>Community<br/>first</span></div>
     </div>
     <nav className="community-scout__actions" aria-label="Community shortcuts">
       <OutsideLink className="community-scout__primary" href={DISCORD_COMMUNITY.reports}><AppNavIcon kind="plus"/>Report in Discord</OutsideLink>
-      <button type="button" onClick={onOpenMap}><AppNavIcon kind="map"/>Scout map</button>
+      <button type="button" onClick={onOpenMap}><AppNavIcon kind="map"/>Restocks map</button>
       <button type="button" onClick={()=>setView('calendar')}><AppNavIcon kind="calendar"/>Release calendar</button>
       <OutsideLink href={DISCORD_COMMUNITY.roles}><AppNavIcon kind="bell"/>Choose alerts</OutsideLink>
     </nav>

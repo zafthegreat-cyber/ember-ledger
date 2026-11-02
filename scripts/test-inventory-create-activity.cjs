@@ -7,6 +7,8 @@ const espree = require('espree');
 const root = path.resolve(__dirname, '..');
 const app = fs.readFileSync(path.join(root, 'src/App.jsx'), 'utf8');
 const service = fs.readFileSync(path.join(root, 'src/services/shorelineAccessService.js'), 'utf8');
+// App.jsx imports withImportSavedDetails / readImportSavedDetails (used by inventoryRecordToSupabaseRow and mapItem) from this module.
+const importSafety = fs.readFileSync(path.join(root, 'src/utils/importReviewSafety.mjs'), 'utf8');
 const output = path.join(root, 'artifacts/qa/reliability-returns/admin-activity');
 const functions = new Map(), constants = new Map(), callSites = [];
 let sessionEffect;
@@ -27,11 +29,11 @@ function extract(source) {
   }
   visit(espree.parse(source, { ecmaVersion: 'latest', sourceType: 'module', ecmaFeatures: { jsx: true }, range: true }));
 }
-extract(app); extract(service);
+extract(importSafety); extract(app); extract(service);
 assert.ok(sessionEffect, 'Execute the actual App session lifetime effect');
 assert.deepEqual(callSites.sort(), ['addItem', 'saveInventoryRecords'], 'Only confirmed creation paths call the activity helper');
-const names = ['trackBetaActivity', 'trackCreatedInventoryActivity', 'saveInventoryRecords', 'addItem', 'submitMultiDestinationAdd', 'confirmInventoryImport', 'applyImportedQuantityIncrease', 'recordAppActivityEvent', 'mapAppActivityEvent', 'mapItem', 'inventoryRecordToSupabaseRow', 'sanitizeInventorySupabaseRow', 'uuidOrNull', 'normalizeInventoryDestination', 'itemDestinationScopes', 'normalizeDestinationScopes', 'normalizeVaultStatus', 'isBlankLike'];
-const code = ['INVENTORY_ITEMS_SUPABASE_COLUMNS', 'INVENTORY_ITEMS_METADATA_FIELDS'].map(name => constants.get(name)).concat(names.map(name => {
+const names = ['trackBetaActivity', 'trackCreatedInventoryActivity', 'saveInventoryRecords', 'addItem', 'submitMultiDestinationAdd', 'confirmInventoryImport', 'applyImportedQuantityIncrease', 'recordAppActivityEvent', 'mapAppActivityEvent', 'mapItem', 'inventoryRecordToSupabaseRow', 'sanitizeInventorySupabaseRow', 'uuidOrNull', 'normalizeInventoryDestination', 'itemDestinationScopes', 'normalizeDestinationScopes', 'normalizeVaultStatus', 'isBlankLike', 'withImportSavedDetails', 'readImportSavedDetails'];
+const code = ['INVENTORY_ITEMS_SUPABASE_COLUMNS', 'INVENTORY_ITEMS_METADATA_FIELDS', 'DETAILS_PREFIX', 'DETAIL_FIELDS'].map(name => constants.get(name)).concat(names.map(name => {
   assert.ok(functions.has(name), name + ' must be a shipped function'); return functions.get(name);
 })).join('\n');
 const clone = value => JSON.parse(JSON.stringify(value));
@@ -50,7 +52,8 @@ function harness(options = {}) {
       const query = { kind: '', row: null, id: null,
         insert(row) { this.kind = 'insert'; this.row = row; (table === 'inventory_items' ? inserts : activity).push(clone(row)); return this; },
         update(row) { assert.equal(table, 'inventory_items'); this.kind = 'update'; this.row = row; updates.push(clone(row)); return this; },
-        eq(key, value) { assert.equal(key, 'id'); this.id = value; return this; },
+        // Quantity increases are an optimistic-concurrency update: .eq('id', id).eq('quantity', expected).
+        eq(key, value) { if (key === 'quantity') { assert.equal(this.kind, 'update'); this.expectedQuantity = value; return this; } assert.equal(key, 'id'); this.id = value; return this; },
         select() { return this; },
         async single() {
           if (table === 'app_activity_events') {
@@ -89,6 +92,9 @@ function harness(options = {}) {
     findImportDuplicate: () => null, defaultImportDestination: () => 'Forge',
     importedRowToItem: (row, destination) => submitted(destination.toLowerCase(), { id: row.importedItemId }),
     setImportBatchMessage: value => messages.push(value), setImportAssistantOpen() {},
+    // confirmInventoryImport now has a re-entrancy guard and row validation (importReviewSafety.mjs);
+    // row validation is covered by its own tests, so these activity checks use valid synthetic rows.
+    importSavePending: { current: false }, setImportSaving() {}, importRowIssues: () => [], findImportDuplicateCandidates: () => [],
     ...options.context,
   });
   for (const key of ['items', 'itemForm', 'importRows', 'importLastBatchResult']) ctx['set' + key[0].toUpperCase() + key.slice(1)] = value => { ctx[key] = typeof value === 'function' ? value(ctx[key]) : value; };

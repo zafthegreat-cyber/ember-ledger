@@ -78,7 +78,9 @@ const visibleForAdmin = mergeNotificationRows({
 assert.equal(visibleForAdmin.length, 1);
 
 assert.ok(NOTIFICATION_PREFERENCE_ROWS.some((row) => row.key === "confirmed_restocks"));
-assert.match(IN_APP_ALERT_DISCLOSURE, /In-app alerts only/i);
+assert.match(IN_APP_ALERT_DISCLOSURE, /Alerts appear here in the app/i);
+assert.match(IN_APP_ALERT_DISCLOSURE, /Nothing is sent while the app is fully closed/i);
+assert.match(IN_APP_ALERT_DISCLOSURE, /email and SMS are not connected yet/i);
 assert.doesNotMatch(IN_APP_ALERT_DISCLOSURE, /SMS delivery is active|push notifications enabled|email delivery is active/i);
 
 console.log("Notification center utility tests passed.");

@@ -48,7 +48,7 @@ assert.ok(forgePrompts.includes("How do I add cost basis?"), "Forge should show 
 assert.ok(forgePrompts.includes("How do I message admin?"), "Starter prompts should keep admin fallback visible");
 
 const hearthPrompts = getEmberAssistStarterPrompts({ activeTab: "dashboard" });
-assert.ok(hearthPrompts.includes("How do Ember Points work?"), "Hearth should show Sparks and points prompts");
+assert.ok(hearthPrompts.includes("How do Daily Points work?"), "Home (hearth) should show Sparks and Daily Points prompts");
 
 const adminPrompts = getEmberAssistStarterPrompts({ activeTab: "adminReview", isAdmin: true });
 assert.ok(adminPrompts.includes("What reports were flagged?"), "Admins should see admin review prompts");
@@ -121,6 +121,10 @@ const emberPointsAnswer = buildEmberAssistFallbackResponse("How do Ember Points 
 assert.match(emberPointsAnswer.answer, /real completed Sparks/i);
 assert.match(emberPointsAnswer.answer, /Dismissing a Spark earns zero/i);
 
+// The Home prompt now says "Daily Points"; it must reach the same answer, not the restock-trust one.
+const dailyPointsAnswer = buildEmberAssistFallbackResponse("How do Daily Points work?", buildEmberAssistContext({ activeTab: "dashboard" }));
+assert.match(dailyPointsAnswer.answer, /real completed Sparks/i);
+
 const protectedScoutAnswer = buildEmberAssistFallbackResponse("Why can't I see full history?", buildEmberAssistContext({ activeTab: "scout" }));
 assert.match(protectedScoutAnswer.answer, /protects raw history/i);
 assert.match(protectedScoutAnswer.answer, /current selected-store reports/i);
@@ -130,12 +134,12 @@ assert.match(marketUpcAnswer.answer, /Scan UPC/i);
 assert.match(marketUpcAnswer.answer, /weak match/i);
 
 const adminFlagAnswer = buildEmberAssistFallbackResponse("What reports were flagged?", buildEmberAssistContext({ activeTab: "adminReview", isAdmin: true }));
-assert.match(adminFlagAnswer.answer, /flagged Scout reports/i);
+assert.match(adminFlagAnswer.answer, /flagged restock reports/i);
 
 const dropContext = buildEmberAssistContext({ activeTab: "scout", scoutView: "alerts" });
 const dropAnswer = buildEmberAssistFallbackResponse("What is Drop Radar?", dropContext);
 assert.match(dropAnswer.answer, /educated guesses, not promises/i);
-assert.match(dropAnswer.answer, /Confirmed Scout reports matter more/i);
+assert.match(dropAnswer.answer, /Confirmed restock reports matter more/i);
 
 const vaultForgeAnswer = buildEmberAssistFallbackResponse("What should I do with this item?", buildEmberAssistContext({ activeTab: "vault" }));
 assert.match(vaultForgeAnswer.answer, /personal collection/i);
@@ -152,7 +156,7 @@ assert.match(taxAnswer.answer, /tax professional/i);
 const bugAnswer = buildEmberAssistFallbackResponse("My Scout report saved to the wrong store", buildEmberAssistContext({ activeTab: "scout" }));
 assert.equal(bugAnswer.shouldEscalate, true);
 assert.equal(shouldOfferAdminEscalation("wrong store", bugAnswer), true);
-assert.equal(bugAnswer.category, "Wrong Scout report/store");
+assert.equal(bugAnswer.category, "Wrong restock report/store");
 
 const unknownAnswer = buildEmberAssistFallbackResponse("Can the moon folder sort my cereal?", buildEmberAssistContext({ activeTab: "dashboard" }));
 assert.equal(unknownAnswer.shouldEscalate, true);

@@ -19,7 +19,7 @@ import {
   buildStoreProfileSummary,
 } from "../src/utils/storeProfileUtils.js";
 
-assert.match(ADMIN_STORE_PERSISTENCE_NOTE, /existing local Scout\/shared store data/i);
+assert.match(ADMIN_STORE_PERSISTENCE_NOTE, /existing local Restocks\/shared store data/i);
 assert.match(ADMIN_STORE_PERSISTENCE_NOTE, /shared stores table/i);
 assert.match(STORE_PARTNER_NO_GUARANTEE_COPY, /not a guarantee/i);
 assert.match(STORE_PARTNER_NO_GUARANTEE_COPY, /MSRP/i);

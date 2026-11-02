@@ -67,7 +67,13 @@ const ast = parser.parse(source, { sourceType: "module", plugins: ["jsx"] });
 const functions = []; let searchArgs;
 traverse(ast, {
   FunctionDeclaration(path) { if (["catalogProductMergeKey", "mergeCatalogProductLists"].includes(path.node.id?.name)) functions.push(source.slice(path.node.start, path.node.end)); },
-  VariableDeclarator(path) { if (path.node.id.name === "combinedProducts" && path.node.init?.callee?.name === "mergeCatalogProductLists") searchArgs = path.node.init.arguments.map(arg => arg.name); },
+  VariableDeclarator(path) {
+    if (path.node.id.name !== "combinedProducts") return;
+    // The merge call may be wrapped in a chain (e.g. .filter(...).slice(...)); walk down to the merge call itself.
+    let node = path.node.init;
+    while (node?.type === "CallExpression" && node.callee?.name !== "mergeCatalogProductLists") node = node.callee?.object;
+    if (node?.callee?.name === "mergeCatalogProductLists") searchArgs = node.arguments.map(arg => arg.name);
+  },
 });
 check(() => assert.deepEqual(searchArgs, ["importedProducts", "localSeedMatches"]));
 check(() => {

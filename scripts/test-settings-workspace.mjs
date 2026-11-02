@@ -60,9 +60,9 @@ assert.equal(
   ""
 );
 
-assert.equal(forgeModeSummary({ lockToEmberTide: true }, { name: "Ember & Tide" }), "Forge is locked to Code 3 TCG.");
+assert.equal(forgeModeSummary({ lockToEmberTide: true }, { name: "Ember & Tide" }), "Business is locked to Code 3 TCG.");
 assert.match(forgeModeSummary({ lockToEmberTide: true }, null), /unavailable/i);
-assert.match(forgeModeSummary({ personalForgeEnabled: false }, null), /Personal Forge is hidden/i);
+assert.match(forgeModeSummary({ personalForgeEnabled: false }, null), /Personal Business Workspace is hidden/i);
 assert.equal(sellerModeEnabled("seller", "collector"), true);
 assert.equal(sellerModeEnabled("collector", "seller"), true);
 assert.equal(sellerModeEnabled("collector", "collector"), false);

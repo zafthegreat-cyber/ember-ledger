@@ -70,7 +70,7 @@ assert.deepEqual(
 
 const state = normalizeOnboardingState({
   completedAt: "",
-  preferences: ["Track business inventory", "Scout helping with restock reports"],
+  preferences: ["Track business inventory", "Restocks helping with restock reports"],
   manualChecklist: ["ember_assist"],
 });
 assert.deepEqual(state.goals, ["seller_forge", "scout_reports"]);
@@ -118,7 +118,7 @@ const checklist = buildOnboardingChecklist(
     emberAssistAsked: false,
     kidsProgramReviewed: false,
   },
-  { manualChecklist: ["ember_assist"] }
+  { manualChecklist: ["ember_assist"], goals: ["seller_forge", "scout_reports", "parent_family"] }
 );
 assert.equal(checklist.find((item) => item.key === "profile").completed, true);
 assert.equal(checklist.find((item) => item.key === "forge").completed, false);
@@ -127,6 +127,10 @@ assert.equal(checklist.find((item) => item.key === "follow").completed, true);
 assert.equal(checklist.find((item) => item.key === "home_area").completed, true);
 assert.equal(checklist.find((item) => item.key === "scout_points").completed, false);
 assert.equal(checklist.find((item) => item.key === "kids_program").title, "Learn about The Spark");
+
+const noGoalChecklist = buildOnboardingChecklist({}, {});
+assert.equal(noGoalChecklist.some((item) => item.key === "forge"), false, "no-goal checklist should not ask for a Business item");
+assert.ok(noGoalChecklist.some((item) => item.key === "profile"), "no-goal checklist should keep core items");
 
 const summary = onboardingChecklistSummary(checklist);
 assert.ok(summary.completed > 0);
@@ -143,7 +147,7 @@ const collectorSetup = recommendSmartSetup({
 });
 assert.equal(collectorSetup.planType, SMART_SETUP_PLAN_TYPES.COLLECTOR_FAMILY);
 assert.ok(collectorSetup.includes.includes("Vault"), "collector setup should include Vault");
-assert.ok(collectorSetup.hides.includes("Forge"), "collector setup should hide Forge by default");
+assert.ok(collectorSetup.hides.includes("Business"), "collector setup should hide Business by default");
 
 const sellerSetup = recommendSmartSetup({
   purposes: ["sell_trade_and_track_inventory"],
@@ -151,7 +155,7 @@ const sellerSetup = recommendSmartSetup({
   primaryMode: "casual_seller",
 });
 assert.equal(sellerSetup.planType, SMART_SETUP_PLAN_TYPES.SELLER);
-assert.ok(sellerSetup.includes.includes("Forge"), "seller setup should include Forge");
+assert.ok(sellerSetup.includes.includes("Business"), "seller setup should include Business");
 
 const businessSetup = recommendSmartSetup({
   enabledToolsets: ["mileage_tracking", "sales_tracking", "receipts_and_expenses"],

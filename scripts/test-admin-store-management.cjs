@@ -150,7 +150,7 @@ async function main() {
     for (const field of Object.keys(envelope).filter((name) => name !== "stores")) assert.deepEqual(saved[field], envelope[field]);
     assert.equal(harness({ raw: h.bytes.get(key) }).saved().stores[0].id, saved.stores[0].id);
     assert.deepEqual(copy(h.context.adminStoreDraft), tools.ADMIN_STORE_DRAFT_DEFAULTS);
-    assert.match(h.toasts.at(-1), /added to this device's local Scout directory/);
+    assert.match(h.toasts.at(-1), /added to this device's local Restocks directory/);
   });
 
   check("exact-ID edit preserves ID aliases, latest unrelated metadata and another same-name row", () => {
@@ -288,7 +288,7 @@ async function main() {
   check("absent local storage creates a fresh envelope without pretending cloud persistence", () => {
     const h = harness({ saved: null }); h.newDraft(); h.submit();
     assert.equal(h.saved().stores.length, 1);
-    assert.match(h.toasts.at(-1), /this device's local Scout directory/);
+    assert.match(h.toasts.at(-1), /this device's local Restocks directory/);
   });
   const output = path.join(root, "artifacts/qa/release-readiness/admin-store-management");
   fs.mkdirSync(output, { recursive: true });

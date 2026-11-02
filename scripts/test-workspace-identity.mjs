@@ -20,7 +20,7 @@ const emberWorkspace = { id: "workspace-ember-tide", name: "Ember & Tide", type:
 assert.equal(normalizeForgeIdentityMode("Personal Forge"), "personal");
 assert.equal(normalizeForgeIdentityMode("seller"), "business");
 assert.equal(normalizeForgeIdentityMode("Ember and Tide"), "ember_tide");
-assert.equal(forgeIdentityModeLabel("business"), "Business Forge");
+assert.equal(forgeIdentityModeLabel("business"), "Business Workspace");
 assert.match(forgeIdentityModeDescription("ember_tide"), /Code 3 TCG branding/i);
 
 assert.equal(forgeIdentityModeFromSettings({ lockToEmberTide: true }, emberWorkspace), "ember_tide");
@@ -40,7 +40,7 @@ assert.equal(businessDraft.forgeIdentityMode, "business");
 
 assert.equal(validateWorkspaceIdentityDraft({ ...businessDraft, workspaceName: "" }), "Workspace name cannot be blank.");
 assert.equal(validateWorkspaceIdentityDraft({ ...businessDraft, workspaceName: "A".repeat(51) }, { maxNameLength: 50 }), "Workspace name must be 50 characters or fewer.");
-assert.equal(validateWorkspaceIdentityDraft({ ...businessDraft, forgeIdentityMode: "ember_tide" }, { emberTideAvailable: false }), "Code 3 TCG Forge is not available for this account yet.");
+assert.equal(validateWorkspaceIdentityDraft({ ...businessDraft, forgeIdentityMode: "ember_tide" }, { emberTideAvailable: false }), "Code 3 TCG Business is not available for this account yet.");
 assert.equal(validateWorkspaceIdentityDraft(businessDraft, { maxNameLength: 50, emberTideAvailable: true }), "");
 
 assert.deepEqual(

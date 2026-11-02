@@ -109,11 +109,15 @@ export const LEGACY_NAME_REPLACEMENTS = [
   [/\bScouts\b/g, "restock reporters"],
   [/\bScout(?:'|’)s\b/g, "reporter's"],
   [/\bScouting\b/g, "Restock reporting"],
-  [/\bScout\b/g, "Restocks"],
+  // Bare "Scout"/"Forge" are only renamed in navigation phrasing, never anywhere in a string:
+  // this runs over every text node, and owner-entered item names ("Focused Forge Inventory Box") must stay as typed.
+  [/\b(in|into|to|from|on|Open|open|Back to|back to|Go to|go to|Use in|use in) Scout\b/g, "$1 Restocks"],
+  [/\bScout (map|page|tab|area|areas|settings)\b/g, "Restocks $1"],
   [/\bForge [Bb]usiness\b/g, "Business"],
   [/\bBusiness Forge\b/g, "Business Workspace"],
   [/\bPersonal Forge\b/g, "Personal Business Workspace"],
-  [/\bForge\b/g, "Business"],
+  [/\b(in|into|to|from|on|Open|open|Back to|back to|Go to|go to|Use in|use in) Forge\b/g, "$1 Business"],
+  [/\bForge (page|tab|settings|workspace|tools|items?|records?)\b/g, "Business $1"],
   // Old brand feature names (tester reactions A41/A42: "Is it Ember & Tide or Code 3?").
   [/\bAsk Ember(?: Assist)?\b/g, "Business Assistant"],
   [/\bEmber Assist\b/g, "Business Assistant"],

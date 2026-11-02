@@ -46,7 +46,7 @@ assert.match(appSource, /Use the manual checklist as a prompt, not a grade\./);
 assert.match(appSource, /safeWriteBrowserJson\(localStorage,\s*GRADE_ASSIST_LOCAL_STORAGE_KEY,/);
 assert.doesNotMatch(appSource, /localStorage\.setItem\(GRADE_ASSIST_LOCAL_STORAGE_KEY/);
 assert.match(appSource, /Check in Market/);
-assert.match(appSource, /Use in Forge/);
+assert.match(appSource, /Use in Business/);
 assert.match(appSource, /vault-card-condition-note/);
 assert.match(appSource, /"booster box",\s*\n\s*"tin",\s*\n\s*"bundle"/);
 assert.match(appSource, /return "tin";/);

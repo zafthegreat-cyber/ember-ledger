@@ -11,17 +11,17 @@ import {
 } from "../src/utils/communityProfile.js";
 
 assert.deepEqual(SCOUT_REPUTATION_LEVELS.map((level) => level.label), [
-  "New Scout",
-  "Active Scout",
-  "Trusted Scout",
-  "Veteran Scout",
+  "New Reporter",
+  "Active Reporter",
+  "Trusted Reporter",
+  "Veteran Reporter",
   "Community Guide",
 ]);
 
-assert.equal(getScoutReputationLevel({ scoutPoints: 0, confirmedReports: 0 }).label, "New Scout");
-assert.equal(getScoutReputationLevel({ scoutPoints: 10, confirmedReports: 1 }).label, "Active Scout");
-assert.equal(getScoutReputationLevel({ scoutPoints: MIN_SCOUT_POINTS_FOR_GUESS, confirmedReports: 3 }).label, "Trusted Scout");
-assert.equal(getScoutReputationLevel({ scoutPoints: 80, confirmedReports: 12 }).label, "Veteran Scout");
+assert.equal(getScoutReputationLevel({ scoutPoints: 0, confirmedReports: 0 }).label, "New Reporter");
+assert.equal(getScoutReputationLevel({ scoutPoints: 10, confirmedReports: 1 }).label, "Active Reporter");
+assert.equal(getScoutReputationLevel({ scoutPoints: MIN_SCOUT_POINTS_FOR_GUESS, confirmedReports: 3 }).label, "Trusted Reporter");
+assert.equal(getScoutReputationLevel({ scoutPoints: 80, confirmedReports: 12 }).label, "Veteran Reporter");
 assert.equal(getScoutReputationLevel({ scoutPoints: 200, confirmedReports: 25 }).label, "Community Guide");
 
 const scoutProfile = { userId: "scout-1", publicUsername: "gb_scout", scoutPoints: 24 };

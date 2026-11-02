@@ -97,7 +97,7 @@ assert.equal(summary.totalOpen, 6);
 for (const label of [
   "Beta Requests",
   "Invites",
-  "Scout Report Review",
+  "Restocks Report Review",
   "Missing Catalog Requests",
   "Feedback Inbox",
   "Moderation / Flagged Content",

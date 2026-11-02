@@ -161,7 +161,7 @@ async function main() {
     assert.equal(result.partial, true); assert.deepEqual(h.writes.map((write) => write.key), [phaseKey]);
     assert.equal(JSON.parse(h.bytes.get(phaseKey)).notificationPreferences.priceDrop.enabled, true);
     assert.equal(h.ctx.phase2Data.notificationPreferences.priceDrop.enabled, true); assert.equal(h.ctx.scoutSnapshot.alertSettings.priceDrop, true);
-    assert.equal(h.statuses.at(-1).kind, "partial_save"); assert.match(h.toasts.at(-1), /Scout copy was not updated/); assert.equal(h.toastTypes.at(-1), "warning");
+    assert.equal(h.statuses.at(-1).kind, "partial_save"); assert.match(h.toasts.at(-1), /Restocks copy was not updated/); assert.equal(h.toastTypes.at(-1), "warning");
     const expected = failure === "new malformed bytes" ? "{arrived-during-save" : failure === "new invalid row" ? '{"stores":[null],"keep":"latest"}' : JSON.stringify(scoutInitial);
     assert.equal(h.bytes.get(scoutKey), expected);
     h.ctx.phase2Data = JSON.parse(h.bytes.get(phaseKey)); h.ctx.scoutSnapshot = clone(scoutInitial);

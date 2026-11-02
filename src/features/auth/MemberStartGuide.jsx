@@ -29,7 +29,7 @@ function AccountStartGuide({ userId, onCollect, onSell, hasCollectionItems = fal
       <p className="member-start-meta">{selected.destination}</p>
     </article>
     <details><summary>Find your way around</summary><dl className="member-destinations">{MEMBER_DESTINATIONS.map(([name, purpose]) => <div key={name}><dt>{name}</dt><dd>{purpose}</dd></div>)}</dl>
-      <p>Area preferences in Scout personalize nearby content. They do not decide whether you can join the app. Online reports are a separate choice from local areas. Your device location is optional.</p>
+      <p>Area preferences in Restocks personalize nearby content. They do not decide whether you can join the app. Online reports are a separate choice from local areas. Your device location is optional.</p>
     </details>
     <p className="member-start-meta">Introduction choices stay with this account on this device. They do not change membership, workspace permissions, or Discord roles.</p>
     {saveWarning && <p role="status">{saveWarning}</p>}

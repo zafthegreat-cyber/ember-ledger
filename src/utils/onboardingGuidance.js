@@ -304,6 +304,10 @@ const LEGACY_GOAL_ALIASES = {
   watch_local_restocks: "scout_reports",
   submit_scout_reports: "scout_reports",
   find_restock_windows: "scout_reports",
+  // Labels saved before the Forge/Scout rename.
+  seller_business_using_forge: "seller_forge",
+  scout_helping_with_restock_reports: "scout_reports",
+  scout: "scout_reports",
   join_kids_program_updates: "spark_parent",
   join_the_kids_program: "spark_parent",
   browse_market_pricing_tools: "collector_vault",

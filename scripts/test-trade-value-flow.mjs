@@ -74,8 +74,11 @@ assert.equal(manualGain.receivedLabel, "$44.00");
 
 const missingValue = buildTradeComparison({ outgoingName: "Mystery lot", receivedName: "Unknown card" }, null);
 assert.equal(missingValue.tone, "needs-review");
-assert.equal(missingValue.resultLabel, "Unknown Balance");
+assert.equal(missingValue.resultLabel, "Value needed: what you gave and what you got");
 assert.equal(missingValue.differenceLabel, "Unknown Balance");
+assert.deepEqual(missingValue.missingSides, ["what you gave", "what you got"]);
+assert.equal(missingValue.outgoingLabel, "Value needed");
+assert.equal(missingValue.receivedLabel, "Value needed");
 
 const record = buildTradeHistoryRecord(normalized, vaultItem, { id: "trade-test", now: "2026-05-31T12:00:00.000Z" });
 assert.equal(record.id, "trade-test");
