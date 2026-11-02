@@ -6,7 +6,6 @@ import {
   VIRGINIA_REGIONS,
   VIRGINIA_STORE_COUNTRY,
   VIRGINIA_STORE_STATE,
-  VIRGINIA_STORE_STATE_CODE,
 } from "../data/storeGroups.js";
 import { normalizeStoreGroup } from "./storeGroupingUtils.js";
 import { normalizeStoreExpansionFields } from "./storeExpansionUtils.js";
@@ -49,6 +48,16 @@ const STORE_DIRECTORY_SOURCE_LABELS = {
   user_store_suggestion: "User suggested",
   unverified: "Unverified directory row",
 };
+
+const STORE_STATE_LABELS = new Map([
+  ["va", "Virginia"], ["virginia", "Virginia"],
+  ["nc", "North Carolina"], ["north carolina", "North Carolina"],
+  ["md", "Maryland"], ["maryland", "Maryland"],
+  ["dc", "District of Columbia"], ["district of columbia", "District of Columbia"], ["washington, dc", "District of Columbia"],
+]);
+const STORE_STATE_CODES = new Map([
+  ["Virginia", "VA"], ["North Carolina", "NC"], ["Maryland", "MD"], ["District of Columbia", "DC"],
+]);
 
 function normalizeAliasText(value = "") {
   return String(value || "")
@@ -141,8 +150,7 @@ export function normalizeChainName(value = "") {
 export function normalizeStateLabel(value = "") {
   const text = String(value || "").trim();
   if (!text) return VIRGINIA_STORE_STATE;
-  if (/^(va|virginia)$/i.test(text)) return VIRGINIA_STORE_STATE;
-  return text;
+  return STORE_STATE_LABELS.get(text.toLowerCase()) || text;
 }
 
 export function normalizeVirginiaRegion(value = "") {
@@ -182,6 +190,11 @@ export function makeStoreId(store = {}) {
 }
 
 export function normalizeImportedStore(row = {}, defaults = {}) {
+  const state = normalizeStateLabel(row.state || row.stateCode || row.state_code || defaults.state || defaults.stateCode || VIRGINIA_STORE_STATE);
+  const explicitStateCode = String(row.stateCode || row.state_code || defaults.stateCode || "").trim().toUpperCase();
+  const stateCode = STORE_STATE_CODES.get(state) || explicitStateCode;
+  const explicitRegion = String(row.region || defaults.region || "").trim();
+  const region = state === VIRGINIA_STORE_STATE ? inferVirginiaRegion({ ...row, region: explicitRegion }) : explicitRegion || state;
   const chain = normalizeChainName(row.chain || defaults.chain || row.retailer || row.banner || "");
   const confidence = CHAIN_CONFIDENCE_DEFAULTS[chain] || { carriesPokemonLikely: Boolean(row.carriesPokemonLikely ?? row.sells_pokemon), pokemonConfidence: "unknown" };
   const storeName = row.storeName || row.store_name || row.name || row.official_name || "";
@@ -201,14 +214,14 @@ export function normalizeImportedStore(row = {}, defaults = {}) {
     storeGroup: row.storeGroup || row.store_group || "",
     address: row.address || "",
     city: row.city || "",
-    state: normalizeStateLabel(row.state || defaults.state || VIRGINIA_STORE_STATE),
-    stateCode: VIRGINIA_STORE_STATE_CODE,
+    state,
+    stateCode,
     zip: zipCode,
     zipCode,
     phone: row.phone || "",
     latitude: row.latitude || "",
     longitude: row.longitude || "",
-    region: inferVirginiaRegion({ ...row, region: row.region || defaults.region }),
+    region,
     county: row.county || "",
     source: row.source || defaults.source || "manual-csv",
     sourceUrl: row.sourceUrl || row.source_url || defaults.sourceUrl || "",
