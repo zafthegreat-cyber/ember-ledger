@@ -173,8 +173,8 @@ export default function MarketPage(props) {
           { label: "Watch Center", icon: "bell", onClick: () => setTideTradrSubTab("watch") },
         ]}
         utilityActions={[
-          { label: "Compass", icon: "search", onClick: () => openCompassSearch?.("market_compass") },
-          { label: "Beacon", icon: "bell", onClick: () => openBeaconCenter?.("market_beacon") },
+          { label: "Search the app", icon: "search", onClick: () => openCompassSearch?.("market_compass") },
+          { label: "Notifications", icon: "bell", onClick: () => openBeaconCenter?.("market_beacon") },
         ]}
         statusItems={marketCommandStatus}
         plan={{

@@ -51836,7 +51836,6 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         {!activeTabLocked && activeTab === "dailyTide" && renderTodaysTideCommandCenter()}
         {!activeTabLocked && signedInWithSupabase && ["dashboard", "workspaceHome"].includes(activeTab) && renderMemberStartGuide()}
         {!activeTabLocked && activeTab === "scout" && <SourceCoverage compact />}
-        {!activeTabLocked && ["dashboard", "workspaceHome"].includes(activeTab) && <CommunityWelcome onFeedback={() => openPublicBetaFeedback({ page: "Welcome", mainReason: "General feedback" })} />}
         {!activeTabLocked && activeTab === "dashboard" && (
           <LazyToolBoundary label="Loading Home...">
             <OperationsHomePage {...hearthPageProps} onOpenBusiness={(view) => { prepareRouteNavigation(); setBusinessWorkspaceView(view); setActiveTab("businessWorkspace"); }} />
@@ -51859,6 +51858,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             />
           </LazyToolBoundary>
         )}
+        {!activeTabLocked && ["dashboard", "workspaceHome"].includes(activeTab) && <CommunityWelcome onFeedback={() => openPublicBetaFeedback({ page: "Welcome", mainReason: "General feedback" })} />}
         {!activeTabLocked && activeTab === "collectionWorkspace" && (
           <LazyToolBoundary label="Loading Collection...">
             <CollectionWorkspace

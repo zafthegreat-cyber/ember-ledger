@@ -198,6 +198,15 @@ export function AppNavIcon({ kind, className = "" }) {
           <path d="M4 21a8 8 0 0 1 16 0" />
         </svg>
       );
+    case "sets":
+      return (
+        <svg {...common}>
+          <rect x="7" y="3" width="13" height="16" rx="2" />
+          <path d="M4 7v11a3 3 0 0 0 3 3h9" />
+          <path d="M11 8h5" />
+          <path d="M11 12h5" />
+        </svg>
+      );
     case "workspace":
       return (
         <svg {...common}>

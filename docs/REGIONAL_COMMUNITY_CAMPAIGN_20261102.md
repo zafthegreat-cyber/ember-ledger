@@ -18,7 +18,7 @@ The original app workspace has unrelated uncommitted changes. This checkout was 
 - Home displays the public campaign card after its existing restock hero. **Browse restocks** calls the existing `onOpenRestockReports` navigation.
 - The full Restocks view displays the same card. **Report a restock** calls the existing `onQuickReport` flow, which retains the app's existing account and save checks. The compact embedded view is unchanged.
 - **Join Discord** uses the existing safe external-link component and the owner-provided invite, without mentions or paid promotion.
-- Copy explicitly says the directory currently focuses on Virginia and stock can change.
+- Copy says the store directory covers all four areas (VA, NC, MD, DC since the multi-state directory) and that stock can change.
 - This is shared deployed UI content, not a local-only admin announcement draft. It adds no notification/push delivery, subscriber fan-out, API writes, new authentication, credentials, or infrastructure.
 
 The public missing-store form already accepts non-Virginia states, but its normalization helper always assigned `stateCode: VA` and inferred a Virginia region. The fix retains canonical VA/NC/MD/DC labels and codes, honors explicit non-Virginia regions, falls back to the selected non-Virginia state when no region is given, and preserves other explicit areas/codes. Virginia inference and empty-state defaults remain unchanged. Suggestions still go to admin review and remain inactive pending approval.

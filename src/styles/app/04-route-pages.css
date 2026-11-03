@@ -910,6 +910,37 @@ html body .app[data-theme]:has(.sales-records-summary-panel) .sales-records-summ
 .app[data-theme] .local-storage-save-warning strong { color: var(--status-warning); }
 .app[data-theme] .local-storage-save-warning p { margin: 4px 0 0; }
 
+/* Restocks inline styles read the older --cmd-* names, which no theme defines any more;
+   without them every border, card background and muted colour on the page resolved to nothing.
+   Map them onto the current design tokens for the whole Restocks route. */
+html body .app[data-theme] .scout-route-shell {
+  --cmd-heading: var(--text-primary);
+  --cmd-text: var(--text-primary);
+  --cmd-muted: var(--text-secondary);
+  --cmd-line: var(--border-subtle);
+  --cmd-line-cool: var(--border-subtle);
+  --cmd-card: var(--surface-primary);
+  --cmd-panel-soft: var(--surface-secondary);
+  --cmd-panel-strong: var(--surface-elevated);
+  --cmd-inset: var(--surface-secondary);
+  --cmd-accent-ember: var(--action-primary);
+  --cmd-accent-ember-2: var(--status-warning);
+  --cmd-accent-teal: var(--status-info);
+  --cmd-accent-tide: var(--status-info);
+  --cmd-ok: var(--status-success);
+  --cmd-danger: var(--status-danger);
+  --cmd-radius-md: var(--radius-md);
+  --cmd-radius-lg: var(--radius-lg);
+  --cmd-shadow-soft: var(--shadow-1);
+  --cmd-font-ui: var(--font-ui);
+}
+/* Phone width: store names and details get the full row; Watch/Report actions wrap below. */
+@media (max-width: 560px) {
+  html body .app[data-theme] .scout-route-shell .scout-store-row {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
 /* Full Scout store record: presentation only; directory and overview stay separate. */
 html body .app[data-theme] .scout-store-record {
   min-width: 0;

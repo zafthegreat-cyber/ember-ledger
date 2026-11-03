@@ -896,7 +896,7 @@ const styles = {
     marginTop: "6px",
   },
   empty: {
-    color: "#64748b",
+    color: "var(--cmd-muted)",
     fontSize: "16px",
     padding: "18px 0 6px 0",
   },
@@ -4723,8 +4723,8 @@ async function handleUpdateStore(e) {
               ...(onOpenFlipScout ? [{ label: "Deal Finder", icon: "market", onClick: onOpenFlipScout }] : []),
             ]}
             utilityActions={[
-              { label: "Compass", icon: "search", onClick: () => openCompassSearch?.("scout_compass") },
-              { label: "Beacon", icon: "bell", onClick: () => openBeaconCenter?.("scout_beacon") },
+              { label: "Search the app", icon: "search", onClick: () => openCompassSearch?.("scout_compass") },
+              { label: "Notifications", icon: "bell", onClick: () => openBeaconCenter?.("scout_beacon") },
             ]}
             statusItems={scoutCommandStatus}
             plan={{
@@ -5276,7 +5276,7 @@ async function handleUpdateStore(e) {
             {bestBuySourceReports.slice(0, 5).map((report) => (
               <div key={report.reportId} style={styles.listCard}>
                 <strong>{report.productName || "Best Buy availability"}</strong>
-                <p style={{ margin: "6px 0", color: "#475569" }}>{report.storeName} | {report.computedStatus} | {report.sourceType}</p>
+                <p style={{ margin: "6px 0", color: "var(--cmd-muted)" }}>{report.storeName} | {report.computedStatus} | {report.sourceType}</p>
                 <p style={styles.tiny}>{report.reportText}</p>
               </div>
             ))}
@@ -5289,7 +5289,7 @@ async function handleUpdateStore(e) {
             {bestBuyNightlyReports.slice(0, 3).map((report) => (
               <div key={report.reportId} style={styles.listCard}>
                 <strong>{report.reportDate} Best Buy Nightly Report</strong>
-                <p style={{ margin: "6px 0", color: "#475569" }}>{report.summary}</p>
+                <p style={{ margin: "6px 0", color: "var(--cmd-muted)" }}>{report.summary}</p>
                 <p style={styles.tiny}>Source: {report.sourceStatus} | ZIP {report.zip || "not set"} | Last checked {new Date(report.lastChecked).toLocaleString()}</p>
               </div>
             ))}
@@ -5338,7 +5338,7 @@ async function handleUpdateStore(e) {
                       <strong>{item.productName}</strong>
                       <span style={styles.badge}>{item.stockStatus} | {item.sourceStatus}</span>
                     </div>
-                    <p style={{ margin: "6px 0", color: "#475569" }}>
+                    <p style={{ margin: "6px 0", color: "var(--cmd-muted)" }}>
                       SKU {item.bestBuySku || "Unknown"} | ZIP {item.zipChecked || "Not set"} | Price ${Number(item.salePrice || item.price || 0).toFixed(2)}
                     </p>
                     <p style={styles.tiny}>Online: {item.onlineAvailability} | Pickup: {item.pickupAvailability} | Shipping: {item.shippingAvailability}</p>
@@ -5361,7 +5361,7 @@ async function handleUpdateStore(e) {
               {bestBuyStockHistory.slice(0, 8).map((item) => (
                 <div key={item.stockHistoryId} style={styles.listCard}>
                   <strong>{item.bestBuySku}</strong>
-                  <p style={{ margin: "6px 0", color: "#475569" }}>{item.changeType} | {item.previousStatus || "none"} → {item.currentStatus}</p>
+                  <p style={{ margin: "6px 0", color: "var(--cmd-muted)" }}>{item.changeType} | {item.previousStatus || "none"} → {item.currentStatus}</p>
                   <p style={styles.tiny}>Checked {new Date(item.checkedAt).toLocaleString()} | Source: {item.sourceType}</p>
                 </div>
               ))}
@@ -5373,7 +5373,7 @@ async function handleUpdateStore(e) {
               {bestBuySummary.deadStock.map((item) => (
                 <div key={item.storeStockId} style={styles.listCard}>
                   <strong>{item.productName}</strong>
-                  <p style={{ margin: "6px 0", color: "#475569" }}>Dead stock score: {item.deadStockScore} | Times seen: {item.timesSeen} | Times unavailable: {item.timesUnavailable}</p>
+                  <p style={{ margin: "6px 0", color: "var(--cmd-muted)" }}>Dead stock score: {item.deadStockScore} | Times seen: {item.timesSeen} | Times unavailable: {item.timesUnavailable}</p>
                   <p style={styles.tiny}>Label means possible “Still Sitting,” not bad stock. Confirm in store before acting.</p>
                 </div>
               ))}
@@ -5444,7 +5444,7 @@ async function handleUpdateStore(e) {
                   <span style={styles.badge}>{report.computedStatus} | {report.weightedScore}%</span>
                 </div>
                 <p style={{ margin: "6px 0", color: "#334155" }}>{report.storeName} - {report.city || "No city"} {report.distanceMiles ? `- ${report.distanceMiles} mi` : ""}</p>
-                <p style={{ margin: "6px 0", color: "#475569" }}>{report.reportText}</p>
+                <p style={{ margin: "6px 0", color: "var(--cmd-muted)" }}>{report.reportText}</p>
                 <p style={styles.tiny}>
                   {report.reportType} | {report.displayName} | Source: {report.sourceType} | Helpful: {report.helpfulVotes} | Confirmed: {report.verifiedByCount} | Disputed: {report.disputedByCount}
                 </p>
@@ -5496,7 +5496,7 @@ async function handleUpdateStore(e) {
                       <p style={{ margin: "6px 0", color: "#334155" }}>
                         {event.eventType} | {event.startDate || "Date TBD"} {event.startTime || ""} | {event.onlineEvent ? "Online" : `${event.city || "No city"}, ${event.state || "VA"}`}
                       </p>
-                      <p style={{ margin: "6px 0", color: "#475569" }}>{event.eventDescription}</p>
+                      <p style={{ margin: "6px 0", color: "var(--cmd-muted)" }}>{event.eventDescription}</p>
                       <p style={styles.tiny}>
                         Host: {event.hostName || event.organizerName || "Not listed"} | Location: {event.locationName || "TBD"} | {event.kidFriendly ? "Kid-friendly" : "General audience"} | {event.freeEvent ? "Free" : `Cost: ${event.cost || "Not listed"}`} | Source: {event.sourceType}
                       </p>
@@ -6079,7 +6079,7 @@ async function handleUpdateStore(e) {
             {visibleReports.length === 0 ? (
               <div style={styles.calloutCard}>
                 <strong>No reports yet for this store.</strong>
-                <p style={{ margin: "6px 0 0", color: "#475569" }}>Be the first to add a sighting, empty shelf update, price, or limit.</p>
+                <p style={{ margin: "6px 0 0", color: "var(--cmd-muted)" }}>Be the first to add a sighting, empty shelf update, price, or limit.</p>
               </div>
             ) : (
               visibleReports.map((report) => renderCompactReportCard(report))
@@ -6120,7 +6120,7 @@ async function handleUpdateStore(e) {
                         <span style={styles.badge}>{verifyBadge}</span>
                       </div>
                     </div>
-                    <p style={{ margin: 0, color: "#475569" }}>
+                    <p style={{ margin: 0, color: "var(--cmd-muted)" }}>
                       {alert.storeName || "Restocks"} {alert.productName ? `- ${alert.productName}` : ""}
                       {alert.duplicateCount > 1 ? ` (${alert.duplicateCount} similar)` : ""}
                     </p>
@@ -6178,7 +6178,7 @@ async function handleUpdateStore(e) {
 
             <div className="scout-advanced-alerts" style={{ ...styles.calloutCard, marginTop: "14px" }}>
               <strong>Advanced Alerts</strong>
-              <p style={{ margin: "6px 0 0 0", color: "#475569" }}>Advanced Alerts are part of Plus. Upgrade to unlock advanced scouting, alerts, seller tools, mileage, expenses, and deeper deal analysis.</p>
+              <p style={{ margin: "6px 0 0 0", color: "var(--cmd-muted)" }}>Advanced Alerts are part of Plus. Upgrade to unlock advanced scouting, alerts, seller tools, mileage, expenses, and deeper deal analysis.</p>
             </div>
           </div>
         </div>
@@ -6189,7 +6189,7 @@ async function handleUpdateStore(e) {
         <div style={styles.reportGrid}>
           <div style={styles.card}>
             <h2 style={styles.sectionTitle}>Report Guidelines</h2>
-            <ul style={{ margin: 0, paddingLeft: "20px", color: "#475569" }}>
+            <ul style={{ margin: 0, paddingLeft: "20px", color: "var(--cmd-muted)" }}>
               <li>Do not fake restocks or report old information as current.</li>
               <li>Add photos when possible.</li>
               <li>Include product name, quantity, store, time, and limits.</li>
@@ -6197,7 +6197,7 @@ async function handleUpdateStore(e) {
               <li>Repeated false reports lower trust and may pause reporting access.</li>
             </ul>
             <h3 style={{ marginTop: "16px" }}>Event Guidelines</h3>
-            <ul style={{ margin: 0, paddingLeft: "20px", color: "#475569" }}>
+            <ul style={{ margin: 0, paddingLeft: "20px", color: "var(--cmd-muted)" }}>
               <li>Events must be real, current, and clearly described.</li>
               <li>Do not post unsafe meetup details.</li>
               <li>Kid-friendly events should be supervised and require extra review.</li>
@@ -6369,8 +6369,8 @@ async function handleUpdateStore(e) {
                       <strong>{index + 1}. {store.nickname || store.name}</strong>
                       <span style={styles.badge}>{confidenceLabel(confidence)} confidence</span>
                     </div>
-                    {store.nickname ? <p style={{ margin: "6px 0", color: "#64748b" }}>{store.name}</p> : null}
-                    <p style={{ margin: "6px 0", color: "#475569" }}>{stop.group} | {store.address || "No address"} | {store.city || ""}</p>
+                    {store.nickname ? <p style={{ margin: "6px 0", color: "var(--cmd-muted)" }}>{store.name}</p> : null}
+                    <p style={{ margin: "6px 0", color: "var(--cmd-muted)" }}>{stop.group} | {store.address || "No address"} | {store.city || ""}</p>
                     <p style={{ margin: "6px 0", color: "#334155" }}>
                       Reason: {explainRouteChoice(stop, routeForm.routeGoal)}
                     </p>
@@ -6397,13 +6397,13 @@ async function handleUpdateStore(e) {
                 <div key={route.id} style={styles.listCard}>
                   <strong>{route.routeName}</strong>
                   <p style={styles.tiny}>{route.routeGoal || "Custom route"} | {route.completed ? "Completed" : "Planned"} | Start: {route.startingZip || "Not set"}</p>
-                  <p style={{ margin: "6px 0", color: "#475569" }}>
+                  <p style={{ margin: "6px 0", color: "var(--cmd-muted)" }}>
                     {route.selectedStoreIds
                       .map((storeId) => stores.find((store) => store.id === storeId)?.name)
                       .filter(Boolean)
                       .join(" -> ") || "No stores"}
                   </p>
-                  {route.notes ? <p style={{ margin: "6px 0", color: "#475569" }}>{route.notes}</p> : null}
+                  {route.notes ? <p style={{ margin: "6px 0", color: "var(--cmd-muted)" }}>{route.notes}</p> : null}
                   <div style={{ display: "grid", gap: "8px", marginTop: "10px" }}>
                     {(route.selectedStoreIds || []).map((storeId, index) => {
                       const store = stores.find((item) => item.id === storeId);

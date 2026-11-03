@@ -41,7 +41,7 @@
   font-weight: 600;
 }
 
-.code3-workspace-switcher__chevron { color: var(--text-muted); }
+.code3-workspace-switcher__chevron { display: inline-flex; align-items: center; color: var(--text-muted); transition: transform 0.15s ease; }
 .code3-workspace-switcher[open] .code3-workspace-switcher__chevron { transform: rotate(180deg); }
 
 .code3-workspace-switcher__menu {

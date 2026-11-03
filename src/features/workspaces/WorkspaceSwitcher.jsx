@@ -44,7 +44,7 @@ export default function WorkspaceSwitcher({
       <summary aria-label={`${contextLabel}. Switch Code 3 workspace`}>
         <span className="code3-workspace-switcher__brand">{BRAND_CONFIG.applicationShortName}</span>
         <strong>{contextLabel}</strong>
-        <span className="code3-workspace-switcher__chevron" aria-hidden="true">⌄</span>
+        <span className="code3-workspace-switcher__chevron" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" focusable="false"><path d="m6 9 6 6 6-6" /></svg></span>
       </summary>
       <div className="code3-workspace-switcher__menu" aria-label="Code 3 workspaces">
         <span>Switch workspace</span>

@@ -90,7 +90,7 @@ export const WORKSPACE_DEFINITIONS = deepFreeze({
     navigation: [
       navItem({ key: "collect-home", label: "Home", path: "/collect", iconKey: "home", placement: NAV_PLACEMENTS.HOME }),
       navItem({ key: "collection", label: "Collection", path: "/collection", iconKey: "inventory" }),
-      navItem({ key: "collection-sets", label: "Sets", path: "/collection/sets", iconKey: "inventory" }),
+      navItem({ key: "collection-sets", label: "Sets", path: "/collection/sets", iconKey: "sets" }),
       navItem({ key: "collection-wishlist", label: "Wants", path: "/collection/wishlist", iconKey: "plan" }),
     ],
   },

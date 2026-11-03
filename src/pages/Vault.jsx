@@ -317,8 +317,8 @@ export default function VaultPage(props) {
             { label: "Collection Settings", icon: "settings", onClick: () => openCollectionManager?.() },
           ]}
           utilityActions={[
-            { label: "Compass", icon: "search", onClick: () => openCompassSearch?.("vault_compass") },
-            { label: "Beacon", icon: "bell", onClick: () => openBeaconCenter?.("vault_beacon") },
+            { label: "Search the app", icon: "search", onClick: () => openCompassSearch?.("vault_compass") },
+            { label: "Notifications", icon: "bell", onClick: () => openBeaconCenter?.("vault_beacon") },
           ]}
           statusItems={vaultStatusStrip}
           plan={{
@@ -811,8 +811,8 @@ export default function VaultPage(props) {
           { label: "Vault Overview", icon: "vault", onClick: () => setVaultSubTab("overview") },
         ]}
         utilityActions={[
-          { label: "Compass", icon: "search", onClick: () => openCompassSearch?.("vault_collection_compass") },
-          { label: "Beacon", icon: "bell", onClick: () => openBeaconCenter?.("vault_collection_beacon") },
+          { label: "Search the app", icon: "search", onClick: () => openCompassSearch?.("vault_collection_compass") },
+          { label: "Notifications", icon: "bell", onClick: () => openBeaconCenter?.("vault_collection_beacon") },
         ]}
         statusItems={[
           { key: "items", icon: "vault", label: "Owned items", value: activeVaultItems.length, detail: "Cards, sealed, and slabs" },

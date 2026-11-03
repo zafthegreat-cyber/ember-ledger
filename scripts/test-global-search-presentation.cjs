@@ -17,7 +17,7 @@ const { chromium, expect } = require("@playwright/test");
         url.searchParams.set("betaLocalMode", "true");
         url.searchParams.set("themeInspect", theme);
         await page.goto(url.href);
-        const trigger = route === "/settings" ? page.locator(".settings-layout").getByRole("button", { name: "Search the app", exact: true }) : page.getByRole("button", { name: "Compass", exact: true });
+        const trigger = route === "/settings" ? page.locator(".settings-layout").getByRole("button", { name: "Search the app", exact: true }) : page.getByRole("button", { name: "Search the app", exact: true }).first();
         const search = page.locator(".app-search.expanded");
         const input = page.getByRole("textbox", { name: "Search across Code 3 TCG", exact: true });
 

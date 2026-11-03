@@ -730,8 +730,8 @@ export default function ForgePage(props) {
         primaryAction={commandBoardCopy.primaryAction}
         secondaryActions={commandBoardCopy.secondaryActions}
         utilityActions={[
-          { label: "Compass", icon: "search", onClick: () => openCompassSearch?.("exchange_compass") },
-          { label: "Beacon", icon: "bell", onClick: () => openBeaconCenter?.("exchange_beacon") },
+          { label: "Search the app", icon: "search", onClick: () => openCompassSearch?.("exchange_compass") },
+          { label: "Notifications", icon: "bell", onClick: () => openBeaconCenter?.("exchange_beacon") },
         ]}
         statusItems={isHarborSection ? harborCommandStatus : exchangeCommandStatus}
         plan={{
