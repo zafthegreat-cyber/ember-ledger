@@ -42,6 +42,8 @@ function harness() {
     normalizeStoreExpansionFields: (value) => value, createBlankStoreForm: () => ({ name: "", nickname: "" }),
     normalizeStateLabel: (value) => value, normalizeVirginiaRegion: (value) => value, getStoreGroup: (value) => value.storeGroup || "Other",
     VIRGINIA_STORE_STATE: "Virginia", DEFAULT_VIRGINIA_REGION: "Hampton Roads / 757",
+    normalizeStoreRegion: (value) => value, homeState: { code: "VA", name: "Virginia", defaultRegion: "Hampton Roads / 757" }, homeStateName: "Virginia", homeRegion: "Hampton Roads / 757",
+    defaultStoreRegionForState: () => "Hampton Roads / 757", storeRegionsForState: () => ["Hampton Roads / 757"], storeStateForRegion: () => "VA", normalizeStoreStateCode: () => "VA", getStoreDirectoryState: () => ({ code: "VA", name: "Virginia", defaultRegion: "Hampton Roads / 757" }), storeStateName: () => "Virginia",
     useMemo: (run) => run(), scoutNow: Date.parse("2026-09-15T12:00:00Z"), tidepoolReports: [], filteredTidepoolEvents: [],
   });
   for (const key of ["handledTargetSubTab", "selectedStoreId", "scoutSubTab", "storeDirectoryView", "missingStoreModalOpen", "reportForm", "reportProductSearch", "reportInputMethod", "error", "previousStoreFilterKey", "storePage", "selectedMapStoreId", "editStoreSource", "editStoreForm", "scoutNow"]) {

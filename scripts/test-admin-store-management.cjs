@@ -67,7 +67,7 @@ async function main() {
       React, ...tools, ...cleanup, STORE_LOCATION_TYPES,
       SCOUT_STORAGE_KEY: key, adminToolsVisible: true, betaAdminVisible: true, adminEditModeActive: true,
       adminReviewFilter: "Store Management", adminStoreDraft: { ...tools.ADMIN_STORE_DRAFT_DEFAULTS }, adminStoreEditingId: "",
-      adminStoreEditingSourceRef: { current: null }, virginiaStoreSeed: seeds, SCOUT_KNOWN_LOCAL_STORE_SEED: [],
+      adminStoreEditingSourceRef: { current: null }, virginiaStoreSeed: seeds, storeDirectorySeed: seeds, SCOUT_KNOWN_LOCAL_STORE_SEED: [],
       scoutSnapshot: copy(envelope), suggestions: [], ...access,
       localStorage: {
         getItem: () => { if (faults.read) throw new DOMException("Read denied", "SecurityError"); return bytes.get(key) ?? null; },

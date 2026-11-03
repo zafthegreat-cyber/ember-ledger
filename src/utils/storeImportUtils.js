@@ -2,11 +2,16 @@ import {
   CHAIN_CONFIDENCE_DEFAULTS,
   DEFAULT_VIRGINIA_REGION,
   POKEMON_STOCK_LIKELIHOOD_OPTIONS,
-  VIRGINIA_REGION_CITY_HINTS,
-  VIRGINIA_REGIONS,
-  VIRGINIA_STORE_COUNTRY,
+  STORE_COUNTRY,
   VIRGINIA_STORE_STATE,
 } from "../data/storeGroups.js";
+import {
+  ALL_STORE_REGIONS,
+  getStoreDirectoryState,
+  inferStoreRegionForState,
+  normalizeStoreStateCode,
+  storeStateForRegion,
+} from "../data/storeStates.js";
 import { normalizeStoreGroup } from "./storeGroupingUtils.js";
 import { normalizeStoreExpansionFields } from "./storeExpansionUtils.js";
 
@@ -39,6 +44,32 @@ const REGION_ALIASES = {
   "southside virginia": "Southside Virginia",
   other: "Other Virginia",
   "other virginia": "Other Virginia",
+  baltimore: "Baltimore Metro",
+  "baltimore metro": "Baltimore Metro",
+  annapolis: "Annapolis / Anne Arundel",
+  "montgomery county": "Maryland DC Suburbs",
+  "prince george's county": "Maryland DC Suburbs",
+  "western maryland": "Frederick / Western Maryland",
+  "southern maryland": "Southern Maryland",
+  "other maryland": "Other Maryland",
+  dc: "Washington, DC",
+  "washington dc": "Washington, DC",
+  "washington, dc": "Washington, DC",
+  "district of columbia": "Washington, DC",
+  triangle: "Triangle (Raleigh / Durham)",
+  "research triangle": "Triangle (Raleigh / Durham)",
+  raleigh: "Triangle (Raleigh / Durham)",
+  "raleigh / durham": "Triangle (Raleigh / Durham)",
+  charlotte: "Charlotte Metro",
+  triad: "Triad (Greensboro / Winston-Salem)",
+  "piedmont triad": "Triad (Greensboro / Winston-Salem)",
+  wilmington: "Wilmington / Southeast NC",
+  fayetteville: "Fayetteville / Sandhills",
+  sandhills: "Fayetteville / Sandhills",
+  "eastern nc": "Eastern North Carolina",
+  asheville: "Asheville / Western NC",
+  "western nc": "Asheville / Western NC",
+  "other north carolina": "Other North Carolina",
 };
 
 const STORE_DIRECTORY_SOURCE_LABELS = {
@@ -147,20 +178,25 @@ export function normalizeChainName(value = "") {
   return text;
 }
 
+// Directory states (VA, MD, DC, NC) come back as their full name; anything
+// else is returned as typed. Blank stays on the historical Virginia default.
 export function normalizeStateLabel(value = "") {
   const text = String(value || "").trim();
   if (!text) return VIRGINIA_STORE_STATE;
-  return STORE_STATE_LABELS.get(text.toLowerCase()) || text;
+  return getStoreDirectoryState(text)?.name || STORE_STATE_LABELS.get(text.toLowerCase()) || text;
 }
 
-export function normalizeVirginiaRegion(value = "") {
+export function normalizeStoreRegion(value = "") {
   const text = String(value || "").trim();
   if (!text) return "";
-  if (VIRGINIA_REGIONS.includes(text)) return text;
+  if (ALL_STORE_REGIONS.includes(text)) return text;
   const alias = REGION_ALIASES[text.toLowerCase()];
   if (alias) return alias;
   return text;
 }
+
+// Older name kept for existing callers; it handles every directory state.
+export const normalizeVirginiaRegion = normalizeStoreRegion;
 
 export function normalizePokemonStockLikelihood(value = "") {
   const text = String(value || "").trim().toLowerCase();
@@ -172,15 +208,16 @@ export function normalizePokemonStockLikelihood(value = "") {
   return POKEMON_STOCK_LIKELIHOOD_OPTIONS.includes(text) ? text : "unknown";
 }
 
-export function inferVirginiaRegion(store = {}) {
-  if (store.region) {
-    const normalized = normalizeVirginiaRegion(store.region);
-    if (VIRGINIA_REGIONS.includes(normalized)) return normalized;
-  }
-  const text = `${store.city || ""} ${store.county || ""}`.toLowerCase();
-  const found = Object.entries(VIRGINIA_REGION_CITY_HINTS).find(([, cities]) => cities.some((city) => text.includes(city)));
-  return found?.[0] || "Other Virginia";
+// Region for a store inside its own state. Stores in states without a
+// directory keep whatever region they were given.
+export function inferStoreRegion(store = {}) {
+  const region = normalizeStoreRegion(store.region);
+  const stateCode = normalizeStoreStateCode(store.state) || storeStateForRegion(region) || (String(store.state || "").trim() ? "" : "VA");
+  if (!getStoreDirectoryState(stateCode)) return region;
+  return inferStoreRegionForState({ ...store, region }, stateCode);
 }
+
+export const inferVirginiaRegion = inferStoreRegion;
 
 export function makeStoreId(store = {}) {
   return `store-${String(`${store.retailerStoreId || store.storeNumber || ""}-${store.chain || store.retailer || ""}-${store.address || ""}-${store.zipCode || store.zip || store.city || ""}`)
@@ -192,9 +229,9 @@ export function makeStoreId(store = {}) {
 export function normalizeImportedStore(row = {}, defaults = {}) {
   const state = normalizeStateLabel(row.state || row.stateCode || row.state_code || defaults.state || defaults.stateCode || VIRGINIA_STORE_STATE);
   const explicitStateCode = String(row.stateCode || row.state_code || defaults.stateCode || "").trim().toUpperCase();
-  const stateCode = STORE_STATE_CODES.get(state) || explicitStateCode;
+  const stateCode = normalizeStoreStateCode(state) || STORE_STATE_CODES.get(state) || explicitStateCode;
   const explicitRegion = String(row.region || defaults.region || "").trim();
-  const region = state === VIRGINIA_STORE_STATE ? inferVirginiaRegion({ ...row, region: explicitRegion }) : explicitRegion || state;
+  const region = getStoreDirectoryState(stateCode) ? inferStoreRegion({ ...row, state, region: explicitRegion }) : explicitRegion || state;
   const chain = normalizeChainName(row.chain || defaults.chain || row.retailer || row.banner || "");
   const confidence = CHAIN_CONFIDENCE_DEFAULTS[chain] || { carriesPokemonLikely: Boolean(row.carriesPokemonLikely ?? row.sells_pokemon), pokemonConfidence: "unknown" };
   const storeName = row.storeName || row.store_name || row.name || row.official_name || "";
@@ -205,7 +242,7 @@ export function normalizeImportedStore(row = {}, defaults = {}) {
   const normalized = normalizeStoreExpansionFields(normalizeStoreGroup({
     storeId: row.storeId || row.id || "",
     id: row.id || row.storeId || "",
-    country: row.country || defaults.country || VIRGINIA_STORE_COUNTRY,
+    country: row.country || defaults.country || STORE_COUNTRY,
     name: storeName,
     storeName,
     nickname: row.nickname || "",
@@ -302,7 +339,11 @@ export function dedupeStoresByChainAddress(stores = []) {
   const byKey = new Map();
   stores.forEach((store) => {
     const normalized = normalizeImportedStore(store);
-    const key = `${normalized.retailerStoreId || normalized.storeNumber || ""}|${normalized.chain}|${normalized.address}|${normalized.zip}`.toLowerCase();
+    // Directory rows without a street address are told apart by position.
+    const lat = Number(normalized.latitude);
+    const lon = Number(normalized.longitude);
+    const spot = !normalized.address && lat && lon ? `|${lat.toFixed(3)},${lon.toFixed(3)}` : "";
+    const key = `${normalized.retailerStoreId || normalized.storeNumber || ""}|${normalized.chain}|${normalized.address}|${normalized.zip}${spot}`.toLowerCase();
     if (!byKey.has(key)) byKey.set(key, normalized);
     else {
       const existing = byKey.get(key);
@@ -365,7 +406,7 @@ export function flagStoreImportIssues(stores = []) {
     const normalized = normalizeImportedStore(store);
     const key = `${normalized.retailerStoreId || normalized.storeNumber || ""}|${normalized.chain}|${normalized.address}|${normalized.zip}`.toLowerCase();
     if (!normalized.address || !normalized.zip) issues.push({ type: "missing_address_or_zip", store: normalized });
-    if (!normalized.region || normalized.region === "Other Virginia") issues.push({ type: "missing_or_uncertain_region", store: normalized });
+    if (!normalized.region || normalized.region === getStoreDirectoryState(normalized.state)?.otherRegion) issues.push({ type: "missing_or_uncertain_region", store: normalized });
     if (!normalized.source) issues.push({ type: "missing_source", store: normalized });
     if (!normalized.pokemonStockLikelihood || normalized.pokemonStockLikelihood === "unknown") issues.push({ type: "unknown_pokemon_stock_likelihood", store: normalized });
     if (seen.has(key)) issues.push({ type: "possible_duplicate", store: normalized, duplicateOf: seen.get(key) });

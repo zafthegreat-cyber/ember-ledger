@@ -223,9 +223,10 @@ check(
 );
 
 check(
-  "Virginia store seed is dynamically imported after the app shell loads",
+  "State store directories are dynamically imported after the app shell loads",
   !/from\s+["']\.\/data\/virginiaStoresSeed["']/.test(app) &&
-    app.includes('import("./data/virginiaStoresSeed")')
+    !/from\s+["']\.\/data\/storeDirectory["']/.test(app) &&
+    app.includes('import("./data/storeDirectory")')
 );
 
 check(

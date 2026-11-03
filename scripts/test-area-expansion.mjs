@@ -20,8 +20,12 @@ assert.equal(normalizeRegionLabel("", { city: "Virginia Beach", state: "VA" }), 
 assert.equal(normalizeRegionLabel("", { city: "Richmond", state: "Virginia" }), "Richmond / Central Virginia");
 assert.equal(normalizeRegionLabel("NOVA", { state: "VA" }), "Northern Virginia");
 assert.equal(normalizeRegionLabel("", { city: "Fredericksburg", state: "VA" }), "Fredericksburg");
-assert.equal(normalizeRegionLabel("", { city: "Raleigh", state: "NC" }), "North Carolina");
-assert.equal(normalizeRegionLabel("", { state: "MD" }), "Maryland");
+assert.equal(normalizeRegionLabel("", { city: "Raleigh", state: "NC" }), "Triangle (Raleigh / Durham)");
+assert.equal(normalizeRegionLabel("", { city: "Charlotte", state: "NC" }), "Charlotte Metro");
+assert.equal(normalizeRegionLabel("", { city: "Towson", state: "MD" }), "Baltimore Metro");
+assert.equal(normalizeRegionLabel("", { city: "Washington", state: "DC" }), "Washington, DC");
+assert.equal(normalizeRegionLabel("", { state: "MD" }), "Other Maryland");
+assert.equal(normalizeStateLabel("DC"), "District of Columbia");
 
 const redmill = {
   id: "redmill-target",
@@ -43,7 +47,7 @@ assert.equal(normalized.areaLabel, "Virginia Beach / Hampton Roads / 757");
 assert.equal(normalized.displayLabel, "RM T - Target Redmill");
 
 const ncNormalized = normalizeStoreAreaFields({ city: "Raleigh", state: "VA" });
-assert.equal(ncNormalized.region, "North Carolina");
+assert.equal(ncNormalized.region, "Triangle (Raleigh / Durham)");
 assert.equal(ncNormalized.state, "North Carolina", "state-level regions should not display as the wrong state when source data is inconsistent");
 
 assert.equal(matchesRegionalAreaFilters(redmill, { state: "Virginia", region: "Hampton Roads / 757", city: "Virginia Beach" }), true);

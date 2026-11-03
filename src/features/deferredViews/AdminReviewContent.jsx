@@ -258,7 +258,7 @@ export default function AdminReviewContent({ scope }) {
             </article>
             <article className="admin-command-card">
               <span>Store Health</span>
-              <strong>{supabaseImportStatus.vaStores ?? "N/A"} VA stores</strong>
+              <strong>{supabaseImportStatus.directoryStateStores ?? supabaseImportStatus.vaStores ?? "N/A"} VA/MD/DC/NC stores</strong>
               <p>Store corrections and restock-pattern suggestions route through review.</p>
             </article>
             <article className="admin-command-card">
@@ -279,6 +279,7 @@ export default function AdminReviewContent({ scope }) {
             <div className="card"><p>Sealed Products</p><h2>{supabaseImportStatus.sealedProducts ?? "N/A"}</h2></div>
             <div className="card"><p>Card Products</p><h2>{supabaseImportStatus.cards ?? "N/A"}</h2></div>
             <div className="card"><p>VA Stores</p><h2>{supabaseImportStatus.vaStores ?? "N/A"}</h2></div>
+            <div className="card"><p>VA/MD/DC/NC Stores</p><h2>{supabaseImportStatus.directoryStateStores ?? "N/A"}</h2></div>
             <div className="card"><p>Market Price Rows</p><h2>{supabaseImportStatus.marketPriceRows ?? "N/A"}</h2></div>
             <div className="card"><p>Price History Rows</p><h2>{supabaseImportStatus.priceHistoryRows ?? "N/A"}</h2></div>
             <div className="card"><p>Products With History</p><h2>{supabaseImportStatus.productsWithHistory ?? "N/A"}</h2></div>

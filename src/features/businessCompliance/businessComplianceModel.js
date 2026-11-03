@@ -59,6 +59,10 @@ function nextFixedDate(month, day, now = new Date()) {
   return todayIso(candidate);
 }
 
+// The starter checklist is written for a Virginia business (Virginia Tax,
+// Virginia SCC, ST-10, Suffolk local dates). Items tagged jurisdiction "VA"
+// do not apply as-is in Maryland, DC or North Carolina; the page flags them
+// instead of guessing other states' rules.
 export function createInitialBusinessComplianceState(now = new Date()) {
   return {
     version: BUSINESS_COMPLIANCE_VERSION,
@@ -77,23 +81,23 @@ export function createInitialBusinessComplianceState(now = new Date()) {
       notes: "",
     },
     setup: [
-      { id: "setup-entity", title: "Virginia business registration", category: "Entity", status: "not_started", agency: "Virginia SCC", reference: "", completedDate: "", notes: "Save the formation approval and entity reference." },
+      { id: "setup-entity", jurisdiction: "VA", title: "Virginia business registration", category: "Entity", status: "not_started", agency: "Virginia SCC", reference: "", completedDate: "", notes: "Save the formation approval and entity reference." },
       { id: "setup-operating-agreement", title: "Operating agreement", category: "Entity", status: "not_started", agency: "Internal", reference: "", completedDate: "", notes: "Keep the signed current copy with company records." },
       { id: "setup-ein", title: "Federal EIN", category: "Tax", status: "not_started", agency: "IRS", reference: "", completedDate: "", notes: "Record only a safe confirmation reference or EIN last four here, not the full EIN." },
       { id: "setup-bank", title: "Business bank account", category: "Banking", status: "not_started", agency: "Bank", reference: "", completedDate: "", notes: "Use an account nickname or last four only. Do not store full account numbers." },
-      { id: "setup-sales-tax", title: "Virginia sales tax registration", category: "Sales tax", status: "not_started", agency: "Virginia Tax", reference: "", completedDate: "", notes: "Record filing frequency after Virginia assigns it." },
-      { id: "setup-resale", title: "ST-10 resale certificate ready", category: "Sales tax", status: "not_started", agency: "Virginia Tax", reference: "", completedDate: "", notes: "Keep the current certificate available for qualifying resale purchases." },
+      { id: "setup-sales-tax", jurisdiction: "VA", title: "Virginia sales tax registration", category: "Sales tax", status: "not_started", agency: "Virginia Tax", reference: "", completedDate: "", notes: "Record filing frequency after Virginia assigns it." },
+      { id: "setup-resale", jurisdiction: "VA", title: "ST-10 resale certificate ready", category: "Sales tax", status: "not_started", agency: "Virginia Tax", reference: "", completedDate: "", notes: "Keep the current certificate available for qualifying resale purchases." },
       { id: "setup-local-license", title: "Local zoning and business license", category: "License", status: "not_started", agency: "Locality", reference: "", completedDate: "", notes: "Confirm the requirements for the actual business location." },
       { id: "setup-bookkeeping", title: "Bookkeeping and receipt system", category: "Bookkeeping", status: "not_started", agency: "Internal", reference: "", completedDate: "", notes: "Keep business funds, inventory cost, expenses, receipts, and mileage organized from day one." },
       { id: "setup-insurance", title: "Business insurance review", category: "Insurance", status: "not_started", agency: "Insurer", reference: "", completedDate: "", notes: "Review general liability, inventory/property, event/transit, and cyber needs as applicable." },
       { id: "setup-marketplaces", title: "Marketplace and direct-sales tax settings reviewed", category: "Sales tax", status: "not_started", agency: "Internal", reference: "", completedDate: "", notes: "Keep marketplace-facilitated sales separate from direct taxable sales in bookkeeping." },
     ],
     deadlines: [
-      { id: "deadline-sales-tax", title: "Virginia sales tax return", category: "Sales tax", agency: "Virginia Tax", dueDate: "", cadence: "monthly", status: "active", lastCompletedDate: "", notes: "Set the first due date and change cadence if Virginia assigns quarterly filing. File zero returns when required." },
-      { id: "deadline-scc", title: "Virginia SCC annual registration fee", category: "Entity", agency: "Virginia SCC", dueDate: "", cadence: "annual", status: "active", lastCompletedDate: "", notes: "Set the due date after the LLC formation month is known." },
-      { id: "deadline-local-license", title: "Local business license renewal", category: "License", agency: "Locality", dueDate: nextFixedDate(3, 1, now), cadence: "annual", status: "active", lastCompletedDate: "", notes: "Starter date matches Suffolk's March 1 renewal timing; confirm or change it if the business locality differs." },
-      { id: "deadline-property", title: "Business personal property return review", category: "License", agency: "Locality", dueDate: nextFixedDate(5, 1, now), cadence: "annual", status: "active", lastCompletedDate: "", notes: "Starter date matches Suffolk's May 1 filing timing; confirm applicability and locality." },
-      { id: "deadline-estimated-tax", title: "Estimated income tax review", category: "Income tax", agency: "IRS / Virginia Tax", dueDate: "", cadence: "quarterly", status: "active", lastCompletedDate: "", notes: "Set dates after confirming whether estimated payments apply to the owners' tax situation." },
+      { id: "deadline-sales-tax", jurisdiction: "VA", title: "Virginia sales tax return", category: "Sales tax", agency: "Virginia Tax", dueDate: "", cadence: "monthly", status: "active", lastCompletedDate: "", notes: "Set the first due date and change cadence if Virginia assigns quarterly filing. File zero returns when required." },
+      { id: "deadline-scc", jurisdiction: "VA", title: "Virginia SCC annual registration fee", category: "Entity", agency: "Virginia SCC", dueDate: "", cadence: "annual", status: "active", lastCompletedDate: "", notes: "Set the due date after the LLC formation month is known." },
+      { id: "deadline-local-license", jurisdiction: "VA", title: "Local business license renewal", category: "License", agency: "Locality", dueDate: nextFixedDate(3, 1, now), cadence: "annual", status: "active", lastCompletedDate: "", notes: "Starter date matches Suffolk's March 1 renewal timing; confirm or change it if the business locality differs." },
+      { id: "deadline-property", jurisdiction: "VA", title: "Business personal property return review", category: "License", agency: "Locality", dueDate: nextFixedDate(5, 1, now), cadence: "annual", status: "active", lastCompletedDate: "", notes: "Starter date matches Suffolk's May 1 filing timing; confirm applicability and locality." },
+      { id: "deadline-estimated-tax", jurisdiction: "VA", title: "Estimated income tax review", category: "Income tax", agency: "IRS / Virginia Tax", dueDate: "", cadence: "quarterly", status: "active", lastCompletedDate: "", notes: "Set dates after confirming whether estimated payments apply to the owners' tax situation." },
       { id: "deadline-insurance", title: "Insurance renewal", category: "Insurance", agency: "Insurer", dueDate: "", cadence: "annual", status: "active", lastCompletedDate: "", notes: "Add the policy renewal date once coverage is active." },
     ],
     documents: [],
@@ -104,6 +108,23 @@ function ensureArray(value, fallback) {
   return Array.isArray(value) ? value : fallback;
 }
 
+// Saved checklists from before jurisdiction tags get them from the starter rows.
+function withJurisdiction(rows, starterRows) {
+  const byId = new Map(starterRows.map((row) => [row.id, row.jurisdiction]));
+  return rows.map((row) => (row.jurisdiction || !byId.get(row.id) ? row : { ...row, jurisdiction: byId.get(row.id) }));
+}
+
+export function isVirginiaOnlyComplianceItem(item = {}) {
+  return item.jurisdiction === "VA";
+}
+
+// True when the business profile names a state other than Virginia, so the
+// Virginia-only starter items need the owner's review.
+export function complianceStateNeedsReview(profile = {}) {
+  const state = String(profile.state || "").trim().toLowerCase();
+  return Boolean(state) && !["va", "virginia"].includes(state);
+}
+
 export function normalizeBusinessComplianceState(value, now = new Date()) {
   const fallback = createInitialBusinessComplianceState(now);
   if (!value || typeof value !== "object") return fallback;
@@ -112,8 +133,8 @@ export function normalizeBusinessComplianceState(value, now = new Date()) {
     ...value,
     version: BUSINESS_COMPLIANCE_VERSION,
     profile: { ...fallback.profile, ...(value.profile || {}) },
-    setup: ensureArray(value.setup, fallback.setup),
-    deadlines: ensureArray(value.deadlines, fallback.deadlines),
+    setup: withJurisdiction(ensureArray(value.setup, fallback.setup), fallback.setup),
+    deadlines: withJurisdiction(ensureArray(value.deadlines, fallback.deadlines), fallback.deadlines),
     documents: ensureArray(value.documents, fallback.documents),
   };
 }

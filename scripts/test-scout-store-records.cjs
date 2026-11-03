@@ -29,6 +29,7 @@ const bundled = buildSync({
     'export * from "./src/utils/storeGroupingUtils.js";',
     'export * from "./src/utils/betaDataCleanup.js";',
     'export * from "./src/data/storeGroups.js";',
+    'export * from "./src/data/storeStates.js";',
   ].join("\n"), resolveDir: root },
   bundle: true, format: "cjs", platform: "node", write: false,
 }).outputFiles[0].text;
@@ -60,7 +61,9 @@ function harness({ raw = JSON.stringify(initial), admin = false, savedOrigin = t
     selectedStoreId: savedRecord.id, editStoreForm: { ...utilities.normalizeImportedStore(savedRecord), city: "Norfolk" }, isEditingStore: true,
     SUGGESTION_TYPES: { EDIT_STORE_DETAILS: "edit-store-details" },
     submitSharedDataSuggestion: (suggestion) => { suggestions.push(suggestion); return { ok: true }; },
-    loadVirginiaStoresSeed: async () => [canonical], STATEWIDE_SEED_STORES: [canonical],
+    loadStoreDirectories: async () => [canonical], VIRGINIA_FALLBACK_STORES: [canonical],
+    loadedDirectoryStatesRef: { current: new Set(["VA"]) },
+    homeState: utilities.getStoreDirectoryState("VA"), homeStateName: "Virginia",
     BEST_BUY_NIGHTLY_DEFAULTS: {}, createDefaultScoutProfile: () => ({}), createDefaultAlertSettings: () => ({}),
     shouldUseDropRadarSeed: () => false, buildScoutRestockPatterns: () => [], SCOUT_STORE_ALIASES: [],
     localStorage: {
@@ -222,7 +225,7 @@ async function main() {
   });
   await check("startup reads the latest envelope after asynchronous seed loading", async () => {
     const h = harness({ raw: null }); let release;
-    h.context.loadVirginiaStoresSeed = () => new Promise((resolve) => { release = resolve; });
+    h.context.loadStoreDirectories = () => new Promise((resolve) => { release = resolve; });
     const pending = h.load(); h.replace(JSON.stringify(initial)); release([canonical]); await pending;
     assert.deepEqual(h.saved(), initial); assert.equal(h.writes(), 0);
     assert.equal(h.context.findStoreRecord(savedRecord.id).id, savedRecord.id);

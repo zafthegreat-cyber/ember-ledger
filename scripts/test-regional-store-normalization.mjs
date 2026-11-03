@@ -5,13 +5,16 @@ import test from "node:test";
 import * as espree from "espree";
 import { normalizeImportedStore } from "../src/utils/storeImportUtils.js";
 import { DEFAULT_VIRGINIA_REGION, VIRGINIA_STORE_STATE } from "../src/data/storeGroups.js";
+import { defaultStoreRegionForState, storeRegionsForState, storeStateForRegion } from "../src/data/storeStates.js";
 
 const scoutSource = readFileSync(new URL("../src/pages/Scout.jsx", import.meta.url), "utf8");
 const ast = espree.parse(scoutSource, { ecmaVersion: "latest", sourceType: "module", ecmaFeatures: { jsx: true }, range: true });
 let submitMissingStore;
+let missingStoreFormRegion;
 function visit(node) {
   if (!node || typeof node !== "object") return;
   if (node.type === "FunctionDeclaration" && node.id?.name === "submitMissingStoreForReview") submitMissingStore = node;
+  if (node.type === "FunctionDeclaration" && node.id?.name === "missingStoreFormRegion") missingStoreFormRegion = node;
   for (const value of Object.values(node)) {
     if (Array.isArray(value)) value.forEach(visit);
     else if (value?.type) visit(value);
@@ -19,11 +22,13 @@ function visit(node) {
 }
 visit(ast);
 assert.ok(submitMissingStore, "The public missing-store form handler must exist");
+assert.ok(missingStoreFormRegion, "The missing-store form keeps its region within the chosen state");
+const virginiaRegions = new Set(storeRegionsForState("VA"));
 
 for (const fixture of [
-  { state: "North Carolina", code: "NC", city: "Raleigh", region: "Triangle" },
-  { state: "Maryland", code: "MD", city: "Baltimore", region: "Central Maryland" },
-  { state: "District of Columbia", code: "DC", city: "Washington", region: "Capitol Hill" },
+  { state: "North Carolina", code: "NC", city: "Raleigh", region: storeRegionsForState("NC")[0] },
+  { state: "Maryland", code: "MD", city: "Baltimore", region: storeRegionsForState("MD")[0] },
+  { state: "District of Columbia", code: "DC", city: "Washington", region: storeRegionsForState("DC")[0] },
 ]) {
   test(`public missing-store review preserves ${fixture.state} instead of relabeling it Virginia`, () => {
     let submitted;
@@ -33,6 +38,11 @@ for (const fixture of [
       normalizeImportedStore,
       VIRGINIA_STORE_STATE,
       DEFAULT_VIRGINIA_REGION,
+      defaultStoreRegionForState,
+      storeRegionsForState,
+      storeStateForRegion,
+      homeStateName: VIRGINIA_STORE_STATE,
+      homeRegion: DEFAULT_VIRGINIA_REGION,
       makeScoutId: () => "synthetic-store-review",
       SUGGESTION_TYPES: { ADD_MISSING_STORE: "add_missing_store" },
       submitSharedDataSuggestion: (payload) => { submitted = payload; return { id: "synthetic-review" }; },
@@ -40,6 +50,7 @@ for (const fixture of [
       setMissingStoreForm: () => {},
       setMissingStoreModalOpen: () => {},
     });
+    vm.runInContext(scoutSource.slice(...missingStoreFormRegion.range), context);
     vm.runInContext(scoutSource.slice(...submitMissingStore.range), context);
     context.submitMissingStoreForReview({ preventDefault() {} });
     assert.equal(submitted.targetTable, "stores");
@@ -56,7 +67,8 @@ for (const fixture of [
       const normalized = normalizeImportedStore({ name: "Synthetic shop", state, city: "Richmond" });
       assert.equal(normalized.state, fixture.state);
       assert.equal(normalized.stateCode, fixture.code);
-      assert.equal(normalized.region, fixture.state, "A shared city name must not infer a Virginia region");
+      assert.ok(!virginiaRegions.has(normalized.region), "A shared city name must not infer a Virginia region");
+      assert.equal(storeStateForRegion(normalized.region), fixture.code, "The region belongs to the row's own state");
     }
     const codeOnly = normalizeImportedStore({ name: "Synthetic shop", state_code: fixture.code });
     assert.equal(codeOnly.state, fixture.state);

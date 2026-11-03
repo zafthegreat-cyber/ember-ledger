@@ -842,7 +842,7 @@ function storeCity(tags = {}) {
   return tags["addr:city"] || tags["is_in:city"] || tags["addr:county"] || "";
 }
 
-function osmStoreFromElement(element = {}) {
+function osmStoreFromElement(element = {}, defaultState = "Virginia") {
   const tags = element.tags || {};
   const name = tags.name || tags.brand || tags.operator || "";
   const chain = normalizeChainName(tags.brand || tags.operator || name);
@@ -862,7 +862,7 @@ function osmStoreFromElement(element = {}) {
     nickname: "",
     address: storeAddress(tags),
     city: storeCity(tags),
-    state: tags["addr:state"] || "Virginia",
+    state: tags["addr:state"] || defaultState,
     zip: tags["addr:postcode"] || "",
     zipCode: tags["addr:postcode"] || "",
     postalCode: tags["addr:postcode"] || "",
@@ -909,12 +909,15 @@ function isRelevantOsmStore(store = {}) {
   return knownChain || localGameStore;
 }
 
-async function readExistingStoreSeeds() {
+// stateName limits seeds to one state; files without a state count as Virginia.
+async function readExistingStoreSeeds(stateName = "") {
   const fileNames = (await fs.readdir(seedStoreDir)).filter((fileName) => fileName.endsWith(".json")).sort();
   const rows = [];
   for (const fileName of fileNames) {
     const parsed = await readJson(path.join(seedStoreDir, fileName), { stores: [] });
     for (const store of parsed.stores || []) {
+      const seedState = String(store.state || parsed.state || "Virginia").toLowerCase();
+      if (stateName && ![stateName.toLowerCase(), stateCodeFor(stateName).toLowerCase()].includes(seedState)) continue;
       rows.push({
         ...store,
         id: `seed-${slug(`${store.chain || store.retailer}-${store.address}-${store.city}-${store.zip || store.zipCode}`)}`,
@@ -939,7 +942,12 @@ async function readExistingStoreSeeds() {
 function storeMergeKey(store = {}) {
   const address = normalizeSearch(store.address);
   if (address) return `${normalizeSearch(store.chain || store.retailer)}|${address}|${normalizeSearch(store.city)}|${store.zip || store.zipCode || store.postalCode || ""}`;
-  return `${normalizeSearch(store.chain || store.retailer)}|${normalizeSearch(store.name || store.storeName)}|${normalizeSearch(store.city)}|${store.zip || store.zipCode || store.postalCode || ""}`;
+  // Without a street address, keep separate locations of the same chain apart
+  // by rounded coordinates (about 100 m) instead of collapsing them.
+  const lat = Number(store.latitude);
+  const lon = Number(store.longitude);
+  const spot = Number.isFinite(lat) && Number.isFinite(lon) && (lat || lon) ? `|${lat.toFixed(3)},${lon.toFixed(3)}` : "";
+  return `${normalizeSearch(store.chain || store.retailer)}|${normalizeSearch(store.name || store.storeName)}|${normalizeSearch(store.city)}|${store.zip || store.zipCode || store.postalCode || ""}${spot}`;
 }
 
 function mergeStores(seedStores = [], osmStores = []) {
@@ -969,11 +977,17 @@ function mergeStores(seedStores = [], osmStores = []) {
   );
 }
 
-function overpassQuery() {
+const STATE_CODES = { Virginia: "VA", Maryland: "MD", "District of Columbia": "DC", "North Carolina": "NC" };
+
+function stateCodeFor(stateName = "") {
+  return STATE_CODES[stateName] || String(stateName || "").slice(0, 2).toUpperCase();
+}
+
+function overpassQuery(stateCode = "VA") {
   const chainRegex = STORE_CHAIN_PATTERNS.map((chain) => chain.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
   return `
 [out:json][timeout:180];
-area["ISO3166-2"="US-VA"][admin_level=4]->.searchArea;
+area["ISO3166-2"="US-${stateCode}"][admin_level=4]->.searchArea;
 (
   nwr["name"~"${chainRegex}",i](area.searchArea);
   nwr["brand"~"${chainRegex}",i](area.searchArea);
@@ -983,20 +997,22 @@ out center tags;
 `;
 }
 
-async function syncVirginiaStores() {
-  const seedStores = await readExistingStoreSeeds();
+async function syncStateStores(stateName = "Virginia", { timeoutMs = FETCH_TIMEOUT_MS } = {}) {
+  const stateCode = stateCodeFor(stateName);
+  const seedStores = await readExistingStoreSeeds(stateName);
   if (String(process.env.SKIP_OVERPASS || "").toLowerCase() === "true") {
     return { stores: mergeStores(seedStores, []), importedFromOverpass: 0, overpassError: "" };
   }
   try {
-    const body = new URLSearchParams({ data: overpassQuery() });
+    const body = new URLSearchParams({ data: overpassQuery(stateCode) });
     const payload = await fetchJson("https://overpass-api.de/api/interpreter", {
       method: "POST",
       body,
+      signal: AbortSignal.timeout(timeoutMs),
       headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
     }, 2);
     const osmStores = (payload?.elements || [])
-      .map(osmStoreFromElement)
+      .map((element) => osmStoreFromElement(element, stateName))
       .filter((store) => store.name && store.chain && (store.latitude || store.longitude || store.address))
       .filter(isRelevantOsmStore);
     return { stores: mergeStores(seedStores, osmStores), importedFromOverpass: osmStores.length, overpassError: "" };
@@ -1179,7 +1195,7 @@ async function main() {
   const catalog = preserveLastGoodCatalog(before, incomingCatalog);
   const stores = PRICE_ONLY
     ? { stores: beforeStores, importedFromOverpass: 0, overpassError: "" }
-    : await syncVirginiaStores();
+    : await syncStateStores("Virginia");
 
   const status = buildCatalogSyncStatus({
     catalog,
@@ -1278,4 +1294,7 @@ module.exports = {
   mergeStores,
   osmStoreFromElement,
   isRelevantOsmStore,
+  overpassQuery,
+  readExistingStoreSeeds,
+  syncStateStores,
 };
