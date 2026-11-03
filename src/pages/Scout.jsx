@@ -32,6 +32,7 @@ import { AppNavIcon, CommandBoardSection, CommandBoardV4, CommandMetricGrid } fr
 import "./scout-reports.css";
 import { getStoreGroup, normalizeStoreGroup, STORE_GROUP_ORDER } from "../utils/storeGroupingUtils";
 import { dedupeStoresByChainAddress, normalizeImportedStore, normalizeStateLabel, normalizeVirginiaRegion } from "../utils/storeImportUtils";
+import RegionalCommunityBanner from "../components/RegionalCommunityBanner.jsx";
 import { storeMatchesSearch, sortStores } from "../utils/storeSearchUtils";
 import {
   COMMUNITY_MOTTO_COPY,
@@ -4596,6 +4597,7 @@ async function handleUpdateStore(e) {
   return (
     <div className={`scout-route-polish ${!compact ? "scout-command-route-v5" : ""}`.trim()}>
       <div className="scout-route-shell">
+        {!compact ? <RegionalCommunityBanner primaryLabel="Report a restock" onPrimary={typeof onQuickReport === "function" ? () => onQuickReport({}) : null} /> : null}
         {reportsBrowseMode ? <CommunityRestockFeed onOpenMap={() => { setScoutSubTab("overview"); setScoutOverviewView("map"); }} /> : null}
         {!compact && scoutSubTab === "overview" ? (
           <CommandBoardV4
