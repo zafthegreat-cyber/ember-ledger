@@ -1,5 +1,6 @@
 import { PrivateStorageImage } from "./PrivateReceipt.jsx";
 import { useMemo, useRef, useState } from "react";
+import { STORE_DIRECTORY_STATES } from "../data/storeStates.js";
 
 const TILE_SIZE = 256;
 const PAN_DRAG_THRESHOLD = 4;
@@ -23,7 +24,19 @@ const AREA_COORDINATE_FALLBACKS = [
   { keys: ["eastern shore", "accomack", "onancock"], lat: 37.708, lng: -75.7497 },
   { keys: ["southside", "danville", "martinsville"], lat: 36.5859, lng: -79.395 },
   { keys: ["southwest", "bristol", "abingdon", "wytheville"], lat: 36.7098, lng: -81.9773 },
+  // Other directory states: region names first (they are unique), then their
+  // city hints, both from storeStates.
+  ...["name", "cities"].flatMap((field) => STORE_DIRECTORY_STATES.filter((state) => state.code !== "VA").flatMap((state) =>
+    state.regions.map((region) => ({
+      keys: field === "name" ? [region.name.toLowerCase()] : region.cities.filter((city) => city.length > 4 && city !== "washington"),
+      lat: region.centers[0][0],
+      lng: region.centers[0][1],
+    }))
+  )),
+  { keys: ["washington, dc", "washington dc", "district of columbia"], lat: 38.9, lng: -77.03 },
   { keys: ["hampton roads", "757", "virginia"], lat: 36.8529, lng: -76.1474 },
+  { keys: ["maryland"], lat: 39.29, lng: -76.61 },
+  { keys: ["north carolina"], lat: 35.78, lng: -78.64 },
 ];
 
 function stableOffset(seed, scale = 0.028) {

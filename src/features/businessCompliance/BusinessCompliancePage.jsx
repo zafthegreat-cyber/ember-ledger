@@ -17,6 +17,8 @@ import {
   SETUP_STATUSES,
   completeDeadline,
   deadlineHealth,
+  complianceStateNeedsReview,
+  isVirginiaOnlyComplianceItem,
   newDeadline,
   newDocument,
   sortDeadlines,
@@ -45,10 +47,14 @@ function deadlineTone(key) {
   return "neutral";
 }
 
+function JurisdictionBadge({ item }) {
+  return isVirginiaOnlyComplianceItem(item) ? <StatusBadge tone="neutral">Virginia only</StatusBadge> : null;
+}
+
 function SetupCard({ item, onChange }) {
   return <RecordCard>
     <div className="compliance-card-heading">
-      <div><span>{item.category}</span><h3>{item.title}</h3></div>
+      <div><span>{item.category}</span><h3>{item.title}</h3><JurisdictionBadge item={item} /></div>
       <StatusBadge tone={setupTone(item.status)}>{SETUP_STATUSES.find((status) => status.value === item.status)?.label || item.status}</StatusBadge>
     </div>
     <p>{item.notes}</p>
@@ -65,7 +71,7 @@ function DeadlineCard({ item, onChange, onComplete }) {
   const health = deadlineHealth(item);
   return <RecordCard>
     <div className="compliance-card-heading">
-      <div><span>{item.category}</span><h3>{item.title}</h3></div>
+      <div><span>{item.category}</span><h3>{item.title}</h3><JurisdictionBadge item={item} /></div>
       <StatusBadge tone={deadlineTone(health.key)}>{health.label}</StatusBadge>
     </div>
     <p>{item.notes}</p>
@@ -131,6 +137,7 @@ export default function BusinessCompliancePage({ onBack }) {
     <PageHeader eyebrow="Business admin" title="Compliance" />
     {onBack ? <button type="button" className="everyday-back-button" onClick={onBack}>Back to Business</button> : null}
     <p className="compliance-privacy-note">Track status, dates, agencies, document locations, and safe references here. Do not save passwords, full EINs, bank account numbers, card numbers, or other secrets in this tracker.</p>
+    {complianceStateNeedsReview(state.profile) ? <p className="compliance-privacy-note" role="status">The starter checklist is written for Virginia (Virginia Tax, Virginia SCC, the ST-10 resale certificate and Suffolk renewal dates). Your profile lists {state.profile.state}, so items marked Virginia only do not apply as written. Mark them Not applicable and add your own state and locality requirements.</p> : null}
     <div className="compliance-tabs" role="tablist" aria-label="Compliance sections">{tabs.map((item) => <button key={item.key} type="button" role="tab" aria-selected={tab === item.key} className={tab === item.key ? "is-active" : ""} onClick={() => setTab(item.key)}>{item.label}</button>)}</div>
 
     {tab === "overview" ? <>

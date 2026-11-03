@@ -96,6 +96,7 @@ import {
 import { POKEMON_SETS } from "./data/pokemonSetCatalog";
 import { COLLECTIBLE_GAMES, getRecordGame } from "./utils/collectibleGames.mjs";
 import "./data/storeGroups";
+import { DEFAULT_STORE_STATE_CODE, STORE_DIRECTORY_STATES, STORE_DIRECTORY_STATE_CODES, detectStoreStateFromText, normalizeStoreStateCode, storeStateShortName } from "./data/storeStates";
 import { MARKET_SOURCES, MARKET_STATUS, MARKET_STATUS_LABELS } from "./data/marketSources";
 import { CATALOG_IMPORT_SOURCES, flagCatalogDuplicates, validateCatalogImport } from "./utils/catalogImportUtils";
 import { CATALOG_SORT_OPTIONS, compareCatalogProducts, getCardSortMeta } from "./utils/catalogSortUtils";
@@ -1198,6 +1199,11 @@ const WATCH_CALENDAR_DEFAULT_LAYERS = {
   highConfidenceOnly: false,
   militaryStores: false,
 };
+// "Virginia, Maryland, Washington, DC and North Carolina"
+const LAUNCH_STATES_LABEL = (() => {
+  const names = STORE_DIRECTORY_STATES.map((state) => state.shortName);
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+})();
 const WATCH_CALENDAR_AREAS = [
   { value: "hampton_roads", label: "Hampton Roads / 757", cities: ["suffolk", "chesapeake", "virginia beach", "norfolk", "portsmouth", "newport news", "hampton"] },
   { value: "richmond_central_virginia", label: "Richmond / Central Virginia", cities: ["richmond", "henrico", "midlothian", "chesterfield", "mechanicsville", "glen allen"] },
@@ -1211,6 +1217,12 @@ const WATCH_CALENDAR_AREAS = [
   { value: "southside_virginia", label: "Southside Virginia", cities: ["danville", "farmville", "martinsville", "south boston", "south hill"] },
   { value: "other_virginia", label: "Other Virginia", cities: [] },
   { value: "all_virginia", label: "All Virginia", cities: [] },
+  // Other store directory states match on every city hint in that state.
+  ...STORE_DIRECTORY_STATES.filter((state) => state.code !== "VA").map((state) => ({
+    value: `all_${state.code.toLowerCase()}`,
+    label: `All ${state.shortName}`,
+    cities: state.regions.flatMap((region) => region.cities),
+  })),
 ];
 const WORKSPACE_TYPES = [
   { value: "personal", label: "Personal", description: "Only your user account." },
@@ -7386,10 +7398,11 @@ export default function App() {
   const localCatalogSeedLoadRef = useRef(null);
   const localCatalogSeedStatusRef = useRef("idle");
   const localCatalogSeedProductsRef = useRef([]);
-  const [virginiaStoreSeed, setVirginiaStoreSeed] = useState([]);
-  const [virginiaStoreSeedStatus, setVirginiaStoreSeedStatus] = useState("idle");
-  const virginiaStoreSeedLoadRef = useRef(null);
-  const virginiaStoreSeedStatusRef = useRef("idle");
+  const [storeDirectorySeed, setStoreDirectorySeed] = useState([]);
+  const [storeDirectorySeedStatus, setStoreDirectorySeedStatus] = useState("idle");
+  const storeDirectorySeedLoadRef = useRef(null);
+  const storeDirectorySeedStatusRef = useRef("idle");
+  const storeDirectoryLoadedStatesRef = useRef(new Set());
   const [catalogPagedResultIds, setCatalogPagedResultIds] = useState([]);
   const [tideTradrWatchlist, setTideTradrWatchlist] = useState([]);
   const [tideTradrLookupId, setTideTradrLookupId] = useState("");
@@ -7549,8 +7562,11 @@ export default function App() {
     savedLocations: [],
     selectedSavedLocation: "",
     trackingEnabled: false,
+    storeState: "",
     lastUpdated: "",
   });
+  // Guests can browse another state's stores without saving the choice.
+  const [guestStoreState, setGuestStoreState] = useState("");
   const [storeMapFilters, setStoreMapFilters] = useState({
     retailer: "All",
     storeType: "All",
@@ -7664,6 +7680,7 @@ export default function App() {
     latestHistorySnapshot: "",
     currentPriceWithoutHistory: null,
     vaStores: null,
+    directoryStateStores: null,
     lastPriceChecked: "",
     productsMissingImages: null,
     productsMissingMarketPrices: null,
@@ -8021,6 +8038,14 @@ export default function App() {
 
 
   const smartSetupPreferences = normalizeSmartSetupPreferences(betaReadinessData.onboarding?.smartSetup || {});
+  // Restocks store directory state: the user's pick, else a guess from their
+  // home area (ZIP, "City, ST"), else Virginia.
+  const chosenStoreDirectoryState = normalizeStoreStateCode((guestPreviewActive && guestStoreState) || locationSettings.storeState);
+  const detectedStoreDirectoryState = detectStoreStateFromText(
+    locationSettings.manualLocation || locationSettings.selectedSavedLocation || smartSetupPreferences.homeArea || ""
+  );
+  const storeDirectoryState = chosenStoreDirectoryState || detectedStoreDirectoryState || DEFAULT_STORE_STATE_CODE;
+  const storeDirectoryStateSource = chosenStoreDirectoryState ? "chosen" : detectedStoreDirectoryState ? "detected" : "default";
   const adminModeUserKey = String(currentUserProfile?.userId || currentUserProfile?.id || user?.id || "anonymous");
   const adminModeStorageKey = ADMIN_MODE_STORAGE_PREFIX + ":" + adminModeUserKey;
   const adminModeLoaded = !actualAdminUser || adminModeStorageReady;
@@ -9796,7 +9821,7 @@ export default function App() {
         source: "scout-report",
       }))
       .filter((store) => store.name || store.id);
-    const deduped = [...(scoutSnapshot.stores || []), ...reportStores, ...virginiaStoreSeed, ...SCOUT_KNOWN_LOCAL_STORE_SEED]
+    const deduped = [...(scoutSnapshot.stores || []), ...reportStores, ...storeDirectorySeed, ...SCOUT_KNOWN_LOCAL_STORE_SEED]
       .filter(Boolean)
       .filter((store, index) => {
         const key = String(getScoutQuickStoreId(store) || `${getScoutQuickRetailer(store)}-${getScoutQuickStoreName(store)}-${store.city || index}`).toLowerCase();
@@ -9805,7 +9830,7 @@ export default function App() {
         return true;
       });
     return filterStoresForScoutPicker(deduped, { admin: Boolean(options.admin) });
-  }, [scoutSnapshot.reports, scoutSnapshot.tidepoolReports, scoutSnapshot.stores, virginiaStoreSeed]);
+  }, [scoutSnapshot.reports, scoutSnapshot.tidepoolReports, scoutSnapshot.stores, storeDirectorySeed]);
 
   const findScoutQuickStore = useCallback(function(storeLike = {}, options = {}) {
     const explicitId = getScoutQuickStoreId(storeLike);
@@ -12613,6 +12638,7 @@ export default function App() {
     setSmartSetupDraft(normalizeSmartSetupPreferences({
       ...source,
       homeArea: source.homeArea || locationSettings.manualLocation || locationSettings.selectedSavedLocation || "",
+      storeState: source.storeState || chosenStoreDirectoryState || "",
     }));
     setSmartSetupStep(SMART_SETUP_STEPS[0]);
     setSmartSetupOpen(true);
@@ -12682,6 +12708,7 @@ export default function App() {
     if (String(nextSetup.homeArea || "").trim()) {
       updateLocationSettings({ mode: "manual", manualLocation: nextSetup.homeArea.trim(), trackingEnabled: false });
     }
+    if (nextSetup.storeState) chooseStoreDirectoryState(nextSetup.storeState);
     if (complete) applySmartSetupMode(recommendation, nextSetup);
     setSmartSetupOpen(false);
     setSmartSetupStep(SMART_SETUP_STEPS[0]);
@@ -12745,6 +12772,7 @@ export default function App() {
       latestHistorySnapshot: "",
       currentPriceWithoutHistory: null,
       vaStores: null,
+      directoryStateStores: null,
       lastPriceChecked: "",
       productsMissingImages: null,
       productsMissingMarketPrices: null,
@@ -12784,6 +12812,10 @@ export default function App() {
     nextStatus.vaStores = await countQuery(
       "Virginia stores",
       supabase.from("stores").select("id", { count: "exact", head: true }).in("state", ["Virginia", "VA"])
+    );
+    nextStatus.directoryStateStores = await countQuery(
+      "VA, MD, DC and NC stores",
+      supabase.from("stores").select("id", { count: "exact", head: true }).in("state", STORE_DIRECTORY_STATES.flatMap((state) => [state.name, state.code]))
     );
     const missingImageNulls = await countQuery(
       "Products missing image_url nulls",
@@ -14541,6 +14573,16 @@ export default function App() {
   function updateLocationSettings(updates) {
     if (blockGuestSave()) return;
     setLocationSettings((current) => ({ ...current, ...updates, lastUpdated: new Date().toISOString() }));
+  }
+
+  function chooseStoreDirectoryState(value) {
+    const code = normalizeStoreStateCode(value);
+    if (!code) return;
+    if (guestPreviewActive) {
+      setGuestStoreState(code);
+      return;
+    }
+    setLocationSettings((current) => ({ ...current, storeState: code, lastUpdated: new Date().toISOString() }));
   }
 
   function saveManualLocation() {
@@ -16571,8 +16613,8 @@ export default function App() {
   }, [localCatalogSeedProducts]);
 
   useEffect(() => {
-    virginiaStoreSeedStatusRef.current = virginiaStoreSeedStatus;
-  }, [virginiaStoreSeedStatus]);
+    storeDirectorySeedStatusRef.current = storeDirectorySeedStatus;
+  }, [storeDirectorySeedStatus]);
 
   function loadLocalCatalogSeed(reason = "catalog") {
     if (localCatalogSeedStatusRef.current === "ready") return Promise.resolve(localCatalogSeedProductsRef.current);
@@ -16607,32 +16649,34 @@ export default function App() {
     return localCatalogSeedLoadRef.current;
   }
 
-  function loadVirginiaStoreSeed(reason = "stores") {
-    if (virginiaStoreSeedStatusRef.current === "ready") return Promise.resolve();
-    if (virginiaStoreSeedLoadRef.current) return virginiaStoreSeedLoadRef.current;
-    virginiaStoreSeedStatusRef.current = "loading";
-    setVirginiaStoreSeedStatus("loading");
-    virginiaStoreSeedLoadRef.current = import("./data/virginiaStoresSeed")
-      .then((storeModule) => (
-        typeof storeModule.loadVirginiaStoresSeed === "function"
-          ? storeModule.loadVirginiaStoresSeed()
-          : storeModule.VIRGINIA_STORES_SEED
-      ))
+  // Loads store directories one state at a time and appends them, so a
+  // Virginia user never downloads the Maryland or North Carolina files.
+  const loadStoreDirectorySeed = useCallback(function loadStates(reason = "stores", stateCodes = [DEFAULT_STORE_STATE_CODE]) {
+    const missing = stateCodes.filter((code) => !storeDirectoryLoadedStatesRef.current.has(code));
+    if (!missing.length) return Promise.resolve();
+    if (storeDirectorySeedLoadRef.current) {
+      return storeDirectorySeedLoadRef.current.then(() => loadStates(reason, stateCodes));
+    }
+    storeDirectorySeedStatusRef.current = "loading";
+    setStoreDirectorySeedStatus("loading");
+    storeDirectorySeedLoadRef.current = import("./data/storeDirectory")
+      .then((storeModule) => storeModule.loadStoreDirectories(missing))
       .then((seedStores) => {
-        setVirginiaStoreSeed(Array.isArray(seedStores) ? seedStores : []);
-        virginiaStoreSeedStatusRef.current = "ready";
-        setVirginiaStoreSeedStatus("ready");
+        missing.forEach((code) => storeDirectoryLoadedStatesRef.current.add(code));
+        setStoreDirectorySeed((current) => [...current, ...(Array.isArray(seedStores) ? seedStores : [])]);
+        storeDirectorySeedStatusRef.current = "ready";
+        setStoreDirectorySeedStatus("ready");
       })
       .catch((error) => {
-        console.warn(`Could not load Virginia store directory for ${reason}`, error);
-        virginiaStoreSeedStatusRef.current = "error";
-        setVirginiaStoreSeedStatus("error");
+        console.warn(`Could not load the ${missing.join(", ")} store directory for ${reason}`, error);
+        storeDirectorySeedStatusRef.current = "error";
+        setStoreDirectorySeedStatus("error");
       })
       .finally(() => {
-        virginiaStoreSeedLoadRef.current = null;
+        storeDirectorySeedLoadRef.current = null;
       });
-    return virginiaStoreSeedLoadRef.current;
-  }
+    return storeDirectorySeedLoadRef.current;
+  }, []);
 
   const catalogWorkflowWarmNeeded = Boolean(
     quickAddMenuOpen ||
@@ -16672,6 +16716,9 @@ export default function App() {
     (activeTab === "adminReview" && adminHeavyDataVisible) ||
     (activeTab === "dashboard" && scoutSubTabTarget?.tab === "stores")
   );
+  // Admin review checks every directory state; everyone else gets their own.
+  const storeSeedStates = activeTab === "adminReview" ? STORE_DIRECTORY_STATE_CODES : [storeDirectoryState];
+  const storeSeedStatesKey = storeSeedStates.join(",");
 
   useEffect(() => {
     if (!catalogSeedWarmNeeded) return undefined;
@@ -16696,7 +16743,7 @@ export default function App() {
   useEffect(() => {
     if (!storeSeedWarmNeeded) return undefined;
     let scheduledId = null;
-    const load = () => void loadVirginiaStoreSeed("store directory route");
+    const load = () => void loadStoreDirectorySeed("store directory route", storeSeedStatesKey.split(","));
     if (typeof window !== "undefined" && "requestIdleCallback" in window) {
       scheduledId = window.requestIdleCallback(load, { timeout: 900 });
     } else if (typeof window !== "undefined") {
@@ -16710,7 +16757,7 @@ export default function App() {
         else window.clearTimeout(scheduledId);
       }
     };
-  }, [storeSeedWarmNeeded]);
+  }, [storeSeedWarmNeeded, storeSeedStatesKey, loadStoreDirectorySeed]);
 
   const calendarDataWarmNeeded = Boolean(
     activeTab === "scout" &&
@@ -16798,6 +16845,7 @@ export default function App() {
         savedLocations: Array.isArray(saved.locationSettings?.savedLocations) ? saved.locationSettings.savedLocations : [],
         selectedSavedLocation: saved.locationSettings?.selectedSavedLocation || "",
         trackingEnabled: Boolean(saved.locationSettings?.trackingEnabled),
+        storeState: normalizeStoreStateCode(saved.locationSettings?.storeState),
         lastUpdated: saved.locationSettings?.lastUpdated || "",
       });
       setItems(migrateRecordsToWorkspace(saved.items || [], personalWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceState.workspaces));
@@ -20767,7 +20815,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   }
 
   function scoutScanStoreCandidates() {
-    const rows = [...(scoutSnapshot.stores || []), ...(virginiaStoreSeed || []), ...SCOUT_KNOWN_LOCAL_STORE_SEED];
+    const rows = [...(scoutSnapshot.stores || []), ...(storeDirectorySeed || []), ...SCOUT_KNOWN_LOCAL_STORE_SEED];
     const seen = new Set();
     return rows.filter((store, index) => {
       const key = getScoutQuickStoreId(store) || getStoreMapStoreId(store, index);
@@ -33356,7 +33404,7 @@ function renderForgeBusinessLedgerPanel() {
   const dailyCompletedCount = DAILY_TIDE_ACTIONS.filter((key) => dailyTideToday.completedActions?.[key]).length;
   const nextDailyTideTask = DAILY_TIDE_TASKS.find((task) => !dailyTideToday.completedActions?.[task.key]) || null;
   const activeDailyTideTask = DAILY_TIDE_TASKS.find((task) => task.key === dailyTideModalTask) || nextDailyTideTask;
-  const bestScoutStore = scoutSnapshot.stores?.[0] || virginiaStoreSeed[0] || {};
+  const bestScoutStore = scoutSnapshot.stores?.[0] || storeDirectorySeed[0] || {};
   const bestMarketMover = recentMarketUpdates[0] || workspaceWatchlist[0] || null;
   const latestVaultActivityItem = [...activeVaultItems]
     .sort((a, b) => new Date(b.createdAt || b.created_at || 0) - new Date(a.createdAt || a.created_at || 0))[0];
@@ -33850,7 +33898,8 @@ function renderForgeBusinessLedgerPanel() {
 
   function watchCalendarAreaMatches(event = {}) {
     if (event.locationType === "online" || event.locationType === "release") return true;
-    const area = WATCH_CALENDAR_AREAS.find((entry) => entry.value === watchCalendarArea) || WATCH_CALENDAR_AREAS[0];
+    const areaKey = storeDirectoryState === "VA" ? watchCalendarArea : `all_${storeDirectoryState.toLowerCase()}`;
+    const area = WATCH_CALENDAR_AREAS.find((entry) => entry.value === areaKey) || WATCH_CALENDAR_AREAS[0];
     if (!area || area.value === "all_virginia") return true;
     const locationText = [event.city, event.region, event.address, event.title].filter(Boolean).join(" ").toLowerCase();
     if (!locationText) return true;
@@ -33944,7 +33993,7 @@ function renderForgeBusinessLedgerPanel() {
       if (tidepoolFilter === "Needs Review" && !adminEditModeActive) return false;
       if (tidepoolFilter === "Feed" || tidepoolFilter === "Latest") return true;
       if (tidepoolFilter === "Following") return post.saved || post.followed || post.userId === (currentUserProfile.userId || "local-beta");
-      if (tidepoolFilter === "Local" || tidepoolFilter === "Nearby") return !post.state || String(post.state).toUpperCase() === "VA" || Boolean(post.city || post.zip);
+      if (tidepoolFilter === "Local" || tidepoolFilter === "Nearby") return !post.state || normalizeStoreStateCode(post.state) === storeDirectoryState || Boolean(post.city || post.zip);
       if (tidepoolFilter === "Restock Discussion") return normalizeTidepoolPostCategory(post.postType) === "Restock Discussion";
       if (tidepoolFilter === "Trade Night") return normalizeTidepoolPostCategory(post.postType) === "Trade Night" || /trade|league|meetup|swap|binder/i.test(`${post.title || ""} ${post.body || ""}`);
       if (tidepoolFilter === "Family-Friendly Shop") return normalizeTidepoolPostCategory(post.postType) === "Family-Friendly Shop";
@@ -33959,6 +34008,7 @@ function renderForgeBusinessLedgerPanel() {
     .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)), [
     tidepoolPostsWithCounts,
     tidepoolFilter,
+    storeDirectoryState,
     adminEditModeActive,
     currentUserProfile.userId,
   ]);
@@ -39133,6 +39183,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   placeholder="ZIP or city"
                 />
               </Field>
+              <Field label="Restocks state" help="Which state's stores Restocks shows. Code 3 TCG covers Virginia, Maryland, Washington, DC and North Carolina.">
+                <select className="drawer-field" value={storeDirectoryState} onChange={(event) => chooseStoreDirectoryState(event.target.value)}>
+                  {STORE_DIRECTORY_STATES.map((state) => <option key={state.code} value={state.code}>{state.shortName}</option>)}
+                </select>
+              </Field>
               <Field label="Recommended setup" help={INFO_TOOLTIP_COPY.smartSetup}>
                 <input className="drawer-field" value={`${smartSetupRecommendation.label} - ${primaryMode}`} readOnly />
               </Field>
@@ -39354,6 +39409,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <label className="settings-field-group">
                   <span>Home area / region</span>
                   <input className="drawer-field" value={smartSetupDraft.homeArea} onChange={(event) => updateSmartSetupDraft({ homeArea: event.target.value })} placeholder="ZIP, city, or region" />
+                </label>
+                <label className="settings-field-group">
+                  <span>Restocks state</span>
+                  <select className="drawer-field" value={smartSetupDraft.storeState || ""} onChange={(event) => updateSmartSetupDraft({ storeState: event.target.value })}>
+                    <option value="">{detectStoreStateFromText(smartSetupDraft.homeArea) ? `Match my home area (${storeStateShortName(detectStoreStateFromText(smartSetupDraft.homeArea))})` : "Match my home area"}</option>
+                    {STORE_DIRECTORY_STATES.map((state) => <option key={state.code} value={state.code}>{state.shortName}</option>)}
+                  </select>
                 </label>
                 <label className="settings-field-group">
                   <span>Favorite stores</span>
@@ -40990,7 +41052,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function isAdminStoreDirectoryRecord(targetId) {
-    return [...virginiaStoreSeed, ...SCOUT_KNOWN_LOCAL_STORE_SEED].some((store) => getStoreMapStoreId(store) === targetId)
+    return [...storeDirectorySeed, ...SCOUT_KNOWN_LOCAL_STORE_SEED].some((store) => getStoreMapStoreId(store) === targetId)
       || getScoutQuickStores({ admin: true }).some((store) => store.source === "scout-report" && getStoreMapStoreId(store) === targetId);
   }
 
@@ -46304,7 +46366,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     ].includes(normalizedView) ? normalizedView : "welcome";
     const viewRows = [
       { key: "welcome", label: "Welcome", helper: "Mission and beta path" },
-      { key: "state-check", label: "State Check", helper: "Virginia-first access" },
+      { key: "state-check", label: "State Check", helper: `${LAUNCH_STATES_LABEL} first` },
       { key: "waitlist", label: "Waitlist", helper: "Expansion signal" },
       { key: "choose-role", label: "Choose Role", helper: "Collector, family, seller, shop partner" },
       { key: "family-setup", label: "Family Setup", helper: "Parent-guided defaults" },
@@ -46326,8 +46388,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { title: "Keep it safe", body: "Restocks, Community, Spark, and Parent Center avoid private child data and exploit-friendly details.", status: "Family first" },
     ];
     const stateRows = [
-      { title: "Virginia", body: "Virginia users can continue into beta review.", status: "Current launch" },
-      { title: "Outside Virginia", body: "Join the waitlist so we know what states to add next.", status: "Waitlist" },
+      { title: LAUNCH_STATES_LABEL, body: `Collectors in ${LAUNCH_STATES_LABEL} can continue into beta review.`, status: "Current launch" },
+      { title: "Other states", body: "Join the waitlist so we know what states to add next.", status: "Waitlist" },
       { title: "State requests", body: "Requests help decide where Code 3 TCG opens next; no access is guaranteed.", status: "Planning signal" },
     ];
     const firstStoreRows = [
@@ -46359,13 +46421,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       },
       "state-check": {
         kicker: "State Check",
-        title: "We are launching in Virginia first.",
-        body: "We're launching in Virginia first so Code 3 TCG can stay safe, fair, and useful for families.",
-        badge: "Virginia first",
+        title: `We are launching in ${LAUNCH_STATES_LABEL} first.`,
+        body: `We're launching in ${LAUNCH_STATES_LABEL} first so Code 3 TCG can stay safe, fair, and useful for families.`,
+        badge: "I-95 launch",
       },
       waitlist: {
         kicker: "Waitlist",
-        title: "Outside Virginia joins the expansion list.",
+        title: "Other states join the expansion list.",
         body: "Out-of-state interest is kept as a planning signal only. This preview does not submit a real waitlist request.",
         badge: "Mock only",
       },
@@ -46416,7 +46478,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       viewKey === "family-setup" ? "Parent-guided setup" :
       viewKey === "notifications" ? "Notification choices" :
       viewKey === "permission-needed" ? "Protected access examples" :
-      viewKey === "state-check" || viewKey === "waitlist" ? "Virginia-first rules" :
+      viewKey === "state-check" || viewKey === "waitlist" ? "Launch-state rules" :
       "Setup guidance"
     );
     const setView = (key) => {
@@ -46465,7 +46527,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <p className="section-kicker">{currentCopy.kicker}</p>
             <h2>{currentCopy.title}</h2>
             <p>{currentCopy.body}</p>
-            <p className="compact-subtitle">Fair collecting. Kid-friendly access. Trusted community. Virginia-first launch preview.</p>
+            <p className="compact-subtitle">Fair collecting. Kid-friendly access. Trusted community. {LAUNCH_STATES_LABEL} launch preview.</p>
           </div>
           <span className="status-badge">{currentCopy.badge}</span>
         </div>
@@ -47332,6 +47394,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <button type="button" className="drawer-link" onClick={saveManualLocation}>Save area</button>
               <button type="button" className="secondary-button" onClick={disableLocationTracking}>Turn off device location</button>
             </div>
+          </article>
+          <article className="settings-preference-panel">
+            <span>Restocks state</span>
+            <strong>{storeStateShortName(storeDirectoryState)}</strong>
+            <p>{storeDirectoryStateSource === "detected" ? "Matched from your home area. Pick a state to change it." : "Restocks shows stores and reports for this state."}</p>
+            <select className="drawer-field" aria-label="Restocks state" value={storeDirectoryState} onChange={(event) => chooseStoreDirectoryState(event.target.value)}>
+              {STORE_DIRECTORY_STATES.map((state) => <option key={state.code} value={state.code}>{state.shortName}</option>)}
+            </select>
           </article>
           <article className="settings-preference-panel">
             <span>Favorite stores</span>
@@ -52076,6 +52146,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               adminMode={adminEditModeActive}
               supabase={supabase}
               isSupabaseConfigured={isSupabaseConfigured}
+              storeDirectoryState={storeDirectoryState}
+              storeDirectoryStateSource={storeDirectoryStateSource}
+              onStoreDirectoryStateChange={chooseStoreDirectoryState}
               mapCatalogRow={mapCatalog}
               money={money}
               openBeaconCenter={openBeaconCenter}

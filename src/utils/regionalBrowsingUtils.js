@@ -1,4 +1,5 @@
 import { normalizeStoreLocationType } from "./storeExpansionUtils.js";
+import { ALL_STORE_REGIONS, STORE_DIRECTORY_STATES, getStoreDirectoryState, storeStateForRegion } from "../data/storeStates.js";
 
 export const REGIONAL_BROWSING_EMPTY_COPY = {
   noStores: "No stores in this area yet. Suggest a store or broaden the area to keep expanding Code 3 TCG safely.",
@@ -8,14 +9,11 @@ export const REGIONAL_BROWSING_EMPTY_COPY = {
   noFavorites: "No favorite stores yet. Follow stores from their profiles to keep nearby signals together.",
 };
 
-const STATE_ALIASES = new Map([
-  ["va", "Virginia"],
-  ["virginia", "Virginia"],
-  ["md", "Maryland"],
-  ["maryland", "Maryland"],
-  ["nc", "North Carolina"],
-  ["north carolina", "North Carolina"],
-]);
+const STATE_ALIASES = new Map(STORE_DIRECTORY_STATES.flatMap((state) => [
+  [state.code.toLowerCase(), state.name],
+  [state.name.toLowerCase(), state.name],
+  [normalizeKey(state.shortName), state.name],
+]));
 
 const CITY_ALIASES = new Map([
   ["virginia beach", "Virginia Beach"],
@@ -52,25 +50,7 @@ const REGION_HINTS = [
     label: "Fredericksburg",
     pattern: /\b(fredericksburg|spotsylvania|stafford)\b/i,
   },
-  {
-    label: "Maryland",
-    pattern: /\b(maryland|baltimore|annapolis|rockville|bethesda|silver spring)\b/i,
-  },
-  {
-    label: "North Carolina",
-    pattern: /\b(north carolina|raleigh|durham|charlotte|outer banks|obx|cary|greensboro)\b/i,
-  },
 ];
-
-const REGION_STATE_LABELS = new Map([
-  ["Hampton Roads / 757", "Virginia"],
-  ["Richmond / Central Virginia", "Virginia"],
-  ["Northern Virginia", "Virginia"],
-  ["Fredericksburg", "Virginia"],
-  ["Other Virginia", "Virginia"],
-  ["Maryland", "Maryland"],
-  ["North Carolina", "North Carolina"],
-]);
 
 function firstValue(...values) {
   return values.find((value) => value !== undefined && value !== null && String(value).trim() !== "") || "";
@@ -104,25 +84,47 @@ export function normalizeCityLabel(value = "") {
   return CITY_ALIASES.get(key) || titleCase(key);
 }
 
+function cityPattern(city) {
+  return new RegExp(`\\b${normalizeKey(city)}\\b`);
+}
+
+// Region from directory city hints: the stated state first (any word in the
+// text), then other states only on an exact city match.
+function directoryRegionForCity(text = "", city = "", stateName = "") {
+  const home = getStoreDirectoryState(stateName);
+  const homeRegion = home?.regions.find((region) => region.cities.some((hint) => cityPattern(hint).test(text)));
+  if (homeRegion) return homeRegion.name;
+  if (!city) return "";
+  const other = STORE_DIRECTORY_STATES.filter((entry) => entry !== home)
+    .flatMap((entry) => entry.regions)
+    .find((region) => region.cities.some((hint) => normalizeKey(hint) === city));
+  return other?.name || "";
+}
+
 export function normalizeRegionLabel(value = "", context = {}) {
   const explicit = normalizeKey(value);
   const city = normalizeKey(context.city);
   const state = normalizeKey(context.state);
   const text = compactText(explicit, city, state, context.area, context.county);
   if (!text) return "";
+  const known = ALL_STORE_REGIONS.find((region) => normalizeKey(region) === explicit);
+  if (known) return known;
   const hinted = REGION_HINTS.find((entry) => entry.pattern.test(text));
   if (hinted) return hinted.label;
-  if (STATE_ALIASES.get(state) === "Virginia" || /virginia/.test(text)) return "Other Virginia";
-  if (STATE_ALIASES.get(state)) return STATE_ALIASES.get(state);
+  const stateName = STATE_ALIASES.get(state) || (/\bvirginia\b/.test(text) && !/west virginia/.test(text) ? "Virginia" : "");
+  const byCity = directoryRegionForCity(text, city, stateName);
+  if (byCity) return byCity;
+  const directoryState = getStoreDirectoryState(stateName);
+  if (directoryState) return directoryState.otherRegion;
   return titleCase(explicit || state || city || "Other");
 }
 
+// Directory regions belong to one state, so a store whose region came from
+// another state's city takes that state (inconsistent source data).
 function reconcileStateForRegion(state = "", region = "") {
-  const inferredState = REGION_STATE_LABELS.get(region);
+  const inferredState = getStoreDirectoryState(storeStateForRegion(region))?.name || "";
   if (!inferredState) return state;
-  if (!state) return inferredState;
-  if ((region === "Maryland" || region === "North Carolina") && state !== inferredState) return inferredState;
-  return state;
+  return inferredState;
 }
 
 export function normalizeStoreDisplayLabel(store = {}) {

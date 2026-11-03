@@ -31,7 +31,7 @@ import { hasVerifiedScoutReportStatus } from "../utils/scoutReportVerification.m
 import { AppNavIcon, CommandBoardSection, CommandBoardV4, CommandMetricGrid } from "../components/command-system";
 import "./scout-reports.css";
 import { getStoreGroup, normalizeStoreGroup, STORE_GROUP_ORDER } from "../utils/storeGroupingUtils";
-import { dedupeStoresByChainAddress, normalizeImportedStore, normalizeStateLabel, normalizeVirginiaRegion } from "../utils/storeImportUtils";
+import { dedupeStoresByChainAddress, normalizeImportedStore, normalizeStateLabel, normalizeStoreRegion } from "../utils/storeImportUtils";
 import { storeMatchesSearch, sortStores } from "../utils/storeSearchUtils";
 import {
   COMMUNITY_MOTTO_COPY,
@@ -47,8 +47,19 @@ import {
 import { buildSuggestedRoute, confidenceLabel, explainRouteChoice, numericDistance } from "../utils/routeUtils";
 import { SUGGESTION_TYPES, submitSuggestion } from "../utils/suggestionReviewUtils";
 import { safeReadBrowserJson, sanitizeScoutLocalData } from "../utils/betaDataCleanup";
-import { DEFAULT_VIRGINIA_REGION, POKEMON_STOCK_LIKELIHOOD_OPTIONS, VIRGINIA_REGIONS, VIRGINIA_RETAILERS, VIRGINIA_STORE_STATE } from "../data/storeGroups";
-import { VIRGINIA_STORES_SEED, VIRGINIA_STORE_SEED_STATUS, loadVirginiaStoresSeed } from "../data/virginiaStoresSeed";
+import { POKEMON_STOCK_LIKELIHOOD_OPTIONS, STORE_RETAILERS } from "../data/storeGroups";
+import { VIRGINIA_STORES_SEED, VIRGINIA_STORE_SEED_STATUS } from "../data/virginiaStoresSeed";
+import { loadStoreDirectories } from "../data/storeDirectory";
+import {
+  DEFAULT_STORE_STATE_CODE,
+  STORE_DIRECTORY_STATES,
+  defaultStoreRegionForState,
+  getStoreDirectoryState,
+  normalizeStoreStateCode,
+  storeRegionsForState,
+  storeStateForRegion,
+  storeStateName,
+} from "../data/storeStates";
 import { BEST_BUY_ALERT_TYPES, BEST_BUY_NIGHTLY_DEFAULTS, BEST_BUY_STOCK_STATUSES } from "../data/bestBuyStockSeed";
 import { SCOUT_CONFIDENCE_LEVELS, SCOUT_HISTORICAL_INTEL_SEED, SCOUT_SOURCE_TYPES, SCOUT_STORE_ALIASES, SCOUT_VISIBILITY_COPY, buildScoutRestockPatterns } from "../data/scoutRestockIntelSeed";
 import { DROP_RADAR_GUESS_LOCKED_MESSAGE, MIN_SCOUT_POINTS_FOR_GUESS, canSubmitScoutGuess, getScoutPoints, shouldUseDropRadarSeed } from "../utils/dropRadarUtils.mjs";
@@ -201,8 +212,11 @@ function makeScoutId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-const STATEWIDE_SEED_STORES = VIRGINIA_STORES_SEED;
-const STORE_STATE_OPTIONS = ["All", VIRGINIA_STORE_STATE];
+// Hand-curated Virginia seeds, used if the Virginia directory file fails to load.
+const VIRGINIA_FALLBACK_STORES = VIRGINIA_STORES_SEED;
+const STORE_STATE_OPTIONS = ["All", ...STORE_DIRECTORY_STATES.map((state) => state.name)];
+// Below this many reports, an area gets the "few reports here yet" note.
+const FEW_AREA_REPORTS = 3;
 const STORE_REVIEW_QUEUE_LABELS = [
   "Missing store suggestions",
   "Duplicate store reports",
@@ -212,11 +226,11 @@ const STORE_REVIEW_QUEUE_LABELS = [
   "Pokemon stock likelihood suggestions",
 ];
 
-function createBlankStoreForm() {
+function createBlankStoreForm(stateCode = DEFAULT_STORE_STATE_CODE) {
   return {
     country: "United States",
-    state: VIRGINIA_STORE_STATE,
-    region: DEFAULT_VIRGINIA_REGION,
+    state: storeStateName(stateCode),
+    region: defaultStoreRegionForState(stateCode),
     name: "",
     storeName: "",
     nickname: "",
@@ -1286,7 +1300,15 @@ export default function Scout({
   onEditReport = null,
   onReturnToReport = null,
   onOpenFlipScout = null,
+  storeDirectoryState = DEFAULT_STORE_STATE_CODE,
+  storeDirectoryStateSource = "default",
+  onStoreDirectoryStateChange = null,
 }) {
+  // The user's Restocks state (picked or matched from their home area).
+  const homeState = getStoreDirectoryState(storeDirectoryState) || getStoreDirectoryState(DEFAULT_STORE_STATE_CODE);
+  const homeStateName = homeState.name;
+  const homeRegion = homeState.defaultRegion;
+  const loadedDirectoryStatesRef = useRef(new Set([homeState.code]));
   const [stores, setStores] = useState([]);
   // A deduped directory can omit a saved record ID that still owns reports and sightings.
   const [storeDetailRecords, setStoreDetailRecords] = useState([]);
@@ -1296,9 +1318,9 @@ export default function Scout({
   const selectedStoreId = selectedStore?.id || selectedStoreTargetId;
   const [selectedMapStoreId, setSelectedMapStoreId] = useState("");
   const [scoutOverviewView, setScoutOverviewView] = useState("map");
-  const [selectedState, setSelectedState] = useState(VIRGINIA_STORE_STATE);
+  const [selectedState, setSelectedState] = useState(homeStateName);
   const [selectedChain, setSelectedChain] = useState("All");
-  const [selectedRegion, setSelectedRegion] = useState(DEFAULT_VIRGINIA_REGION);
+  const [selectedRegion, setSelectedRegion] = useState(homeRegion);
   const [selectedCity, setSelectedCity] = useState("All");
   const [selectedStoreType, setSelectedStoreType] = useState("All");
   const [storeFamilyFilter, setStoreFamilyFilter] = useState("all");
@@ -1345,7 +1367,7 @@ export default function Scout({
     locationName: "",
     address: "",
     city: "",
-    state: "VA",
+    state: homeState.code,
     zip: "",
     onlineEvent: false,
     eventLink: "",
@@ -1496,8 +1518,8 @@ export default function Scout({
     retailer: "",
     address: "",
     city: "",
-    region: DEFAULT_VIRGINIA_REGION,
-    state: VIRGINIA_STORE_STATE,
+    region: homeRegion,
+    state: homeStateName,
     zip: "",
     notes: "",
   });
@@ -1734,7 +1756,9 @@ export default function Scout({
 
   async function loadStores() {
     if (BETA_LOCAL_SCOUT) {
-      const statewideSeedStores = await loadVirginiaStoresSeed().catch(() => STATEWIDE_SEED_STORES);
+      const directoryStates = [...loadedDirectoryStatesRef.current];
+      const statewideSeedStores = await loadStoreDirectories(directoryStates)
+        .catch(() => (directoryStates.includes("VA") ? VIRGINIA_FALLBACK_STORES : []));
       let storageError = null;
       let envelope = {};
       try { envelope = readScoutStoreEnvelope(); } catch (error) { storageError = error; }
@@ -1858,6 +1882,23 @@ export default function Scout({
   useEffect(() => {
     loadStores();
   }, []);
+
+  // Follow the user's Restocks state when it changes in settings or onboarding.
+  const previousHomeStateRef = useRef(homeState.code);
+  useEffect(() => {
+    if (previousHomeStateRef.current === homeState.code) return;
+    previousHomeStateRef.current = homeState.code;
+    setSelectedState(homeStateName);
+    setSelectedRegion(homeRegion);
+  }, [homeState.code, homeStateName, homeRegion]);
+
+  // Load a state's directory the first time it is selected.
+  useEffect(() => {
+    const code = normalizeStoreStateCode(selectedState);
+    if (!code || loadedDirectoryStatesRef.current.has(code)) return;
+    loadedDirectoryStatesRef.current.add(code);
+    loadStores();
+  }, [selectedState]);
 
   useEffect(() => {
     if (selectedStoreId) {
@@ -2259,6 +2300,14 @@ function submitSharedDataSuggestion(input, setMessage) {
 
 
 
+// Region for a missing-store suggestion: a known region of its directory
+// state, or free text for states without a directory.
+function missingStoreFormRegion(form = {}) {
+  const regions = storeRegionsForState(form.state);
+  if (regions.length) return regions.includes(form.region) ? form.region : defaultStoreRegionForState(form.state);
+  return storeStateForRegion(form.region) ? "" : (form.region || "");
+}
+
 function submitMissingStoreForReview(event) {
   event.preventDefault();
   const name = missingStoreForm.name.trim();
@@ -2276,9 +2325,9 @@ function submitMissingStoreForReview(event) {
     storeGroup: missingStoreForm.retailer || "Other",
     address: missingStoreForm.address,
     city: missingStoreForm.city,
-    // A91 (2026-11-01): stores outside Virginia can be suggested too.
-    state: missingStoreForm.state || VIRGINIA_STORE_STATE,
-    region: missingStoreForm.state && missingStoreForm.state !== VIRGINIA_STORE_STATE ? (missingStoreForm.region === DEFAULT_VIRGINIA_REGION ? "" : missingStoreForm.region) : (missingStoreForm.region || DEFAULT_VIRGINIA_REGION),
+    // A91 (2026-11-01): stores outside the directory states can be suggested too.
+    state: missingStoreForm.state || homeStateName,
+    region: missingStoreFormRegion(missingStoreForm),
     zip: missingStoreForm.zip,
     notes: missingStoreForm.notes,
     source: "user-review",
@@ -2299,7 +2348,7 @@ function submitMissingStoreForReview(event) {
     notes: missingStoreForm.notes || "Submitted from Restocks missing store flow.",
   }, setError);
   if (!suggestion) return;
-  setMissingStoreForm({ name: "", retailer: "", address: "", city: "", region: DEFAULT_VIRGINIA_REGION, zip: "", notes: "" });
+  setMissingStoreForm({ name: "", retailer: "", address: "", city: "", region: homeRegion, state: homeStateName, zip: "", notes: "" });
   setMissingStoreModalOpen(false);
   setError("Missing store submitted for admin review. It will not appear publicly until approved.");
 }
@@ -2500,7 +2549,7 @@ function resetEventForm(nextHostName = scoutProfile.displayName || "Local Restoc
     locationName: "",
     address: "",
     city: "",
-    state: "VA",
+    state: homeState.code,
     zip: "",
     onlineEvent: false,
     eventLink: "",
@@ -2816,10 +2865,10 @@ function routeMapUrl(route) {
     if (selectedStore) {
       const normalizedSelectedStore = normalizeStoreExpansionFields(selectedStore);
       setEditStoreForm({
-        ...createBlankStoreForm(),
+        ...createBlankStoreForm(homeState.code),
         country: normalizedSelectedStore.country || "United States",
-        state: normalizeStateLabel(normalizedSelectedStore.state || VIRGINIA_STORE_STATE),
-        region: normalizeVirginiaRegion(normalizedSelectedStore.region || DEFAULT_VIRGINIA_REGION),
+        state: normalizeStateLabel(normalizedSelectedStore.state || homeStateName),
+        region: normalizeStoreRegion(normalizedSelectedStore.region || defaultStoreRegionForState(normalizedSelectedStore.state || homeState.code)),
         name: normalizedSelectedStore.name || "",
         storeName: normalizedSelectedStore.storeName || normalizedSelectedStore.store_name || normalizedSelectedStore.name || "",
         nickname: normalizedSelectedStore.nickname || "",
@@ -2890,8 +2939,8 @@ function buildStorePayloadFromForm(form = {}, overrides = {}) {
     ...overrides,
   }, {
     country: "United States",
-    state: VIRGINIA_STORE_STATE,
-    region: DEFAULT_VIRGINIA_REGION,
+    state: form.state || homeStateName,
+    region: form.region || defaultStoreRegionForState(form.state || homeState.code),
     source: "manual-admin",
   });
   const expandedRetailer = normalizeStoreExpansionFields({ ...retailer, ...overrides });
@@ -2899,8 +2948,8 @@ function buildStorePayloadFromForm(form = {}, overrides = {}) {
     ...expandedRetailer,
     ...overrides,
     country: expandedRetailer.country || "United States",
-    state: normalizeStateLabel(expandedRetailer.state || VIRGINIA_STORE_STATE),
-    region: normalizeVirginiaRegion(expandedRetailer.region || DEFAULT_VIRGINIA_REGION),
+    state: normalizeStateLabel(expandedRetailer.state || homeStateName),
+    region: normalizeStoreRegion(expandedRetailer.region || defaultStoreRegionForState(expandedRetailer.state || homeState.code)),
     name: expandedRetailer.name || expandedRetailer.storeName,
     storeName: expandedRetailer.storeName || expandedRetailer.name,
     chain: expandedRetailer.chain || expandedRetailer.retailer,
@@ -2936,7 +2985,7 @@ async function handleCreateStore(e) {
     setStores(nextStores);
     setSelectedStoreId(newStore.id);
     setStoreDirectoryView("detail");
-    setStoreForm(createBlankStoreForm());
+    setStoreForm(createBlankStoreForm(homeState.code));
     setError("Store added to the local admin directory. Apply the statewide store migration/import before using this for production data.");
     return;
   }
@@ -2959,7 +3008,7 @@ async function handleCreateStore(e) {
       notes: "Submitted from watched store form.",
     }, setError);
     if (!suggestion) return;
-    setStoreForm(createBlankStoreForm());
+    setStoreForm(createBlankStoreForm(homeState.code));
     setError("Store submitted for admin review. It will not appear publicly until approved.");
     return;
   }
@@ -2974,7 +3023,7 @@ async function handleCreateStore(e) {
       priority: false,
     });
 
-    setStoreForm(createBlankStoreForm());
+    setStoreForm(createBlankStoreForm(homeState.code));
 
     await loadStores();
   } catch (err) {
@@ -3545,15 +3594,20 @@ async function handleUpdateStore(e) {
       store.distanceFromUser ||
       store.distance ||
       store.lastReportDate ||
-      store.region === DEFAULT_VIRGINIA_REGION
+      store.region === homeRegion
       )
     ), "distance").slice(0, 3);
-  }, [stores, adminMode]);
+  }, [stores, adminMode, homeRegion]);
 
   const regionOptions = useMemo(() => {
-    const regions = Array.from(new Set([...VIRGINIA_REGIONS, ...stores.map((s) => normalizeVirginiaRegion(s.region)).filter(Boolean)]));
+    // Regions of the selected state, or of every loaded state for "All".
+    const stateStores = selectedState === "All" ? stores : stores.filter((s) => normalizeStateLabel(s.state) === selectedState);
+    const knownRegions = selectedState === "All"
+      ? [...loadedDirectoryStatesRef.current].flatMap((code) => storeRegionsForState(code))
+      : storeRegionsForState(selectedState);
+    const regions = Array.from(new Set([...knownRegions, ...stateStores.map((s) => normalizeStoreRegion(s.region)).filter(Boolean)]));
     return ["All", ...regions.filter((region) => region !== "All")];
-  }, [stores]);
+  }, [stores, selectedState]);
 
   const stateOptions = useMemo(() => {
     const states = Array.from(new Set([...STORE_STATE_OPTIONS, ...stores.map((s) => normalizeStateLabel(s.state)).filter(Boolean)]));
@@ -3584,7 +3638,7 @@ async function handleUpdateStore(e) {
       const storeGroup = getStoreGroup(normalizedStore);
       const matchesSearch = storeMatchesSearch(normalizedStore, storeSearch);
       const storeState = normalizeStateLabel(normalizedStore.state);
-      const storeRegion = normalizeVirginiaRegion(normalizedStore.region);
+      const storeRegion = normalizeStoreRegion(normalizedStore.region);
       const matchesState = selectedState === "All" || storeState === selectedState;
       const matchesChain = selectedChain === "All" || normalizedStore.chain === selectedChain || normalizedStore.retailer === selectedChain || storeGroup === selectedChain;
       const matchesRegion = selectedRegion === "All" || storeRegion === selectedRegion;
@@ -3620,7 +3674,7 @@ async function handleUpdateStore(e) {
     setStoreSearch("");
     setSelectedCity("All");
     setSelectedRegion("All");
-    setSelectedState(VIRGINIA_STORE_STATE);
+    setSelectedState(selectedState === "All" ? homeStateName : selectedState);
     setSelectedStoreType("All");
     setStoreFamilyFilter("all");
     setSelectedCounty("All");
@@ -3656,8 +3710,8 @@ async function handleUpdateStore(e) {
     setSelectedStoreId("");
     setSelectedChain("All");
     setStoreSearch("");
-    setSelectedRegion(DEFAULT_VIRGINIA_REGION);
-    setSelectedState(VIRGINIA_STORE_STATE);
+    setSelectedRegion(homeRegion);
+    setSelectedState(homeStateName);
     setStoreDirectoryView("landing");
   }
 
@@ -3727,17 +3781,18 @@ async function handleUpdateStore(e) {
   }, [stores, visibleReports, items]);
 
   const directoryStats = useMemo(() => {
-    const hamptonRoadsStores = stores.filter((store) => normalizeVirginiaRegion(store.region) === DEFAULT_VIRGINIA_REGION).length;
+    const homeRegionStores = stores.filter((store) => normalizeStoreRegion(store.region) === homeRegion).length;
+    const homeStateStores = stores.filter((store) => normalizeStateLabel(store.state) === homeStateName);
     const chains = new Set(stores.map((store) => store.chain || store.storeGroup || store.name).filter(Boolean));
     const militaryStores = stores.filter((store) => /nex|mcx|exchange|commissary|military|base|px|bx/i.test(`${store.chain || ""} ${store.name || ""} ${store.notes || ""}`)).length;
     return {
       totalStores: stores.length,
-      hamptonRoadsStores,
-      virginiaRegions: new Set(stores.map((store) => normalizeVirginiaRegion(store.region)).filter(Boolean)).size,
+      homeRegionStores,
+      homeStateRegions: new Set(homeStateStores.map((store) => normalizeStoreRegion(store.region)).filter(Boolean)).size,
       retailChains: chains.size,
       militaryStores,
     };
-  }, [stores]);
+  }, [stores, homeRegion, homeStateName]);
 
   const reportStoreMap = useMemo(
     () => Object.fromEntries(stores.map((store) => [store.id, store])),
@@ -3816,7 +3871,7 @@ async function handleUpdateStore(e) {
           eventFriendly,
           donationPartner,
           pricingFriendly,
-          locationLabel: [normalized.city || "Unknown area", normalizeVirginiaRegion(normalized.region || "") || normalizeStateLabel(normalized.state || VIRGINIA_STORE_STATE)].filter(Boolean).join(" / "),
+          locationLabel: [normalized.city || "Unknown area", normalizeStoreRegion(normalized.region || "") || normalizeStateLabel(normalized.state || homeStateName)].filter(Boolean).join(" / "),
         };
       })
       .sort((a, b) => {
@@ -3824,7 +3879,7 @@ async function handleUpdateStore(e) {
         if (b.recentCount !== a.recentCount) return b.recentCount - a.recentCount;
         return getStoreDisplayName(a.store).localeCompare(getStoreDisplayName(b.store));
       });
-  }, [stores, reportsByStore, adminMode, scoutNow]);
+  }, [stores, reportsByStore, adminMode, scoutNow, homeStateName]);
 
   const topTrustedShopProfiles = useMemo(() => trustedShopProfiles.slice(0, 4), [trustedShopProfiles]);
 
@@ -4335,7 +4390,7 @@ async function handleUpdateStore(e) {
         key: report.id || report.reportId || report.report_id || `scout-overview-report-${index}`,
         storeName: getStoreDisplayName(store) || report.storeName || report.store_name || "Local store",
         retailer: store.chain || store.retailer || report.retailer || getStoreGroup(store) || "Restock signal",
-        area: [store.city || report.city, normalizeVirginiaRegion(store.region || report.region)].filter(Boolean).join(" / "),
+        area: [store.city || report.city, normalizeStoreRegion(store.region || report.region)].filter(Boolean).join(" / "),
         summary: reportItems[0]
           ? summarizeReportItem(reportItems[0], money)
           : report.productName || report.product_name || report.note || report.notes || stockStatus || "Store signal needs details",
@@ -4373,7 +4428,7 @@ async function handleUpdateStore(e) {
       seen.add(id);
       const name = meta.name || row.name || getStoreDisplayName(store) || row.storeName || row.store_name || "Watched store";
       const retailer = meta.retailer || row.retailer || store.retailer || store.chain || getStoreGroup(store) || "Store";
-      const area = meta.area || row.area || [store.city || row.city, normalizeVirginiaRegion(store.region || row.region)].filter(Boolean).join(" / ") || "Area protected";
+      const area = meta.area || row.area || [store.city || row.city, normalizeStoreRegion(store.region || row.region)].filter(Boolean).join(" / ") || "Area protected";
       return {
         ...row,
         ...meta,
@@ -4391,7 +4446,8 @@ async function handleUpdateStore(e) {
       "distance"
     );
     const regionalStoreRows = activeStoreRows.filter((store) =>
-      selectedRegion === "All" || normalizeVirginiaRegion(store.region) === selectedRegion
+      (selectedState === "All" || normalizeStateLabel(store.state) === selectedState) &&
+      (selectedRegion === "All" || normalizeStoreRegion(store.region) === selectedRegion)
     );
     const mapDirectoryRows = [...(regionalStoreRows.length ? regionalStoreRows : activeStoreRows)].sort((left, right) => {
       const leftHasCoordinates = hasExactCoordinates(left);
@@ -4401,14 +4457,14 @@ async function handleUpdateStore(e) {
     });
     const topProfileStore = scoutOverviewTopProfile?.store || null;
     const mapTopProfile = topProfileStore && (
-      selectedRegion === "All" || normalizeVirginiaRegion(topProfileStore.region) === selectedRegion
+      selectedRegion === "All" || normalizeStoreRegion(topProfileStore.region) === selectedRegion
     ) ? scoutOverviewTopProfile : null;
     const candidateRows = [
       ...watchedStoreOverviewRows.map((store) => addMapRow(store, {
         id: store.id,
         store,
         watchlisted: true,
-        area: [store.city, normalizeVirginiaRegion(store.region)].filter(Boolean).join(" / "),
+        area: [store.city, normalizeStoreRegion(store.region)].filter(Boolean).join(" / "),
       })),
       mapTopProfile ? addMapRow(mapTopProfile.store, {
         id: mapTopProfile.store.id,
@@ -4422,7 +4478,7 @@ async function handleUpdateStore(e) {
           id: report.id || report.reportId || report.report_id || store.id,
           name: getStoreDisplayName(store) || report.storeName || report.store_name,
           retailer: store.chain || store.retailer || report.retailer,
-          area: [store.city || report.city, normalizeVirginiaRegion(store.region || report.region)].filter(Boolean).join(" / "),
+          area: [store.city || report.city, normalizeStoreRegion(store.region || report.region)].filter(Boolean).join(" / "),
           reportStatus: scoutReportStatusLabel(report),
           watchlisted: Boolean(store.favorite || store.watched || report.favoriteStore),
         });
@@ -4430,7 +4486,7 @@ async function handleUpdateStore(e) {
       ...mapDirectoryRows.slice(0, 16).map((store) => addMapRow(store, {
         id: store.id,
         store,
-        area: [store.city, normalizeVirginiaRegion(store.region)].filter(Boolean).join(" / "),
+        area: [store.city, normalizeStoreRegion(store.region)].filter(Boolean).join(" / "),
       })),
     ].filter(Boolean);
     return candidateRows
@@ -4442,7 +4498,7 @@ async function handleUpdateStore(e) {
         return String(left.name || "").localeCompare(String(right.name || ""));
       })
       .slice(0, 18);
-  }, [adminMode, scoutOverviewTopProfile, selectedRegion, stores, visibleAllReports, watchedStoreOverviewRows, getReportStore]);
+  }, [adminMode, scoutOverviewTopProfile, selectedRegion, selectedState, stores, visibleAllReports, watchedStoreOverviewRows, getReportStore]);
   if (selectedMapStoreId && !scoutOverviewMapRows.some((row) => String(row.id) === String(selectedMapStoreId))) {
     setSelectedMapStoreId("");
   }
@@ -4495,7 +4551,54 @@ async function handleUpdateStore(e) {
         detail: "Approved drops, shop events, and donation drives will appear here.",
         urgency: "planned",
       }];
-  const scoutOverviewRegionLabel = selectedRegion === "All" ? "Virginia" : selectedRegion;
+  const scoutOverviewStateLabel = selectedState === "All" ? "All states" : (getStoreDirectoryState(selectedState)?.shortName || selectedState);
+  const scoutOverviewRegionLabel = selectedRegion === "All" ? scoutOverviewStateLabel : selectedRegion;
+  // Reports tied to a store in the selected state and region; few or none
+  // means the area needs more local reporters before signals are useful.
+  const scoutAreaReportCount = visibleAllReports.filter((report) => {
+    const store = getReportStore(report);
+    const region = normalizeStoreRegion(store.region);
+    const stateCode = normalizeStoreStateCode(store.state) || storeStateForRegion(region);
+    if (selectedState !== "All" && stateCode !== normalizeStoreStateCode(selectedState)) return false;
+    return selectedRegion === "All" || region === selectedRegion;
+  }).length;
+
+  // Switches Restocks to another directory state and remembers it as the
+  // user's state when the app supports that.
+  function chooseDirectoryState(stateCode) {
+    const state = getStoreDirectoryState(stateCode);
+    if (!state) return;
+    setSelectedState(state.name);
+    setSelectedRegion(state.defaultRegion);
+    setSelectedCity("All");
+    if (typeof onStoreDirectoryStateChange === "function") onStoreDirectoryStateChange(state.code);
+  }
+
+  function renderStoreStatePicker() {
+    const pickerState = getStoreDirectoryState(selectedState) || homeState;
+    return (
+      <label className="scout-state-picker" style={{ ...styles.row, alignItems: "center", gap: "8px", margin: "8px 0" }}>
+        <span style={styles.tiny}>State</span>
+        <select style={{ ...styles.input, maxWidth: "220px" }} aria-label="Restocks state" value={pickerState.code} onChange={(event) => chooseDirectoryState(event.target.value)}>
+          {STORE_DIRECTORY_STATES.map((state) => <option key={state.code} value={state.code}>{state.shortName}</option>)}
+        </select>
+        {storeDirectoryStateSource === "detected" && pickerState.code === homeState.code ? <span style={styles.tiny}>Matched from your home area</span> : null}
+      </label>
+    );
+  }
+
+  function renderFewReportsNote() {
+    if (scoutAreaReportCount >= FEW_AREA_REPORTS) return null;
+    return (
+      <div className="scout-area-empty-note" role="status" style={{ ...styles.listCard, margin: "8px 0" }}>
+        <strong>{scoutAreaReportCount ? `Only ${scoutAreaReportCount} report${scoutAreaReportCount === 1 ? "" : "s"} in ${scoutOverviewRegionLabel} so far` : `No reports in ${scoutOverviewRegionLabel} yet`}</strong>
+        <p style={{ ...styles.tiny, margin: "4px 0 8px" }}>
+          Restock signals here get useful once a few local collectors report what they see. Stores are listed, but restock days and limits stay unknown until someone reports them.
+        </p>
+        <button type="button" style={styles.buttonSoft} onClick={() => setScoutSubTab("reports")}>{scoutAreaReportCount ? "Add a report" : "Be the first to report"}</button>
+      </div>
+    );
+  }
   const scoutCommandAreaLabel = scoutOverviewRegionLabel.replace(/\s*\/\s*757$/i, "");
   const scoutOverviewLocalStoreCount = scoutOverviewMapRows.length;
   const scoutOverviewMappedStoreCount = Math.min(scoutOverviewLocalStoreCount, 12);
@@ -4637,6 +4740,8 @@ async function handleUpdateStore(e) {
                   </div>
                   <strong>{scoutOverviewMappedStoreCount} mapped</strong>
                 </div>
+                {renderStoreStatePicker()}
+                {renderFewReportsNote()}
                 <div className="scout-command-map-stage">
                   {scoutOverviewView === "map" ? (
                     <ScoutTileMap
@@ -4840,9 +4945,9 @@ async function handleUpdateStore(e) {
               <select style={styles.input} aria-label="State" value={missingStoreForm.state} onChange={(event) => setMissingStoreForm((current) => ({ ...current, state: event.target.value }))}>
                 {MISSING_STORE_STATES.map((state) => <option key={state} value={state}>{state}</option>)}
               </select>
-              {missingStoreForm.state === VIRGINIA_STORE_STATE ? <select style={styles.input} aria-label="Virginia region" value={missingStoreForm.region} onChange={(event) => setMissingStoreForm((current) => ({ ...current, region: event.target.value }))}>
-                {VIRGINIA_REGIONS.map((region) => <option key={region} value={region}>{region}</option>)}
-              </select> : <input style={styles.input} value={missingStoreForm.region === DEFAULT_VIRGINIA_REGION ? "" : missingStoreForm.region} onChange={(event) => setMissingStoreForm((current) => ({ ...current, region: event.target.value }))} placeholder="Area or region (optional)" />}
+              {getStoreDirectoryState(missingStoreForm.state) ? <select style={styles.input} aria-label={`${missingStoreForm.state} region`} value={missingStoreFormRegion(missingStoreForm)} onChange={(event) => setMissingStoreForm((current) => ({ ...current, region: event.target.value }))}>
+                {storeRegionsForState(missingStoreForm.state).map((region) => <option key={region} value={region}>{region}</option>)}
+              </select> : <input style={styles.input} value={missingStoreFormRegion(missingStoreForm)} onChange={(event) => setMissingStoreForm((current) => ({ ...current, region: event.target.value }))} placeholder="Area or region (optional)" />}
               <textarea style={styles.textarea} value={missingStoreForm.notes} onChange={(event) => setMissingStoreForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Notes" />
               <div style={styles.row}>
                 <button type="submit" style={styles.buttonPrimary}>Submit for Review</button>
@@ -4929,7 +5034,7 @@ async function handleUpdateStore(e) {
                 rows={scoutOverviewMapRows}
                 compact={compact}
                 label="Restocks local restock map"
-                mapLabel="Virginia Restocks Radar"
+                mapLabel={`${scoutOverviewRegionLabel} Restocks Radar`}
                 emptyTitle="No coordinate-backed watched stores yet"
                 emptyDetail="Add or import stores with coordinates to plot real pins."
                 maxPins={12}
@@ -5030,16 +5135,16 @@ async function handleUpdateStore(e) {
         <CommandBoardSection
           className="scout-directory-coverage-card"
           kicker="Directory Coverage"
-          title="Virginia store coverage powers the restock map."
-          detail="Restocks uses reviewed store rows as the foundation for map pins, watched stores, report history, trusted shops, and family-safe route planning. Hampton Roads / 757 remains the default home region."
+          title={`${homeState.shortName} store coverage powers the restock map.`}
+          detail={`Restocks uses reviewed store rows as the foundation for map pins, watched stores, report history, trusted shops, and family-safe route planning. ${homeRegion} is your home region.`}
           action={<button type="button" className="secondary-button" onClick={() => setScoutSubTab("stores")}>Open directory</button>}
         >
           <CommandMetricGrid
             ariaLabel="Restocks directory coverage"
             items={[
               { key: "stores", label: "Total Stores", value: directoryStats.totalStores, detail: "Saved directory rows" },
-              { key: "regions", label: "Virginia Regions", value: `${directoryStats.virginiaRegions}/${VIRGINIA_REGIONS.length}`, detail: "Area coverage" },
-              { key: "home", label: "Home Region", value: directoryStats.hamptonRoadsStores, detail: "Hampton Roads / 757" },
+              { key: "regions", label: `${homeState.shortName} Regions`, value: `${directoryStats.homeStateRegions}/${storeRegionsForState(homeState.code).length}`, detail: "Area coverage" },
+              { key: "home", label: "Home Region", value: directoryStats.homeRegionStores, detail: homeRegion },
               { key: "chains", label: "Retail Chains", value: directoryStats.retailChains, detail: "Retailer groups" },
               { key: "military", label: "Exchange Stores", value: directoryStats.militaryStores, detail: "Military / exchange" },
             ]}
@@ -5053,7 +5158,7 @@ async function handleUpdateStore(e) {
             </div>
           ) : null}
           <div className="scout-command-chip-row">
-            {VIRGINIA_STORE_SEED_STATUS.map((batch) => (
+            {homeState.code === "VA" && VIRGINIA_STORE_SEED_STATUS.map((batch) => (
               <span key={batch.source}>{batch.region}: {batch.count}</span>
             ))}
           </div>
@@ -6329,8 +6434,9 @@ async function handleUpdateStore(e) {
             {storeDirectoryView === "landing" ? (
               <>
                 <div className="scout-directory-card" style={styles.card}>
-                  <h2 style={styles.sectionTitle}>Virginia Store Directory</h2>
-                  <p style={styles.empty}>Search statewide Virginia stores, pick a retailer, then open the exact location you want. Hampton Roads / 757 is the default home view.</p>
+                  <h2 style={styles.sectionTitle}>{homeState.shortName} Store Directory</h2>
+                  <p style={styles.empty}>Search {homeState.shortName} stores, pick a retailer, then open the exact location you want. {homeRegion} is the default home view.</p>
+                  {renderStoreStatePicker()}
                   <input
                     style={styles.input}
                     value={storeSearch}
@@ -6342,8 +6448,8 @@ async function handleUpdateStore(e) {
                       if (!onLocationRequired("nearby-stores")) return;
                       setStoreQuickFilter("default");
                       setSelectedChain("All");
-                      setSelectedState(VIRGINIA_STORE_STATE);
-                      setSelectedRegion(DEFAULT_VIRGINIA_REGION);
+                      setSelectedState(homeStateName);
+                      setSelectedRegion(homeRegion);
                       setStoreDirectoryView("retailer");
                     }}>Home Region</button>
                     <button type="button" style={storeQuickFilter === "favorites" ? styles.buttonPrimary : styles.buttonSoft} onClick={() => {
@@ -6353,26 +6459,29 @@ async function handleUpdateStore(e) {
                     }}>Favorites</button>
                     <button type="button" style={styles.buttonSoft} onClick={() => {
                       setStoreQuickFilter("all");
-                      setSelectedState(VIRGINIA_STORE_STATE);
+                      setSelectedState(homeStateName);
                       setSelectedRegion("All");
                       setSelectedChain("All");
                       setStoreDirectoryView("retailer");
-                    }}>Browse All Virginia</button>
+                    }}>Browse All {homeState.shortName}</button>
                     <button type="button" style={styles.buttonSoft} onClick={() => setMissingStoreModalOpen(true)}>Submit Missing Store</button>
                   </div>
                   {adminMode ? (
                     <details style={{ marginTop: "12px" }}>
-                      <summary style={{ ...styles.buttonSoft, cursor: "pointer", display: "inline-block" }}>Admin Add Virginia Store</summary>
+                      <summary style={{ ...styles.buttonSoft, cursor: "pointer", display: "inline-block" }}>Admin Add Store</summary>
                       <form onSubmit={handleCreateStore} style={{ ...styles.formGrid, marginTop: "12px" }}>
                         <input style={styles.input} value={storeForm.name} onChange={(e) => setStoreForm((current) => ({ ...current, name: e.target.value, storeName: e.target.value }))} placeholder="Store name" />
                         <input style={styles.input} value={storeForm.nickname} onChange={(e) => setStoreForm((current) => ({ ...current, nickname: e.target.value }))} placeholder="Nickname" />
                         <select style={styles.input} value={storeForm.chain || storeForm.retailer} onChange={(e) => setStoreForm((current) => ({ ...current, chain: e.target.value, retailer: e.target.value }))}>
                           <option value="">Retailer</option>
-                          {VIRGINIA_RETAILERS.map((retailer) => <option key={retailer} value={retailer}>{retailer}</option>)}
+                          {STORE_RETAILERS.map((retailer) => <option key={retailer} value={retailer}>{retailer}</option>)}
                         </select>
                         {renderStoreExpansionAdminFields(storeForm, setStoreForm)}
+                        <select style={styles.input} aria-label="State" value={storeForm.state} onChange={(e) => setStoreForm((current) => ({ ...current, state: e.target.value, region: defaultStoreRegionForState(e.target.value) }))}>
+                          {STORE_DIRECTORY_STATES.map((state) => <option key={state.code} value={state.name}>{state.shortName}</option>)}
+                        </select>
                         <select style={styles.input} value={storeForm.region} onChange={(e) => setStoreForm((current) => ({ ...current, region: e.target.value }))}>
-                          {VIRGINIA_REGIONS.map((region) => <option key={region} value={region}>{region}</option>)}
+                          {storeRegionsForState(storeForm.state).map((region) => <option key={region} value={region}>{region}</option>)}
                         </select>
                         <input style={styles.input} value={storeForm.city} onChange={(e) => setStoreForm((current) => ({ ...current, city: e.target.value }))} placeholder="City" />
                         <input style={styles.input} value={storeForm.address} onChange={(e) => setStoreForm((current) => ({ ...current, address: e.target.value }))} placeholder="Address" />
@@ -6402,7 +6511,7 @@ async function handleUpdateStore(e) {
                             <div className="scout-store-row" style={styles.storeRow}>
                               <div>
                                 <strong>{store.nickname || store.name}</strong>
-                                <p style={{ ...styles.tiny, margin: "4px 0 0" }}>{store.chain || store.retailer || "Retailer"} | {store.city || "Unknown area"} | {normalizeVirginiaRegion(store.region || "") || "Virginia"}</p>
+                                <p style={{ ...styles.tiny, margin: "4px 0 0" }}>{store.chain || store.retailer || "Retailer"} | {store.city || "Unknown area"} | {normalizeStoreRegion(store.region || "") || normalizeStateLabel(store.state)}</p>
                                 <p style={{ ...styles.tiny, margin: "4px 0 0" }}>{store.address || "No address"}</p>
                                 <p style={{ ...styles.tiny, margin: "4px 0 0" }}>{storeReports.length} report{storeReports.length === 1 ? "" : "s"} | Last updated: {formatStoreDate(store.lastUpdated || store.lastVerified || store.lastReportDate)}</p>
                                 {renderStoreExpansionBadges(store, { compact: true })}
@@ -6591,7 +6700,7 @@ async function handleUpdateStore(e) {
                             <div className="scout-store-row" style={styles.storeRow}>
                               <div>
                                 <strong>{store.nickname || store.name}</strong>
-                                <p style={{ ...styles.tiny, margin: "4px 0 0" }}>{store.chain || store.retailer || "Retailer"} | {store.city || "Unknown area"} | {normalizeVirginiaRegion(store.region || "") || "Virginia"}</p>
+                                <p style={{ ...styles.tiny, margin: "4px 0 0" }}>{store.chain || store.retailer || "Retailer"} | {store.city || "Unknown area"} | {normalizeStoreRegion(store.region || "") || normalizeStateLabel(store.state)}</p>
                                 <p style={{ ...styles.tiny, margin: "4px 0 0" }}>{store.address || "No address"}</p>
                                 <p style={{ ...styles.tiny, margin: "4px 0 0" }}>{storeReports.length} report{storeReports.length === 1 ? "" : "s"} | Last updated: {formatStoreDate(store.lastUpdated || store.lastVerified || store.lastReportDate)}</p>
                                 {renderStoreExpansionBadges(store, { compact: true })}
@@ -6641,12 +6750,12 @@ async function handleUpdateStore(e) {
                     <div>
                       <h2 style={{ ...styles.sectionTitle, marginBottom: "6px" }}>{selectedStore.nickname || selectedStore.name}</h2>
                       {selectedStore.nickname ? <p style={{ margin: "0 0 6px 0", color: "var(--cmd-muted)" }}>{selectedStore.name}</p> : null}
-                      <p style={{ margin: "0 0 6px 0", color: "var(--cmd-heading)", fontWeight: 800 }}>{selectedStore.chain || selectedStore.retailer || getStoreGroup(selectedStore)} | {selectedStore.city || "Unknown area"} | {normalizeVirginiaRegion(selectedStore.region || "") || VIRGINIA_STORE_STATE}</p>
+                      <p style={{ margin: "0 0 6px 0", color: "var(--cmd-heading)", fontWeight: 800 }}>{selectedStore.chain || selectedStore.retailer || getStoreGroup(selectedStore)} | {selectedStore.city || "Unknown area"} | {normalizeStoreRegion(selectedStore.region || "") || normalizeStateLabel(selectedStore.state || homeStateName)}</p>
                       <p style={{ margin: 0, color: "var(--cmd-muted)" }}>{selectedStore.address || "No address"}</p>
-                      <p style={{ margin: "4px 0 0 0", color: "var(--cmd-muted)" }}>{normalizeStateLabel(selectedStore.state || VIRGINIA_STORE_STATE)} {selectedStore.zipCode || selectedStore.zip ? `${selectedStore.zipCode || selectedStore.zip}` : ""} {selectedStore.phone ? `| ${selectedStore.phone}` : ""}</p>
+                      <p style={{ margin: "4px 0 0 0", color: "var(--cmd-muted)" }}>{normalizeStateLabel(selectedStore.state || homeStateName)} {selectedStore.zipCode || selectedStore.zip ? `${selectedStore.zipCode || selectedStore.zip}` : ""} {selectedStore.phone ? `| ${selectedStore.phone}` : ""}</p>
                       {renderStoreExpansionBadges(selectedStore)}
                     </div>
-                    <span style={styles.badge}>{selectedStore.favorite || selectedStore.watched ? "Watching" : "Shared Virginia store"}</span>
+                    <span style={styles.badge}>{selectedStore.favorite || selectedStore.watched ? "Watching" : `Shared ${getStoreDirectoryState(selectedStore.state)?.shortName || normalizeStateLabel(selectedStore.state)} store`}</span>
                   </div>
                   {normalizeStoreExpansionFields(selectedStore).familyFriendlyApproved || normalizeStoreExpansionFields(selectedStore).agreedToCommunityMotto ? (
                     <div className="store-expansion-mission-card">
@@ -6701,11 +6810,14 @@ async function handleUpdateStore(e) {
                         <input style={styles.input} value={editStoreForm.nickname} onChange={(e) => setEditStoreForm((current) => ({ ...current, nickname: e.target.value }))} placeholder="Nickname" />
                         <select style={styles.input} value={editStoreForm.chain || editStoreForm.retailer} onChange={(e) => setEditStoreForm((current) => ({ ...current, chain: e.target.value, retailer: e.target.value }))}>
                           <option value="">Retailer</option>
-                          {VIRGINIA_RETAILERS.map((retailer) => <option key={retailer} value={retailer}>{retailer}</option>)}
+                          {STORE_RETAILERS.map((retailer) => <option key={retailer} value={retailer}>{retailer}</option>)}
                         </select>
                         {renderStoreExpansionAdminFields(editStoreForm, setEditStoreForm)}
+                        <select style={styles.input} aria-label="State" value={editStoreForm.state} onChange={(e) => setEditStoreForm((current) => ({ ...current, state: e.target.value, region: defaultStoreRegionForState(e.target.value) || current.region }))}>
+                          {STORE_DIRECTORY_STATES.map((state) => <option key={state.code} value={state.name}>{state.shortName}</option>)}
+                        </select>
                         <select style={styles.input} value={editStoreForm.region} onChange={(e) => setEditStoreForm((current) => ({ ...current, region: e.target.value }))}>
-                          {VIRGINIA_REGIONS.map((region) => <option key={region} value={region}>{region}</option>)}
+                          {(storeRegionsForState(editStoreForm.state).length ? storeRegionsForState(editStoreForm.state) : [editStoreForm.region]).map((region) => <option key={region} value={region}>{region}</option>)}
                         </select>
                         <input style={styles.input} value={editStoreForm.city} onChange={(e) => setEditStoreForm((current) => ({ ...current, city: e.target.value }))} placeholder="City" />
                         <input style={styles.input} value={editStoreForm.address} onChange={(e) => setEditStoreForm((current) => ({ ...current, address: e.target.value }))} placeholder="Address" />

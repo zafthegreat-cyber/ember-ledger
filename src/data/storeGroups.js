@@ -1,3 +1,11 @@
+import {
+  defaultStoreRegionForState,
+  getStoreDirectoryState,
+  otherStoreRegionForState,
+  storeRegionsForState,
+  storeStateName,
+} from "./storeStates.js";
+
 export const STORE_GROUP_ORDER = [
   "Target",
   "Walmart",
@@ -16,56 +24,22 @@ export const STORE_GROUP_ORDER = [
   "Other",
 ];
 
-export const VIRGINIA_STORE_COUNTRY = "United States";
-export const VIRGINIA_STORE_STATE = "Virginia";
+// Virginia names are kept for existing callers; regions for every directory
+// state (VA, MD, DC, NC) live in storeStates.js.
+export const STORE_COUNTRY = "United States";
+export const VIRGINIA_STORE_COUNTRY = STORE_COUNTRY;
+export const VIRGINIA_STORE_STATE = storeStateName("VA");
 export const VIRGINIA_STORE_STATE_CODE = "VA";
-export const DEFAULT_VIRGINIA_REGION = "Hampton Roads / 757";
+export const DEFAULT_VIRGINIA_REGION = defaultStoreRegionForState("VA");
 
-export const VIRGINIA_REGIONS = [
-  DEFAULT_VIRGINIA_REGION,
-  "Richmond / Central Virginia",
-  "Northern Virginia",
-  "Fredericksburg",
-  "Charlottesville / Albemarle",
-  "Roanoke / Southwest Virginia",
-  "Lynchburg",
-  "Shenandoah Valley",
-  "Eastern Shore",
-  "Southside Virginia",
-  "Other Virginia",
-];
+export const VIRGINIA_REGIONS = storeRegionsForState("VA");
 
-export const VIRGINIA_REGION_CITY_HINTS = {
-  [DEFAULT_VIRGINIA_REGION]: [
-    "suffolk",
-    "chesapeake",
-    "norfolk",
-    "virginia beach",
-    "portsmouth",
-    "hampton",
-    "newport news",
-    "yorktown",
-    "williamsburg",
-    "smithfield",
-    "carrollton",
-    "franklin",
-    "isle of wight",
-    "gloucester",
-    "poquoson",
-  ],
-  "Richmond / Central Virginia": ["richmond", "henrico", "midlothian", "chesterfield", "mechanicsville", "glen allen", "short pump", "ashland", "chester"],
-  "Northern Virginia": ["alexandria", "arlington", "fairfax", "vienna", "falls church", "manassas", "woodbridge", "lorton", "sterling", "ashburn", "leesburg", "reston", "herndon", "chantilly"],
-  Fredericksburg: ["fredericksburg", "stafford", "spotsylvania", "king george"],
-  "Charlottesville / Albemarle": ["charlottesville", "albemarle", "waynesboro", "staunton"],
-  "Roanoke / Southwest Virginia": ["roanoke", "salem", "blacksburg", "christiansburg", "radford", "bristol", "abingdon", "wytheville", "pulaski", "galax"],
-  Lynchburg: ["lynchburg", "forest", "madison heights", "bedford"],
-  "Shenandoah Valley": ["winchester", "front royal", "harrisonburg", "woodstock", "lexington", "staunton"],
-  "Eastern Shore": ["exmore", "onley", "chincoteague", "cape charles", "accomac"],
-  "Southside Virginia": ["danville", "farmville", "martinsville", "south boston", "south hill", "emporia"],
-  "Other Virginia": [],
-};
+export const VIRGINIA_REGION_CITY_HINTS = Object.fromEntries([
+  ...getStoreDirectoryState("VA").regions.map((region) => [region.name, region.cities]),
+  [otherStoreRegionForState("VA"), []],
+]);
 
-export const VIRGINIA_RETAILERS = [
+export const STORE_RETAILERS = [
   "Walmart",
   "Target",
   "Best Buy",
@@ -97,6 +71,8 @@ export const VIRGINIA_RETAILERS = [
   "Bookstores",
   "Other Pokemon-carrying Retailers",
 ];
+
+export const VIRGINIA_RETAILERS = STORE_RETAILERS;
 
 export const POKEMON_STOCK_LIKELIHOOD_OPTIONS = [
   "high",
