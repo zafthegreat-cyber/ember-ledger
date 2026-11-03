@@ -1,4 +1,5 @@
 import DeferredModalBoundary from "./features/deferredViews/DeferredModalBoundary";
+import { compactSavedStores } from "./utils/storeDirectoryPersistence.js";
 import { catalogCardQueryMatchesRow, getCatalogCollectorQuery, getCatalogPageProducts } from "./utils/catalogResultIdentity.mjs";
 import SocialSignInButtons, { ConnectedSignIns } from "./features/auth/SocialSignIn.jsx";
 import EmailConfirmationHelp, { SignupFieldPrivacy } from "./features/auth/EmailConfirmationHelp.jsx";
@@ -10421,7 +10422,7 @@ export default function App() {
       : [setStoreFavoriteState({ ...store, id: store.id || targetId }, true), ...scoutSnapshot.stores];
     setScoutSnapshot((current) => ({ ...current, stores: nextStores }));
     const saved = safeReadBrowserJson(localStorage, SCOUT_STORAGE_KEY, {});
-    localStorage.setItem(SCOUT_STORAGE_KEY, JSON.stringify({ ...saved, stores: nextStores }));
+    localStorage.setItem(SCOUT_STORAGE_KEY, JSON.stringify({ ...saved, stores: compactSavedStores(nextStores) }));
     void persistScoutStoreWatchToSupabase(store, true);
   }
 

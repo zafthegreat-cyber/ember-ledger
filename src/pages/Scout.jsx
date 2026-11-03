@@ -33,6 +33,7 @@ import "./scout-reports.css";
 import { getStoreGroup, normalizeStoreGroup, STORE_GROUP_ORDER } from "../utils/storeGroupingUtils";
 import { dedupeStoresByChainAddress, normalizeImportedStore, normalizeStateLabel, normalizeStoreRegion } from "../utils/storeImportUtils";
 import RegionalCommunityBanner from "../components/RegionalCommunityBanner.jsx";
+import { compactSavedStores, registerDirectoryStores } from "../utils/storeDirectoryPersistence.js";
 import { storeMatchesSearch, sortStores } from "../utils/storeSearchUtils";
 import {
   COMMUNITY_MOTTO_COPY,
@@ -1709,7 +1710,7 @@ export default function Scout({
         createdAt: now.toISOString(),
       };
       const nextReports = [newReport, ...(saved.reports || [])];
-      const nextStores = (saved.stores || stores).map((candidate) =>
+      const nextStores = stores.map((candidate) =>
         candidate.id === activeStoreId
           ? { ...candidate, status: scoutStockStoreStatus(status), lastRestock: reportDate }
           : candidate
@@ -1764,6 +1765,7 @@ export default function Scout({
       let envelope = {};
       try { envelope = readScoutStoreEnvelope(); } catch (error) { storageError = error; }
       const saved = sanitizeScoutLocalData(envelope);
+      registerDirectoryStores(statewideSeedStores.map((store) => normalizeImportedStore(store)));
       const sourceStores = [...statewideSeedStores, ...(saved.stores || [])];
       const detailRecords = new Map();
       sourceStores.forEach((store, index) => {
@@ -1791,7 +1793,7 @@ export default function Scout({
           SCOUT_STORAGE_KEY,
           JSON.stringify({
             ...envelope,
-            stores: savedStores,
+            stores: compactSavedStores(savedStores),
             reports: savedReports,
             tidepoolReports: savedTidepoolReports,
             tidepoolEvents: savedTidepoolEvents,
@@ -1810,6 +1812,8 @@ export default function Scout({
             routes: saved.routes || [],
           })
         );
+      } else if (!storageError && compactSavedStores(saved.stores).length < saved.stores.length) {
+        localStorage.setItem(SCOUT_STORAGE_KEY, JSON.stringify({ ...envelope, stores: compactSavedStores(saved.stores) }));
       } else if (!storageError && shouldUseDropRadarSeed(saved) && (!saved.restockIntel?.length || !saved.restockPatterns?.length)) {
         localStorage.setItem(
           SCOUT_STORAGE_KEY,
@@ -2242,7 +2246,9 @@ export default function Scout({
 
 function saveLocalScout(next) {
   const saved = readScoutLocalStorage();
-  localStorage.setItem(SCOUT_STORAGE_KEY, JSON.stringify({ ...saved, ...next }));
+  const merged = { ...saved, ...next };
+  if (merged.stores) merged.stores = compactSavedStores(merged.stores);
+  localStorage.setItem(SCOUT_STORAGE_KEY, JSON.stringify(merged));
 }
 
 function saveStoreDetailPatch(storeId, makePatch) {
@@ -3243,7 +3249,7 @@ async function handleUpdateStore(e) {
         createdAt: new Date().toISOString(),
       };
       const nextReports = [newReport, ...(saved.reports || [])];
-      const nextStores = (saved.stores || stores).map((store) =>
+      const nextStores = stores.map((store) =>
         store.id === activeStoreId
           ? { ...store, status: scoutStockStoreStatus(reportForm.stockStatus), lastRestock: reportForm.reportDate || new Date().toISOString().slice(0, 10) }
           : store

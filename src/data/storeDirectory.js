@@ -6,6 +6,7 @@ import dcStoresUrl from "./generated/dcStores.json?url";
 import northCarolinaStoresUrl from "./generated/northCarolinaStores.json?url";
 import { dedupeStoresByChainAddress, normalizeImportedStoreBatch } from "../utils/storeImportUtils";
 import { DEFAULT_STORE_STATE_CODE, getStoreDirectoryState } from "./storeStates";
+import { registerDirectoryStores } from "../utils/storeDirectoryPersistence.js";
 
 const GENERATED_STORE_URLS = {
   MD: marylandStoresUrl,
@@ -38,7 +39,10 @@ async function loadUncached(state) {
 export function loadStoreDirectory(stateValue = DEFAULT_STORE_STATE_CODE) {
   const state = getStoreDirectoryState(stateValue) || getStoreDirectoryState(DEFAULT_STORE_STATE_CODE);
   if (!directoryPromises.has(state.code)) {
-    const promise = loadUncached(state).catch((error) => {
+    const promise = loadUncached(state).then((stores) => {
+      registerDirectoryStores(stores);
+      return stores;
+    }).catch((error) => {
       directoryPromises.delete(state.code);
       throw error;
     });
