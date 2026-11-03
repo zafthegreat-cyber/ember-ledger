@@ -52156,6 +52156,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               openCompassSearch={openCompassSearch}
               onQuickReport={(options) => openScoutSubmitFlow({ ...options, source: "scout-command" })}
               onEditReport={openScoutReportAddDetails}
+              isCurrentUserReport={isCurrentUserScoutReport}
               onReturnToReport={scoutStoreReportReturnRef.current?.storeId === String(scoutSubTabTarget.storeId || "") ? () => window.history.back() : null}
               onOpenFlipScout={() => setActiveTab("flipScout")}
             />

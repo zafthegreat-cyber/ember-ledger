@@ -1277,12 +1277,12 @@ function addAdminReviewDisclosure(record = {}, disclosedAt = new Date().toISOStr
 
 function isUserOwnedScoutReport(report = {}) {
     const owner = String(report.userId || report.user_id || report.reportedBy || report.reported_by || "");
-    return !owner || owner.includes(LOCAL_SCOUT_USER_ID) || owner.includes("Zena") || owner.includes("Local Restocks") || BETA_LOCAL_SCOUT;
+    return !owner || owner.includes(LOCAL_SCOUT_USER_ID) || owner.includes("Local Restocks");
   }
 
-function canViewerSeeScoutReport(report = {}, adminMode = false) {
+function canViewerSeeScoutReport(report = {}, adminMode = false, ownsReport = isUserOwnedScoutReport) {
     if (!isScoutVisibilityPrivateFromUsers(report)) return true;
-    if (isUserOwnedScoutReport(report)) return true;
+    if (ownsReport(report)) return true;
     if (adminMode && hasAdminReviewDisclosure(report)) return true;
     return false;
   }
@@ -1300,6 +1300,7 @@ export default function Scout({
   openCompassSearch = null,
   onQuickReport = null,
   onEditReport = null,
+  isCurrentUserReport = null,
   onReturnToReport = null,
   onOpenFlipScout = null,
   storeDirectoryState = DEFAULT_STORE_STATE_CODE,
@@ -3744,9 +3745,13 @@ async function handleUpdateStore(e) {
     setError("Favorite saved.");
   }
 
+  const ownsScoutReport = useCallback(
+    (report) => (typeof isCurrentUserReport === "function" ? isCurrentUserReport(report) : isUserOwnedScoutReport(report)),
+    [isCurrentUserReport]
+  );
   const visibleAllReports = useMemo(
-    () => allReports.filter((report) => canViewerSeeScoutReport(report, adminMode)),
-    [allReports, adminMode]
+    () => allReports.filter((report) => canViewerSeeScoutReport(report, adminMode, ownsScoutReport)),
+    [allReports, adminMode, ownsScoutReport]
   );
 
   useEffect(() => {
@@ -3773,8 +3778,8 @@ async function handleUpdateStore(e) {
   }, []);
 
   const visibleReports = useMemo(
-    () => reports.filter((report) => canViewerSeeScoutReport(report, adminMode)),
-    [reports, adminMode]
+    () => reports.filter((report) => canViewerSeeScoutReport(report, adminMode, ownsScoutReport)),
+    [reports, adminMode, ownsScoutReport]
   );
 
   const totals = useMemo(() => {
@@ -4012,13 +4017,13 @@ async function handleUpdateStore(e) {
     const sourceLabel = scoutSourceTypeLabel(report.sourceType || report.source_type);
     const confidence = report.confidence || "";
     const historicalImport = String(report.sourceType || report.source_type || "").toLowerCase() === "historical_import" || report.importedByAdmin || report.imported_by_admin;
-    const submittedByLabel = isUserOwnedScoutReport(report) ? "You" : report.submittedByDisplay || report.submitted_by_display || report.displayName || report.reportedBy || report.reported_by || "Restocks user";
+    const submittedByLabel = ownsScoutReport(report) ? "You" : report.submittedByDisplay || report.submitted_by_display || report.displayName || report.reportedBy || report.reported_by || "Restocks user";
     const freshnessLabel = scoutFreshnessLabel(report);
     const trustLabel = restockReportTrustLabel(report, Boolean(photo));
     const primarySummary = visibleItems[0]
       ? summarizeReportItem(visibleItems[0], money)
       : note || stockStatus || status || "Store report";
-    const canManageScoutReport = adminMode || isUserOwnedScoutReport(report);
+    const canManageScoutReport = adminMode || ownsScoutReport(report);
     const compactReportActions = [
       { label: "View", onClick: () => openReportDetails(report) },
       ...(canManageScoutReport ? [{ label: adminMode ? "Edit details" : "Add details", onClick: () => startEditingReport(report) }] : []),
@@ -7076,7 +7081,7 @@ async function handleUpdateStore(e) {
                     dismissReportDetails(() => openStoreReport(reportDetailsStore.id));
                   }}>Report a new visit</button>
                 ) : null}
-                {(isUserOwnedScoutReport(selectedReportTarget) || adminMode) ? (
+                {(ownsScoutReport(selectedReportTarget) || adminMode) ? (
                   <button type="button" className="secondary-button" onClick={() => {
                     reportDetailsHandoffRef.current = true;
                     dismissReportDetails(() => startEditingReport(selectedReportTarget));

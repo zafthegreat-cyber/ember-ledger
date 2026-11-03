@@ -56,7 +56,10 @@ assert.match(app, /\^store location\$/, "Scout placeholder filtering should bloc
 assert.match(app, /sample report\|placeholder report\|fake report\|mock report\|demo report\|test report/, "Scout placeholder filtering should block sample/fake report text");
 assert.match(app, /Restock report saved locally\./, "Scout submit should show a visible local-save fallback");
 assert.match(app, /Report could not be saved\. Please review and try again\./, "Scout submit should show a visible save error");
-assert.match(scoutPage, /const canManageScoutReport = adminMode \|\| isUserOwnedScoutReport\(report\)/, "Scout page cards should gate edit actions to owners or admins");
+assert.match(scoutPage, /const canManageScoutReport = adminMode \|\| ownsScoutReport\(report\)/, "Scout page cards should gate edit actions to owners or admins");
+assert.match(scoutPage, /typeof isCurrentUserReport === "function" \? isCurrentUserReport\(report\)/, "Restocks ownership uses the app's signed-in user check");
+assert.doesNotMatch(scoutPage, /owner\.includes\("Zena"\)|\|\| BETA_LOCAL_SCOUT;/, "neither a hard-coded name nor the local beta flag makes every report the viewer's own");
+assert.match(app, /isCurrentUserReport=\{isCurrentUserScoutReport\}/, "App passes its ownership check to Restocks");
 assert.match(scoutPage, /actions=\{compactReportActions\}/, "Scout page card overflow actions should use permission-filtered actions");
 assert.match(scoutPage, /onDelete=\{adminMode \? \(\) => setDeleteReportTarget\(report\) : null\}/, "Admins should be able to delete visible Scout reports");
 assert.doesNotMatch(scoutPage, /adminMode && isUserOwnedScoutReport\(selectedReportTarget\) \? <button type="button" className="delete-button"/, "Admin report deletion should not be limited to admin-owned reports");
