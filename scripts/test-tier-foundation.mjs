@@ -37,9 +37,9 @@ for (const planId of [PLAN_IDS.COLLECTOR, PLAN_IDS.FAMILY, PLAN_IDS.SELLER, PLAN
   assert.doesNotMatch(TIER_PRICING[planId].price, /\$\d/, `${planId} should not show a dollar price during beta`);
 }
 
-assert.match(TIER_DISPLAY_GUIDANCE.free.gateCopy, /1 Restocks watch store/i);
+assert.match(TIER_DISPLAY_GUIDANCE.free.gateCopy, /1 watched store/i);
 assert.match(TIER_DISPLAY_GUIDANCE.free.gateCopy, /30 days/i);
-assert.match(TIER_DISPLAY_GUIDANCE.collector.gateCopy, /7-day free trial/i);
+assert.match(TIER_DISPLAY_GUIDANCE.collector.gateCopy, /free during beta/i);
 assert.match(TIER_DISPLAY_GUIDANCE.seller.gateCopy, /do not unlock raw restock history/i);
 assert.match(TIER_DISPLAY_GUIDANCE.shop.gateCopy, /admin-reviewed/i);
 

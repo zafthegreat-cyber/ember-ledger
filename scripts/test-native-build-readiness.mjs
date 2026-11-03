@@ -73,6 +73,20 @@ check("all workflow actions use verified immutable official v4 commits", () => {
   const uses = [...read(".github/workflows/native-beta-checks.yml").matchAll(/uses:\s*(\S+)@(\S+)/g)];
   assert.equal(uses.length, 7);
   for (const [, action, revision] of uses) assert.equal(revision, verified[action], `${action} must retain its reviewed full SHA`);
+  const releaseUses = [...read(".github/workflows/android-release.yml").matchAll(/uses:\s*(\S+)@(\S+)/g)];
+  assert.equal(releaseUses.length, 4);
+  for (const [, action, revision] of releaseUses) assert.equal(revision, verified[action], `${action} must retain its reviewed full SHA`);
+});
+
+check("signed Android build is manual-only, checks the build number and never keeps the upload key", () => {
+  const workflow = read(".github/workflows/android-release.yml");
+  assert.match(workflow, /^on:\n  workflow_dispatch:/m);
+  assert.doesNotMatch(workflow, /^  (push|pull_request|schedule):/m, "signing must never run automatically");
+  assert.match(workflow, /node scripts\/native-build-number\.mjs/);
+  assert.match(workflow, /secrets\.CODE3_ANDROID_KEYSTORE_BASE64/);
+  assert.match(workflow, /bundleRelease assembleRelease/);
+  assert.match(workflow, /if: always\(\)\n\s+run: \|\n\s+rm -f "\$RUNNER_TEMP\/code3-upload\.keystore"/);
+  assert.doesNotMatch(workflow, /path:[^\n]*keystore|cat [^\n]*keystore/);
 });
 
 console.log(`Native build readiness: ${checks} checks passed; no build, account, network, signing or upload performed.`);

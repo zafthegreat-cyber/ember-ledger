@@ -267,7 +267,7 @@ export const ONBOARDING_GOALS = [
   },
   {
     key: "seller_forge",
-    label: "Seller/business using Business",
+    label: "Seller or business inventory",
     shortLabel: "Seller",
     description: "Track sellable inventory, receipts, expenses, mileage, sales, and year-end exports.",
     nextActions: ["Choose Business identity", "Add first Business item", "Review business records"],
@@ -306,6 +306,7 @@ const LEGACY_GOAL_ALIASES = {
   find_restock_windows: "scout_reports",
   // Labels saved before the Forge/Scout rename.
   seller_business_using_forge: "seller_forge",
+  seller_business_using_business: "seller_forge",
   scout_helping_with_restock_reports: "scout_reports",
   scout: "scout_reports",
   join_kids_program_updates: "spark_parent",
