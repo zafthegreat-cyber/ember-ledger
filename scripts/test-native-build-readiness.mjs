@@ -79,7 +79,7 @@ check("all workflow actions use verified immutable official v4 commits", () => {
 });
 
 check("signed Android build is manual-only, checks the build number and never keeps the upload key", () => {
-  const workflow = read(".github/workflows/android-release.yml");
+  const workflow = read(".github/workflows/android-release.yml").replace(/\r\n/g, "\n");
   assert.match(workflow, /^on:\n  workflow_dispatch:/m);
   assert.doesNotMatch(workflow, /^  (push|pull_request|schedule):/m, "signing must never run automatically");
   assert.match(workflow, /node scripts\/native-build-number\.mjs/);
