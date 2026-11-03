@@ -1,0 +1,79 @@
+name: Android signed beta build
+# Builds a signed Android bundle (.aab) and APK with the owner's upload key, so testers can
+# install it over earlier signed builds and it can be uploaded to Play by hand.
+# Runs only when started from the Actions tab; nothing is uploaded to Play.
+# Needs repository secrets: CODE3_ANDROID_KEYSTORE_BASE64 (base64 of the keystore file),
+# CODE3_ANDROID_STORE_PASSWORD, CODE3_ANDROID_KEY_ALIAS and CODE3_ANDROID_KEY_PASSWORD.
+on:
+  workflow_dispatch:
+    inputs:
+      build_number:
+        description: New build number (above the last build testers or Play received)
+        type: string
+        required: true
+      version_name:
+        description: Version shown to users
+        type: string
+        default: '1.0.0'
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: android-release
+  cancel-in-progress: false
+jobs:
+  android-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      CODE3_BUILD_NUMBER: ${{ inputs.build_number }}
+      CODE3_VERSION_NAME: ${{ inputs.version_name }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: node scripts/native-build-number.mjs
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci
+      - run: npm run test:native
+      - run: node scripts/test-native-build-readiness.mjs
+      - run: npm run native:build
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          VITE_AUTH_VERIFIED_PROVIDERS: ${{ vars.VITE_AUTH_VERIFIED_PROVIDERS }}
+          VITE_AUTH_ACCOUNT_LINKING_VERIFIED: ${{ vars.VITE_AUTH_ACCOUNT_LINKING_VERIFIED }}
+      - run: npx cap sync android
+      - name: Restore upload keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.CODE3_ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then echo "::error::Add the CODE3_ANDROID_KEYSTORE_BASE64 repository secret first."; exit 1; fi
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/code3-upload.keystore"
+          echo "CODE3_ANDROID_KEYSTORE=$RUNNER_TEMP/code3-upload.keystore" >> "$GITHUB_ENV"
+      - name: Build signed bundle and APK
+        env:
+          CODE3_ANDROID_STORE_PASSWORD: ${{ secrets.CODE3_ANDROID_STORE_PASSWORD }}
+          CODE3_ANDROID_KEY_ALIAS: ${{ secrets.CODE3_ANDROID_KEY_ALIAS }}
+          CODE3_ANDROID_KEY_PASSWORD: ${{ secrets.CODE3_ANDROID_KEY_PASSWORD }}
+        run: chmod +x android/gradlew && cd android && ./gradlew bundleRelease assembleRelease
+      - name: Remove keystore and collect signed packages
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/code3-upload.keystore"
+          mkdir -p artifacts/native/android-release
+          cp android/app/build/outputs/bundle/release/app-release.aab "artifacts/native/android-release/Code3TCG-build-$CODE3_BUILD_NUMBER.aab"
+          cp android/app/build/outputs/apk/release/app-release.apk "artifacts/native/android-release/Code3TCG-build-$CODE3_BUILD_NUMBER.apk"
+          cp artifacts/native/web-build.json artifacts/native/android-release/web-build.json
+          cd artifacts/native/android-release
+          sha256sum *.aab *.apk > SHA256SUMS.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: code3-android-signed-build-${{ inputs.build_number }}
+          path: artifacts/native/android-release/
+          retention-days: 14
