@@ -30,6 +30,7 @@ const bundled = buildSync({
     'export * from "./src/utils/betaDataCleanup.js";',
     'export * from "./src/data/storeGroups.js";',
     'export * from "./src/data/storeStates.js";',
+    'export * from "./src/utils/storeDirectoryPersistence.js";',
   ].join("\n"), resolveDir: root },
   bundle: true, format: "cjs", platform: "node", write: false,
 }).outputFiles[0].text;
