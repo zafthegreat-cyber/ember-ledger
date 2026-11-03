@@ -193,14 +193,14 @@ export const TIER_DISPLAY_GUIDANCE = {
   [PLAN_IDS.FREE]: {
     status: "Included",
     audience: "Families, collectors, and restock helpers",
-    benefit: "Start safely with current reports, one watched watched store, and core collection tools.",
-    gateCopy: "1 Restocks watch store | change once every 30 days | raw restock history and pattern tools protected.",
+    benefit: "Start safely with current reports, one watched store, and core collection tools.",
+    gateCopy: "1 watched store | change once every 30 days | raw restock history and pattern tools protected.",
   },
   [PLAN_IDS.COLLECTOR]: {
     status: "Beta path",
     audience: "Collectors",
     benefit: "Adds deeper collection tools and more selected-store context while keeping Restocks fair.",
-    gateCopy: "3 watched stores | 14-day store changes | 7-day free trial planned.",
+    gateCopy: "3 watched stores | 14-day store changes | free during beta.",
   },
   [PLAN_IDS.FAMILY]: {
     status: "Beta path",

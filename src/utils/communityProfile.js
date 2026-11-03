@@ -51,7 +51,7 @@ export const SCOUT_REPUTATION_LEVELS = [
     minScoutPoints: 150,
     minConfirmedReports: 25,
     canSubmitCommunityGuesses: true,
-    description: "A high-trust helper for fair collecting and local Restocks quality.",
+    description: "A high-trust helper for fair collecting and local restock report quality.",
   },
 ];
 

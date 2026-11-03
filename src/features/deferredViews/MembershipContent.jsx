@@ -165,7 +165,7 @@ export default function MembershipContent({ scope }) {
             />
             <div id="membership-scout-guardrails" className="membership-v4-guardrail-rack" aria-label="Restocks membership guardrails">
               {[
-                `${tierAccess.scoutStoreSlots} Restocks watch store${Number(tierAccess.scoutStoreSlots) === 1 ? "" : "s"}`,
+                `${tierAccess.scoutStoreSlots} watched store${Number(tierAccess.scoutStoreSlots) === 1 ? "" : "s"}`,
                 tierAccess.scoutStoreSwapDays ? `${tierAccess.scoutStoreSwapDays}-day store changes` : "Store changes managed by admin",
                 planScoutDetailsAllowed ? "Selected-store current details" : "Current details limited",
                 tierAccess.canViewRawScoutHistory ? "Raw history restricted to admin" : "Raw history protected",
