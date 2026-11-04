@@ -1,5 +1,5 @@
 export const ONBOARDING_PERSISTENCE_NOTE =
-  "Progress is saved only in this browser during beta. Cloud sync needs backend support later.";
+  "Guide progress is saved on this device. For collection and workspace records, check the app’s sync status before switching devices or clearing browser data.";
 
 export const ONBOARDING_WELCOME_COPY =
   "Welcome to Code 3 TCG. Start with one card, sealed product, or collector note, then explore fair Restocks, Market, Business, Spark, and Community tools at your own pace.";
@@ -27,13 +27,13 @@ export const FIRST_TIME_ONBOARDING_CARDS = [
   },
   {
     key: "local_beta",
-    title: "Know local beta limits",
-    body: "Some notes and beta tools save only in this browser. Clearing browser data may remove local beta entries.",
+    title: "Know where your records are saved",
+    body: "Some notes and guide preferences save only in this browser. Check sync status and keep an export before clearing local data.",
   },
   {
     key: "coming_later",
-    title: "What is coming later",
-    body: "Cloud sync, durable photo storage, outside-the-app reminders, billing, and shop tools need separate backend support before they are live.",
+    title: "Check feature availability",
+    body: "Review Settings and Help for storage, sync, and feature availability. Shop participation and child-sensitive features may need additional setup or review.",
   },
 ];
 
@@ -54,19 +54,19 @@ export const ACCOUNT_SETUP_TIER_ROWS = [
   {
     key: "collector",
     label: "Collector",
-    status: "Beta path",
-    description: "For collectors who want deeper collection tracking and more watched stores during beta.",
+    status: "Setup option",
+    description: "For collectors exploring collection tracking and watched-store tools. Available features depend on the current plan.",
   },
   {
     key: "family",
     label: "Family",
-    status: "Beta path",
+    status: "Setup option",
     description: "For parent-managed family collecting, The Spark interest, and safer shared setup.",
   },
   {
     key: "seller",
     label: "Seller",
-    status: "Beta path",
+    status: "Setup option",
     description: "For Business inventory, sales records, receipts, expenses, and seller-focused setup.",
   },
   {
@@ -77,9 +77,9 @@ export const ACCOUNT_SETUP_TIER_ROWS = [
   },
   {
     key: "beta",
-    label: "Beta",
-    status: "Access status",
-    description: "Early access is reviewed before full app use so the community stays family-safe.",
+    label: "Account access",
+    status: "Open registration",
+    description: "Create an account, confirm your email, and start using Code 3. Account restrictions and reviewed programs remain separate.",
   },
   {
     key: "admin",
