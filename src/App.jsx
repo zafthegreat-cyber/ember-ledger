@@ -9651,7 +9651,7 @@ export default function App() {
           <section className="tcg-command-status-card">
             <div className="tcg-command-section-title">
               <h3>Mission / Status</h3>
-              <span>Private beta</span>
+              <span>Open registration</span>
             </div>
             <div className="tcg-command-stat-row">
               {missionStats.map((stat) => (
@@ -38986,7 +38986,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </button>
               ) : null}
               <button type="button" className="hearth-start-here-skip" onClick={completeOnboarding}>{checklistSummary.percent >= 100 ? "Finish onboarding" : "Skip for now"}</button>
-              <button type="button" className="secondary-button" onClick={() => { openUtilityPage("data"); }}>Local beta limits</button>
+              <button type="button" className="secondary-button" onClick={() => { openUtilityPage("data"); }}>Storage &amp; sync</button>
               <button
                 type="button"
                 className="secondary-button hearth-start-here-assist"
@@ -46204,18 +46204,18 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           ? "We could not claim this invite"
           : "You're invited to Code 3 TCG";
     const body = signedOut
-      ? "Create or log into your account to claim beta access."
+      ? "Create or log into your account to use Code 3. An invitation is optional."
       : success
         ? "Your account is ready. You can enter Code 3 TCG now."
         : failed
           ? betaInviteClaimState.error
-          : "We are checking this one-time invite against the secure beta invite backend.";
+          : "We are checking this one-time invite securely.";
 
     return (
       <section className="signed-out-landing panel beta-invite-panel">
         <div className="landing-hero">
           <img className="landing-brand-mark" src={BRAND_ASSETS.mark} alt="" aria-hidden="true" />
-          <p className="section-kicker">Personal beta invite</p>
+          <p className="section-kicker">Personal invite</p>
           <h2>{title}</h2>
           <p>{body}</p>
           {tokenPresent ? (
@@ -46349,7 +46349,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (["welcome", "state-check", "waitlist", "permission-needed"].includes(String(onboardingView || "welcome").toLowerCase())) {
       return <main className="social-callback-screen"><section className="social-callback-card">
         <h1>Welcome to Code 3 TCG</h1>
-        <p>Create a free account and start collecting. No invitation or beta access request is required.</p>
+        <p>Create a free account, confirm your email, and start using Code 3.</p>
         <button type="button" className="secondary-button" onClick={() => { if (signedOut) setAuthMode("signup"); setActiveTab("dashboard"); }}>{signedOut ? "Create free account" : "Start collecting"}</button>
         <CommunityWelcome onFeedback={signedOut ? undefined : () => openPublicBetaFeedback({ page: "Welcome", mainReason: "General feedback" })} />
       </section></main>;
@@ -46760,7 +46760,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <h3 className="auth-mode-title">{authMode === "login" ? "Log In" : "Create Account"}</h3>
                 <SocialSignInButtons />
                 {authMode === "signup" ? (
-                  <p className="compact-subtitle">Create a free account. Confirm your email, then start exploring.</p>
+                  <p className="compact-subtitle">Create a free account. Confirm your email, then start using Code 3.</p>
                 ) : (
                   <p className="compact-subtitle">Use your {BRAND_CONFIG.applicationDisplayName} account to continue.</p>
                 )}
@@ -47211,9 +47211,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div>
             <p className="section-kicker">Account setup</p>
             <strong>Pick the right path without changing billing or permissions.</strong>
-            <p className="compact-subtitle">During beta, setup labels guide the app experience. Admin and shop access stay protected and reviewed.</p>
+            <p className="compact-subtitle">Setup labels guide the app experience. Admin and shop access stay protected and reviewed.</p>
           </div>
-          <span className="status-badge">Beta-safe</span>
+          <span className="status-badge">Account options</span>
         </div>
         <div className="account-setup-tier-grid">
           {ACCOUNT_SETUP_TIER_ROWS.map((tier) => (
@@ -47890,14 +47890,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div className="drawer-info-card app-support-card help-support-hero utility-card utility-card-wide">
             <div className="compact-card-header">
               <div>
-                <strong>Beta support center</strong>
+                <strong>Support center</strong>
                 <p className="compact-subtitle">Refresh the app, check current limits, or send feedback for admin review.</p>
               </div>
               <span className="status-badge">{appUpdate.available ? "Update available" : "Up to date"}</span>
             </div>
             <dl className="drawer-status-list">
               <div><dt>Build</dt><dd>{PUBLIC_APP_VERSION_LABEL}</dd></div>
-              <div><dt>Beta access</dt><dd>{betaAccessAllowed() ? "Ready" : "Check account"}</dd></div>
+              <div><dt>Account access</dt><dd>{betaAccessAllowed() ? "Ready" : "Check account"}</dd></div>
               <div><dt>Support path</dt><dd>{BETA_FEEDBACK_TYPES.slice(0, 4).join(", ")}</dd></div>
             </dl>
             {renderAppBuildDetails()}
@@ -48152,7 +48152,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       <div className={`app app-invite app-role-guest app-mode-guest app-theme-${resolvedAppTheme}`} data-theme={resolvedAppTheme}>
         <header className="header app-shell-header app-shell-header--full">
           <h1>{BRAND_CONFIG.applicationDisplayName}</h1>
-          <p>Personal beta invite</p>
+          <p>Personal invite</p>
         </header>
         <main className="main auth-main">
           {renderBetaInviteClaimPage({ signedOut: false })}

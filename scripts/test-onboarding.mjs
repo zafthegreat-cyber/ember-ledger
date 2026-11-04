@@ -36,7 +36,7 @@ assert.deepEqual(
 );
 assert.ok(
   FIRST_TIME_ONBOARDING_CARDS.find((card) => card.key === "local_beta")?.body.includes("only in this browser"),
-  "first-time guide should explain local browser beta limits"
+  "first-time guide should explain which preferences stay in the browser"
 );
 assert.ok(
   FIRST_TIME_ONBOARDING_CARDS.find((card) => card.key === "market")?.body.includes("not live pricing"),
@@ -45,9 +45,10 @@ assert.ok(
 assert.ok(ACCOUNT_SETUP_USERNAME_RULES.some((rule) => /reserved/i.test(rule)), "username rules should mention reserved names");
 assert.deepEqual(
   ACCOUNT_SETUP_TIER_ROWS.map((tier) => tier.label),
-  ["Free", "Collector", "Family", "Seller", "Shop", "Beta", "Admin"],
+  ["Free", "Collector", "Family", "Seller", "Shop", "Account access", "Admin"],
   "account setup should show every requested tier/status"
 );
+assert.match(ACCOUNT_SETUP_TIER_ROWS.find((tier) => tier.key === "beta").description, /confirm your email.*start using Code 3/);
 assert.ok(ACCOUNT_SETUP_WORKSPACE_ROWS.some((row) => row.key === "family"), "family workspace setup should be described");
 assert.equal(normalizeAccessState("Virginia"), "VA");
 assert.equal(isVirginiaAccessState("VA"), true);

@@ -8,8 +8,8 @@ export const COMMUNITY_LINKS = Object.freeze({
 
 export default function CommunityWelcome({ onFeedback, compact = false }) {
   return <section className={`community-welcome${compact ? " community-welcome--compact" : ""}`} aria-label="Help develop Code 3 TCG">
-    <h3>Help shape Code 3 TCG</h3>
-    <p>Feedback and community groups are optional. Your app account works without joining a social network.</p>
+    <h3>Share feedback on Facebook or Discord</h3>
+    <p>Create an account and start using Code 3. Join our Facebook group or Discord to tell us what works and what could be better. Community groups and feedback are optional.</p>
     <div className="community-welcome-actions">
       {onFeedback ? <button type="button" className="secondary-button" onClick={onFeedback}>Share feedback</button>
         : <a href={`mailto:${PRIVACY_PUBLISHER.supportEmail}?subject=Code%203%20TCG%20feedback`}>Email feedback</a>}
@@ -25,7 +25,7 @@ export function MemberAccessNotice({ checking, restricted, onRetry, onSignOut })
     <h1 id="member-access-title">{checking ? "Opening your account" : restricted ? "Account access is restricted" : "We couldn’t open your account"}</h1>
     <p role="status">{checking ? "Checking your confirmed sign-in and saved profile…" : restricted
       ? "Contact support if you believe this account restriction is a mistake."
-      : "Your account needs a confirmed sign-in and a saved profile. Confirm your email if needed, then retry. No beta access request is required."}</p>
+      : "Your account needs a confirmed sign-in and a saved profile. Confirm your email if needed, then retry."}</p>
     <div className="community-welcome-actions">
       <button type="button" className="secondary-button" disabled={checking} onClick={onRetry}>Retry account check</button>
       <button type="button" className="secondary-button" onClick={onSignOut}>Sign out</button>

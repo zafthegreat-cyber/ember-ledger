@@ -7,12 +7,13 @@ export default function RegionalCommunityBanner({ primaryLabel, onPrimary }) {
     <section className="regional-community-banner" aria-label="Help build your local restock community">
       <div className="regional-community-banner__copy">
         <span className="regional-community-banner__eyebrow">VA · NC · MD · DC</span>
-        <h2>Help build your local restock community.</h2>
-        <p>Collecting in Virginia, North Carolina, Maryland, or Washington, DC? Share a useful shelf observation—what, where, and when—or suggest a missing store for review. The store directory covers all four. Reports are community observations, and stock can change.</p>
+        <h2>Share restocks. Help your local collecting community.</h2>
+        <p>Browse stores across Virginia, North Carolina, Maryland, and Washington, DC. Share what you observed, where, and when—or suggest a missing store for review. Join Facebook or Discord to share feedback. Reports are community observations, and stock can change.</p>
       </div>
       <div className="regional-community-banner__actions">
         {typeof onPrimary === "function" ? <PrimaryButton onClick={onPrimary}>{primaryLabel}</PrimaryButton> : null}
-        <ExternalWebLink className="ops-button ops-button--secondary" href="https://discord.gg/WdSz3vFZCY">Join Discord</ExternalWebLink>
+        <ExternalWebLink className="ops-button ops-button--secondary" href="https://www.facebook.com/groups/3844975102337752/">Facebook feedback</ExternalWebLink>
+        <ExternalWebLink className="ops-button ops-button--secondary" href="https://discord.gg/WdSz3vFZCY">Discord feedback</ExternalWebLink>
       </div>
     </section>
   );
