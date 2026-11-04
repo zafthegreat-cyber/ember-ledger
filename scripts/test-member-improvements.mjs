@@ -61,14 +61,15 @@ test("expired-link help reads recognized error codes only, leaving OAuth verific
 });
 test("intro choices are scoped to UUID accounts and cannot store other fields or change authority",()=>{
   const local=storage();assert.equal(saveMemberIntro(local,first,{path:"seller",hidden:true,admin:true}),true);
-  assert.deepEqual(readMemberIntro(local,first),{path:"seller",hidden:true});assert.deepEqual(readMemberIntro(local,other),{path:"collector",hidden:false});
+  assert.deepEqual(readMemberIntro(local,first),{path:"seller",hidden:true});assert.deepEqual(readMemberIntro(local,other),{path:"restocks",hidden:false});
+  assert.equal(saveMemberIntro(local,first,{path:"collector",hidden:false}),true);assert.equal(readMemberIntro(local,first).path,"collector");
   assert.equal(saveMemberIntro(local,"guest",{hidden:true}),false);assert.ok(![...local.data.values()].join().includes("admin"));
-  assert.equal(saveMemberIntro(local,first,{path:"__proto__",hidden:false}),true);assert.equal(readMemberIntro(local,first).path,"collector");
+  assert.equal(saveMemberIntro(local,first,{path:"__proto__",hidden:false}),true);assert.equal(readMemberIntro(local,first).path,"restocks");
 });
 test("blocked or malformed storage leaves the guide usable",()=>{
   const blocked={getItem(){throw Error();},setItem(){throw Error();}};
-  assert.deepEqual(readMemberIntro(blocked,first),{path:"collector",hidden:false});assert.equal(saveMemberIntro(blocked,first,{}),false);
-  assert.deepEqual(readMemberIntro({getItem:()=>"broken"},first),{path:"collector",hidden:false});
+  assert.deepEqual(readMemberIntro(blocked,first),{path:"restocks",hidden:false});assert.equal(saveMemberIntro(blocked,first,{}),false);
+  assert.deepEqual(readMemberIntro({getItem:()=>"broken"},first),{path:"restocks",hidden:false});
 });
 test("saved feedback drafts exclude identifiers, credentials, auto metadata and confirmation",()=>{
   const tab=storage();assert.equal(saveFeedbackDraft(tab,first,{reference:other,message:"My goal",mainReason:"General feedback",email:"private@example.test",name:"Private name",password:"secret",metadata:{token:"secret"},safetyConsent:true}),true);

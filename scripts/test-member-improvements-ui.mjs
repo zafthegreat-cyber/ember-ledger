@@ -14,6 +14,8 @@ const hooks=registerHooks({load(url,context,next){
 const {default:Guide}=await import("../src/features/auth/MemberStartGuide.jsx");
 const {default:EmailHelp,SignupFieldPrivacy}=await import("../src/features/auth/EmailConfirmationHelp.jsx");
 const {default:Community}=await import("../src/features/auth/CommunityWelcome.jsx");
+const {default:RestockWelcome}=await import("../src/features/auth/RestockWelcome.jsx");
+const {default:ShareCode3}=await import("../src/features/auth/ShareCode3.jsx");
 const {default:Coverage}=await import("../src/features/auth/SourceCoverage.jsx");
 const {PublicSupportPage}=await import("../src/features/privacy/PrivacyCenter.jsx");
 const first="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", other="bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeeeee";
@@ -26,11 +28,13 @@ function environment(path="/"){
 afterEach(async()=>{if(root)await act(()=>root.unmount());root=null;dom?.window.close();});
 const button=text=>[...document.querySelectorAll("button")].find(item=>item.textContent===text);
 const click=item=>item.dispatchEvent(new dom.window.MouseEvent("click",{bubbles:true}));
-test("first task opens the existing collector action, seller has a distinct action, and shops use support",async()=>{
-  environment();let collect=0,sell=0;
-  await act(()=>root.render(React.createElement(Guide,{userId:first,onCollect:()=>collect++,onSell:()=>sell++})));
+test("new members can browse and report restocks, while collector, seller and shop paths remain available",async()=>{
+  environment();let collect=0,sell=0,browse=0,report=0;
+  await act(()=>root.render(React.createElement(Guide,{userId:first,onCollect:()=>collect++,onSell:()=>sell++,onBrowseRestocks:()=>browse++,onReportRestock:()=>report++})));
+  await act(()=>click(button("Browse restocks")));await act(()=>click(button("Report my store visit")));assert.equal(browse,1);assert.equal(report,1);assert.equal(collect,0);
+  const select=document.querySelector("select");select.value="collector";await act(()=>select.dispatchEvent(new dom.window.Event("change",{bubbles:true})));
   await act(()=>click(button("Add my first collection item")));assert.equal(collect,1);assert.equal(sell,0);
-  const select=document.querySelector("select");select.value="seller";await act(()=>select.dispatchEvent(new dom.window.Event("change",{bubbles:true})));
+  select.value="seller";await act(()=>select.dispatchEvent(new dom.window.Event("change",{bubbles:true})));
   await act(()=>click(button("Open seller inventory")));assert.equal(sell,1);
   select.value="shop";await act(()=>select.dispatchEvent(new dom.window.Event("change",{bubbles:true})));
   assert.equal(document.querySelector("a.member-start-action").getAttribute("href"),"/support?topic=shop");assert.match(document.body.textContent,/does not verify a shop/);
@@ -39,7 +43,7 @@ test("skip and reopen are reversible and an account switch never inherits anothe
   environment();const render=id=>root.render(React.createElement(Guide,{userId:id}));
   await act(()=>render(first));const select=document.querySelector("select");select.value="seller";await act(()=>select.dispatchEvent(new dom.window.Event("change",{bubbles:true})));
   await act(()=>click(button("Skip for now")));assert.ok(button("Reopen getting started"));
-  await act(()=>render(other));assert.equal(document.querySelector("select").value,"collector");assert.ok(button("Skip for now"));
+  await act(()=>render(other));assert.equal(document.querySelector("select").value,"restocks");assert.ok(button("Skip for now"));
   await act(()=>render(first));assert.ok(button("Reopen getting started"));await act(()=>click(button("Reopen getting started")));
   assert.equal(document.querySelector("select").value,"seller");assert.match(document.body.textContent,/do not change membership/);
 });
@@ -63,8 +67,19 @@ test("signup privacy and navigation glossary name public fields and real functio
 });
 test("community links explain purpose and notification consent without subscribing anyone",async()=>{
   environment();await act(()=>root.render(React.createElement(Community)));
-  const links=[...document.querySelectorAll('a[target="_blank"]')];assert.equal(links.length,2);assert.ok(links.every(link=>link.rel.includes("noopener")));
+  const links=[...document.querySelectorAll('a[target="_blank"]')];assert.equal(links.length,3);assert.ok(links.every(link=>link.rel.includes("noopener")));
+  assert.equal(links.find(link=>link.textContent.includes("Follow Code 3")).href,"https://www.facebook.com/code3tcg");assert.ok(button("Invite a collector"));
   assert.match(document.body.textContent,/#choose-roles/);assert.match(document.body.textContent,/does not subscribe you/);assert.match(document.body.textContent,/optional/);
+});
+test("restock landing opens the existing signup callback without creating an account",async()=>{
+  environment();let calls=0;await act(()=>root.render(React.createElement(RestockWelcome,{onCreateAccount:()=>calls++})));
+  assert.equal(document.querySelectorAll("ol li").length,3);assert.match(document.body.textContent,/observation time/);assert.match(document.body.textContent,/availability can change/);
+  await act(()=>click(button("Create a free account")));assert.equal(calls,1);
+});
+test("a blocked share and clipboard leave a labelled selectable public link",async()=>{
+  environment();await act(()=>root.render(React.createElement(ShareCode3)));
+  await act(async()=>{click(button("Invite a collector"));await Promise.resolve();});
+  const input=document.querySelector('input[type="url"]');assert.ok(input.readOnly);assert.match(input.value,/^https:\/\/code3tcg.app\/scout\/reports\?/);assert.ok(document.querySelector(`label[for="${input.id}"]`));assert.match(document.querySelector('[role="status"]').textContent,/Select and copy/);
 });
 test("coverage exposes a readable pause label even when compact and distinguishes member observations",async()=>{
   environment();await act(()=>root.render(React.createElement(Coverage,{compact:true})));
