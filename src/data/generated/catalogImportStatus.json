@@ -1,5 +1,5 @@
 {
-  "lastImportedAt": "2026-11-03T17:06:42.220Z",
+  "lastImportedAt": "2026-11-04T17:19:27.527Z",
   "source": "tcgcsv-plus-local-seeds",
   "marketPriceSource": "TCGCSV public product/price JSON",
   "tcgcsvCategoryId": 3,
@@ -8,14 +8,14 @@
   "catalogProductsImported": 33082,
   "cardsImported": 28347,
   "sealedProductsImported": 4735,
-  "marketPricesImported": 31839,
-  "marketPricesJoinedByProductId": 31839,
+  "marketPricesImported": 31880,
+  "marketPricesJoinedByProductId": 31880,
   "referencePriceJoinCoverage": 1,
   "aliasesImported": 59,
   "productsWithPhotos": 33058,
   "productsMissingPhotos": 24,
-  "productsWithReferencePrices": 31780,
-  "productsMissingReferencePrices": 1302,
+  "productsWithReferencePrices": 31821,
+  "productsMissingReferencePrices": 1261,
   "priceFallbackLabel": "Price data unavailable",
   "imageFallbackLabel": "Code 3 TCG product placeholder",
   "photoSourcePolicy": "Use source image URLs when provided by public catalog data; otherwise render the branded app placeholder.",
@@ -106,6 +106,6 @@
   "overpassError": "",
   "notes": "Generated from public TCGCSV product/price JSON and cached Virginia store directory data. No retailer scraping and no TCGplayer page scraping. Pricing is reference data, not a live offer.",
   "tcgcsvBuildTimestamp": "",
-  "tcgcsvLatestAvailableBuildTimestamp": "2026-11-02T20:06:18.000Z",
+  "tcgcsvLatestAvailableBuildTimestamp": "2026-11-03T20:06:12.000Z",
   "tcgcsvBuildComplete": false
 }
