@@ -1,0 +1,6 @@
+.share-code3 { min-width: 0; flex: 1 1 180px; }
+.share-code3-status { margin: .4rem 0 0 !important; font-size: .85rem; line-height: 1.5; }
+.share-code3-status:empty { display: none; }
+.share-code3-fallback { display: grid; gap: .4rem; margin-top: .6rem; }
+.share-code3-fallback input { box-sizing: border-box; width: 100%; min-width: 0; min-height: 44px; padding: .7rem; border: 1px solid currentColor; border-radius: 8px; color: inherit; background: transparent; font: inherit; }
+.share-code3-fallback input:focus-visible { outline: 3px solid var(--focus-ring, #cc9d2d); outline-offset: 3px; }

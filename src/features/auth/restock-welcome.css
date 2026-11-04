@@ -1,0 +1,8 @@
+.restock-welcome-region { font-size: .82rem; font-weight: 650; letter-spacing: .02em; }
+.restock-welcome-cta { min-height: 44px; padding: .8rem 1.15rem; margin-top: .75rem; cursor: pointer; font: inherit; }
+.restock-welcome-cta:focus-visible { outline: 3px solid var(--focus-ring, #cc9d2d); outline-offset: 4px; }
+.restock-welcome-note { font-size: .85rem; line-height: 1.6; }
+.restock-welcome-steps { display: grid; gap: .8rem; padding: 0; margin: 1.2rem 0 0; list-style: none; }
+.restock-welcome-steps li { display: grid; gap: .35rem; padding: 1rem; border: 1px solid currentColor; border-radius: 12px; background: color-mix(in srgb, var(--surface-primary, #211f28) 80%, transparent); }
+.restock-welcome-steps strong, .restock-welcome-steps span { overflow-wrap: anywhere; }
+.restock-welcome-steps span { font-size: .9rem; line-height: 1.55; }

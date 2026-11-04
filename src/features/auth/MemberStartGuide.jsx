@@ -7,7 +7,7 @@ export default function MemberStartGuide(props) {
   return <AccountStartGuide key={props.userId || "preview"} {...props} />;
 }
 function safeStorage() { try { return globalThis.localStorage; } catch { return null; } }
-function AccountStartGuide({ userId, onCollect, onSell, hasCollectionItems = false, storage = safeStorage() }) {
+function AccountStartGuide({ userId, onCollect, onSell, onBrowseRestocks, onReportRestock, hasCollectionItems = false, storage = safeStorage() }) {
   const [choice, setChoice] = useState(() => readMemberIntro(storage, userId));
   const [reviewRequested, setReviewRequested] = useState(false);
   const [saveWarning, setSaveWarning] = useState("");
@@ -25,7 +25,8 @@ function AccountStartGuide({ userId, onCollect, onSell, hasCollectionItems = fal
     <label htmlFor={`${id}-path`}>What brings you here?</label>
     <select id={`${id}-path`} value={choice.path} onChange={event => update({ path: event.target.value })}>{Object.entries(MEMBER_PATHS).map(([key, path]) => <option key={key} value={key}>{path.label}</option>)}</select>
     <article className="member-start-task"><p className="member-start-meta">{choice.path === "collector" ? "About a minute · optional first task" : "Optional introduction"}</p><h3>{selected.title}</h3><p>{selected.body}</p>
-      {choice.path === "shop" ? <a className="member-start-action" href="/support?topic=shop">{selected.action}</a> : <button type="button" className="member-start-action" onClick={choice.path === "collector" ? onCollect : onSell}>{selected.action}</button>}
+      {choice.path === "shop" ? <a className="member-start-action" href="/support?topic=shop">{selected.action}</a> : <button type="button" className="member-start-action" onClick={choice.path === "restocks" ? onBrowseRestocks : choice.path === "collector" ? onCollect : onSell}>{selected.action}</button>}
+      {choice.path === "restocks" && onReportRestock ? <button type="button" className="secondary-button member-start-report" onClick={onReportRestock}>Report my store visit</button> : null}
       <p className="member-start-meta">{selected.destination}</p>
     </article>
     <details><summary>Find your way around</summary><dl className="member-destinations">{MEMBER_DESTINATIONS.map(([name, purpose]) => <div key={name}><dt>{name}</dt><dd>{purpose}</dd></div>)}</dl>

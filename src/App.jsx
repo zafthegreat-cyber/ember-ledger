@@ -4,6 +4,7 @@ import { catalogCardQueryMatchesRow, getCatalogCollectorQuery, getCatalogPagePro
 import SocialSignInButtons, { ConnectedSignIns } from "./features/auth/SocialSignIn.jsx";
 import EmailConfirmationHelp, { SignupFieldPrivacy } from "./features/auth/EmailConfirmationHelp.jsx";
 import MemberStartGuide from "./features/auth/MemberStartGuide.jsx";
+import RestockWelcome from "./features/auth/RestockWelcome.jsx";
 import SourceCoverage from "./features/auth/SourceCoverage.jsx";
 import { createEmailRequestController, expiredEmailLink, isAuthEmail, safeAuthMessage } from "./features/auth/emailAssistance.mjs";
 import { readFeedbackDraft, saveFeedbackDraft, clearFeedbackDraft } from "./features/auth/feedbackDraft.mjs";
@@ -17633,8 +17634,17 @@ export default function App() {
 
   function renderMemberStartGuide() {
     return <MemberStartGuide userId={signedInWithSupabase ? user?.id : ""} hasCollectionItems={activeVaultItems.length > 0}
+      onBrowseRestocks={openCommunityRestockReports}
+      onReportRestock={() => openScoutSubmitFlow({ source: "member-start-restock" })}
       onCollect={() => openVaultQuickAdd({ category: "Personal collection" })}
       onSell={() => { prepareRouteNavigation(); setActiveTab("inventory"); }} />;
+  }
+
+  function openCommunityRestockReports() {
+    prepareRouteNavigation();
+    setScoutView("reports");
+    setScoutSubTabTarget({ tab: "reports", id: Date.now() });
+    setActiveTab("scout");
   }
 
   function openPasswordResetRequest() {
@@ -46692,26 +46702,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <main className="main auth-main auth-login-redesign">
           {signedOutPublicContent || (
           <section className="signed-out-landing auth-login-story-panel" aria-label={`${BRAND_CONFIG.applicationDisplayName} sign in`}>
-            <div className="auth-login-scene">
-              <div className="auth-login-scene-copy">
-                <h2>Know what’s in your collection</h2>
-                <p>Save one card or sealed product in Vault, then see it in your collection. Seller inventory and shop tools have their own introductions after sign-in.</p>
-              </div>
-              <div className="auth-login-promise-grid" aria-label="Workspace capabilities">
-                {[
-                  ["Track", "Track your collection"],
-                  ["Find", "Find events and connect"],
-                  ["Trade", "Trade safely and fairly"],
-                  ["Impact", "Make an impact"],
-                ].map(([title, body]) => (
-                  <article className="auth-login-promise" key={title}>
-                    <span className={`auth-login-promise-icon auth-login-promise-icon--${title.toLowerCase()}`} aria-hidden="true" />
-                    <strong>{title}</strong>
-                    <p>{body}</p>
-                  </article>
-                ))}
-              </div>
-            </div>
+            <RestockWelcome onCreateAccount={() => openAuthPanel("signup")} />
           </section>
           )}
           <section className="panel auth-panel signed-out-auth-card" id="account-access">
@@ -48228,7 +48219,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     adaptiveActivity,
     personalizationPreferences,
     onReportRestock: () => openScoutSubmitFlow({ source: "home-restock" }),
-    onOpenRestockReports: () => { prepareRouteNavigation(); setScoutView("reports"); setScoutSubTabTarget({ tab: "reports", id: Date.now() }); setActiveTab("scout"); },
+    onOpenRestockReports: openCommunityRestockReports,
     onOpenFind: openFlipScoutView,
     BETA_LOCAL_MODE,
     GRADE_ASSIST_LOCAL_STORAGE_KEY,
