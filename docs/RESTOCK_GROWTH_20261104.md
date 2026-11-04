@@ -24,15 +24,10 @@ take a useful restock action and invite collectors they know.
 
 ## Aggregate baseline
 
-Read-only Code 3 Supabase counts at 2026-11-04 21:56:57 UTC:
-
-- Profiles: 5 total, 3 created in the preceding seven days.
-- Cloud `store_reports`: 0 total and 0 in the preceding seven days.
-- Distinct authors of cloud reports in that window: 0.
-
-Profiles include the owner's and any test accounts. These are not active-user,
-reach or follower counts. Reports held only on devices are not represented.
-No private identities or report contents were queried.
+The owner’s read-only aggregate baseline is recorded in the local campaign
+receipt. It is separate from public release documentation. Profile counts are
+not active-user, reach or follower counts; reports held only on devices are not
+represented. No private identities or report contents were queried.
 
 ## Scope and verification
 
