@@ -52,7 +52,7 @@ export function checkedProviderUrl(value, provider, projectUrl) {
   return url.href;
 }
 
-export async function loadSocialAvailability({ projectUrl, publicKey, released = [], fetchImpl = fetch, signal }) {
+export async function loadSocialAvailability({ projectUrl, publicKey, released = [], fetchImpl = fetch, signal, requireApple = false }) {
   if (!publicKey || !released.length) return [];
   const origin = checkedAuthOrigin(projectUrl);
   const response = await fetchImpl(`${origin}/auth/v1/settings`, {
@@ -61,7 +61,9 @@ export async function loadSocialAvailability({ projectUrl, publicKey, released =
   });
   if (!response.ok) throw new Error("Sign-in options are temporarily unavailable. You can still use email and password.");
   const settings = await response.json();
-  return SOCIAL_PROVIDERS.filter(provider => released.includes(provider.id) && settings.external?.[provider.id] === true);
+  const available = SOCIAL_PROVIDERS.filter(provider => released.includes(provider.id) && settings.external?.[provider.id] === true);
+  // App Store guideline 4.8: the iPhone app may offer other third-party sign-in only beside Sign in with Apple.
+  return requireApple && !available.some(provider => provider.id === "apple") ? [] : available;
 }
 
 const completedClients = new WeakMap();

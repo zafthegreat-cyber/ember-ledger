@@ -1,5 +1,6 @@
 import DeferredModalBoundary from "./features/deferredViews/DeferredModalBoundary";
 import { compactSavedStores } from "./utils/storeDirectoryPersistence.js";
+import { isBlockedAuthor, useBlockedUsers } from "./utils/blockedUsers.js";
 import { catalogCardQueryMatchesRow, getCatalogCollectorQuery, getCatalogPageProducts } from "./utils/catalogResultIdentity.mjs";
 import SocialSignInButtons, { ConnectedSignIns } from "./features/auth/SocialSignIn.jsx";
 import EmailConfirmationHelp, { SignupFieldPrivacy } from "./features/auth/EmailConfirmationHelp.jsx";
@@ -10706,6 +10707,35 @@ export default function App() {
     ].filter(Boolean).join("\n");
   }
 
+  // Sends a member's report about someone else's content to the moderation inbox
+  // (beta_feedback), so it reaches staff instead of staying on this device.
+  async function sendContentReportToModerators({ kind, targetId, reason, details = "", authorId = "", summary = "" }) {
+    if (!isSupabaseConfigured || !supabase || !signedInWithSupabase || !isUuidLike(user?.id)) return false;
+    const label = kind === "store_report" ? "Restock report" : "Community post";
+    const row = {
+      user_id: user.id,
+      feedback_type: kind === "store_report" ? "Store report issue" : "Other",
+      page: label,
+      title: `Content report: ${reason || "Other"}`.slice(0, 200),
+      description: [`${label} ${targetId || "(no id)"}`, summary ? `Content: ${summary}` : "", `Reason: ${reason || "Other"}`, details ? `Details: ${details}` : ""].filter(Boolean).join("\n").slice(0, 4000),
+      severity: /unsafe|inappropriate|harass|threat|scam/i.test(reason || "") ? "high" : "normal",
+      status: "new",
+      device_info: { source: "content_report", kind, targetId: String(targetId || ""), authorId: String(authorId || ""), reason: reason || "" },
+      browser_info: typeof navigator !== "undefined" ? navigator.userAgent : "",
+      app_version: APP_VERSION || "Code 3 TCG",
+      related_entity_type: `content_report_${kind}`,
+      related_entity_id: isUuidLike(targetId) ? targetId : null,
+    };
+    try {
+      const { error } = await supabase.from("beta_feedback").insert(row).abortSignal(AbortSignal.timeout(12_000));
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      logAppError("content_report_send", error, { kind }, "normal");
+      return false;
+    }
+  }
+
   async function trySubmitPublicBetaFeedbackToBackend(payload) {
     if (!isSupabaseConfigured || !supabase) {
       return { ok: false, reason: "backend-unavailable" };
@@ -16408,17 +16438,19 @@ export default function App() {
     setTidepoolFlagDetails("");
   }
 
-  function submitTidepoolFlag() {
+  async function submitTidepoolFlag() {
     if (!tidepoolFlagTarget?.postId) return;
-    const updated = flagTidepoolPost(tidepoolFlagTarget, {
+    const target = tidepoolFlagTarget;
+    const updated = flagTidepoolPost(target, {
       reason: tidepoolFlagReason,
       details: tidepoolFlagDetails,
       userId: currentUserProfile.userId || "local-beta",
     });
-    updateTidepoolPost(tidepoolFlagTarget.postId, updated);
+    updateTidepoolPost(target.postId, updated);
     setTidepoolFlagTarget(null);
     setTidepoolFlagDetails("");
-    setVaultToast("Thanks — admins will review this.");
+    const sent = await sendContentReportToModerators({ kind: "community_post", targetId: target.postId, reason: tidepoolFlagReason, details: tidepoolFlagDetails, authorId: target.userId, summary: target.title || target.body || "" });
+    setVaultToast(sent ? "Thanks — admins will review this." : "Report saved on this device but not sent. Sign in, or email support@code3tcg.com if it's urgent.");
   }
 
   function hideOwnTidepoolPost(post = {}) {
@@ -33998,8 +34030,10 @@ function renderForgeBusinessLedgerPanel() {
     }));
   }, [tidepoolPosts, tidepoolComments, tidepoolReactions]);
   const visibleTidepoolFilters = TIDEPOOL_FEED_FILTERS.filter((filter) => TIDEPOOL_PRIMARY_TABS.includes(filter) || (filter === "Needs Review" && adminEditModeActive));
+  const blockedUsers = useBlockedUsers();
   const filteredTidepoolPosts = useMemo(() => tidepoolPostsWithCounts
     .filter((post) => {
+      if (isBlockedAuthor(post, blockedUsers)) return false;
       if (!canViewTidepoolPost(post, { isAdmin: adminEditModeActive, currentUserId: currentUserProfile.userId || "local-beta" })) return false;
       if (tidepoolFilter === "Needs Review" && !adminEditModeActive) return false;
       if (tidepoolFilter === "Feed" || tidepoolFilter === "Latest") return true;
@@ -34022,6 +34056,7 @@ function renderForgeBusinessLedgerPanel() {
     storeDirectoryState,
     adminEditModeActive,
     currentUserProfile.userId,
+    blockedUsers,
   ]);
   const scoutIntelRows = useMemo(() => scoutSnapshot.restockIntel?.length
     ? scoutSnapshot.restockIntel
@@ -37332,13 +37367,23 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       const updatedReport = saveScoutReportDetailsLocally(patchedReport);
       setSelectedScoutReport(updatedReport);
       const actionType = scoutReportActionDraft?.type;
+      const flagSent = actionType === "flag" ? await sendContentReportToModerators({
+        kind: "store_report",
+        targetId: getScoutReportId(report),
+        reason: getScoutReportFlagReasonLabel(scoutReportActionDraft?.reason),
+        details: String(scoutReportActionDraft?.note || "").trim(),
+        authorId: report.userId || report.user_id || "",
+        summary: report.storeName || report.store_name || "",
+      }) : false;
       setScoutReportActionDraft(null);
       if (actionType === "confirm") {
         showSuccessToast("Restock report confirmed.", { message: "Confirmations help Restocks trust current reports." });
       } else if (actionType === "proof") {
         showSuccessToast("Proof added.", { message: "Proof helps Restocks trust this report." });
-      } else if (actionType === "flag") {
+      } else if (actionType === "flag" && flagSent) {
         showSuccessToast("Thanks - admin will review this.", { message: "Flagging keeps the report visible while moderation reviews it." });
+      } else if (actionType === "flag") {
+        showErrorToast("Report saved on this device but not sent.", { message: "Sign in, or email support@code3tcg.com if it's urgent." });
       }
     } catch (error) {
       logAppError("scout_report_action_update", error, { reportId: getScoutReportId(report), actionType: scoutReportActionDraft?.type }, "normal");
@@ -52148,6 +52193,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               onQuickReport={(options) => openScoutSubmitFlow({ ...options, source: "scout-command" })}
               onEditReport={openScoutReportAddDetails}
               isCurrentUserReport={isCurrentUserScoutReport}
+              onFlagReport={openScoutReportFlagAction}
               onReturnToReport={scoutStoreReportReturnRef.current?.storeId === String(scoutSubTabTarget.storeId || "") ? () => window.history.back() : null}
               onOpenFlipScout={() => setActiveTab("flipScout")}
             />

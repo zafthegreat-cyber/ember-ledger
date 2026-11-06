@@ -8,6 +8,8 @@
     <string>Scan product barcodes and add photos to your collection or restock reports.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>Choose photos to attach to your collection or restock reports.</string>
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>Find nearby stores when you choose to use your location.</string>
   <key>CAPACITOR_DEBUG</key>

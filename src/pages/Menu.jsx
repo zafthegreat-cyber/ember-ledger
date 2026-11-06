@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { AppNavIcon } from "../components/command-system/AppNavIcon.jsx";
 import { PageHeader, SecondaryButton } from "../components/operations/OperationsUI.jsx";
 import CloudSyncPanel from "../features/persistence/CloudSyncPanel.jsx";
+import BlockedUsersPanel from "../components/BlockedUsersPanel.jsx";
 import { useCloudWorkspace } from "../features/persistence/CloudWorkspaceContext.js";
 import { resolveExperiencePresentation } from "../utils/experiencePresentation.js";
 import "./settings-layout.css";
@@ -164,6 +165,9 @@ export default function MenuPage(props) {
             <SettingsGroup id="settings-family-heading" title={showFamily && showCommunity ? "Family, community & safety" : showFamily ? "Family & safety" : showCommunity ? "Community & safety" : "Privacy & safety"}>
               {showFamily ? <SettingsRow icon="community" title="Family permissions" description="Child profiles and parent approvals" status={kidApplicationCount ? `${kidApplicationCount} request${kidApplicationCount === 1 ? "" : "s"}` : undefined} onClick={() => openUtilityPage("parentCenter")} /> : null}
               <SettingsRow icon="secure" title="Safety center" description="Guidance for safe collecting and trading" onClick={() => openUtilityPage("trust")} />
+              <SettingsDisclosure icon="secure" title="Blocked people" description="People whose posts and reports you've hidden">
+                <BlockedUsersPanel />
+              </SettingsDisclosure>
               {showFamily ? <SettingsRow icon="spark" title="The Spark" description="Kid-pack requests, donations, and giving" onClick={() => openUtilityPage("kidsProgram")} /> : null}
               {showCommunity ? <SettingsRow icon="pool" title="Community" description="Local events, trusted shops, and connections" onClick={() => openUtilityPage("tidepool")} /> : null}
               {typeof renderSettingsPrivacySafetyCard === "function" ? (

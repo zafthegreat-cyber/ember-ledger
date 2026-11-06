@@ -34,6 +34,7 @@ import { getStoreGroup, normalizeStoreGroup, STORE_GROUP_ORDER } from "../utils/
 import { dedupeStoresByChainAddress, normalizeImportedStore, normalizeStateLabel, normalizeStoreRegion } from "../utils/storeImportUtils";
 import RegionalCommunityBanner from "../components/RegionalCommunityBanner.jsx";
 import { compactSavedStores, registerDirectoryStores } from "../utils/storeDirectoryPersistence.js";
+import { authorIdOf, blockUser, isBlockedAuthor, useBlockedUsers } from "../utils/blockedUsers.js";
 import { storeMatchesSearch, sortStores } from "../utils/storeSearchUtils";
 import {
   COMMUNITY_MOTTO_COPY,
@@ -1301,6 +1302,7 @@ export default function Scout({
   onQuickReport = null,
   onEditReport = null,
   isCurrentUserReport = null,
+  onFlagReport = null,
   onReturnToReport = null,
   onOpenFlipScout = null,
   storeDirectoryState = DEFAULT_STORE_STATE_CODE,
@@ -3749,9 +3751,22 @@ async function handleUpdateStore(e) {
     (report) => (typeof isCurrentUserReport === "function" ? isCurrentUserReport(report) : isUserOwnedScoutReport(report)),
     [isCurrentUserReport]
   );
+  const blockedUsers = useBlockedUsers();
+  const hiddenAsBlocked = useCallback(
+    (report) => !ownsScoutReport(report) && isBlockedAuthor(report, blockedUsers),
+    [ownsScoutReport, blockedUsers]
+  );
+  const canBlockReporter = (report) => Boolean(authorIdOf(report)) && authorIdOf(report) !== "local-beta" && !ownsScoutReport(report);
+  const blockReporter = (report) => {
+    const label = report.submittedByDisplay || report.submitted_by_display || report.displayName || "this reporter";
+    if (!window.confirm(`Block ${label}? You won't see their restock reports or community posts. You can unblock them in Settings.`)) return false;
+    blockUser(report, label);
+    setError(`${label} is blocked. Use Report on the report too if it breaks the rules.`);
+    return true;
+  };
   const visibleAllReports = useMemo(
-    () => allReports.filter((report) => canViewerSeeScoutReport(report, adminMode, ownsScoutReport)),
-    [allReports, adminMode, ownsScoutReport]
+    () => allReports.filter((report) => canViewerSeeScoutReport(report, adminMode, ownsScoutReport) && !hiddenAsBlocked(report)),
+    [allReports, adminMode, ownsScoutReport, hiddenAsBlocked]
   );
 
   useEffect(() => {
@@ -3778,8 +3793,8 @@ async function handleUpdateStore(e) {
   }, []);
 
   const visibleReports = useMemo(
-    () => reports.filter((report) => canViewerSeeScoutReport(report, adminMode, ownsScoutReport)),
-    [reports, adminMode, ownsScoutReport]
+    () => reports.filter((report) => canViewerSeeScoutReport(report, adminMode, ownsScoutReport) && !hiddenAsBlocked(report)),
+    [reports, adminMode, ownsScoutReport, hiddenAsBlocked]
   );
 
   const totals = useMemo(() => {
@@ -4027,6 +4042,8 @@ async function handleUpdateStore(e) {
     const compactReportActions = [
       { label: "View", onClick: () => openReportDetails(report) },
       ...(canManageScoutReport ? [{ label: adminMode ? "Edit details" : "Add details", onClick: () => startEditingReport(report) }] : []),
+      ...(typeof onFlagReport === "function" && !ownsScoutReport(report) ? [{ label: "Report", danger: true, onClick: () => onFlagReport(report) }] : []),
+      ...(canBlockReporter(report) ? [{ label: "Block reporter", danger: true, onClick: () => blockReporter(report) }] : []),
     ];
     if (options.feed) {
       const stockGroup = restockReportStockGroup(report);
@@ -7086,6 +7103,17 @@ async function handleUpdateStore(e) {
                     reportDetailsHandoffRef.current = true;
                     dismissReportDetails(() => startEditingReport(selectedReportTarget));
                   }}>{adminMode ? "Edit details" : "Add details"}</button>
+                ) : null}
+                {typeof onFlagReport === "function" && !ownsScoutReport(selectedReportTarget) ? (
+                  <button type="button" className="secondary-button" onClick={() => {
+                    const target = selectedReportTarget;
+                    dismissReportDetails(() => onFlagReport(target));
+                  }}>Report</button>
+                ) : null}
+                {canBlockReporter(selectedReportTarget) ? (
+                  <button type="button" className="secondary-button" onClick={() => {
+                    if (blockReporter(selectedReportTarget)) dismissReportDetails();
+                  }}>Block reporter</button>
                 ) : null}
                 {adminMode ? <button type="button" className="delete-button" onClick={(event) => {
                   deleteReportOpenerRef.current = event.currentTarget;

@@ -89,4 +89,26 @@ check("signed Android build is manual-only, checks the build number and never ke
   assert.doesNotMatch(workflow, /path:[^\n]*keystore|cat [^\n]*keystore/);
 });
 
+check("iOS TestFlight build is manual-only, pinned, checks the build number and never keeps the API key", () => {
+  const workflow = read(".github/workflows/ios-release.yml").replace(/\r\n/g, "\n");
+  assert.match(workflow, /^on:\n  workflow_dispatch:/m);
+  assert.doesNotMatch(workflow, /^  (push|pull_request|schedule):/m, "uploads must never run automatically");
+  assert.match(workflow, /node scripts\/native-build-number\.mjs/);
+  assert.match(workflow, /CURRENT_PROJECT_VERSION="\$CODE3_BUILD_NUMBER"/);
+  assert.match(workflow, /<key>method<\/key><string>app-store-connect<\/string>/);
+  assert.match(workflow, /if: always\(\)\n\s+run: \|\n\s+rm -f "\$RUNNER_TEMP\/code3-asc\.p8"/);
+  assert.doesNotMatch(workflow, /path:[^\n]*\.p8|cat [^\n]*\.p8|echo "\$ASC_PRIVATE_KEY"/);
+  const verified = ["11d5960a326750d5838078e36cf38b85af677262", "49933ea5288caeca8642d1e84afbd3f7d6820020", "ea165f8d65b6e75b540449e92b4886f43607fa02"];
+  const uses = [...workflow.matchAll(/uses:\s*\S+@(\S+)/g)].map(match => match[1]);
+  assert.deepEqual(uses, verified);
+});
+
+check("App Store package settings: no alpha in the icon, encryption declared, iPhone only", () => {
+  const icon = readFileSync(resolve("ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png"));
+  assert.equal(icon[25], 2, "the App Store icon must be RGB with no alpha channel");
+  assert.match(read("ios/App/App/Info.plist"), /<key>ITSAppUsesNonExemptEncryption<\/key>\s*<false\/>/);
+  const project = read("ios/App/App.xcodeproj/project.pbxproj");
+  assert.equal((project.match(/TARGETED_DEVICE_FAMILY = 1;/g) || []).length, 2);
+});
+
 console.log(`Native build readiness: ${checks} checks passed; no build, account, network, signing or upload performed.`);

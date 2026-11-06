@@ -55,6 +55,7 @@
     "test:workspace-invite-sessions-postgres": "node scripts/test-workspace-invite-sessions-postgres.mjs",
     "test:account-sessions": "node scripts/test-account-session-client.mjs",
     "test:social-sign-in": "node --test scripts/test-social-sign-in.mjs scripts/test-social-sign-in-ui.mjs",
+    "test:blocked-users": "node --test scripts/test-blocked-users.mjs",
     "test:member-improvements": "node --no-warnings --test scripts/test-member-improvements.mjs scripts/test-member-improvements-ui.mjs",
     "test:member-improvements-browser": "node scripts/test-member-improvements-browser.cjs",
     "test:account-startup-browser": "node scripts/test-account-lock-browser.cjs",

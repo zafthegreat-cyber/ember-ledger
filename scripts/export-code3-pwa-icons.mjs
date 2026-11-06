@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { toOpaqueRgbPng } from "./png-opaque-rgb.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -22,7 +23,7 @@ const icons = [
   { path: "public/assets/brand-system/icons/v1/icon-maskable-192.png", size: 192, scale: 0.86, safeRadius: 0.4, aliases: ["public/icon-maskable-192.png"] },
   { path: `public${BRAND_CONFIG.faviconReference}`, size: 32, aliases: ["public/favicon-32x32.png"] },
   { path: "public/assets/brand-system/icons/v1/favicon-16.png", size: 16, aliases: ["public/favicon-16x16.png"] },
-  { path: "ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png", size: 1024 },
+  { path: "ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png", size: 1024, rgb: true },
 ];
 for (const [density, size, foregroundSize] of [["mdpi", 48, 108], ["hdpi", 72, 162], ["xhdpi", 96, 216], ["xxhdpi", 144, 324], ["xxxhdpi", 192, 432]]) {
   const directory = `android/app/src/main/res/mipmap-${density}`;
@@ -83,7 +84,7 @@ try {
       return { png: canvas.toDataURL("image/png").split(",")[1], transparentPixels };
     }, { dataUrl: `data:image/png;base64,${source.toString("base64")}`, background, icon, scale });
     if (!icon.round && !icon.transparent) assert.equal(result.transparentPixels, 0, `${icon.path} must be opaque`);
-    const bytes = Buffer.from(result.png, "base64");
+    const bytes = icon.rgb ? toOpaqueRgbPng(Buffer.from(result.png, "base64")) : Buffer.from(result.png, "base64");
     save(icon.path, bytes);
     for (const alias of icon.aliases ?? []) save(alias, bytes);
     console.log(`${verifyOnly ? "Verified" : "Exported"} ${icon.path}: ${icon.size}x${icon.size}`);

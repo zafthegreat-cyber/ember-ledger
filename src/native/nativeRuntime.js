@@ -7,6 +7,10 @@ export function isNativePlatform() {
   return globalThis.Capacitor?.isNativePlatform?.() === true;
 }
 
+export function isNativeIos() {
+  return isNativePlatform() && globalThis.Capacitor?.getPlatform?.() === "ios";
+}
+
 export function isTrustedNativeOrigin(pageUrl = globalThis.location?.href, native = isNativePlatform()) {
   if (!native) return false;
   try {

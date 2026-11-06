@@ -53,6 +53,14 @@ test("buttons require both release verification and a live enabled provider", as
   } });
   assert.deepEqual(result.map(provider => provider.id), ["google"]);
 });
+test("iPhone shows other sign-in options only beside Sign in with Apple", async () => {
+  const settings = external => async () => Response.json({ external });
+  const base = { projectUrl: project, publicKey: "public-fixture" };
+  assert.deepEqual(await loadSocialAvailability({ ...base, released: ["discord"], requireApple: true, fetchImpl: settings({ discord: true, apple: true }) }), []);
+  assert.deepEqual(await loadSocialAvailability({ ...base, released: ["discord", "apple"], requireApple: true, fetchImpl: settings({ discord: true, apple: false }) }), []);
+  const both = await loadSocialAvailability({ ...base, released: ["apple", "discord"], requireApple: true, fetchImpl: settings({ discord: true, apple: true }) });
+  assert.deepEqual(both.map(provider => provider.id), ["apple", "discord"]);
+});
 test("availability errors fail closed without leaking upstream details", async () => {
   await assert.rejects(loadSocialAvailability({ projectUrl: project, publicKey: "public-fixture", released: ["google"], fetchImpl: async () => new Response("private upstream detail", { status: 502 }) }), error => !error.message.includes("private"));
 });

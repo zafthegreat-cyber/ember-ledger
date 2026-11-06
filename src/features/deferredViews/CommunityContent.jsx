@@ -1,7 +1,9 @@
 import { PrivateStorageImage } from "../../components/PrivateReceipt.jsx";
 import { tidepoolPendingReviewCopy } from "../../utils/tidepoolCommunity.js";
+import { blockUser, canBlockAuthor, useBlockedUsers, withoutBlockedAuthors } from "../../utils/blockedUsers.js";
 // Rendering is deferred; the owning App retains record state and action handlers.
 export default function CommunityContent({ scope }) {
+  const blockedUsers = useBlockedUsers();
   const {
     CommandBoardV4,
     EtMockupActionCard,
@@ -428,7 +430,7 @@ export default function CommunityContent({ scope }) {
               </div>
             ) : null}
             {pagedTidepoolPosts.items.map((post) => {
-              const postComments = tidepoolComments.filter((comment) => comment.postId === post.postId && !comment.parentCommentId && comment.status !== "removed");
+              const postComments = withoutBlockedAuthors(tidepoolComments, blockedUsers).filter((comment) => comment.postId === post.postId && !comment.parentCommentId && comment.status !== "removed");
               const locationParts = [post.city, post.state].filter(Boolean);
               const locationLabel = locationParts.length ? locationParts.join(", ") : post.state ? post.state : "Community area";
               const postDate = post.createdAt ? new Date(post.createdAt).toLocaleDateString() : "No date";
@@ -521,7 +523,11 @@ export default function CommunityContent({ scope }) {
                       buttonLabel="Safety"
                       actions={[
                         { label: post.flagged ? "Reported" : "Report post", danger: true, onClick: () => openTidepoolFlagFlow(post) },
-                        { label: "Block user", onClick: () => setVaultToast("Block controls are queued for account settings. Report unsafe content now.") },
+                        ...(canBlockAuthor(post, currentUserId) ? [{ label: "Block user", danger: true, onClick: () => {
+                          if (!window.confirm(`Block ${usernameLabel}? You won't see their posts, replies or restock reports. You can unblock them in Settings.`)) return;
+                          blockUser(post, usernameLabel);
+                          setVaultToast(`${usernameLabel} is blocked. Report the post too if it breaks the rules.`);
+                        } }] : []),
                         ...(canHidePost ? [{ label: post.status === "hidden" ? "Hidden" : "Hide post", onClick: () => hideOwnTidepoolPost(post) }] : []),
                       ]}
                     />
@@ -535,7 +541,7 @@ export default function CommunityContent({ scope }) {
                       {postComments.length ? (
                         <div className="tidepool-comment-list">
                           {postComments.slice(0, 3).map((comment) => {
-                            const replies = tidepoolComments.filter((reply) => reply.parentCommentId === comment.commentId && reply.status !== "removed");
+                            const replies = withoutBlockedAuthors(tidepoolComments, blockedUsers).filter((reply) => reply.parentCommentId === comment.commentId && reply.status !== "removed");
                             return (
                               <div className="tidepool-comment" key={comment.commentId}>
                                 <p><strong>{publicUsernameLabelFromRecord(comment, "community")}</strong>: {comment.body}</p>

@@ -1,5 +1,5 @@
 import { supabase, createSocialOAuthClient, clearSocialOAuthStorage } from "../../supabaseClient.js";
-import { isNativePlatform } from "../../native/nativeRuntime.js";
+import { isNativeIos, isNativePlatform } from "../../native/nativeRuntime.js";
 import { nativeSessionStorage } from "../../native/nativeSessionStorage.js";
 import { createSocialAuthService, loadSocialAvailability, releasedProviders } from "./socialAuth.mjs";
 
@@ -8,7 +8,7 @@ const native = isNativePlatform();
 export const accountLinkingEnabled = env.VITE_AUTH_ACCOUNT_LINKING_VERIFIED === "true";
 export const availableSocialProviders = signal => loadSocialAvailability({
   projectUrl: env.VITE_SUPABASE_URL, publicKey: env.VITE_SUPABASE_ANON_KEY,
-  released: releasedProviders(env.VITE_AUTH_VERIFIED_PROVIDERS), signal,
+  released: releasedProviders(env.VITE_AUTH_VERIFIED_PROVIDERS), signal, requireApple: isNativeIos(),
 });
 const intentStorage = native ? nativeSessionStorage : {
   getItem: key => sessionStorage.getItem(key),

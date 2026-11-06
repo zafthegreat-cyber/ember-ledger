@@ -3,6 +3,7 @@ import SocialSignInButtons from "../auth/SocialSignIn.jsx";
 import { SignupFieldPrivacy } from "../auth/EmailConfirmationHelp.jsx";
 import { useModalFocus } from "../../components/operations/useModalFocus.js";
 import MenuNavigation from "./MenuNavigation.jsx";
+import BlockedUsersPanel from "../../components/BlockedUsersPanel.jsx";
 import MenuItemIcon from "./MenuItemIcon.jsx";
 import "./menu-drawer.css";
 
@@ -1014,6 +1015,7 @@ export default function MenuDrawerContent({ scope }) {
                       </button>
                     </div>
                   ) : null}
+                  <BlockedUsersPanel />
                   <div className="drawer-info-card">
                     <strong>Location</strong>
                     <p className="compact-subtitle">Location is used for nearby watched stores and alerts. Device location stays off unless you enable it.</p>
