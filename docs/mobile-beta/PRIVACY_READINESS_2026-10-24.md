@@ -1,8 +1,18 @@
 # Privacy and account-deletion release review — October 24, 2026
 
-The privacy schema and private-receipt restrictions were installed in production on October 24, 2026. **Production account deletion is still disabled. A separately approved, named server secret is provisioned as a Production Secret; subsequent deployments receive it, while authenticated runtime validation remains unverified. This review does not certify store or physical-device readiness.** The controlled rollout changed schema/access metadata and made the legacy receipt bucket private. It did not request an account deletion, rewrite business records, remove files, or update prices. Phone acceptance is paused at the owner's request.
+The privacy schema and private-receipt restrictions were installed in production on October 24, 2026. **Production account deletion is still disabled. A separately approved, named server secret is provisioned as a Production Secret; production authenticated deletion remains unverified. The isolated HTTPS acceptance below passed, but does not certify store or physical-device readiness.** The controlled production rollout changed schema/access metadata and made the legacy receipt bucket private. It did not request a production account deletion, rewrite business records, remove files, or update prices. Phone acceptance is paused at the owner's request.
 
 The publisher remains **Anchor & Wing LLC DBA Code 3 TCG**, with **support@code3tcg.com**. Public privacy, support, and deletion pages are reachable independently of app workspace recovery. They do not mount the normal app or start cloud record synchronization. Support explicitly explains that requesting help is not confirmation of deletion.
+
+## Latest isolated HTTPS acceptance and remaining gates
+
+The October 24 acceptance completed **117 checks** through the real isolated HTTPS Preview, including the deployed deletion UI and the actual private-attachment components using real isolated Auth/Storage services. Run `01376080-1e79-4e48-ac49-954b96fe5555` passed against Preview `dpl_Fgo2L7Mm48MJnrQPKTKo7Hb3jomE` from `9fc2723`; its three new synthetic accounts were deleted through the normal verified flow. This supersedes the October 18 hosted result as the latest isolated acceptance, while preserving that historical evidence. See [the HTTPS acceptance and cleanup record](./HOSTED_DELETION_HTTPS_ACCEPTANCE_2026-10-24.md) for the tested behavior, earlier failed attempts and boundaries.
+
+The operator audited retained fixtures from the failed runs, then removed the approved disposable branch. An independent branch listing now contains only the default production branch. All seven temporary Preview variables and the restricted local test-key file were removed; the existing Production-only Sensitive secret remains and the production deletion enable flag is absent. No production account, attachment or price was used as a deletion fixture. A fresh read-only comparison after the owner's ordinary computer sign-in still matches all cloud source/full-row/object metadata fingerprints: **two workspaces, 79 revisions, zero reports and one Storage object**. The published 4,729-product catalog and all price fields also matched the reviewed baseline.
+
+The owner's computer sign-in was verified, but **an existing production receipt UI/signing/download workflow was not verified**. The one stored legacy receipt has no recognized references in the two cloud workspaces or 79 revisions; the earlier standard-reference audit across 41 tables also found none. The cloud-saving review notice was left intact, without editing or replacing records. Synthetic component acceptance and database owner-RLS rehearsal do not replace this remaining owner workflow. Physical iPhone/Android acceptance remains paused; production enablement, retention/support decisions and final store disclosures remain separate gates.
+
+A concurrent production release, `29a9461` / `dpl_6oSr2qaSTVPZ1Yazo3kikQVCV9sD`, preserved the catalog/prices and public privacy routes but regressed the Google verification file and approved search metadata. The reviewed branch now preserves both the Discord changes and the search/GSC assets after merge `317dbc9`; **that restoration is not yet published**. Keep this production regression distinct from the passing isolated privacy tests. The dated preflight/postflight sections below retain their original scope.
 
 ## What was fixed and tested
 
@@ -26,7 +36,7 @@ Current local verification:
 | Support browser | 320/390/1440 px, light/dark; unavailable/blocked/pending guidance, copy failure fallback, readable contrast, touch targets, no overflow |
 | Targeted lint | No errors; existing `App.jsx` effect dependency warning for `checkUser` remains |
 
-The real hosted Auth/Storage/router acceptance remains the separately recorded **67-check October 18 result**, not a new October 24 hosted or device run. See [the original acceptance record](HOSTED_DELETION_ACCEPTANCE_2026-10-18.md). No paid test database was created. The read-only review retrieved no production credentials; the later separately approved Production-only secret setup is recorded below and is not a hosted acceptance run.
+The earlier **67-check October 18 hosted Auth/Storage/router result** remains in [the original acceptance record](HOSTED_DELETION_ACCEPTANCE_2026-10-18.md). The production migration review itself was read-only and did not create a paid test database or retrieve production credentials. The subsequent, separately approved disposable branch and 117-check HTTPS acceptance are recorded in the latest section above; neither result is a physical-device or production-account deletion pass.
 
 ## Production preflight before the migrations
 
@@ -162,7 +172,7 @@ Security advisor WARN categories/counts and all performance categories/counts ma
 
 Final evidence: `final-postflight-metadata.json`, `final-migration-history.json`, `final-receipt-owner-access.json`, `final-active-session-parity.json`, `final-preservation.json`, `final-preservation-comparison.json`, and `final-{security,performance}-advisors.json` in the refreshed QA folder. The read-only verification itself performed zero production writes and retrieved no credentials.
 
-**Remaining gates:** the approved server key is provisioned as a Production Secret and subsequent deployments receive it; authenticated runtime validation remains unverified. `CODE3_ACCOUNT_DELETION_ENABLED` remains absent, so account deletion stays disabled. Authorized Storage HTTP signing/download, production authenticated deletion-service acceptance and physical phone behavior remain unverified. The historical 67-check isolated hosted acceptance and current synthetic/local/database checks do not replace these gates. No new paid test database or live-account deletion was used to close them.
+**Remaining production gates:** the approved server key remains a Production Secret and `CODE3_ACCOUNT_DELETION_ENABLED` remains absent, so production account deletion stays disabled. Existing-owner receipt UI/signing/download, production authenticated deletion-service acceptance and physical-phone behavior remain unverified. The latest 117-check isolated HTTPS acceptance validates its separate synthetic environment; it does not close these production/device gates. The approved temporary test branch has been removed, and no production account deletion was performed.
 
 ## Separately approved Production-only secret setup
 

@@ -54,4 +54,4 @@ await fs.writeFile(output, JSON.stringify({ generatedAt: new Date().toISOString(
   limitation: "Public/unauthenticated HTTPS and CORS only. A503 can mean disabled or unconfigured. This cannot certify successful account deletion, real signed-in session isolation, file removal or phone behavior.",
 }, null, 2));
 console.log(JSON.stringify({ gates, syntheticStatusCode: get("synthetic-invalid-bearer").errorCode, evidence: path.relative(process.cwd(), output), deletionOperationalVerified: false }, null, 2));
-if (!gates.publicPagesLoad || !gates.unauthenticatedStatusProtected || !gates.invalidBearerNeverAccepted || !gates.productionWebCors || !gates.unrelatedOriginDenied) process.exitCode = 1;
+if (!gates.publicPagesLoad || !gates.unauthenticatedStatusProtected || !gates.invalidBearerNeverAccepted || !gates.productionWebCors || !gates.iphoneCors || !gates.androidCors || !gates.unrelatedOriginDenied) process.exitCode = 1;
