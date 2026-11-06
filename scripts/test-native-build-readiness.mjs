@@ -84,6 +84,9 @@ check("signed Android build is manual-only, checks the build number and never ke
   assert.doesNotMatch(workflow, /^  (push|pull_request|schedule):/m, "signing must never run automatically");
   assert.match(workflow, /node scripts\/native-build-number\.mjs/);
   assert.match(workflow, /secrets\.CODE3_ANDROID_KEYSTORE_BASE64/);
+  assert.ok(workflow.indexOf("Check signing configuration") < workflow.indexOf("- run: npm ci"));
+  assert.match(workflow, /run: node scripts\/check-android-signing\.mjs/);
+  assert.match(workflow, /- name: Collect signed packages\n\s+run:/);
   assert.match(workflow, /bundleRelease assembleRelease/);
   assert.match(workflow, /if: always\(\)\n\s+run: \|\n\s+rm -f "\$RUNNER_TEMP\/code3-upload\.keystore"/);
   assert.doesNotMatch(workflow, /path:[^\n]*keystore|cat [^\n]*keystore/);

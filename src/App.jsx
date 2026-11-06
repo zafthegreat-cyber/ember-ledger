@@ -14,6 +14,8 @@ import { hasServerAppAccessDecision } from "./features/auth/memberAccess.mjs";
 import { isNativePlatform, getNativeAuthRedirect } from "./native/nativeRuntime.js";
 import { exportFile, exportFileStatus, exportFileError } from "./native/nativeFiles.js";
 import CloudSyncPanel from "./features/persistence/CloudSyncPanel.jsx";
+// Keep Settings and sync recovery available for already-open sessions after a deploy.
+import MenuPage from "./pages/Menu.jsx";
 import AccountDeletionPage from "./features/privacy/AccountDeletionPage.jsx";
 import { PublicSupportPage } from "./features/privacy/PrivacyCenter.jsx";
 import { useCloudWorkspace } from "./features/persistence/CloudWorkspaceContext.js";
@@ -555,7 +557,6 @@ const VaultPage = lazy(() => import("./pages/Vault"));
 const ForgePage = lazy(() => import("./pages/Forge"));
 const MarketPage = lazy(() => import("./pages/Market"));
 const SparkPage = lazy(() => import("./pages/Spark"));
-const MenuPage = lazy(() => import("./pages/Menu"));
 const Scout = lazy(() => import("./pages/Scout"));
 const FlipScoutPage = lazy(() => import("./features/flipScout/FlipScoutPage"));
 const OwnerCenterPage = lazy(() => import("./features/ownerCenter/OwnerCenterPage"));
