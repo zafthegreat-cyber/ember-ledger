@@ -1,4 +1,4 @@
-import { PRIVACY_POLICY_UPDATED, PRIVACY_PUBLISHER, PRIVACY_SECTIONS } from "../../config/privacyPolicy.js";
+import { PRIVACY_POLICY_URL, PRIVACY_POLICY_UPDATED, PRIVACY_PUBLISHER, PRIVACY_SECTIONS } from "../../config/privacyPolicy.js";
 import PrivacySupportContact from "./PrivacySupportContact.jsx";
 import SourceCoverage from "../auth/SourceCoverage.jsx";
 import "./privacy.css";
@@ -12,6 +12,7 @@ export default function PrivacyCenter({ onNavigate, publisher = PRIVACY_PUBLISHE
       <p className="code3-privacy-meta">Updated {PRIVACY_POLICY_UPDATED}</p>
     </header>
     <div className="code3-privacy-actions">
+      <a href={PRIVACY_POLICY_URL} target="_blank" rel="noopener noreferrer">Open published privacy policy</a>
       <a href="#privacy-discord-data">Discord companion privacy</a>
       <a href="/terms">Terms of Service</a>
       <a href="/delete-account" onClick={onNavigate ? (event) => { event.preventDefault(); onNavigate("deleteAccount"); } : undefined}>Delete account</a>
@@ -43,6 +44,7 @@ export function PublicSupportPage({ onNavigate, publisher = PRIVACY_PUBLISHER })
     <article className="code3-privacy-card"><h3>Protect your saved records</h3><p>If cloud saving shows a conflict or error, keep the app's storage. In Settings → Cloud saving &amp; recovery, review both versions and export backups before clearing or reinstalling the app.</p></article>
     <article className="code3-privacy-card"><h3>Delete an account</h3><p>Open the account deletion page to see what is removed and retained. When the service is available, sign in, review the live deletion scope, and confirm your password before deletion. If you cannot sign in or deletion is blocked, use the support message above. A support email is not confirmation that the account has been deleted.</p></article>
     <div className="code3-privacy-actions">
+      <a href={PRIVACY_POLICY_URL} target="_blank" rel="noopener noreferrer">Open published privacy policy</a>
       <a href="/delete-account" onClick={onNavigate ? (event) => { event.preventDefault(); onNavigate("deleteAccount"); } : undefined}>Delete account</a>
       <a href="/privacy" onClick={onNavigate ? (event) => { event.preventDefault(); onNavigate("trust"); } : undefined}>Privacy policy</a>
       <a href="/" onClick={onNavigate ? (event) => { event.preventDefault(); onNavigate("dashboard"); } : undefined}>Sign in / home</a>

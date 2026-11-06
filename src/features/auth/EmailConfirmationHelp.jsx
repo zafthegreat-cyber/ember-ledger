@@ -1,3 +1,4 @@
+import { PRIVACY_POLICY_URL } from "../../config/privacyPolicy.js";
 import { useId, useRef, useState } from "react";
 import "./member-start.css";
 
@@ -30,6 +31,6 @@ export function SignupFieldPrivacy() {
   return <aside className="member-field-privacy" aria-label="Signup field visibility">
     <strong>What other members see</strong>
     <p>Your public username appears with community activity. Your account name and email are for account records and support. Keep personal details out of your username. Your password is never public.</p>
-    <a href="/privacy">Read how account information is handled</a>
+    <a href={PRIVACY_POLICY_URL} target="_blank" rel="noopener noreferrer">Read how account information is handled</a>
   </aside>;
 }
