@@ -1,3 +1,4 @@
+import "./multi-destination.css";
 import { PrivateStorageImage } from "../../components/PrivateReceipt.jsx";
 import { knownStorageLocations } from "../../utils/storageLocations.mjs";
 // App owns state, authority and handlers; only this existing renderer is deferred.

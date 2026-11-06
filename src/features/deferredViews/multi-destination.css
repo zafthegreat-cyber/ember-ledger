@@ -1,0 +1,210 @@
+/* Review and Add (multi-destination) flow. Its original rules were lost when
+   App.css was split, which left native-sized checkboxes and run-together text. */
+.multi-destination-flow {
+  display: grid;
+  gap: 14px;
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+}
+.multi-destination-flow h3 { margin: 0; color: var(--text-primary); font-size: 16px; font-weight: 600; line-height: 1.35; }
+.multi-destination-flow p { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+
+/* Short header notes: title on its own line, helper text below. */
+.multi-destination-flow .universal-review-banner,
+.multi-destination-flow .add-item-master-note,
+.multi-destination-flow .scan-anything-review-note,
+.multi-destination-flow .quick-add-destination-helper,
+.multi-destination-flow .market-set-mastery-context {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--surface-secondary);
+}
+.multi-destination-flow .universal-review-banner { border-color: var(--action-primary); }
+.multi-destination-flow .universal-review-banner strong,
+.multi-destination-flow .add-item-master-note strong,
+.multi-destination-flow .scan-anything-review-note strong { color: var(--text-primary); font-size: 14px; font-weight: 600; }
+.multi-destination-flow .universal-review-banner span,
+.multi-destination-flow .add-item-master-note span { color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+
+/* Item / destination summary */
+.multi-destination-flow .quick-add-flow-summary,
+.multi-destination-flow .wizard-review-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+.multi-destination-flow .quick-add-flow-summary > div,
+.multi-destination-flow .wizard-summary-card {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--surface-primary);
+}
+.multi-destination-flow .quick-add-flow-summary span,
+.multi-destination-flow .wizard-summary-card > span { color: var(--text-secondary); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.multi-destination-flow .quick-add-flow-summary strong,
+.multi-destination-flow .wizard-summary-card strong { color: var(--text-primary); font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+.multi-destination-flow .wizard-summary-card small { color: var(--text-secondary); font-size: 12px; line-height: 1.4; }
+
+/* Step progress */
+.multi-destination-flow .multi-destination-wizard-stepper {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+.multi-destination-flow .wizard-step-pill {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px 4px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+}
+.multi-destination-flow .wizard-step-pill small {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--surface-secondary);
+  color: var(--text-primary);
+  font-size: 12px;
+}
+.multi-destination-flow .wizard-step-pill.is-active { border-color: var(--action-primary); color: var(--text-primary); }
+.multi-destination-flow .wizard-step-pill.is-active small,
+.multi-destination-flow .wizard-step-pill.is-complete small { background: var(--action-primary); color: var(--action-primary-text, #1a1208); }
+.multi-destination-flow .wizard-step-pill.has-error { border-color: var(--status-danger); }
+.multi-destination-flow .wizard-step-pill em { color: var(--status-danger); font-size: 11px; font-style: normal; }
+
+/* Sections and fields */
+.multi-destination-flow .flow-form-section,
+.multi-destination-flow .wizard-review-section { display: grid; gap: 12px; min-width: 0; }
+.multi-destination-flow .add-item-step-heading { display: grid; gap: 4px; }
+.multi-destination-flow .flow-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  min-width: 0;
+}
+.multi-destination-flow .add-item-search-card { display: grid; gap: 8px; }
+.multi-destination-flow .add-item-picker-start,
+.multi-destination-flow .add-item-quick-section,
+.multi-destination-flow .add-item-results-block { display: grid; gap: 8px; }
+.multi-destination-flow .add-item-quick-section > span,
+.multi-destination-flow .add-item-results-heading span { color: var(--text-secondary); font-size: 12px; font-weight: 600; }
+.multi-destination-flow .add-item-results-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.multi-destination-flow .add-item-results-heading strong { color: var(--text-primary); font-size: 14px; }
+.multi-destination-flow .catalog-chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.multi-destination-flow .catalog-chip-row > button { min-height: 40px; margin: 0; padding: 8px 12px; }
+.multi-destination-flow .add-item-recent-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+.multi-destination-flow .add-item-recent-card {
+  display: grid;
+  gap: 2px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  text-align: left;
+}
+.multi-destination-flow .add-item-recent-card small { color: var(--text-secondary); font-size: 12px; }
+
+/* Selected item */
+.multi-destination-flow .selected-match-card {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--surface-primary);
+}
+.multi-destination-flow .selected-match-thumb { width: 64px; height: 64px; border-radius: 8px; overflow: hidden; background: var(--surface-secondary); }
+.multi-destination-flow .selected-match-thumb img { width: 100%; height: 100%; object-fit: contain; }
+.multi-destination-flow .selected-match-copy { display: grid; gap: 2px; min-width: 0; }
+.multi-destination-flow .selected-match-copy strong { overflow-wrap: anywhere; }
+.multi-destination-flow .selected-match-copy small { color: var(--text-secondary); font-size: 12px; }
+.multi-destination-flow .selected-match-actions,
+.multi-destination-flow .market-add-inline-destination-actions,
+.multi-destination-flow .market-add-destination-presets,
+.multi-destination-flow .catalog-selector-actions { display: flex; flex-wrap: wrap; gap: 8px; grid-column: 1 / -1; }
+.multi-destination-flow .market-add-inline-destination-actions > button,
+.multi-destination-flow .market-add-destination-presets > button { min-height: 40px; margin: 0; }
+
+/* Destination choices: a normal-size checkbox beside a title and helper line. */
+.multi-destination-flow .destination-checkbox-grid { display: grid; gap: 8px; }
+.multi-destination-flow .destination-checkbox {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  min-height: 44px;
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--surface-primary);
+  cursor: pointer;
+}
+.multi-destination-flow .destination-checkbox.is-selected { border-color: var(--action-primary); background: var(--surface-secondary); }
+.multi-destination-flow .destination-checkbox.is-disabled { opacity: 0.55; cursor: not-allowed; }
+.multi-destination-flow .destination-checkbox.has-error { border-color: var(--status-danger); }
+.multi-destination-flow .destination-checkbox > span { display: grid; gap: 2px; min-width: 0; }
+.multi-destination-flow .destination-checkbox strong { color: var(--text-primary); font-size: 14px; }
+.multi-destination-flow .destination-checkbox small { color: var(--text-secondary); font-size: 12px; line-height: 1.4; }
+.multi-destination-flow .flow-checkbox-stack { display: grid; gap: 8px; grid-column: 1 / -1; }
+.multi-destination-flow .flow-checkbox-stack label {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  min-height: 44px;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+html body .app[data-theme] .multi-destination-flow input[type="checkbox"] {
+  width: 22px !important;
+  min-width: 22px;
+  height: 22px !important;
+  min-height: 22px;
+  margin: 1px 0 0;
+  padding: 0;
+  accent-color: var(--action-primary);
+}
+
+/* Messages */
+.multi-destination-flow .validation-summary {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--status-danger);
+  border-radius: 10px;
+}
+.multi-destination-flow .validation-summary ul { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.multi-destination-flow .validation-summary li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.multi-destination-flow .field-error,
+.multi-destination-flow .destination-field-error { color: var(--status-danger); font-size: 12px; }
+.multi-destination-flow .flow-inline-message { padding: 10px 12px; border-radius: 10px; background: var(--surface-secondary); font-size: 13px; }
+
+/* Saved confirmation */
+.market-add-success-flow .market-add-success-card { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--action-primary); border-radius: 10px; background: var(--surface-secondary); }
+.market-add-success-flow .market-add-success-destinations { display: flex; flex-wrap: wrap; gap: 8px; }
+.market-add-success-flow .market-add-success-destinations > span { display: grid; gap: 2px; padding: 8px 12px; border: 1px solid var(--border-subtle); border-radius: 8px; }
+.market-add-success-flow .market-add-success-destinations small { color: var(--text-secondary); font-size: 12px; }
+
+@media (max-width: 420px) {
+  .multi-destination-flow .wizard-step-pill { font-size: 11px; }
+}

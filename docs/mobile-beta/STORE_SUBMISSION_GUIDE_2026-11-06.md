@@ -54,8 +54,10 @@ Install both on your own phones (TestFlight app on iPhone; the internal-testing 
 Create a dedicated account for store reviewers, such as `appreview@code3tcg.com`, with a few synthetic collection items and no real personal data. Never give reviewers your own account. Enter it under App Store Connect → App Review Information, and Play Console → App content → App access.
 
 ### 6. Screenshots and graphics
-- **iPhone:** 6.9-inch screenshots, 1320×2868 (or 1290×2796), 3–10 images.
-- **Google Play:** at least 2 phone screenshots (1080×1920 or larger), a 512×512 icon (`public/icon-512.png`) and a 1024×500 feature graphic.
+Ready-made images are in [store-listing](./store-listing/); upload them in order 1–5.
+- **iPhone (6.9-inch, 1320×2868):** the five `app-store-iphone-6.9-*.jpg` files.
+- **Google Play phone (1080×2160):** the five `google-play-phone-*.jpg` files, plus `google-play-feature-graphic.png` (1024×500) and the 512×512 icon `public/icon-512.png`.
+- They use sample data with generic product names and no product photos. To regenerate after UI changes, start the dev server on port 5320 and run `node scripts/store-screenshots-capture.mjs . <raw-folder>`, then `node scripts/store-screenshots-compose.mjs . <raw-folder> docs/mobile-beta/store-listing`.
 - Don't show official Pokémon card art, logos or product photos you don't have rights to, and don't put "Pokémon" in Apple keywords. Both stores reject other companies' trademarks used this way.
 
 ### 7. Fill in the store forms and submit
