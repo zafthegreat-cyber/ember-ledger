@@ -1,3 +1,4 @@
+export const TERMS_OF_SERVICE_URL = "https://code3tcg.com/terms";
 export const PRIVACY_POLICY_URL = "https://code3tcg.com/privacy";
 // Public publisher information must be supplied by the business owner before a
 // store submission. Do not infer an LLC's legal name or a monitored mailbox.

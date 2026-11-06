@@ -1,4 +1,4 @@
-import { PRIVACY_POLICY_URL, PRIVACY_POLICY_UPDATED, PRIVACY_PUBLISHER, PRIVACY_SECTIONS } from "../../config/privacyPolicy.js";
+import { TERMS_OF_SERVICE_URL, PRIVACY_POLICY_URL, PRIVACY_POLICY_UPDATED, PRIVACY_PUBLISHER, PRIVACY_SECTIONS } from "../../config/privacyPolicy.js";
 import PrivacySupportContact from "./PrivacySupportContact.jsx";
 import SourceCoverage from "../auth/SourceCoverage.jsx";
 import "./privacy.css";
@@ -14,7 +14,7 @@ export default function PrivacyCenter({ onNavigate, publisher = PRIVACY_PUBLISHE
     <div className="code3-privacy-actions">
       <a href={PRIVACY_POLICY_URL} target="_blank" rel="noopener noreferrer">Open published privacy policy</a>
       <a href="#privacy-discord-data">Discord companion privacy</a>
-      <a href="/terms">Terms of Service</a>
+      <a href={TERMS_OF_SERVICE_URL} target="_blank" rel="noopener noreferrer">Terms of Service</a>
       <a href="/delete-account" onClick={onNavigate ? (event) => { event.preventDefault(); onNavigate("deleteAccount"); } : undefined}>Delete account</a>
       <a href="/settings" onClick={onNavigate ? (event) => { event.preventDefault(); onNavigate("settings"); } : undefined}>Backups &amp; settings</a>
       <a href="/support" onClick={onNavigate ? (event) => { event.preventDefault(); onNavigate("help"); } : undefined}>Get help</a>
