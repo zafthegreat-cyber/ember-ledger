@@ -1,3 +1,5 @@
+import { getStoreDirectoryState } from "../data/storeStates.js";
+
 const STOCK_SEEN_STATUSES = new Set(["in_stock", "stock_on_shelf", "stock_seen", "leftover_stock", "behind_counter", "vendor_stocking", "restock_happening_now"]);
 
 export const RESTOCK_FEED_FILTERS = [
@@ -75,7 +77,7 @@ export function prepareRestockFeedEntries(reports = [], getStore = () => ({})) {
     const store = getStore(report) || {};
     const retailerLabel = filterLabel(store.chain || store.retailer || report.retailer);
     const city = filterLabel(store.city || report.city);
-    const region = filterLabel(store.region || report.region);
+    const region = filterLabel(store.region || report.region || getStoreDirectoryState(store.state || report.state)?.name || store.state || report.state);
     return {
       report,
       stockGroup: restockReportStockGroup(report),

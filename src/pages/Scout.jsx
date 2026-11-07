@@ -67,7 +67,7 @@ import { BEST_BUY_ALERT_TYPES, BEST_BUY_NIGHTLY_DEFAULTS, BEST_BUY_STOCK_STATUSE
 import { SCOUT_CONFIDENCE_LEVELS, SCOUT_HISTORICAL_INTEL_SEED, SCOUT_SOURCE_TYPES, SCOUT_STORE_ALIASES, SCOUT_VISIBILITY_COPY, buildScoutRestockPatterns } from "../data/scoutRestockIntelSeed";
 import { DROP_RADAR_GUESS_LOCKED_MESSAGE, MIN_SCOUT_POINTS_FOR_GUESS, canSubmitScoutGuess, getScoutPoints, shouldUseDropRadarSeed } from "../utils/dropRadarUtils.mjs";
 import { normalizeCityLabel } from "../utils/regionalBrowsingUtils.js";
-const MISSING_STORE_STATES = ["Virginia", "North Carolina", "Maryland", "West Virginia", "Tennessee", "Kentucky", "District of Columbia", "Other"];
+const MISSING_STORE_STATES = [...STORE_DIRECTORY_STATES.map((state) => state.name), "Other"];
 import {
   cacheBestBuyStockResult,
   createBestBuyStockAlert,
@@ -1313,6 +1313,7 @@ export default function Scout({
   const homeState = getStoreDirectoryState(storeDirectoryState) || getStoreDirectoryState(DEFAULT_STORE_STATE_CODE);
   const homeStateName = homeState.name;
   const homeRegion = homeState.defaultRegion;
+  const homeBrowseRegion = homeState.regions.length ? homeRegion : "All";
   const loadedDirectoryStatesRef = useRef(new Set([homeState.code]));
   const [stores, setStores] = useState([]);
   // A deduped directory can omit a saved record ID that still owns reports and sightings.
@@ -1325,7 +1326,7 @@ export default function Scout({
   const [scoutOverviewView, setScoutOverviewView] = useState("map");
   const [selectedState, setSelectedState] = useState(homeStateName);
   const [selectedChain, setSelectedChain] = useState("All");
-  const [selectedRegion, setSelectedRegion] = useState(homeRegion);
+  const [selectedRegion, setSelectedRegion] = useState(homeBrowseRegion);
   const [selectedCity, setSelectedCity] = useState("All");
   const [selectedStoreType, setSelectedStoreType] = useState("All");
   const [storeFamilyFilter, setStoreFamilyFilter] = useState("all");
@@ -1897,8 +1898,8 @@ export default function Scout({
     if (previousHomeStateRef.current === homeState.code) return;
     previousHomeStateRef.current = homeState.code;
     setSelectedState(homeStateName);
-    setSelectedRegion(homeRegion);
-  }, [homeState.code, homeStateName, homeRegion]);
+    setSelectedRegion(homeBrowseRegion);
+  }, [homeState.code, homeStateName, homeBrowseRegion]);
 
   // Load a state's directory the first time it is selected.
   useEffect(() => {
@@ -3720,7 +3721,7 @@ async function handleUpdateStore(e) {
     setSelectedStoreId("");
     setSelectedChain("All");
     setStoreSearch("");
-    setSelectedRegion(homeRegion);
+    setSelectedRegion(homeBrowseRegion);
     setSelectedState(homeStateName);
     setStoreDirectoryView("landing");
   }
@@ -3833,7 +3834,8 @@ async function handleUpdateStore(e) {
       name: report.storeName || report.store_name || "",
       chain: report.retailer || report.chain || "",
       city: report.city || "",
-      region: report.region || "",
+      state: report.state || "",
+      region: report.region || storeStateName(report.state) || "",
     };
   }, [reportStoreMap]);
 
@@ -4598,7 +4600,7 @@ async function handleUpdateStore(e) {
     const state = getStoreDirectoryState(stateCode);
     if (!state) return;
     setSelectedState(state.name);
-    setSelectedRegion(state.defaultRegion);
+    setSelectedRegion(state.regions.length ? state.defaultRegion : "All");
     setSelectedCity("All");
     if (typeof onStoreDirectoryStateChange === "function") onStoreDirectoryStateChange(state.code);
   }
@@ -4622,9 +4624,13 @@ async function handleUpdateStore(e) {
       <div className="scout-area-empty-note" role="status" style={{ ...styles.listCard, margin: "8px 0" }}>
         <strong>{scoutAreaReportCount ? `Only ${scoutAreaReportCount} report${scoutAreaReportCount === 1 ? "" : "s"} in ${scoutOverviewRegionLabel} so far` : `No reports in ${scoutOverviewRegionLabel} yet`}</strong>
         <p style={{ ...styles.tiny, margin: "4px 0 8px" }}>
-          Restock signals here get useful once a few local collectors report what they see. Stores are listed, but restock days and limits stay unknown until someone reports them.
+          Reports are community observations, not live inventory. Store coverage varies by area; suggest a missing store to help build your local directory.
         </p>
         <button type="button" style={styles.buttonSoft} onClick={() => setScoutSubTab("reports")}>{scoutAreaReportCount ? "Add a report" : "Be the first to report"}</button>
+        <button type="button" style={styles.buttonSoft} onClick={() => {
+          setMissingStoreForm((current) => ({ ...current, state: selectedState === "All" ? homeStateName : selectedState, region: selectedRegion === "All" ? "" : selectedRegion }));
+          setMissingStoreModalOpen(true);
+        }}>Suggest a store</button>
       </div>
     );
   }
@@ -6479,7 +6485,7 @@ async function handleUpdateStore(e) {
                       setStoreQuickFilter("default");
                       setSelectedChain("All");
                       setSelectedState(homeStateName);
-                      setSelectedRegion(homeRegion);
+                      setSelectedRegion(homeBrowseRegion);
                       setStoreDirectoryView("retailer");
                     }}>Home Region</button>
                     <button type="button" style={storeQuickFilter === "favorites" ? styles.buttonPrimary : styles.buttonSoft} onClick={() => {

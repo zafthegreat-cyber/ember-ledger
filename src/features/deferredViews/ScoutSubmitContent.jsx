@@ -3,6 +3,8 @@ import { PrivateStorageImage } from "../../components/PrivateReceipt.jsx";
 import StockScreenshotImport from "../../components/StockScreenshotImport.jsx";
 import { RecentRestockStores, RestockLocalSaveNotice, RestockOfflineNotice } from "../../components/RestockShortcuts.jsx";
 import { recentReportedStoreRows } from "../../utils/restockShortcuts.mjs";
+import { US_STATES } from "../../data/usStates.js";
+import { normalizeStoreStateCode } from "../../data/storeStates.js";
 import "./scout-submit.css";
 import "./stock-report-easy.css";
 import "./stock-report-guidance.css";
@@ -304,7 +306,7 @@ export default function ScoutSubmitContent({ scope }) {
       );
     };
     const selectedProductSummary = productDetailSummary || (currentType.isGuess ? "Product not selected" : "Item/category needed");
-    const selectedStoreSummary = storeSelection.valid ? `${storeSelection.storeName} (${storeSelection.retailer})` : "Store not selected";
+    const selectedStoreSummary = storeSelection.valid ? [`${storeSelection.storeName} (${storeSelection.retailer})`, storeSelection.city, storeSelection.state].filter(Boolean).join(", ") : "Store not selected";
     const selectedStockSummary = currentType.isGuess ? quickScoutDateLabel() : (selectedTypeOption?.title || currentType.label);
     const selectedCatalogProduct = quickScoutReportForm.catalogProductId
       ? catalogProducts.find((product) => String(product.id) === String(quickScoutReportForm.catalogProductId))
@@ -589,6 +591,22 @@ export default function ScoutSubmitContent({ scope }) {
                   onChange={(event) => updateQuickScoutReportForm("manualLocation", event.target.value)}
                   placeholder="Manual store/location if missing"
                 />
+                {!quickScoutReportForm.storeId && quickScoutReportForm.manualLocation.trim() ? (
+                  <div className="scout-manual-store-area">
+                    <label>
+                      <span>Store city</span>
+                      <input aria-label="Manual store city" value={quickScoutReportForm.city || ""} onChange={(event) => updateQuickScoutReportForm("city", event.target.value)} placeholder="City" autoComplete="address-level2" />
+                    </label>
+                    <label>
+                      <span>Store state</span>
+                      <select aria-label="Manual store state" value={normalizeStoreStateCode(quickScoutReportForm.state)} onChange={(event) => updateQuickScoutReportForm("state", event.target.value)}>
+                        <option value="">Choose a state</option>
+                        {US_STATES.map((state) => <option key={state.code} value={state.code}>{state.shortName}</option>)}
+                      </select>
+                    </label>
+                    <p>Use the store’s location so collectors can find this report in the right area.</p>
+                  </div>
+                ) : null}
                 {selectedStoreContext ? (
                   <article className="scout-report-store-card selected scout-report-store-card--compact">
                     <div className="scout-report-store-main">

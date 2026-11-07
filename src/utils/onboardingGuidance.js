@@ -1,3 +1,6 @@
+import { US_STATES } from "../data/usStates.js";
+import { normalizeStoreStateCode } from "../data/storeStates.js";
+
 export const ONBOARDING_PERSISTENCE_NOTE =
   "Guide progress is saved on this device. For collection and workspace records, check the app’s sync status before switching devices or clearing browser data.";
 
@@ -116,63 +119,10 @@ export const ACCOUNT_SETUP_WORKSPACE_ROWS = [
   },
 ];
 
-export const ACCOUNT_SETUP_STATE_OPTIONS = [
-  { value: "VA", label: "Virginia" },
-  { value: "AL", label: "Alabama" },
-  { value: "AK", label: "Alaska" },
-  { value: "AZ", label: "Arizona" },
-  { value: "AR", label: "Arkansas" },
-  { value: "CA", label: "California" },
-  { value: "CO", label: "Colorado" },
-  { value: "CT", label: "Connecticut" },
-  { value: "DE", label: "Delaware" },
-  { value: "FL", label: "Florida" },
-  { value: "GA", label: "Georgia" },
-  { value: "HI", label: "Hawaii" },
-  { value: "ID", label: "Idaho" },
-  { value: "IL", label: "Illinois" },
-  { value: "IN", label: "Indiana" },
-  { value: "IA", label: "Iowa" },
-  { value: "KS", label: "Kansas" },
-  { value: "KY", label: "Kentucky" },
-  { value: "LA", label: "Louisiana" },
-  { value: "ME", label: "Maine" },
-  { value: "MD", label: "Maryland" },
-  { value: "MA", label: "Massachusetts" },
-  { value: "MI", label: "Michigan" },
-  { value: "MN", label: "Minnesota" },
-  { value: "MS", label: "Mississippi" },
-  { value: "MO", label: "Missouri" },
-  { value: "MT", label: "Montana" },
-  { value: "NE", label: "Nebraska" },
-  { value: "NV", label: "Nevada" },
-  { value: "NH", label: "New Hampshire" },
-  { value: "NJ", label: "New Jersey" },
-  { value: "NM", label: "New Mexico" },
-  { value: "NY", label: "New York" },
-  { value: "NC", label: "North Carolina" },
-  { value: "ND", label: "North Dakota" },
-  { value: "OH", label: "Ohio" },
-  { value: "OK", label: "Oklahoma" },
-  { value: "OR", label: "Oregon" },
-  { value: "PA", label: "Pennsylvania" },
-  { value: "RI", label: "Rhode Island" },
-  { value: "SC", label: "South Carolina" },
-  { value: "SD", label: "South Dakota" },
-  { value: "TN", label: "Tennessee" },
-  { value: "TX", label: "Texas" },
-  { value: "UT", label: "Utah" },
-  { value: "VT", label: "Vermont" },
-  { value: "WA", label: "Washington" },
-  { value: "WV", label: "West Virginia" },
-  { value: "WI", label: "Wisconsin" },
-  { value: "WY", label: "Wyoming" },
-  { value: "DC", label: "Washington, DC" },
-];
+export const ACCOUNT_SETUP_STATE_OPTIONS = US_STATES.map((state) => ({
+  value: state.code, label: state.shortName,
+}));
 
-const STATE_CODE_BY_LABEL = Object.fromEntries(
-  ACCOUNT_SETUP_STATE_OPTIONS.map((state) => [state.label.toLowerCase(), state.value])
-);
 const STATE_LABEL_BY_CODE = Object.fromEntries(
   ACCOUNT_SETUP_STATE_OPTIONS.map((state) => [state.value, state.label])
 );
@@ -181,11 +131,7 @@ const TIER_LABEL_BY_KEY = Object.fromEntries(
 );
 
 export function normalizeAccessState(value = "") {
-  const raw = String(value || "").trim();
-  if (!raw) return "";
-  const upper = raw.toUpperCase();
-  if (STATE_LABEL_BY_CODE[upper]) return upper;
-  return STATE_CODE_BY_LABEL[raw.toLowerCase()] || upper.slice(0, 2);
+  return normalizeStoreStateCode(value);
 }
 
 export function accessStateLabel(value = "") {
@@ -193,9 +139,9 @@ export function accessStateLabel(value = "") {
   return STATE_LABEL_BY_CODE[code] || code || "your state";
 }
 
-// States where beta requests go to human review instead of the waitlist.
-// Virginia is home; the rest are the expansion wave approved on 2026-10-30.
-export const BETA_OPEN_ACCESS_STATES = ["VA", "NC", "MD", "WV", "TN", "KY", "DC"];
+// Legacy reviewed programs accept requests nationwide. This does not grant
+// account roles, approve a shop, or bypass any program review.
+export const BETA_OPEN_ACCESS_STATES = US_STATES.map((state) => state.code);
 
 export function isVirginiaAccessState(value = "") {
   return normalizeAccessState(value) === "VA";
@@ -206,9 +152,7 @@ export function isOpenAccessState(value = "") {
 }
 
 export function openAccessStatesLabel() {
-  const labels = BETA_OPEN_ACCESS_STATES.map((code) => STATE_LABEL_BY_CODE[code] || code);
-  if (labels.length <= 1) return labels[0] || "Virginia";
-  return `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`;
+  return "all 50 US states and Washington, DC";
 }
 
 export const BETA_REVIEW_EXPLANATION =
@@ -225,7 +169,8 @@ export function accountSetupTierLabel(value = "") {
 
 export function betaAccessWaitlistMessage(state = "") {
   const label = accessStateLabel(state);
-  return `Code 3 TCG is open in ${openAccessStatesLabel()} right now. ${label} is not open yet, so we will hold your spot on the waitlist, email you the moment ${label} opens, and use waitlist demand to decide which states come next. You can keep your account and browse the public catalog while you wait.`;
+  if (isOpenAccessState(state)) return `Code 3 TCG supports ${label}. You can sign in and start; any request for a reviewed program keeps its own review status. Local store and report coverage varies by area.`;
+  return `Code 3 TCG supports ${openAccessStatesLabel()}. Choose a supported state for local restock browsing. You can keep your account and existing records.`;
 }
 
 export function formatBetaAccessAreaAnswer({ state = "", localAreaAnswer = "", tierInterest = "" } = {}) {

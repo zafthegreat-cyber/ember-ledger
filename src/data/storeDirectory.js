@@ -1,6 +1,7 @@
 // Loads one state's Restocks store directory on demand. Each state's
 // generated JSON is a separate asset fetched only when that state is
-// browsed, so phones never download all four directories up front.
+// browsed, so phones never download every directory up front. States without
+// a bundled directory use saved/reviewed community stores, not placeholder rows.
 import marylandStoresUrl from "./generated/marylandStores.json?url";
 import dcStoresUrl from "./generated/dcStores.json?url";
 import northCarolinaStoresUrl from "./generated/northCarolinaStores.json?url";
@@ -32,12 +33,13 @@ async function loadUncached(state) {
     const storeModule = await import("./virginiaStoresSeed");
     return storeModule.loadVirginiaStoresSeed();
   }
-  if (typeof fetch !== "function") return [];
+  if (!GENERATED_STORE_URLS[state.code] || typeof fetch !== "function") return [];
   return fetchGeneratedStores(state);
 }
 
 export function loadStoreDirectory(stateValue = DEFAULT_STORE_STATE_CODE) {
-  const state = getStoreDirectoryState(stateValue) || getStoreDirectoryState(DEFAULT_STORE_STATE_CODE);
+  const state = getStoreDirectoryState(stateValue);
+  if (!state) return Promise.resolve([]);
   if (!directoryPromises.has(state.code)) {
     const promise = loadUncached(state).then((stores) => {
       registerDirectoryStores(stores);

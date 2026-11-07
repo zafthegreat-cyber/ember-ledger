@@ -178,7 +178,7 @@ export function normalizeChainName(value = "") {
   return text;
 }
 
-// Directory states (VA, MD, DC, NC) come back as their full name; anything
+// All US states and DC come back as their full name; anything
 // else is returned as typed. Blank stays on the historical Virginia default.
 export function normalizeStateLabel(value = "") {
   const text = String(value || "").trim();
@@ -343,7 +343,7 @@ export function dedupeStoresByChainAddress(stores = []) {
     const lat = Number(normalized.latitude);
     const lon = Number(normalized.longitude);
     const spot = !normalized.address && lat && lon ? `|${lat.toFixed(3)},${lon.toFixed(3)}` : "";
-    const key = `${normalized.retailerStoreId || normalized.storeNumber || ""}|${normalized.chain}|${normalized.address}|${normalized.zip}${spot}`.toLowerCase();
+    const key = `${normalized.retailerStoreId || normalized.storeNumber || ""}|${normalized.chain}|${normalized.address}|${normalized.zip}|${normalized.stateCode || normalized.state}|${normalized.city}${spot}`.toLowerCase();
     if (!byKey.has(key)) byKey.set(key, normalized);
     else {
       const existing = byKey.get(key);

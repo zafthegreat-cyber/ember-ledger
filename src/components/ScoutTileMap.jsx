@@ -1,6 +1,6 @@
 import { PrivateStorageImage } from "./PrivateReceipt.jsx";
 import { useMemo, useRef, useState } from "react";
-import { STORE_DIRECTORY_STATES } from "../data/storeStates.js";
+import { STORE_DIRECTORY_STATES, normalizeStoreStateCode } from "../data/storeStates.js";
 
 const TILE_SIZE = 256;
 const PAN_DRAG_THRESHOLD = 4;
@@ -28,15 +28,16 @@ const AREA_COORDINATE_FALLBACKS = [
   // city hints, both from storeStates.
   ...["name", "cities"].flatMap((field) => STORE_DIRECTORY_STATES.filter((state) => state.code !== "VA").flatMap((state) =>
     state.regions.map((region) => ({
+      stateCode: state.code,
       keys: field === "name" ? [region.name.toLowerCase()] : region.cities.filter((city) => city.length > 4 && city !== "washington"),
       lat: region.centers[0][0],
       lng: region.centers[0][1],
     }))
   )),
-  { keys: ["washington, dc", "washington dc", "district of columbia"], lat: 38.9, lng: -77.03 },
+  { stateCode: "DC", keys: ["washington, dc", "washington dc", "district of columbia"], lat: 38.9, lng: -77.03 },
   { keys: ["hampton roads", "757", "virginia"], lat: 36.8529, lng: -76.1474 },
-  { keys: ["maryland"], lat: 39.29, lng: -76.61 },
-  { keys: ["north carolina"], lat: 35.78, lng: -78.64 },
+  { stateCode: "MD", keys: ["maryland"], lat: 39.29, lng: -76.61 },
+  { stateCode: "NC", keys: ["north carolina"], lat: 35.78, lng: -78.64 },
 ];
 
 function stableOffset(seed, scale = 0.028) {
@@ -111,7 +112,9 @@ function inferAreaCoordinates(row = {}, index = 0) {
     store.nickname,
     store.retailer,
   ].filter(Boolean).join(" ").toLowerCase();
-  const fallback = AREA_COORDINATE_FALLBACKS.find((entry) => entry.keys.some((key) => haystack.includes(key)));
+  const stateCode = normalizeStoreStateCode(row.state || row.profile?.state || store.state || row.stateCode || store.stateCode);
+  const fallback = AREA_COORDINATE_FALLBACKS.find((entry) =>
+    (!stateCode || stateCode === (entry.stateCode || "VA")) && entry.keys.some((key) => haystack.includes(key)));
   if (!fallback) return null;
   const offset = stableOffset(`${haystack}-${index}`);
   return {
@@ -136,7 +139,7 @@ function estimateZoom(coordinateRows, columns, rowsCount) {
 
   // Pick the closest zoom that still keeps the full store set inside the map.
   // This avoids turning nearby stores into a single cluster on wide boards.
-  for (let zoom = 15; zoom >= 6; zoom -= 1) {
+  for (let zoom = 15; zoom >= 2; zoom -= 1) {
     const worlds = coordinateRows.map((row) => latLngToWorld(row.coordinates, zoom));
     const xValues = worlds.map((world) => world.x);
     const yValues = worlds.map((world) => world.y);
@@ -147,7 +150,7 @@ function estimateZoom(coordinateRows, columns, rowsCount) {
     }
   }
 
-  return 6;
+  return 2;
 }
 
 function normalizeRows(rows = []) {

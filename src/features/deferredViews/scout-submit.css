@@ -99,3 +99,20 @@ html body .app[data-theme] .flow-modal[data-flow="scoutSubmit"] > .modal-title-r
   .flow-modal[data-flow="scoutSubmit"] .scout-report-catalog-selection { grid-template-columns: 40px minmax(0, 1fr); }
   .flow-modal[data-flow="scoutSubmit"] .scout-report-catalog-selection > button { grid-column: 2; justify-self: start; }
 }
+.scout-manual-store-area {
+  display: grid;
+  gap: 12px;
+}
+.scout-manual-store-area label {
+  display: grid;
+  gap: 6px;
+}
+.scout-manual-store-area input,
+.scout-manual-store-area select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  font: inherit;
+}
+.scout-manual-store-area p { margin: 0; }

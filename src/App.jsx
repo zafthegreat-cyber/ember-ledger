@@ -1202,11 +1202,7 @@ const WATCH_CALENDAR_DEFAULT_LAYERS = {
   highConfidenceOnly: false,
   militaryStores: false,
 };
-// "Virginia, Maryland, Washington, DC and North Carolina"
-const LAUNCH_STATES_LABEL = (() => {
-  const names = STORE_DIRECTORY_STATES.map((state) => state.shortName);
-  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
-})();
+const LAUNCH_STATES_LABEL = "all 50 US states and Washington, DC";
 const WATCH_CALENDAR_AREAS = [
   { value: "hampton_roads", label: "Hampton Roads / 757", cities: ["suffolk", "chesapeake", "virginia beach", "norfolk", "portsmouth", "newport news", "hampton"] },
   { value: "richmond_central_virginia", label: "Richmond / Central Virginia", cities: ["richmond", "henrico", "midlothian", "chesterfield", "mechanicsville", "glen allen"] },
@@ -15999,8 +15995,9 @@ export default function App() {
       store_name: storeName,
       retailer,
       chain: retailer,
-      city: matchedStore.city || "",
-      region: matchedStore.region || "",
+      city: matchedStore.city || context.storeLocation?.city || "",
+      state: matchedStore.state || context.storeLocation?.state || "",
+      region: matchedStore.region || context.storeLocation?.region || "",
       address: matchedStore.address || "",
       productId: row.product_id || "",
       product_id: row.product_id || "",
@@ -33941,8 +33938,12 @@ function renderForgeBusinessLedgerPanel() {
 
   function watchCalendarAreaMatches(event = {}) {
     if (event.locationType === "online" || event.locationType === "release") return true;
+    const eventState = normalizeStoreStateCode(event.state || event.store?.state)
+      || detectStoreStateFromText(event.region || "");
+    if (eventState && eventState !== storeDirectoryState) return false;
     const areaKey = storeDirectoryState === "VA" ? watchCalendarArea : `all_${storeDirectoryState.toLowerCase()}`;
     const area = WATCH_CALENDAR_AREAS.find((entry) => entry.value === areaKey) || WATCH_CALENDAR_AREAS[0];
+    if (area?.value.startsWith("all_") && eventState) return true;
     if (!area || area.value === "all_virginia") return true;
     const locationText = [event.city, event.region, event.address, event.title].filter(Boolean).join(" ").toLowerCase();
     if (!locationText) return true;
@@ -34377,6 +34378,7 @@ function renderForgeBusinessLedgerPanel() {
       subtitle: `${isOnline ? "Online Drop Watch" : eventType} - ${row.confidenceLabel || dropRadarRecordLabel(row) || "Possible"}`,
       retailer: row.retailer || "",
       city: matchedStore?.city || row.city || "",
+      state: matchedStore?.state || row.state || "",
       region: matchedStore?.region || "",
       address: matchedStore?.address || "",
       store: matchedStore || null,
@@ -34426,6 +34428,7 @@ function renderForgeBusinessLedgerPanel() {
         subtitle: `${stockLabel} - ${status}`,
         retailer: store.chain || report.retailer || report.chain || "",
         city: store.city || report.city || "",
+        state: store.state || report.state || "",
         region: store.region || report.region || "",
         address: store.address || report.address || "",
         store: report.storeId || report.store_id ? findScoutQuickStore({ id: report.storeId || report.store_id }) || store : store,
@@ -39239,7 +39242,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   placeholder="ZIP or city"
                 />
               </Field>
-              <Field label="Restocks state" help="Which state's stores Restocks shows. Code 3 TCG covers Virginia, Maryland, Washington, DC and North Carolina.">
+              <Field label="Restocks state" help="Choose any US state or DC. Store and report coverage varies by area; suggest a missing store to help build your local directory.">
                 <select className="drawer-field" value={storeDirectoryState} onChange={(event) => chooseStoreDirectoryState(event.target.value)}>
                   {STORE_DIRECTORY_STATES.map((state) => <option key={state.code} value={state.code}>{state.shortName}</option>)}
                 </select>
@@ -46422,7 +46425,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     ].includes(normalizedView) ? normalizedView : "welcome";
     const viewRows = [
       { key: "welcome", label: "Welcome", helper: "Mission and beta path" },
-      { key: "state-check", label: "State Check", helper: `${LAUNCH_STATES_LABEL} first` },
+      { key: "state-check", label: "State Check", helper: "Choose your local area" },
       { key: "waitlist", label: "Waitlist", helper: "Expansion signal" },
       { key: "choose-role", label: "Choose Role", helper: "Collector, family, seller, shop partner" },
       { key: "family-setup", label: "Family Setup", helper: "Parent-guided defaults" },
@@ -46444,9 +46447,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { title: "Keep it safe", body: "Restocks, Community, Spark, and Parent Center avoid private child data and exploit-friendly details.", status: "Family first" },
     ];
     const stateRows = [
-      { title: LAUNCH_STATES_LABEL, body: `Collectors in ${LAUNCH_STATES_LABEL} can continue into beta review.`, status: "Current launch" },
-      { title: "Other states", body: "Join the waitlist so we know what states to add next.", status: "Waitlist" },
-      { title: "State requests", body: "Requests help decide where Code 3 TCG opens next; no access is guaranteed.", status: "Planning signal" },
+      { title: "Nationwide", body: `Collectors in ${LAUNCH_STATES_LABEL} can create an account and start.`, status: "Open registration" },
+      { title: "Local coverage", body: "Available stores and reports vary by area. Suggest a missing store for review.", status: "Community built" },
+      { title: "Reviewed programs", body: "Shop participation and tester programs keep their own review and permissions.", status: "Separate review" },
     ];
     const firstStoreRows = [
       { title: "Target - Short Pump", body: "Watch current reports near Richmond without exact quantities.", status: "VA store" },
@@ -46477,8 +46480,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       },
       "state-check": {
         kicker: "State Check",
-        title: `We are launching in ${LAUNCH_STATES_LABEL} first.`,
-        body: `We're launching in ${LAUNCH_STATES_LABEL} first so Code 3 TCG can stay safe, fair, and useful for families.`,
+        title: "Choose your state.",
+        body: `Code 3 TCG supports ${LAUNCH_STATES_LABEL}. Choose your area to find available stores and reports.`,
         badge: "I-95 launch",
       },
       waitlist: {

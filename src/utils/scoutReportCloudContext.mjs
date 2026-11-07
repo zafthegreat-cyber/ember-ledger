@@ -1,4 +1,6 @@
-// The deployed reports table predates dedicated source columns. Keep only
+import { normalizeStoreStateCode } from "../data/storeStates.js";
+
+// The deployed reports table predates dedicated source/location columns. Keep only
 // non-authoritative report context in a versioned notes footer; moderation and
 // sharing always come from the server's own columns. No OCR text/image is added.
 const PREFIX = "\n\n[Code 3 report context v1:";
@@ -16,19 +18,23 @@ export function decodeScoutReportCloudNotes(value) {
   const empty = { notes, sourceType: "", sourceLabel: "", reportStatus: "" };
   if (start < 0 || !notes.endsWith("]")) return empty;
   const encoded = notes.slice(start + PREFIX.length, -1);
-  if (encoded.length > 240) return empty;
+  if (encoded.length > 600) return empty;
   try {
     const context = JSON.parse(encoded);
     if (!context || typeof context !== "object" || Array.isArray(context)
-      || Object.keys(context).some((key) => !["source", "platform", "stockStatus"].includes(key))
+      || Object.keys(context).some((key) => !["source", "platform", "stockStatus", "city", "state", "region"].includes(key))
       || (context.source !== undefined && context.source !== "text_screenshot")
       || (context.platform !== undefined && !Object.hasOwn(PLATFORM_LABELS, context.platform))
-      || (context.stockStatus !== undefined && !STOCK_STATUSES.has(context.stockStatus))) return empty;
+      || (context.stockStatus !== undefined && !STOCK_STATUSES.has(context.stockStatus))
+      || (context.state !== undefined && (!normalizeStoreStateCode(context.state) || context.state !== normalizeStoreStateCode(context.state)))
+      || (context.city !== undefined && (typeof context.city !== "string" || context.city.length > 80 || /[\u0000-\u001f]/.test(context.city)))
+      || (context.region !== undefined && (typeof context.region !== "string" || context.region.length > 100 || /[\u0000-\u001f]/.test(context.region)))) return empty;
     return {
       notes: notes.slice(0, start),
       sourceType: context.source === "text_screenshot" ? "text_screenshot" : "",
       sourceLabel: context.source === "text_screenshot" ? PLATFORM_LABELS[context.platform] || PLATFORM_LABELS.other : "",
       reportStatus: context.stockStatus || "",
+      ...(context.state ? { storeLocation: { city: context.city || "", state: context.state, region: context.region || "" } } : {}),
     };
   } catch {
     return empty;
@@ -48,6 +54,14 @@ export function encodeScoutReportCloudNotes(report = {}) {
   }
   const stockStatus = report.reportStatus || report.report_status || report.quickReportType;
   if (STOCK_STATUSES.has(stockStatus)) context.stockStatus = stockStatus;
+  const state = normalizeStoreStateCode(report.state);
+  if (state) {
+    context.state = state;
+    for (const [key, max] of [["city", 80], ["region", 100]]) {
+      const value = typeof report[key] === "string" ? report[key].replace(/[\u0000-\u001f]/g, " ").trim().slice(0, max) : "";
+      if (value) context[key] = value;
+    }
+  }
   return Object.keys(context).length ? `${notes}${PREFIX}${JSON.stringify(context)}]` : notes;
 }
 
@@ -63,7 +77,7 @@ export function mergeScoutReportCloudSave(local = {}, cloud = {}) {
     "scoutPointsValue", "scout_points_value", "displayName", "username", "publicUsername", "public_username",
   ]) if (Object.hasOwn(local, key)) details[key] = local[key];
   const merged = { ...details, ...cloud };
-  for (const key of ["city", "address", "region", "retailer", "chain"]) {
+  for (const key of ["city", "state", "address", "region", "retailer", "chain"]) {
     if (!merged[key] && local[key]) merged[key] = local[key];
   }
   return merged;

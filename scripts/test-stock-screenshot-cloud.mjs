@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { US_STATES } from "../src/data/usStates.js";
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
@@ -491,5 +492,22 @@ await check("actual cloud-mapped category-only stock reports retain feed labels,
   assert.equal(filterRestockFeed(entries, { stock: "low" }, now).length, 1);
   assert.equal(filterRestockFeed(entries, { stock: "empty" }, now).length, 1);
   assert.equal(JSON.stringify(mapped), before, "Feed display must not rewrite synced records, privacy or verification");
+});
+await check("manual reports in every US state retain their area through the actual cloud save and reload mapping", async () => {
+  for (const state of US_STATES) {
+    const f = fixture();
+    const original = ordinaryReport({ storeId: "", state: state.code, city: "Richmond", region: "Synthetic local area", notes: "Keep original notes", observedAt, price: 81.05 });
+    const before = JSON.stringify(original);
+    const result = await f.api.persistScoutReportToSupabase(original);
+    assert.equal(result.ok, true, state.code);
+    assert.equal(result.report.state, state.code);
+    assert.equal(result.report.city, "Richmond");
+    assert.equal(result.report.region, "Synthetic local area");
+    assert.equal(result.report.notes, original.notes);
+    assert.equal(result.report.visibility, "private_from_map");
+    assert.equal(result.report.verified, false);
+    assert.equal(result.report.observedAt, observedAt);
+    assert.equal(JSON.stringify(original), before);
+  }
 });
 console.log(`Stock screenshot cloud: ${passed} actual App behavior checks passed against a production-schema fake. No live requests were made.`);

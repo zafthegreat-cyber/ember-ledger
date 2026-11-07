@@ -1,6 +1,7 @@
 {
   "name": "code3-tcg",
   "scripts": {
+    "test:nationwide-restocks": "node --no-warnings --test scripts/test-nationwide-restocks.mjs scripts/test-nationwide-restocks-ui.mjs scripts/test-stock-screenshot-cloud.mjs",
     "test:discord-retailer-alerts": "node --test scripts/test-discord-retailer-alerts.mjs",
     "prepare:scout-ocr": "node scripts/prepare-scout-ocr.mjs",
     "predev": "npm run prepare:scout-ocr",
