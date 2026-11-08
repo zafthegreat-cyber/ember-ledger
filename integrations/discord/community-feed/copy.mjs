@@ -1,1 +1,0 @@
-export const communityFeedDisclosure = 'Approved public product, store/link, status, area and observed-time details may also appear in the Code 3 TCG Scout app for up to 24 hours. Your Discord ID and staff review notes are not shared in that feed.';
