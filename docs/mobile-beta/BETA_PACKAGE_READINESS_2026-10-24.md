@@ -2,6 +2,14 @@
 
 The current icon update uses the approved three-card emblem for PWA, Android and iOS install assets. Browser and native app identities are unchanged. Organization enrollment remains pending: the owner reports D‑U‑N‑S status **In-Progress**, submitted October 18. This is not store-submission approval.
 
+## Latest privacy acceptance and release boundary
+
+The isolated HTTPS Preview passed **117 checks** in run `01376080-1e79-4e48-ac49-954b96fe5555`, including actual deployed deletion UI and private-attachment component integration with real isolated services. Its three synthetic accounts were deleted through the verified flow. The approved disposable branch, seven temporary Preview variables and restricted local test-key file were removed; independent metadata confirms the branch is absent. The existing Production Sensitive secret remains, and production account deletion remains disabled. See [the HTTPS acceptance and cleanup record](./HOSTED_DELETION_HTTPS_ACCEPTANCE_2026-10-24.md) and [privacy readiness](./PRIVACY_READINESS_2026-10-24.md).
+
+This is web/HTTPS evidence, **not a new native package, signed store build or phone pass**. The owner's ordinary computer sign-in was verified without changing records or dismissing its cloud-saving review notice. An existing production receipt UI/download flow remains unverified: the stored legacy object has no recognized references in the audited cloud workspaces/revisions. Physical iPhone/Android testing remains paused, and the signing, enrollment, retention/support and store-disclosure gates below remain open.
+
+Read-only production checks preserve all cloud record/object fingerprints and all 4,729 published catalog objects and price fields. Concurrent production release `29a9461` regressed search metadata and the Google verification file while retaining those records/prices and privacy routes. Merge `317dbc9` preserves the Discord work and search/GSC restoration in the review branch; the restoration is **not published**. Rebuild and validate packages from the final reviewed commit before delivery. Passing isolated acceptance does not authorize or certify production deletion enablement or store publication.
+
 ## Package status and build numbers
 
 - The previous Android APK/AAB evidence is **build 6**, dated October 18. Those files predate the current restock features and icons; do not distribute them as this release.

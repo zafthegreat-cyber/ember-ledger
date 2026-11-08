@@ -55,7 +55,19 @@ export function allowedOriginsForRuntime(env: RuntimeEnvironment, runtimeKind = 
     return allowed;
   };
   if (runtimeKind === "preview") {
-    return addNative(exactOrigins(env.CODE3_CORS_PREVIEW_ORIGINS));
+    const allowed = exactOrigins(env.CODE3_CORS_PREVIEW_ORIGINS);
+    // Opt-in for disposable HTTPS acceptance only. VERCEL_URL is server-owned
+    // deployment metadata: never derive this exception from Host or Origin.
+    // A changing immutable deployment URL otherwise cannot be preconfigured.
+    if (env.CODE3_PREVIEW_SELF_ORIGIN_ENABLED === "true"
+      && env.VERCEL === "1" && env.VERCEL_ENV === "preview") {
+      const host = String(env.VERCEL_URL || "");
+      if (/^[a-z0-9]+(?:-[a-z0-9]+)*-[a-z0-9]{8,}-[a-z0-9]+(?:-[a-z0-9]+)*\.vercel\.app$/.test(host)) {
+        const origin = canonicalOrigin(`https://${host}`);
+        if (origin) allowed.add(origin);
+      }
+    }
+    return addNative(allowed);
   }
   if (runtimeKind === "local-development" || runtimeKind === "automated-test") {
     const allowed = exactOrigins(env.CODE3_CORS_LOCAL_ORIGINS);

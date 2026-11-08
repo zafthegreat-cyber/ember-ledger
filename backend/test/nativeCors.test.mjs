@@ -40,6 +40,24 @@ test("enabling native origins does not merge preview and production web allowlis
   assert.equal(invoke(web, { runtimeKind: "preview", env }).code, 403); assert.equal(invoke("https://preview.example.test", { runtimeKind: "production", env }).code, 403);
   for (const origin of nativeOrigins) assert.equal(invoke(origin, { runtimeKind: "preview", env }).next, true);
 });
+test("disposable preview self-origin opt-in uses only exact server deployment metadata", () => {
+  const host = "ember-tide-abc123def-zafthegreat-cybers-projects.vercel.app";
+  const origin = `https://${host}`;
+  const env = { VERCEL: "1", VERCEL_ENV: "preview", VERCEL_URL: host, CODE3_PREVIEW_SELF_ORIGIN_ENABLED: "true" };
+  assert.equal(invoke(origin, { runtimeKind: "preview", env }, "POST").next, true);
+  assert.equal(invoke(origin, { runtimeKind: "preview", env }, "OPTIONS").code, 204);
+  assert.equal(invoke("https://another-abc123def-project.vercel.app", { runtimeKind: "preview", env }).code, 403);
+  assert.equal(invoke(web, { runtimeKind: "preview", env }).code, 403);
+  for (const runtimeKind of ["production", "unknown", "hosted-unknown", "local-development", "automated-test"]) {
+    assert.equal(invoke(origin, { runtimeKind, env }).code, 403);
+  }
+  for (const override of [{ CODE3_PREVIEW_SELF_ORIGIN_ENABLED: undefined }, { CODE3_PREVIEW_SELF_ORIGIN_ENABLED: "TRUE" }, { VERCEL: "0" }, { VERCEL_ENV: "production" }, { VERCEL_ENV: "development" }]) {
+    assert.equal(invoke(origin, { runtimeKind: "preview", env: { ...env, ...override } }).code, 403);
+  }
+  for (const invalid of ["code3tcg.app", `${host}.evil.test`, `user@${host}`, `${host}:443`, `${host}/path`, `https://${host}`, "", "project.vercel.app", "project-git-main-team.vercel.app"]) {
+    assert.equal(allowedOriginsForRuntime({ ...env, VERCEL_URL: invalid }, "preview").size, 0, invalid);
+  }
+});
 test("native CORS permission is not account permission: actual owner guard still rejects missing/non-owner tokens", async () => {
   const env = { CODE3_NATIVE_CLIENT_ENABLED: "true", CODE3_OWNER_SUBJECTS: "supabase:synthetic-owner" };
   const identityProvider = { providerId: "supabase", isConfigured: () => true, verifyAccessToken: async token => ["synthetic-owner", "synthetic-regular"].includes(token) ? { ok: true, principal: { provider: "supabase", subject: token, issuedAt: 1, expiresAt: 2_000_000_000 } } : { ok: false, reason: "invalid" } };
