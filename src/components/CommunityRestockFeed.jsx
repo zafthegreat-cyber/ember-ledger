@@ -3,11 +3,14 @@ import {AppNavIcon} from './command-system/AppNavIcon.jsx';
 import CommunityReleaseCalendar from './CommunityReleaseCalendar.jsx';
 import {COMMUNITY_PRODUCTS,COMMUNITY_STATUS,DISCORD_COMMUNITY,filterCommunityReports,loadCommunityReports} from '../services/communityReports.mjs';
 import './community-restock-feed.css';
+import NationwideLocationPicker from './NationwideLocationPicker.jsx';
+import {useNearbyPreference} from '../utils/nearbyPreference.mjs';
 
 const timeLabel = value => new Intl.DateTimeFormat(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}).format(new Date(value));
 function OutsideLink({href,children,className=''}) {return <a className={className} href={href} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">{children}<span className="sr-only"> (opens Discord in a new tab)</span></a>;}
 
 export default function CommunityRestockFeed({compact=false,onOpenMap}) {
+  const [location]=useNearbyPreference();
   const id=useId();
   const [view,setView]=useState(()=>new URLSearchParams(globalThis.location?.search||'').get('community')==='calendar'?'calendar':'reports');
   const [reload,setReload]=useState(0),[data,setData]=useState(null),[state,setState]=useState('loading');
@@ -17,10 +20,10 @@ export default function CommunityRestockFeed({compact=false,onOpenMap}) {
   useEffect(()=>{const interval=window.setInterval(()=>setNow(Date.now()),60000);return ()=>window.clearInterval(interval);},[]);
   useEffect(()=>{
     const controller=new AbortController();
-    loadCommunityReports({signal:controller.signal}).then(result=>{if(!controller.signal.aborted){setData(result);setState('ready');}}).catch(()=>{if(!controller.signal.aborted){setData(null);setState('error');}});
+    loadCommunityReports({signal:controller.signal,location}).then(result=>{if(!controller.signal.aborted){setData(result);setState('ready');}}).catch(()=>{if(!controller.signal.aborted){setData(null);setState('error');}});
     return ()=>controller.abort();
-  },[reload]);
-  const reports=useMemo(()=>filterCommunityReports(data?.reports||[],{search,category,status,now}),[data,search,category,status,now]);
+  },[reload,location]);
+  const reports=useMemo(()=>filterCommunityReports(data?.reports||[],{search,category,status,now,location}),[data,search,category,status,now,location]);
   const visible=expanded?reports:reports.slice(0,3);
   function refresh(){setData(null);setState('loading');setReload(value=>value+1);}
   return <section className="community-scout" aria-labelledby={`${id}-title`}>
@@ -37,6 +40,7 @@ export default function CommunityRestockFeed({compact=false,onOpenMap}) {
     <div className="community-scout__tabs" role="group" aria-label="Community view"><button type="button" aria-pressed={view==='reports'} onClick={()=>setView('reports')}>Recent reports</button><button type="button" aria-pressed={view==='calendar'} onClick={()=>setView('calendar')}>Release dates</button></div>
     {view==='calendar'?<CommunityReleaseCalendar/>:<>
     <div className="community-scout__heading"><div><h3>Reviewed community reports</h3><p>Past 24 hours · stock can change · staff review is not a retailer guarantee</p></div><button className="community-scout__refresh" type="button" disabled={state==='loading'} onClick={refresh}>Refresh</button></div>
+    <NationwideLocationPicker />
     <div className="community-scout__filters" role="search" aria-label="Filter reviewed community reports">
       <label htmlFor={`${id}-search`}><span>Find a report</span><input id={`${id}-search`} value={search} onChange={event=>setSearch(event.target.value)} type="search" placeholder="Product, store, or area"/></label>
       <label htmlFor={`${id}-product`}><span id={`${id}-product-label`}>Collecting</span><select id={`${id}-product`} aria-labelledby={`${id}-product-label`} value={category} onChange={event=>setCategory(event.target.value)}><option value="all">All products</option>{Object.entries(COMMUNITY_PRODUCTS).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
@@ -46,7 +50,7 @@ export default function CommunityRestockFeed({compact=false,onOpenMap}) {
     {state==='error'?<div className="community-scout__notice" role="alert"><strong>Community reports could not load.</strong><p>Try Refresh, or check the reviewed reports in Discord. Your saved app reports are still available below.</p><OutsideLink href={DISCORD_COMMUNITY.reports}>Open community reporting</OutsideLink></div>:null}
     {state==='ready'&&reports.length===0?<div className="community-scout__notice" role="status"><strong>{data.reports.length?'No reports match these filters.':'No recent reviewed reports yet.'}</strong><p>{data.reports.length?'Try a different product, status, or search.':'New observations appear here after staff approve them in Discord. This is not a live inventory check.'}</p></div>:null}
     {state==='ready'&&visible.length?<div className="community-scout__list">{visible.map(report=><article key={report.id} className="community-scout__report">
-      <div className="community-scout__report-top"><span className={`community-scout__stock community-scout__stock--${report.status}`}>{COMMUNITY_STATUS[report.status]}</span><span>{report.kind==='online'?'Online':report.areaKey?.replaceAll('-',' ')||'Local observation'}</span></div>
+      <div className="community-scout__report-top"><span className={`community-scout__stock community-scout__stock--${report.status}`}>{COMMUNITY_STATUS[report.status]}</span><span>{report.kind==='online'?'Online':report.areaLabel||report.areaKey?.replaceAll('-',' ')||'Local observation'}</span></div>
       <span className="community-scout__product">{COMMUNITY_PRODUCTS[report.category]}</span><h4>{report.product}</h4><p className="community-scout__store">{report.store}</p>
       <div className="community-scout__report-footer"><span>Observed <time dateTime={report.observedAt}>{timeLabel(report.observedAt)}</time></span><OutsideLink href={report.discordUrl}>View in Discord ↗</OutsideLink></div>
     </article>)}</div>:null}

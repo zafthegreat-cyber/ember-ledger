@@ -1,0 +1,270 @@
+{
+  "applicationId": "1563636539370639420",
+  "guildId": "1558588508204179611",
+  "inputChannelId": "1563700460802670662",
+  "inputMessageId": "1563700485582749717",
+  "reviewChannelId": "1563886999616757851",
+  "localChannelId": "1563700459628134431",
+  "onlineChannelId": "1563748213360558172",
+  "testChannelId": "1563700467773743126",
+  "ownerId": "639143039557828640",
+  "staffRoleIds": [
+    "1563700432554033233",
+    "1563700433321467946"
+  ],
+  "products": [
+    {
+      "key": "pokemon",
+      "label": "Pokémon"
+    },
+    {
+      "key": "onepiece",
+      "label": "One Piece"
+    },
+    {
+      "key": "magic",
+      "label": "Magic: The Gathering"
+    },
+    {
+      "key": "lorcana",
+      "label": "Disney Lorcana"
+    },
+    {
+      "key": "needoh",
+      "label": "NeeDoh"
+    },
+    {
+      "key": "hotwheels",
+      "label": "Hot Wheels"
+    },
+    {
+      "key": "collectibles",
+      "label": "Other Collectibles"
+    }
+  ],
+  "routingVersion": 2,
+  "regions": [
+    {
+      "key": "seva",
+      "label": "Southeastern Virginia",
+      "allLabel": "All southeastern Virginia",
+      "allRoleId": "1563700443266285673",
+      "options": [
+        {
+          "key": "accomack",
+          "label": "Accomack County",
+          "channelId": "1563748215109722124",
+          "roleId": "1563746807417282643"
+        },
+        {
+          "key": "chesapeake",
+          "label": "Chesapeake",
+          "channelId": "1563748217038835802",
+          "roleId": "1563746809392664606"
+        },
+        {
+          "key": "emporia",
+          "label": "Emporia",
+          "channelId": "1563748218616152094",
+          "roleId": "1563746810290503720"
+        },
+        {
+          "key": "franklin",
+          "label": "Franklin",
+          "channelId": "1563748219962527754",
+          "roleId": "1563746811351666709"
+        },
+        {
+          "key": "gloucester",
+          "label": "Gloucester County",
+          "channelId": "1563748221556097186",
+          "roleId": "1563746812525813811"
+        },
+        {
+          "key": "greensville",
+          "label": "Greensville County",
+          "channelId": "1563748223489806406",
+          "roleId": "1563746813851340860"
+        },
+        {
+          "key": "hampton",
+          "label": "Hampton",
+          "channelId": "1563748225138303086",
+          "roleId": "1563746815176609912"
+        },
+        {
+          "key": "isle-of-wight",
+          "label": "Isle of Wight County",
+          "channelId": "1563748226463567892",
+          "roleId": "1563746816166469702"
+        },
+        {
+          "key": "james-city",
+          "label": "James City County",
+          "channelId": "1563748228292288632",
+          "roleId": "1563746817160515625"
+        },
+        {
+          "key": "mathews",
+          "label": "Mathews County",
+          "channelId": "1563748238224396419",
+          "roleId": "1563746818691698688"
+        },
+        {
+          "key": "middlesex",
+          "label": "Middlesex County",
+          "channelId": "1563748239625420801",
+          "roleId": "1563746820188934194"
+        },
+        {
+          "key": "newport-news",
+          "label": "Newport News",
+          "channelId": "1563748242196529234",
+          "roleId": "1563746821619064922"
+        },
+        {
+          "key": "norfolk",
+          "label": "Norfolk",
+          "channelId": "1563748243517734983",
+          "roleId": "1563746822659379352"
+        },
+        {
+          "key": "northampton",
+          "label": "Northampton County",
+          "channelId": "1563748244746543148",
+          "roleId": "1563746823938642022"
+        },
+        {
+          "key": "poquoson",
+          "label": "Poquoson",
+          "channelId": "1563748246390702180",
+          "roleId": "1563746833019306176"
+        },
+        {
+          "key": "portsmouth",
+          "label": "Portsmouth",
+          "channelId": "1563748247904985088",
+          "roleId": "1563746834143256669"
+        },
+        {
+          "key": "southampton",
+          "label": "Southampton County",
+          "channelId": "1563748249716658176",
+          "roleId": "1563746834965332129"
+        },
+        {
+          "key": "suffolk",
+          "label": "Suffolk",
+          "channelId": "1563748251218354306",
+          "roleId": "1563746836077092905"
+        },
+        {
+          "key": "surry",
+          "label": "Surry County",
+          "channelId": "1563748254116618361",
+          "roleId": "1563746837188313122"
+        },
+        {
+          "key": "sussex",
+          "label": "Sussex County",
+          "channelId": "1563748256259776622",
+          "roleId": "1563746838740213760"
+        },
+        {
+          "key": "virginia-beach",
+          "label": "Virginia Beach",
+          "channelId": "1563748257908269077",
+          "roleId": "1563746839973470339"
+        },
+        {
+          "key": "williamsburg",
+          "label": "Williamsburg",
+          "channelId": "1563748259502096415",
+          "roleId": "1563746841584214177"
+        },
+        {
+          "key": "york",
+          "label": "York County",
+          "channelId": "1563748261309841418",
+          "roleId": "1563746843064541405"
+        }
+      ]
+    },
+    {
+      "key": "fredericksburg",
+      "label": "Fredericksburg area",
+      "allLabel": "All Fredericksburg area",
+      "allRoleId": "1563754159772012584",
+      "options": [
+        {
+          "key": "fredericksburg",
+          "label": "Fredericksburg",
+          "channelId": "1563754164910170164",
+          "roleId": "1563754160158150720"
+        },
+        {
+          "key": "stafford",
+          "label": "Stafford County",
+          "channelId": "1563754166625771591",
+          "roleId": "1563754161588142130"
+        },
+        {
+          "key": "spotsylvania",
+          "label": "Spotsylvania County",
+          "channelId": "1563754168144109598",
+          "roleId": "1563754162473406665"
+        },
+        {
+          "key": "king-george",
+          "label": "King George County",
+          "channelId": "1563754169578422362",
+          "roleId": "1563754163437969570"
+        },
+        {
+          "key": "caroline",
+          "label": "Caroline County",
+          "channelId": "1563754172019642428",
+          "roleId": "1563754164431888424"
+        }
+      ]
+    }
+  ],
+  "feeds": {
+    "pokemon": "1564081777805496370",
+    "onepiece": "1564081780229935247",
+    "magic": "1564081782587134052",
+    "lorcana": "1564081788391792660",
+    "needoh": "1564081790392733878",
+    "hotwheels": "1564081791852216503",
+    "collectibles": "1564081794599489548"
+  },
+  "productRoles": {
+    "pokemon": "1563700437771878470",
+    "onepiece": "1563700440158179470",
+    "magic": "1563700441525657720",
+    "lorcana": "1563700442310123570",
+    "needoh": "1563746802539298836",
+    "hotwheels": "1563746803390615664",
+    "collectibles": "1563746805437435934"
+  },
+  "onlineRoleId": "1563746806804779129",
+  "sourceHealthChannelId": "1564081798730874963",
+  "calendarChannelId": "1564081801016774666",
+  "extraCommands": {
+    "source-status": "1564081802862141563",
+    "releases": "1564081803269120092"
+  },
+  "memberCommands": {
+    "report-status": "1564105628199288926",
+    "withdraw-report": "1564105628954136576",
+    "correct-report": "1564105629428092938",
+    "privacy-request": "1564105630011097178",
+    "appeal": "1564105630325809195",
+    "case-status": "1564105646050119890",
+    "review-queue": "1564105662898770213",
+    "review-history": "1564105680741208175",
+    "safety-concern": "1566498330236948731"
+  },
+  "rolePickerChannelId": "1563700449024933910",
+  "alertRepeatWindowMinutes": 120
+}

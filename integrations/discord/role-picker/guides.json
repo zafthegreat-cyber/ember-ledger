@@ -1,0 +1,559 @@
+{
+  "applicationId": "1563636539370639420",
+  "guildId": "1558588508204179611",
+  "channels": {
+    "START HERE": "1563700444595888238",
+    "welcome-and-rules": "1563700446223147059",
+    "announcements": "1563700447817105588",
+    "choose-roles": "1563700449024933910",
+    "COMMUNITY": "1563700450342215891",
+    "collector-chat": "1563700451399041206",
+    "pokemon": "1563700452430712973",
+    "one-piece": "1563700453580087306",
+    "magic": "1563700454414749846",
+    "lorcana": "1563700455484162071",
+    "SCOUT": "1563700456700776468",
+    "restock-alerts": "1563700457803612254",
+    "local-restocks": "1563700459628134431",
+    "restock-reports": "1563700460802670662",
+    "SUPPORT": "1563700461494735032",
+    "app-help": "1563700462186663936",
+    "suggestions": "1563700463029985300",
+    "STAFF": "1563700464338341898",
+    "staff-chat": "1563700466108338237",
+    "mod-log": "1563700467052187690",
+    "alert-test": "1563700467773743126",
+    "needoh": "1563746851033972827",
+    "hot-wheels": "1563746852115849297",
+    "other-collectibles": "1563746852891926639",
+    "LOCAL RESTOCKS": "1563746853697364038",
+    "online-restocks": "1563748213360558172",
+    "accomack-restocks": "1563748215109722124",
+    "chesapeake-restocks": "1563748217038835802",
+    "emporia-restocks": "1563748218616152094",
+    "franklin-restocks": "1563748219962527754",
+    "gloucester-restocks": "1563748221556097186",
+    "greensville-restocks": "1563748223489806406",
+    "hampton-restocks": "1563748225138303086",
+    "isle-of-wight-restocks": "1563748226463567892",
+    "james-city-restocks": "1563748228292288632",
+    "mathews-restocks": "1563748238224396419",
+    "middlesex-restocks": "1563748239625420801",
+    "newport-news-restocks": "1563748242196529234",
+    "norfolk-restocks": "1563748243517734983",
+    "northampton-restocks": "1563748244746543148",
+    "poquoson-restocks": "1563748246390702180",
+    "portsmouth-restocks": "1563748247904985088",
+    "southampton-restocks": "1563748249716658176",
+    "suffolk-restocks": "1563748251218354306",
+    "surry-restocks": "1563748254116618361",
+    "sussex-restocks": "1563748256259776622",
+    "virginia-beach-restocks": "1563748257908269077",
+    "williamsburg-restocks": "1563748259502096415",
+    "york-restocks": "1563748261309841418",
+    "PROJECT UPDATES": "1563748265357348975",
+    "aco-updates": "1563748266007597068",
+    "aio-updates": "1563748268071063655",
+    "app-updates": "1563748269723619438",
+    "bot-updates": "1563748272244269116",
+    "beta-testing": "1563748274249273397",
+    "fredericksburg-restocks": "1563754164910170164",
+    "stafford-restocks": "1563754166625771591",
+    "spotsylvania-restocks": "1563754168144109598",
+    "king-george-restocks": "1563754169578422362",
+    "caroline-restocks": "1563754172019642428",
+    "restock-review": "1563886999616757851",
+    "GAME RESTOCKS": "1564081492026728538",
+    "pokemon-restocks": "1564081777805496370",
+    "one-piece-restocks": "1564081780229935247",
+    "magic-restocks": "1564081782587134052",
+    "lorcana-restocks": "1564081788391792660",
+    "needoh-restocks": "1564081790392733878",
+    "hot-wheels-restocks": "1564081791852216503",
+    "other-collectibles-restocks": "1564081794599489548",
+    "source-health": "1564081798730874963",
+    "release-calendar": "1564081801016774666"
+  },
+  "channelNames": {
+    "1563700444595888238": "START HERE",
+    "1563700446223147059": "welcome-and-rules",
+    "1563700447817105588": "announcements",
+    "1563700449024933910": "choose-roles",
+    "1563700450342215891": "COMMUNITY",
+    "1563700451399041206": "collector-chat",
+    "1563700452430712973": "pokemon",
+    "1563700453580087306": "one-piece",
+    "1563700454414749846": "magic",
+    "1563700455484162071": "lorcana",
+    "1563700456700776468": "SCOUT",
+    "1563700457803612254": "restock-alerts",
+    "1563700459628134431": "local-restocks",
+    "1563700460802670662": "restock-reports",
+    "1563700461494735032": "SUPPORT",
+    "1563700462186663936": "app-help",
+    "1563700463029985300": "suggestions",
+    "1563700464338341898": "STAFF",
+    "1563700466108338237": "staff-chat",
+    "1563700467052187690": "mod-log",
+    "1563700467773743126": "alert-test",
+    "1563746851033972827": "needoh",
+    "1563746852115849297": "hot-wheels",
+    "1563746852891926639": "other-collectibles",
+    "1563746853697364038": "LOCAL RESTOCKS",
+    "1563748213360558172": "online-restocks",
+    "1563748215109722124": "accomack-restocks",
+    "1563748217038835802": "chesapeake-restocks",
+    "1563748218616152094": "emporia-restocks",
+    "1563748219962527754": "franklin-restocks",
+    "1563748221556097186": "gloucester-restocks",
+    "1563748223489806406": "greensville-restocks",
+    "1563748225138303086": "hampton-restocks",
+    "1563748226463567892": "isle-of-wight-restocks",
+    "1563748228292288632": "james-city-restocks",
+    "1563748238224396419": "mathews-restocks",
+    "1563748239625420801": "middlesex-restocks",
+    "1563748242196529234": "newport-news-restocks",
+    "1563748243517734983": "norfolk-restocks",
+    "1563748244746543148": "northampton-restocks",
+    "1563748246390702180": "poquoson-restocks",
+    "1563748247904985088": "portsmouth-restocks",
+    "1563748249716658176": "southampton-restocks",
+    "1563748251218354306": "suffolk-restocks",
+    "1563748254116618361": "surry-restocks",
+    "1563748256259776622": "sussex-restocks",
+    "1563748257908269077": "virginia-beach-restocks",
+    "1563748259502096415": "williamsburg-restocks",
+    "1563748261309841418": "york-restocks",
+    "1563748265357348975": "PROJECT UPDATES",
+    "1563748266007597068": "aco-updates",
+    "1563748268071063655": "aio-updates",
+    "1563748269723619438": "app-updates",
+    "1563748272244269116": "bot-updates",
+    "1563748274249273397": "beta-testing",
+    "1563754164910170164": "fredericksburg-restocks",
+    "1563754166625771591": "stafford-restocks",
+    "1563754168144109598": "spotsylvania-restocks",
+    "1563754169578422362": "king-george-restocks",
+    "1563754172019642428": "caroline-restocks",
+    "1563886999616757851": "restock-review",
+    "1564081492026728538": "GAME RESTOCKS",
+    "1564081777805496370": "pokemon-restocks",
+    "1564081780229935247": "one-piece-restocks",
+    "1564081782587134052": "magic-restocks",
+    "1564081788391792660": "lorcana-restocks",
+    "1564081790392733878": "needoh-restocks",
+    "1564081791852216503": "hot-wheels-restocks",
+    "1564081794599489548": "other-collectibles-restocks",
+    "1564081798730874963": "source-health",
+    "1564081801016774666": "release-calendar"
+  },
+  "groups": {
+    "products": [
+      {
+        "key": "pokemon",
+        "label": "Pokémon",
+        "roleId": "1563700437771878470",
+        "channelIds": [
+          "1563700452430712973",
+          "1564081777805496370"
+        ]
+      },
+      {
+        "key": "onepiece",
+        "label": "One Piece",
+        "roleId": "1563700440158179470",
+        "channelIds": [
+          "1563700453580087306",
+          "1564081780229935247"
+        ]
+      },
+      {
+        "key": "magic",
+        "label": "Magic: The Gathering",
+        "roleId": "1563700441525657720",
+        "channelIds": [
+          "1563700454414749846",
+          "1564081782587134052"
+        ]
+      },
+      {
+        "key": "lorcana",
+        "label": "Disney Lorcana",
+        "roleId": "1563700442310123570",
+        "channelIds": [
+          "1563700455484162071",
+          "1564081788391792660"
+        ]
+      },
+      {
+        "key": "needoh",
+        "label": "NeeDoh",
+        "roleId": "1563746802539298836",
+        "channelIds": [
+          "1563746851033972827",
+          "1564081790392733878"
+        ]
+      },
+      {
+        "key": "hotwheels",
+        "label": "Hot Wheels",
+        "roleId": "1563746803390615664",
+        "channelIds": [
+          "1563746852115849297",
+          "1564081791852216503"
+        ]
+      },
+      {
+        "key": "collectibles",
+        "label": "Other Collectibles",
+        "roleId": "1563746805437435934",
+        "channelIds": [
+          "1563746852891926639",
+          "1564081794599489548"
+        ]
+      }
+    ],
+    "online": [
+      {
+        "key": "online",
+        "label": "Online releases & restocks",
+        "roleId": "1563746806804779129",
+        "channelIds": [
+          "1563748213360558172"
+        ]
+      }
+    ],
+    "locations": [
+      {
+        "key": "all-seva",
+        "label": "All southeastern Virginia",
+        "roleId": "1563700443266285673",
+        "channelIds": [
+          "1563748215109722124",
+          "1563748217038835802",
+          "1563748218616152094",
+          "1563748219962527754",
+          "1563748221556097186",
+          "1563748223489806406",
+          "1563748225138303086",
+          "1563748226463567892",
+          "1563748228292288632",
+          "1563748238224396419",
+          "1563748239625420801",
+          "1563748242196529234",
+          "1563748243517734983",
+          "1563748244746543148",
+          "1563748246390702180",
+          "1563748247904985088",
+          "1563748249716658176",
+          "1563748251218354306",
+          "1563748254116618361",
+          "1563748256259776622",
+          "1563748257908269077",
+          "1563748259502096415",
+          "1563748261309841418"
+        ]
+      },
+      {
+        "key": "accomack",
+        "label": "Accomack County",
+        "roleId": "1563746807417282643",
+        "channelIds": [
+          "1563748215109722124"
+        ]
+      },
+      {
+        "key": "chesapeake",
+        "label": "Chesapeake",
+        "roleId": "1563746809392664606",
+        "channelIds": [
+          "1563748217038835802"
+        ]
+      },
+      {
+        "key": "emporia",
+        "label": "Emporia",
+        "roleId": "1563746810290503720",
+        "channelIds": [
+          "1563748218616152094"
+        ]
+      },
+      {
+        "key": "franklin",
+        "label": "Franklin",
+        "roleId": "1563746811351666709",
+        "channelIds": [
+          "1563748219962527754"
+        ]
+      },
+      {
+        "key": "gloucester",
+        "label": "Gloucester County",
+        "roleId": "1563746812525813811",
+        "channelIds": [
+          "1563748221556097186"
+        ]
+      },
+      {
+        "key": "greensville",
+        "label": "Greensville County",
+        "roleId": "1563746813851340860",
+        "channelIds": [
+          "1563748223489806406"
+        ]
+      },
+      {
+        "key": "hampton",
+        "label": "Hampton",
+        "roleId": "1563746815176609912",
+        "channelIds": [
+          "1563748225138303086"
+        ]
+      },
+      {
+        "key": "isle-of-wight",
+        "label": "Isle of Wight County",
+        "roleId": "1563746816166469702",
+        "channelIds": [
+          "1563748226463567892"
+        ]
+      },
+      {
+        "key": "james-city",
+        "label": "James City County",
+        "roleId": "1563746817160515625",
+        "channelIds": [
+          "1563748228292288632"
+        ]
+      },
+      {
+        "key": "mathews",
+        "label": "Mathews County",
+        "roleId": "1563746818691698688",
+        "channelIds": [
+          "1563748238224396419"
+        ]
+      },
+      {
+        "key": "middlesex",
+        "label": "Middlesex County",
+        "roleId": "1563746820188934194",
+        "channelIds": [
+          "1563748239625420801"
+        ]
+      },
+      {
+        "key": "newport-news",
+        "label": "Newport News",
+        "roleId": "1563746821619064922",
+        "channelIds": [
+          "1563748242196529234"
+        ]
+      },
+      {
+        "key": "norfolk",
+        "label": "Norfolk",
+        "roleId": "1563746822659379352",
+        "channelIds": [
+          "1563748243517734983"
+        ]
+      },
+      {
+        "key": "northampton",
+        "label": "Northampton County",
+        "roleId": "1563746823938642022",
+        "channelIds": [
+          "1563748244746543148"
+        ]
+      },
+      {
+        "key": "poquoson",
+        "label": "Poquoson",
+        "roleId": "1563746833019306176",
+        "channelIds": [
+          "1563748246390702180"
+        ]
+      },
+      {
+        "key": "portsmouth",
+        "label": "Portsmouth",
+        "roleId": "1563746834143256669",
+        "channelIds": [
+          "1563748247904985088"
+        ]
+      },
+      {
+        "key": "southampton",
+        "label": "Southampton County",
+        "roleId": "1563746834965332129",
+        "channelIds": [
+          "1563748249716658176"
+        ]
+      },
+      {
+        "key": "suffolk",
+        "label": "Suffolk",
+        "roleId": "1563746836077092905",
+        "channelIds": [
+          "1563748251218354306"
+        ]
+      },
+      {
+        "key": "surry",
+        "label": "Surry County",
+        "roleId": "1563746837188313122",
+        "channelIds": [
+          "1563748254116618361"
+        ]
+      },
+      {
+        "key": "sussex",
+        "label": "Sussex County",
+        "roleId": "1563746838740213760",
+        "channelIds": [
+          "1563748256259776622"
+        ]
+      },
+      {
+        "key": "virginia-beach",
+        "label": "Virginia Beach",
+        "roleId": "1563746839973470339",
+        "channelIds": [
+          "1563748257908269077"
+        ]
+      },
+      {
+        "key": "williamsburg",
+        "label": "Williamsburg",
+        "roleId": "1563746841584214177",
+        "channelIds": [
+          "1563748259502096415"
+        ]
+      },
+      {
+        "key": "york",
+        "label": "York County",
+        "roleId": "1563746843064541405",
+        "channelIds": [
+          "1563748261309841418"
+        ]
+      }
+    ],
+    "fredericksburg": [
+      {
+        "key": "all-fredericksburg",
+        "label": "All Fredericksburg area",
+        "roleId": "1563754159772012584",
+        "channelIds": [
+          "1563754164910170164",
+          "1563754166625771591",
+          "1563754168144109598",
+          "1563754169578422362",
+          "1563754172019642428"
+        ]
+      },
+      {
+        "key": "fredericksburg",
+        "label": "Fredericksburg",
+        "roleId": "1563754160158150720",
+        "channelIds": [
+          "1563754164910170164"
+        ]
+      },
+      {
+        "key": "stafford",
+        "label": "Stafford County",
+        "roleId": "1563754161588142130",
+        "channelIds": [
+          "1563754166625771591"
+        ]
+      },
+      {
+        "key": "spotsylvania",
+        "label": "Spotsylvania County",
+        "roleId": "1563754162473406665",
+        "channelIds": [
+          "1563754168144109598"
+        ]
+      },
+      {
+        "key": "king-george",
+        "label": "King George County",
+        "roleId": "1563754163437969570",
+        "channelIds": [
+          "1563754169578422362"
+        ]
+      },
+      {
+        "key": "caroline",
+        "label": "Caroline County",
+        "roleId": "1563754164431888424",
+        "channelIds": [
+          "1563754172019642428"
+        ]
+      }
+    ],
+    "projects": [
+      {
+        "key": "aco",
+        "label": "ACO",
+        "roleId": "1563746844037750824",
+        "channelIds": [
+          "1563748266007597068"
+        ]
+      },
+      {
+        "key": "aio",
+        "label": "AIO",
+        "roleId": "1563746845140848670",
+        "channelIds": [
+          "1563748268071063655"
+        ]
+      },
+      {
+        "key": "app",
+        "label": "App",
+        "roleId": "1563746846025715784",
+        "channelIds": [
+          "1563748269723619438"
+        ]
+      },
+      {
+        "key": "bot",
+        "label": "Bot",
+        "roleId": "1563746848399695872",
+        "channelIds": [
+          "1563748272244269116"
+        ]
+      },
+      {
+        "key": "beta",
+        "label": "Beta Testing",
+        "roleId": "1563746849481949244",
+        "channelIds": [
+          "1563748274249273397"
+        ]
+      }
+    ]
+  },
+  "bugTemplate": "Feature or page:\nDevice and app/browser version:\nSteps to reproduce:\n1. \n2. \nExpected result:\nActual result:\nWhen it happened (include time zone):\nRedacted screenshot, if useful:",
+  "suggestionTemplate": "Problem or need:\nWho would benefit:\nProposed change:\nExample of how it would work:\nCurrent workaround:\nHow we could tell it helped:",
+  "commands": {
+    "help": "1564069432144306207",
+    "my-channels": "1564069433155002409",
+    "notifications": "1564069433607983146",
+    "report": "1564069434358763570"
+  },
+  "capabilities": {
+    "localityRouting": true,
+    "rolePingsVerified": true,
+    "bestBuyPaused": true,
+    "retailerFunctionVersion": 5,
+    "discordFunctionVersion": 8,
+    "databaseRollbackTestsPassed": true,
+    "automationTestsPassed": 90,
+    "alertRepeatWindowMinutes": 120,
+    "safetyConcernCommand": true,
+    "nearbyNationwide": true
+  }
+}

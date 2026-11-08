@@ -44,7 +44,7 @@ test("real report controls combine nationwide, game and shelf-status filters wit
     assert.match(document.querySelector('.restock-browser-freshness').textContent, /^0 of 1/);
     await select("period", "24h");
     assert.equal(visible().length, 0);
-    assert.match(document.querySelector('[role="status"]').textContent, /No reports match/);
+    assert.match(document.querySelector('.scout-report-results [role="status"]').textContent, /No reports match/);
     await select("state", "TX");
     assert.deepEqual(visible(), ["tx-riftbound"]);
     await act(async () => [...document.querySelectorAll("button")].find((node) => node.textContent.startsWith("Empty shelves")).click());

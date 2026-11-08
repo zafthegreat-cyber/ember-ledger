@@ -1,0 +1,451 @@
+{
+  "applicationId": "1563636539370639420",
+  "guildId": "1558588508204179611",
+  "channelId": "1563700449024933910",
+  "publicKey": "576955296b310f6fe17e925b002d2b4bf5f92ff3f99265c04a338bf5593fae28",
+  "groups": {
+    "products": [
+      {
+        "key": "pokemon",
+        "label": "Pokémon",
+        "roleId": "1563700437771878470",
+        "emoji": {
+          "id": "1563748276631638146",
+          "name": "c3_pokemon_v2"
+        },
+        "description": "Opens #pokemon + #pokemon-restocks. Mentions also need an area or Online choice."
+      },
+      {
+        "key": "onepiece",
+        "label": "One Piece",
+        "roleId": "1563700440158179470",
+        "emoji": {
+          "id": "1563748277688598588",
+          "name": "c3_onepiece_v2"
+        },
+        "description": "Opens #one-piece + #one-piece-restocks. Mentions also need an area or Online choice."
+      },
+      {
+        "key": "magic",
+        "label": "Magic: The Gathering",
+        "roleId": "1563700441525657720",
+        "emoji": {
+          "id": "1563748278577664080",
+          "name": "c3_magic_v2"
+        },
+        "description": "Opens #magic + #magic-restocks. Mentions also need an area or Online choice."
+      },
+      {
+        "key": "lorcana",
+        "label": "Disney Lorcana",
+        "roleId": "1563700442310123570",
+        "emoji": {
+          "id": "1563748279726903398",
+          "name": "c3_lorcana_v2"
+        },
+        "description": "Opens #lorcana + #lorcana-restocks. Mentions also need an area or Online choice."
+      },
+      {
+        "key": "needoh",
+        "label": "NeeDoh",
+        "roleId": "1563746802539298836",
+        "emoji": {
+          "id": "1563748280955838515",
+          "name": "c3_needoh_v2"
+        },
+        "description": "Opens #needoh + #needoh-restocks. Mentions also need an area or Online choice."
+      },
+      {
+        "key": "hotwheels",
+        "label": "Hot Wheels",
+        "roleId": "1563746803390615664",
+        "emoji": {
+          "id": "1563748283803897916",
+          "name": "c3_hotwheels_v2"
+        },
+        "description": "Opens #hot-wheels + #hot-wheels-restocks. Mentions also need an area or Online choice."
+      },
+      {
+        "key": "collectibles",
+        "label": "Other Collectibles",
+        "roleId": "1563746805437435934",
+        "emoji": {
+          "id": "1563748284290310166",
+          "name": "c3_collectibles_v2"
+        },
+        "description": "Opens #other-collectibles + its restock feed. Mentions also need an area or Online choice."
+      }
+    ],
+    "online": [
+      {
+        "key": "online",
+        "label": "Online releases & restocks",
+        "roleId": "1563746806804779129",
+        "emoji": {
+          "id": "1563748285523427398",
+          "name": "c3_local"
+        },
+        "description": "Online alerts: mentions when a product you follow is seen online. No city needed."
+      }
+    ],
+    "locations": [
+      {
+        "key": "all-seva",
+        "label": "All southeastern Virginia",
+        "roleId": "1563700443266285673",
+        "emoji": {
+          "id": "1563748285523427398",
+          "name": "c3_local"
+        },
+        "description": "Every local area below; select this or individual areas."
+      },
+      {
+        "key": "accomack",
+        "label": "Accomack County",
+        "roleId": "1563746807417282643",
+        "emoji": {
+          "id": "1563748285523427398",
+          "name": "c3_local"
+        },
+        "description": "Includes Chincoteague, Onancock and Tangier."
+      },
+      {
+        "key": "chesapeake",
+        "label": "Chesapeake",
+        "roleId": "1563746809392664606",
+        "emoji": {
+          "id": "1563748285523427398",
+          "name": "c3_local"
+        },
+        "description": "City of Chesapeake, Virginia."
+      },
+      {
+        "key": "emporia",
+        "label": "Emporia",
+        "roleId": "1563746810290503720",
+        "emoji": {
+          "id": "1563748285523427398",
+          "name": "c3_local"
+        },
+        "description": "City of Emporia, Virginia."
+      },
+      {
+        "key": "franklin",
+        "label": "Franklin",
+        "roleId": "1563746811351666709",
+        "emoji": {
+          "id": "1563748285523427398",
+          "name": "c3_local"
+        },
+        "description": "City of Franklin, Virginia."
+      },
+      {
+        "key": "gloucester",
+        "label": "Gloucester County",
+        "roleId": "1563746812525813811",
+        "emoji": {
+          "id": "1563748285523427398",
+          "name": "c3_local"
+        },
+        "description": "County of Gloucester, Virginia."
+      },
+      {
+        "key": "greensville",
+        "label": "Greensville County",
+        "roleId": "1563746813851340860",
+        "emoji": {
+          "id": "1563748285523427398",
+          "name": "c3_local"
+        },
+        "description": "Greensville County; Emporia has its own option."
+      },
+      {
+        "key": "hampton",
+        "label": "Hampton",
+        "roleId": "1563746815176609912",
+        "emoji": {
+          "id": "1563748285523427398",
+          "name": "c3_local"
+        },
+        "description": "City of Hampton, Virginia."
+      },
+      {
+        "key": "isle-of-wight",
+        "label": "Isle of Wight County",
+        "roleId": "1563746816166469702",
+        "emoji": {
+          "id": "1563748285523427398",
+          "name": "c3_local"
+        },
+        "description": "Includes Smithfield and Windsor."
+      },
+      {
+        "key": "james-city",
+        "label": "James City County",
+        "roleId": "1563746817160515625",
+        "emoji": {
+          "id": "1563748285523427398",
+          "name": "c3_local"
+        },
+        "description": "James City County; Williamsburg has its own option."
+      },
+      {
+        "key": "mathews",
+        "label": "Mathews County",
+        "roleId": "1563746818691698688",
+        "emoji": {
+          "id": "1563748285523427398",
+          "name": "c3_local"
+        },
+        "description": "County of Mathews, Virginia."
+      },
+      {
+        "key": "middlesex",
+        "label": "Middlesex County",
+        "roleId": "1563746820188934194",
+        "emoji": {
+          "id": "1563748285523427398",
+          "name": "c3_local"
+        },
+        "description": "County of Middlesex, Virginia."
+      },
+      {
+        "key": "newport-news",
+        "label": "Newport News",
+        "roleId": "1563746821619064922",
+        "emoji": {
+          "id": "1563748285523427398",
+          "name": "c3_local"
+        },
+        "description": "City of Newport News, Virginia."
+      },
+      {
+        "key": "norfolk",
+        "label": "Norfolk",
+        "roleId": "1563746822659379352",
+        "emoji": {
+          "id": "1563748285523427398",
+          "name": "c3_local"
+        },
+        "description": "City of Norfolk, Virginia."
+      },
+      {
+        "key": "northampton",
+        "label": "Northampton County",
+        "roleId": "1563746823938642022",
+        "emoji": {
+          "id": "1563748285523427398",
+          "name": "c3_local"
+        },
+        "description": "Includes Cape Charles and Exmore."
+      },
+      {
+        "key": "poquoson",
+        "label": "Poquoson",
+        "roleId": "1563746833019306176",
+        "emoji": {
+          "id": "1563748285523427398",
+          "name": "c3_local"
+        },
+        "description": "City of Poquoson, Virginia."
+      },
+      {
+        "key": "portsmouth",
+        "label": "Portsmouth",
+        "roleId": "1563746834143256669",
+        "emoji": {
+          "id": "1563748285523427398",
+          "name": "c3_local"
+        },
+        "description": "City of Portsmouth, Virginia."
+      },
+      {
+        "key": "southampton",
+        "label": "Southampton County",
+        "roleId": "1563746834965332129",
+        "emoji": {
+          "id": "1563748285523427398",
+          "name": "c3_local"
+        },
+        "description": "Includes Courtland and Boykins."
+      },
+      {
+        "key": "suffolk",
+        "label": "Suffolk",
+        "roleId": "1563746836077092905",
+        "emoji": {
+          "id": "1563748285523427398",
+          "name": "c3_local"
+        },
+        "description": "City of Suffolk, Virginia."
+      },
+      {
+        "key": "surry",
+        "label": "Surry County",
+        "roleId": "1563746837188313122",
+        "emoji": {
+          "id": "1563748285523427398",
+          "name": "c3_local"
+        },
+        "description": "County of Surry, Virginia."
+      },
+      {
+        "key": "sussex",
+        "label": "Sussex County",
+        "roleId": "1563746838740213760",
+        "emoji": {
+          "id": "1563748285523427398",
+          "name": "c3_local"
+        },
+        "description": "County of Sussex, Virginia."
+      },
+      {
+        "key": "virginia-beach",
+        "label": "Virginia Beach",
+        "roleId": "1563746839973470339",
+        "emoji": {
+          "id": "1563748285523427398",
+          "name": "c3_local"
+        },
+        "description": "City of Virginia Beach, Virginia."
+      },
+      {
+        "key": "williamsburg",
+        "label": "Williamsburg",
+        "roleId": "1563746841584214177",
+        "emoji": {
+          "id": "1563748285523427398",
+          "name": "c3_local"
+        },
+        "description": "City of Williamsburg, Virginia."
+      },
+      {
+        "key": "york",
+        "label": "York County",
+        "roleId": "1563746843064541405",
+        "emoji": {
+          "id": "1563748285523427398",
+          "name": "c3_local"
+        },
+        "description": "Includes Yorktown."
+      }
+    ],
+    "fredericksburg": [
+      {
+        "key": "all-fredericksburg",
+        "label": "All Fredericksburg area",
+        "roleId": "1563754159772012584",
+        "emoji": {
+          "id": "1563748285523427398",
+          "name": "c3_local"
+        },
+        "description": "Fredericksburg, Stafford, Spotsylvania, King George and Caroline."
+      },
+      {
+        "key": "fredericksburg",
+        "label": "Fredericksburg",
+        "roleId": "1563754160158150720",
+        "emoji": {
+          "id": "1563748285523427398",
+          "name": "c3_local"
+        },
+        "description": "Fredericksburg city; surrounding counties have their own choices."
+      },
+      {
+        "key": "stafford",
+        "label": "Stafford County",
+        "roleId": "1563754161588142130",
+        "emoji": {
+          "id": "1563748285523427398",
+          "name": "c3_local"
+        },
+        "description": "Includes Falmouth, Aquia and North Stafford."
+      },
+      {
+        "key": "spotsylvania",
+        "label": "Spotsylvania County",
+        "roleId": "1563754162473406665",
+        "emoji": {
+          "id": "1563748285523427398",
+          "name": "c3_local"
+        },
+        "description": "Includes Spotsylvania Courthouse and the county around Fredericksburg."
+      },
+      {
+        "key": "king-george",
+        "label": "King George County",
+        "roleId": "1563754163437969570",
+        "emoji": {
+          "id": "1563748285523427398",
+          "name": "c3_local"
+        },
+        "description": "Includes King George and Dahlgren."
+      },
+      {
+        "key": "caroline",
+        "label": "Caroline County",
+        "roleId": "1563754164431888424",
+        "emoji": {
+          "id": "1563748285523427398",
+          "name": "c3_local"
+        },
+        "description": "Includes Bowling Green, Port Royal, Ladysmith and Ruther Glen."
+      }
+    ],
+    "projects": [
+      {
+        "key": "aco",
+        "label": "ACO",
+        "roleId": "1563746844037750824",
+        "emoji": {
+          "id": "1563748286265958495",
+          "name": "c3_aco_v2"
+        },
+        "description": "Opens #aco-updates only. Shows interest; grants no access or early checkout."
+      },
+      {
+        "key": "aio",
+        "label": "AIO",
+        "roleId": "1563746845140848670",
+        "emoji": {
+          "id": "1563748288405180596",
+          "name": "c3_aio_v2"
+        },
+        "description": "Opens #aio-updates only. Shows interest; grants no access."
+      },
+      {
+        "key": "app",
+        "label": "App",
+        "roleId": "1563746846025715784",
+        "emoji": {
+          "id": "1563748289638178966",
+          "name": "c3_app_v2"
+        },
+        "description": "Opens #app-updates only: collecting tools, progress and release news."
+      },
+      {
+        "key": "bot",
+        "label": "Bot",
+        "roleId": "1563746848399695872",
+        "emoji": {
+          "id": "1563748290145681470",
+          "name": "c3_bot_v2"
+        },
+        "description": "Opens #bot-updates only: Discord bot tools and changes."
+      },
+      {
+        "key": "beta",
+        "label": "Beta Testing",
+        "roleId": "1563746849481949244",
+        "emoji": {
+          "id": "1563748291336736818",
+          "name": "c3_beta_v2"
+        },
+        "description": "Opens #beta-testing only. Volunteer to test and share feedback."
+      }
+    ]
+  },
+  "menuMessageId": "1563700482277646457",
+  "resetCommandId": "1564477026663145564",
+  "simpleNationwide": true
+}

@@ -4,19 +4,22 @@ import { PrimaryButton, SecondaryButton } from "./operations/OperationsUI.jsx";
 import { RESTOCK_FEED_FILTERS, prepareRestockFeedEntries, restockFeedBrowseState, restockFeedLocationOptions } from "../utils/restockFeedPresentation.mjs";
 import { US_STATES } from "../data/usStates.js";
 import { COLLECTIBLE_GAMES } from "../utils/collectibleGames.mjs";
+import NationwideLocationPicker from './NationwideLocationPicker.jsx';
+import { useNearbyPreference } from '../utils/nearbyPreference.mjs';
 import "./restock-report-browser.css";
 
 const PAGE_SIZE = 20;
 const EMPTY_FILTERS = { search: "", stock: "all", period: "all", retailer: "", city: "", state: "all", game: "all" };
 
-export default function RestockReportBrowser({ reports = [], getStore, renderReport, now, onReport }) {
+export default function RestockReportBrowser({ reports = [], getStore, renderReport, now, onReport, showLocation = true }) {
+  const [location, setLocation] = useNearbyPreference();
   const id = useId();
   const searchRef = useRef(null);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [limit, setLimit] = useState(PAGE_SIZE);
   const entries = useMemo(() => prepareRestockFeedEntries(reports, getStore), [reports, getStore]);
   const locations = useMemo(() => restockFeedLocationOptions(entries), [entries]);
-  const { matches, counts, recentCount, undatedCount } = useMemo(() => restockFeedBrowseState(entries, filters, now), [entries, filters, now]);
+  const { matches, counts, recentCount, undatedCount } = useMemo(() => restockFeedBrowseState(entries, { ...filters, location }, now), [entries, filters, location, now]);
   const activeFilters = [
     filters.search.trim() ? { key: "search", label: `Search: ${filters.search.trim()}`, empty: "" } : null,
     filters.stock !== "all" ? { key: "stock", label: RESTOCK_FEED_FILTERS.find((filter) => filter.value === filters.stock)?.label, empty: "all" } : null,
@@ -34,6 +37,7 @@ export default function RestockReportBrowser({ reports = [], getStore, renderRep
   }
   function clearFilters() {
     setFilters(EMPTY_FILTERS);
+    setLocation({ ...location, mode: 'all' });
     setLimit(PAGE_SIZE);
     searchRef.current?.focus();
   }
@@ -48,6 +52,7 @@ export default function RestockReportBrowser({ reports = [], getStore, renderRep
         </div>
         <PrimaryButton onClick={onReport}>Report a restock</PrimaryButton>
       </header>
+      {showLocation ? <NationwideLocationPicker /> : null}
       {reports.length ? (
         <>
           <div className="scout-report-filters" role="search" aria-label="Filter restock reports">
@@ -68,14 +73,7 @@ export default function RestockReportBrowser({ reports = [], getStore, renderRep
                 </select>
               </label>
             </div>
-            <div className="restock-browser-area__fields" aria-label="State and game filters">
-              <label htmlFor={`${id}-state`}><span>State</span>
-                <select id={`${id}-state`} value={filters.state} onChange={(event) => changeFilter({ state: event.target.value, city: "" })}>
-                  <option value="all">Nationwide · All states</option>
-                  {US_STATES.map((state) => <option key={state.code} value={state.code}>{state.name}</option>)}
-                  <option value="unspecified">State not recorded</option>
-                </select>
-              </label>
+            <div className="restock-browser-area__fields" aria-label="Game filters">
               <label htmlFor={`${id}-game`}><span>Trading card game</span>
                 <select id={`${id}-game`} value={filters.game} onChange={(event) => changeFilter({ game: event.target.value })}>
                   <option value="all">All games</option>
@@ -91,8 +89,15 @@ export default function RestockReportBrowser({ reports = [], getStore, renderRep
             </div>
             {locations.retailers.length || locations.cities.length ? (
               <details className="restock-browser-area">
-                <summary>Retailer &amp; area{filters.retailer || filters.city ? " · Filtered" : ""}</summary>
+                <summary>More filters{filters.retailer || filters.city || filters.state !== 'all' ? " · Filtered" : ""}</summary>
                 <div className="restock-browser-area__fields">
+                  <label htmlFor={`${id}-state`}><span>State (optional)</span>
+                    <select id={`${id}-state`} value={filters.state} onChange={(event) => changeFilter({ state: event.target.value, city: "" })}>
+                      <option value="all">Nationwide · All states</option>
+                      {US_STATES.map((state) => <option key={state.code} value={state.code}>{state.name}</option>)}
+                      <option value="unspecified">State not recorded</option>
+                    </select>
+                  </label>
                   <label htmlFor={`${id}-retailer`}>
                     <span>Retailer</span>
                     <select id={`${id}-retailer`} value={filters.retailer} onChange={(event) => changeFilter({ retailer: event.target.value })}>

@@ -6,6 +6,7 @@ import { recentReportedStoreRows } from "../../utils/restockShortcuts.mjs";
 import { normalizeStoreStateCode } from "../../data/storeStates.js";
 import { getRecordGame, normalizeCollectibleGame } from "../../utils/collectibleGames.mjs";
 import ManualStoreAreaFields from "../../components/ManualStoreAreaFields.jsx";
+import NationwideLocationPicker from '../../components/NationwideLocationPicker.jsx';
 import "./scout-submit.css";
 import "./stock-report-easy.css";
 import "./stock-report-guidance.css";
@@ -940,15 +941,7 @@ export default function ScoutSubmitContent({ scope }) {
                 </label>
                 <details className="scout-report-disclosure scout-area-disclosure">
                   <summary>{locationAvailable ? `Search area: ${scoutAreaText || "your location"}` : "Set an area to find nearby stores"}</summary>
-                  <label className="scout-area-field">
-                    <span>Restocks area / ZIP</span>
-                    <input
-                      value={locationSettings.manualLocation}
-                      onChange={(event) => updateLocationSettings({ mode: "manual", manualLocation: event.target.value, selectedSavedLocation: event.target.value, trackingEnabled: false })}
-                      placeholder="ZIP, city, or Restocks area"
-                    />
-                    <small>Used to sort nearby stores. We do not need your exact address.</small>
-                  </label>
+                  <NationwideLocationPicker allowModes={false} onAreaSelected={area => updateLocationSettings({ mode: 'manual', manualLocation: `${area.city}, ${area.state}`, selectedSavedLocation: `${area.city}, ${area.state}`, trackingEnabled: false })} />
                 </details>
                 <div className="scout-report-store-list">
                   {recommendedStoreRows.length ? recommendedStoreRows.map((row) => {

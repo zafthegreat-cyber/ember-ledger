@@ -1,5 +1,6 @@
 import { getStoreDirectoryState, normalizeStoreStateCode } from "../data/storeStates.js";
 import { COLLECTIBLE_GAMES, getRecordGame, normalizeCollectibleGame } from "./collectibleGames.mjs";
+import { locationScopeMatch } from './nationwideLocation.mjs';
 
 const STOCK_SEEN_STATUSES = new Set(["in_stock", "stock_on_shelf", "stock_seen", "leftover_stock", "behind_counter", "vendor_stocking", "restock_happening_now"]);
 
@@ -95,6 +96,7 @@ export function prepareRestockFeedEntries(reports = [], getStore = () => ({})) {
     const separateState = state && normalizeStoreStateCode(region) !== state;
     return {
       report,
+      locationRecord: { ...report, ...store, city: store.city || report.city, state: store.state || report.state },
       stockGroup: restockReportStockGroup(report),
       observedAt: restockReportObservedTimestamp(report),
       searchText: restockReportSearchText(report, store),
@@ -120,10 +122,11 @@ export function restockFeedLocationOptions(entries = []) {
 }
 
 // This operates only on reports already permitted by Scout's existing visibility checks.
-export function filterRestockFeed(entries = [], { search = "", stock = "all", period = "all", retailer = "", city = "", state = "all", game = "all" } = {}, now = Date.now()) {
+export function filterRestockFeed(entries = [], { search = "", stock = "all", period = "all", retailer = "", city = "", state = "all", game = "all", location } = {}, now = Date.now()) {
   const terms = String(search).trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
   const windowMs = period === "24h" ? 24 * 60 * 60 * 1000 : period === "7d" ? 7 * 24 * 60 * 60 * 1000 : null;
   return entries.filter((entry) => {
+    if (location && !locationScopeMatch(entry.locationRecord || entry.report, location)) return false;
     if (state === "unspecified" ? Boolean(entry.state) : state !== "all" && (!normalizeStoreStateCode(state) || entry.state !== normalizeStoreStateCode(state))) return false;
     const gameIds = entry.gameIds || [];
     if (game === "unspecified" ? gameIds.length > 0 : game !== "all" && !gameIds.includes(normalizeCollectibleGame(game))) return false;
