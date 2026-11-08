@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { readFile, readdir } from "node:fs/promises";
+import { readFile, readdir, mkdtemp, mkdir, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { resolve } from "node:path";
 import { createRequire } from "node:module";
 import { parse } from "espree";
 import { validateLaunchConfig } from "./check-launch-config.mjs";
@@ -85,4 +87,24 @@ test("bundled directory coverage matches real files and hashes without changing 
   assert.equal(Boolean(manifest.directories.CA), (await readdir("src/data/generated")).includes("californiaStores.json"), "Unimported states must not claim a populated directory");
   for (const entry of Object.values(manifest.directories)) assert.match(entry.sha256, /^[a-f0-9]{64}$/);
   assert.deepEqual(await prepareStoreDirectory({ check: true }), manifest);
+});
+
+test("release directory checks accept equivalent Windows and Linux checkouts without rewriting data", async () => {
+  const root = await mkdtemp(resolve(tmpdir(), "code3-directory-eol-"));
+  const text = `${JSON.stringify([{ id: "synthetic-dc", name: "Synthetic shop", state: "DC" }], null, 2)}\n`;
+  const manifests = [];
+  for (const style of ["lf", "crlf"]) {
+    const checkout = resolve(root, style);
+    await mkdir(resolve(checkout, "src/data/generated"), { recursive: true });
+    const bytes = Buffer.from(style === "crlf" ? text.replaceAll("\n", "\r\n") : text);
+    const source = resolve(checkout, "src/data/generated/dcStores.json");
+    await writeFile(source, bytes);
+    const manifest = await storeDirectoryManifest(checkout);
+    manifests.push(manifest);
+    const json = `${JSON.stringify(manifest, null, 2)}\n`;
+    await writeFile(resolve(checkout, "src/data/storeDirectoryCoverage.json"), style === "crlf" ? json.replaceAll("\n", "\r\n") : json);
+    assert.deepEqual(await prepareStoreDirectory({ root: checkout, check: true }), manifest);
+    assert.deepEqual(await readFile(source), bytes);
+  }
+  assert.deepEqual(manifests[0], manifests[1]);
 });

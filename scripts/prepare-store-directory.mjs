@@ -12,7 +12,10 @@ export async function storeDirectoryManifest(root = process.cwd()) {
     const bytes = await readFile(resolve(root, "src/data/generated", state.file));
     const rows = JSON.parse(bytes.toString("utf8"));
     if (!Array.isArray(rows) || !rows.length || rows.some(row => !row || typeof row !== "object" || Array.isArray(row))) throw new Error(`${state.code}: the cached store directory is invalid. Existing files were not changed.`);
-    directories[state.code] = { file: state.file, count: rows.length, sha256: createHash("sha256").update(bytes).digest("hex") };
+    // Git checks out CRLF on Windows and LF on Linux. Hash canonical UTF-8/LF
+    // text so the same directory passes release checks on either platform.
+    const canonicalText = bytes.toString("utf8").replace(/\r\n/g, "\n");
+    directories[state.code] = { file: state.file, count: rows.length, sha256: createHash("sha256").update(canonicalText).digest("hex") };
   }
   return { version: 1, directories };
 }
@@ -22,8 +25,9 @@ export async function prepareStoreDirectory({ root = process.cwd(), check = fals
   const target = resolve(root, "src/data/storeDirectoryCoverage.json");
   const expected = `${JSON.stringify(manifest, null, 2)}\n`;
   const current = await readFile(target, "utf8").catch(error => { if (error.code !== "ENOENT") throw error; return ""; });
-  if (check && current !== expected) throw new Error("The directory coverage manifest needs updating. Run node scripts/prepare-store-directory.mjs.");
-  if (!check && current !== expected) await writeFile(target, expected);
+  const matches = current.replace(/\r\n/g, "\n") === expected;
+  if (check && !matches) throw new Error("The directory coverage manifest needs updating. Run node scripts/prepare-store-directory.mjs.");
+  if (!check && !matches) await writeFile(target, expected);
   return manifest;
 }
 
