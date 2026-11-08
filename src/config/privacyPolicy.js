@@ -10,7 +10,7 @@ export function privacyPublisherFromEnv(env = {}) {
 }
 
 export const PRIVACY_PUBLISHER = privacyPublisherFromEnv(import.meta.env || {});
-export const PRIVACY_POLICY_UPDATED = "October 30, 2026";
+export const PRIVACY_POLICY_UPDATED = "November 8, 2026";
 
 export function publicPrivacyRoute(pathname = "") {
   const path = pathname.replace(/\/$/, "") || "/";
@@ -44,6 +44,10 @@ export const PRIVACY_SECTIONS = Object.freeze([
   {
     key: "discord-sharing", title: "What is shared with Discord and other members",
     body: "Discord receives the API requests and messages needed to operate the companion. An approved alert shares its public product, retailer or store, reported status, source, observation time, and app link in the configured channel. People with access to that channel can see, copy, or share the message. Server staff can see posts and reports allowed by their Discord permissions and may review information you send them for support or moderation. We do not sell Discord API data, disclose it to advertising networks or data brokers, use it to profile members, or use Discord message content to train AI models. Discord handles its own accounts, messages, infrastructure, and retention under its own privacy policy.",
+  },
+  {
+    key: "nearby-areas", title: "Optional nearby areas",
+    body: "A city or ZIP search uses a bundled public Census area catalog and does not require your home address or device location. The app remembers your public browsing area and distance on that device. If you separately choose Set nearby area in Discord, we store your Discord member ID, selected public area ID and center, distance, and save timestamp in the private companion database. We use it with your current product interests and channel access to decide whether a staff-approved observation may mention you. Other members do not see this preference in the public report feed. Turn off nearby alerts in the picker clears the area and center; a minimal member/request receipt remains to prevent delayed saves from restoring an opt-in. Removing a product interest also stops that product's nearby mentions. Existing local-room and Online interests are separate choices. Contact support to request access, correction or deletion of companion records. A public restock report identifies the store's area, independently of your private notification preference.",
   },
   {
     key: "discord-retention", title: "Discord retention and deletion requests",

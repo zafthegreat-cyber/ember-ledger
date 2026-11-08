@@ -189,11 +189,13 @@ test("explicit game metadata is scoped and foreign aliases resolve only within t
   assert.equal(rows.find((row) => row.gameId === "pokemon").itemCount, 0);
   assert.equal(rows.reduce((sum, row) => sum + row.itemCount, 0), 1);
 });
-test("unrecorded and custom unsupported games remain visible without a false Pokémon match", () => {
+test("unrecorded and newly supported games remain visible without a false Pokémon match", () => {
   const items = freeze([card({ setName: "My set" }), card({ id: "custom", tcgGame: "Flesh and Blood", setName: "Fusion Strike" }), card({ id: "other", tcgGame: "Digimon", setName: "Fusion Strike" }), card({ id: "untagged", tcgGame: "unspecified" })]);
   const before = JSON.stringify(items);
   const rows = buildCollectionSetRows({ items, knownSets: metadata });
-  assert.equal(filterCollectionSetRows(rows, { game: "unspecified", scope: "owned" }).length, 4);
+  assert.equal(filterCollectionSetRows(rows, { game: "unspecified", scope: "owned" }).length, 2);
+  assert.equal(filterCollectionSetRows(rows, { game: "flesh-and-blood", scope: "owned" }).length, 1);
+  assert.equal(filterCollectionSetRows(rows, { game: "digimon", scope: "owned" }).length, 1);
   assert.equal(filterCollectionSetRows(rows, { game: "pokemon", scope: "owned" }).length, 0);
   assert.equal(rows.find((row) => row.gameId === "pokemon").totalValue, 0);
   assert.equal(JSON.stringify(items), before);

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { US_STATES } from "../src/data/usStates.js";
+import { COLLECTIBLE_GAMES } from "../src/utils/collectibleGames.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
@@ -507,6 +508,24 @@ await check("manual reports in every US state retain their area through the actu
     assert.equal(result.report.visibility, "private_from_map");
     assert.equal(result.report.verified, false);
     assert.equal(result.report.observedAt, observedAt);
+    assert.equal(JSON.stringify(original), before);
+  }
+});
+await check("all thirteen games retain their filter identity after the actual cloud save and independent reload mapping", async () => {
+  for (const game of COLLECTIBLE_GAMES) {
+    const f = fixture();
+    const category = game.id === "pokemon" ? "Pokemon TCG" : game.name;
+    const original = ordinaryReport({ storeId: "", state: "CA", city: "Richmond", productCategory: category, productType: category, product_name: "Synthetic booster box", observedAt, price: 81.05 });
+    const before = JSON.stringify(original);
+    const result = await f.api.persistScoutReportToSupabase(original);
+    assert.equal(result.ok, true, game.id);
+    const payload = inserts(f)[0].payload;
+    const reloaded = f.api.mapSupabaseScoutReport(cloudRow({ ...payload, id: reportId }), []);
+    const entries = prepareRestockFeedEntries([reloaded]);
+    assert.equal(filterRestockFeed(entries, { state: "CA", game: game.id }).length, 1, game.id);
+    assert.equal(reloaded.visibility, "private_from_map");
+    assert.equal(reloaded.observedAt, observedAt);
+    assert.equal(reloaded.verified, false);
     assert.equal(JSON.stringify(original), before);
   }
 });

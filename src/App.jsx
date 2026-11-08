@@ -1,4 +1,6 @@
 import DeferredModalBoundary from "./features/deferredViews/DeferredModalBoundary";
+import NationwideLocationPicker from './components/NationwideLocationPicker.jsx';
+import {nearbyCoordinatesForText} from './utils/nearbyPreference.mjs';
 import { compactSavedStores } from "./utils/storeDirectoryPersistence.js";
 import { isBlockedAuthor, useBlockedUsers } from "./utils/blockedUsers.js";
 import { catalogCardQueryMatchesRow, getCatalogCollectorQuery, getCatalogPageProducts } from "./utils/catalogResultIdentity.mjs";
@@ -37786,7 +37788,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
   function parseManualLocationCoordinates(value = "") {
     const match = String(value || "").match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
-    if (!match) return null;
+    if (!match) return nearbyCoordinatesForText(value);
     const lat = Number(match[1]);
     const lng = Number(match[2]);
     return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
@@ -39247,19 +39249,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               ))}
             </div>
             <div className="drawer-two-column app-setup-inline-fields">
-              <Field label="Home area / ZIP" help="Used to sort nearby stores. We do not need your exact address.">
-                <input
-                  className="drawer-field"
-                  value={locationSettings.manualLocation}
-                  onChange={(event) => updateLocationSettings({ mode: "manual", manualLocation: event.target.value, trackingEnabled: false })}
-                  placeholder="ZIP or city"
-                />
-              </Field>
-              <Field label="Restocks state" help="Choose any US state or DC. Store and report coverage varies by area; suggest a missing store to help build your local directory.">
-                <select className="drawer-field" value={storeDirectoryState} onChange={(event) => chooseStoreDirectoryState(event.target.value)}>
-                  {STORE_DIRECTORY_STATES.map((state) => <option key={state.code} value={state.code}>{state.shortName}</option>)}
-                </select>
-              </Field>
+              <div><NationwideLocationPicker allowModes={false} label="Your nearby area" onAreaSelected={area => {
+                updateLocationSettings({ mode: 'manual', manualLocation: `${area.city}, ${area.state}`, selectedSavedLocation: `${area.city}, ${area.state}`, trackingEnabled: false });
+                chooseStoreDirectoryState(area.state);
+              }} /><p className="settings-field-help">Search once by city or ZIP. No exact address or device location is needed.</p></div>
               <Field label="Recommended setup" help={INFO_TOOLTIP_COPY.smartSetup}>
                 <input className="drawer-field" value={`${smartSetupRecommendation.label} - ${primaryMode}`} readOnly />
               </Field>

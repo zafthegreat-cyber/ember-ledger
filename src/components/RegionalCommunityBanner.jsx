@@ -8,7 +8,7 @@ export default function RegionalCommunityBanner({ primaryLabel, onPrimary }) {
       <div className="regional-community-banner__copy">
         <span className="regional-community-banner__eyebrow">All 50 states + DC</span>
         <h2>Share restocks. Help your local collecting community.</h2>
-        <p>Choose your state, share what you observed, where, and when—or suggest a missing store for review. Store and report coverage varies by area. Join Facebook or Discord to share feedback. Reports are community observations, and stock can change.</p>
+        <p>Enter a city or ZIP to find nearby reports, or browse nationwide and online. Share what you observed, where, and when—or suggest a missing store for review. Store and report coverage varies by area. Join Facebook or Discord to share feedback. Stock can change.</p>
       </div>
       <div className="regional-community-banner__actions">
         {typeof onPrimary === "function" ? <PrimaryButton onClick={onPrimary}>{primaryLabel}</PrimaryButton> : null}

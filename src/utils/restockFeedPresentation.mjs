@@ -1,4 +1,6 @@
-import { getStoreDirectoryState } from "../data/storeStates.js";
+import { getStoreDirectoryState, normalizeStoreStateCode } from "../data/storeStates.js";
+import { COLLECTIBLE_GAMES, getRecordGame, normalizeCollectibleGame } from "./collectibleGames.mjs";
+import { locationScopeMatch } from './nationwideLocation.mjs';
 
 const STOCK_SEEN_STATUSES = new Set(["in_stock", "stock_on_shelf", "stock_seen", "leftover_stock", "behind_counter", "vendor_stocking", "restock_happening_now"]);
 
@@ -59,16 +61,28 @@ export function restockReportSearchText(report = {}, store = {}) {
   return [
     store.nickname, store.name, store.chain, store.retailer, store.city, store.region,
     report.storeName, report.store_name, report.retailer, report.city, report.region,
+    store.state, store.stateCode, report.state, report.stateCode,
+    ...restockReportGameIds(report).map((id) => COLLECTIBLE_GAMES.find((game) => game.id === id)?.name),
     report.itemName, report.item_name, report.productName, report.product_name, report.manualItemName,
     report.productCategory, report.product_category, report.productType, report.product_type,
     snapshot.name, snapshot.productName, snapshot.product_name, snapshot.cardName, snapshot.card_name, snapshot.title,
     report.note, report.notes, report.reportText, report.report_text,
-    ...items.flatMap((item) => [item.productName, item.product_name, item.name]),
+    ...items.flatMap((item) => [item?.productName, item?.product_name, item?.name]),
   ].filter(Boolean).join(" ").toLocaleLowerCase();
 }
 
 const filterKey = (value) => String(value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase();
 const filterLabel = (value) => String(value || "").trim().replace(/\s+/g, " ");
+
+// Read recorded identities/categories only; product names and notes are not
+// reliable evidence of a game's identity. A mixed shelf report may match more
+// than one game without copying or rewriting the original report.
+export function restockReportGameIds(report = {}) {
+  const items = Array.isArray(report.itemsSeen) ? report.itemsSeen : Array.isArray(report.items_seen) ? report.items_seen : [];
+  return [...new Set([report, ...items.filter((item) => item && typeof item === "object" && !Array.isArray(item))].map((item) => getRecordGame({
+    ...item, category: item.productCategory || item.product_category || item.category || item.productType || item.product_type,
+  })).filter((id) => id !== "unspecified"))];
+}
 
 // Only use the same permitted reports and store summaries supplied to the feed.
 // Do not populate these options from the wider store directory or private reports.
@@ -78,15 +92,20 @@ export function prepareRestockFeedEntries(reports = [], getStore = () => ({})) {
     const retailerLabel = filterLabel(store.chain || store.retailer || report.retailer);
     const city = filterLabel(store.city || report.city);
     const region = filterLabel(store.region || report.region || getStoreDirectoryState(store.state || report.state)?.name || store.state || report.state);
+    const state = normalizeStoreStateCode(store.stateCode || store.state_code || store.state || report.stateCode || report.state_code || report.state);
+    const separateState = state && normalizeStoreStateCode(region) !== state;
     return {
       report,
+      locationRecord: { ...report, ...store, city: store.city || report.city, state: store.state || report.state },
       stockGroup: restockReportStockGroup(report),
       observedAt: restockReportObservedTimestamp(report),
       searchText: restockReportSearchText(report, store),
       retailer: filterKey(retailerLabel),
       retailerLabel,
-      city: city ? JSON.stringify([filterKey(city), filterKey(region)]) : "",
-      cityLabel: city ? [city, region].filter(Boolean).join(", ") : "",
+      state,
+      gameIds: restockReportGameIds(report),
+      city: city ? JSON.stringify([filterKey(city), filterKey(region), ...(separateState ? [state] : [])]) : "",
+      cityLabel: city ? [city, region, ...(separateState ? [state] : [])].filter(Boolean).join(", ") : "",
     };
   }).sort((a, b) => (b.observedAt ?? -Infinity) - (a.observedAt ?? -Infinity));
 }
@@ -103,10 +122,14 @@ export function restockFeedLocationOptions(entries = []) {
 }
 
 // This operates only on reports already permitted by Scout's existing visibility checks.
-export function filterRestockFeed(entries = [], { search = "", stock = "all", period = "all", retailer = "", city = "" } = {}, now = Date.now()) {
+export function filterRestockFeed(entries = [], { search = "", stock = "all", period = "all", retailer = "", city = "", state = "all", game = "all", location } = {}, now = Date.now()) {
   const terms = String(search).trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
   const windowMs = period === "24h" ? 24 * 60 * 60 * 1000 : period === "7d" ? 7 * 24 * 60 * 60 * 1000 : null;
   return entries.filter((entry) => {
+    if (location && !locationScopeMatch(entry.locationRecord || entry.report, location)) return false;
+    if (state === "unspecified" ? Boolean(entry.state) : state !== "all" && (!normalizeStoreStateCode(state) || entry.state !== normalizeStoreStateCode(state))) return false;
+    const gameIds = entry.gameIds || [];
+    if (game === "unspecified" ? gameIds.length > 0 : game !== "all" && !gameIds.includes(normalizeCollectibleGame(game))) return false;
     if (stock !== "all" && entry.stockGroup !== stock) return false;
     if (retailer && entry.retailer !== retailer) return false;
     if (city && entry.city !== city) return false;

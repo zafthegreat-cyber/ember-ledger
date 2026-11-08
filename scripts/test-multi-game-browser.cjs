@@ -22,7 +22,7 @@ function fixtureRecords({ blankNonPokemon = false, legacyGameEdit = false } = {}
     { ...common, id: "qa-multi-onepiece", tcgGame: "one-piece", name: "Captain One Piece card", quantity: 1, marketPrice: 50, setName: "East Blue custom set", cardNumber: "001" },
     { ...common, id: "qa-multi-lorcana", tcgGame: "lorcana", name: "Story Lorcana card", quantity: 1, marketPrice: 0, setName: "Azure custom set", cardNumber: "001" },
     { ...common, id: "qa-multi-missing", name: "Unspecified saved card", quantity: 1, marketPrice: 7, setName: "Shared Custom Set", cardNumber: "001" },
-    { ...common, id: "qa-multi-unsupported", tcgGame: "digimon", name: "Unsupported saved card", quantity: 1, marketPrice: 9, setName: "Fusion Strike", cardNumber: "001" },
+    { ...common, id: "qa-multi-unsupported", tcgGame: "unlisted-custom", name: "Unsupported saved card", quantity: 1, marketPrice: 9, setName: "Fusion Strike", cardNumber: "001" },
     { ...common, id: "qa-multi-resale", tcgGame: "magic", name: "Excluded Magic resale card", quantity: 1, ownedItemPurpose: "FOR_RESALE", marketPrice: 999, setName: "Fusion Strike", cardNumber: "004" },
   ];
   const inventory = [
@@ -239,7 +239,7 @@ async function runCase(browser, testCase) {
     await expect(setGrid.locator("button")).toHaveCount(3);
     const ambiguousMagic = setGrid.getByRole("button", { name: "Open Fusion Strike (Magic: The Gathering)", exact: true });
     const ambiguousPokemon = setGrid.getByRole("button", { name: "Open Fusion Strike (Pokémon)", exact: true });
-    const ambiguousOther = setGrid.getByRole("button", { name: "Open Fusion Strike (digimon)", exact: true });
+    const ambiguousOther = setGrid.getByRole("button", { name: "Open Fusion Strike (unlisted-custom)", exact: true });
     await expect(ambiguousMagic).toBeVisible(); await expect(ambiguousPokemon).toBeVisible(); await expect(ambiguousOther).toBeVisible();
     const magicSetId = await ambiguousMagic.getAttribute("data-set-id");
     await ambiguousMagic.click();
@@ -252,7 +252,7 @@ async function runCase(browser, testCase) {
     await detail.getByRole("button", { name: "Add an item", exact: true }).click();
     await expect(page.getByRole("combobox", { name: "Trading card game", exact: true })).toHaveValue("unspecified");
     await expect(page.getByRole("textbox", { name: "Set", exact: true })).toHaveValue("Fusion Strike");
-    await expect.poll(() => page.evaluate(() => JSON.parse(sessionStorage.getItem("private-business-hub.form-draft.collection.new") || "{}").tcgGame)).toBe("digimon");
+    await expect.poll(() => page.evaluate(() => JSON.parse(sessionStorage.getItem("private-business-hub.form-draft.collection.new") || "{}").tcgGame)).toBe("unlisted-custom");
     await page.getByRole("button", { name: "Cancel", exact: true }).click();
     await detail.getByRole("button", { name: /Back to sets$/ }).click();
     await expect(ambiguousOther).toBeFocused();

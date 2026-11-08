@@ -15,7 +15,8 @@ android {
     namespace = "app.code3tcg.mobile"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "app.code3tcg.mobile"
+        // Match the existing Play Console app. The Java namespace and iOS ID stay unchanged.
+        applicationId "com.code3tcg.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode = code3BuildNumber.toInteger()

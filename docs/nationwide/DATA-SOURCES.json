@@ -1,0 +1,13 @@
+{
+  "source": "US Census Bureau 2026 Gazetteer",
+  "places": 32071,
+  "zipAreas": 33642,
+  "states": 51,
+  "urls": [
+    "https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2026_Gazetteer/2026_Gaz_place_national.zip",
+    "https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2026_Gazetteer/2026_Gaz_zcta_national.zip",
+    "https://www2.census.gov/geo/docs/maps-data/data/rel2020/zcta520/tab20_zcta520_place20_natl.txt"
+  ],
+  "sha256": "35e3e050325c1ee0e5c205ca29e3d5108a74d4f6cf656064acf0d59f9351eecb",
+  "notes": "Public 2026 place and ZIP-area centers, not street addresses or device locations. ZIP labels prefer the largest Census 2020 place overlap; otherwise a nearest same-state place is marked approximate. ZCTAs do not include every postal-only ZIP; unmatched ZIPs ask for a city."
+}

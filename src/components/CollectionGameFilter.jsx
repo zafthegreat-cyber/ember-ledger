@@ -15,7 +15,7 @@ export default function CollectionGameFilter({ value = "all", onChange }) {
           disclosure.current.querySelector("summary")?.focus({ preventScroll: true });
         }
       }} />
-      <p className="collection-game-filter-note">Track all five games with your saved cards, sets, photos, and estimates. Live catalog search is currently available for Pokémon. Other games use manual entry.</p>
+      <p className="collection-game-filter-note">Track {COLLECTIBLE_GAMES.length} games with your saved cards, sets, photos, and estimates. Live catalog search is currently available for Pokémon. Other games use manual entry.</p>
     </div>
   </details>;
 }

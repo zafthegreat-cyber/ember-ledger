@@ -1,6 +1,14 @@
 # Code 3 TCG — App Store and Google Play submission guide
 
-Updated November 6, 2026. This replaces the open-items lists in [READINESS.md](./READINESS.md) and the [store copy draft](./STORE_COPY_DRAFT.md); those files remain as history. Publisher: **Anchor & Wing LLC DBA Code 3 TCG**. App ID on both stores: `app.code3tcg.mobile`. Support: **support@code3tcg.com**.
+Updated November 8, 2026. This replaces the open-items lists in [READINESS.md](./READINESS.md) and the [store copy draft](./STORE_COPY_DRAFT.md); those files remain as history. Publisher: **Anchor & Wing LLC DBA Code 3 TCG**. Android Play application ID: `com.code3tcg.app`. iOS bundle ID: `app.code3tcg.mobile`. Support: **support@code3tcg.com**.
+
+## Android internal-test identity
+
+The existing Play Console record uses `com.code3tcg.app`. Build 9 matches that application ID while retaining the original upload key, Java namespace (`app.code3tcg.mobile`), explicit launcher class and `code3tcg://auth/callback` registration. Capacitor's shared config and the iOS project keep the original iPhone identity. Android's installed identity comes from Gradle's `applicationId`, not the Java namespace.
+
+Before upload, dump the signed bundle's manifest with bundletool and run `node scripts/check-play-manifest.mjs <manifest.xml>`. It checks the compiled package, version floor, launcher, callback, private file provider and security settings. Signature and packaged-asset verification remain separate checks.
+
+Keep the PWA and any older native installation installed. A prior sideload using `app.code3tcg.mobile` has a different local sandbox and is not upgraded by the Play package. Its local-only records must be verified through the existing export/sync tools before any uninstall. The Play build uses the same production account services; it does not migrate, reset or overwrite existing records or prices.
 
 ## Where things stand
 

@@ -1,6 +1,9 @@
 import { PrivateStorageImage } from "../components/PrivateReceipt.jsx";
 import ExternalWebLink from "../components/ExternalWebLink.jsx";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import NationwideLocationPicker from '../components/NationwideLocationPicker.jsx';
+import { useNearbyPreference } from '../utils/nearbyPreference.mjs';
+import { locationScopeMatch } from '../utils/nationwideLocation.mjs';
 import {
   getStores,
   createStore,
@@ -1306,7 +1309,6 @@ export default function Scout({
   onReturnToReport = null,
   onOpenFlipScout = null,
   storeDirectoryState = DEFAULT_STORE_STATE_CODE,
-  storeDirectoryStateSource = "default",
   onStoreDirectoryStateChange = null,
 }) {
   // The user's Restocks state (picked or matched from their home area).
@@ -1324,10 +1326,11 @@ export default function Scout({
   const selectedStoreId = selectedStore?.id || selectedStoreTargetId;
   const [selectedMapStoreId, setSelectedMapStoreId] = useState("");
   const [scoutOverviewView, setScoutOverviewView] = useState("map");
-  const [selectedState, setSelectedState] = useState(homeStateName);
+  const [nearbyPreference] = useNearbyPreference();
+  const [selectedState, setSelectedState] = useState('All');
   const [selectedChain, setSelectedChain] = useState("All");
-  const [selectedRegion, setSelectedRegion] = useState(homeBrowseRegion);
-  const matchesOverviewArea = useCallback((store) => matchesRegionalAreaFilters(store, { state: selectedState, region: selectedRegion }), [selectedState, selectedRegion]);
+  const [selectedRegion, setSelectedRegion] = useState('All');
+  const matchesOverviewArea = useCallback((store) => locationScopeMatch(store, nearbyPreference) && matchesRegionalAreaFilters(store, { state: selectedState, region: selectedRegion }), [selectedState, selectedRegion, nearbyPreference]);
   const [selectedCity, setSelectedCity] = useState("All");
   const [selectedStoreType, setSelectedStoreType] = useState("All");
   const [storeFamilyFilter, setStoreFamilyFilter] = useState("all");
@@ -1898,8 +1901,8 @@ export default function Scout({
   useEffect(() => {
     if (previousHomeStateRef.current === homeState.code) return;
     previousHomeStateRef.current = homeState.code;
-    setSelectedState(homeStateName);
-    setSelectedRegion(homeBrowseRegion);
+    setSelectedState('All');
+    setSelectedRegion('All');
   }, [homeState.code, homeStateName, homeBrowseRegion]);
 
   // Load a state's directory the first time it is selected.
@@ -3672,9 +3675,9 @@ async function handleUpdateStore(e) {
         (storeQuickFilter === "recent" && String(normalizedStore.lastReportDate || "").slice(0, 10) === today) ||
         (storeQuickFilter === "highConfidence" && ["high", "medium/high"].includes(String(storeLikelihood || "").toLowerCase())) ||
         (storeQuickFilter === "strictLimits" && normalizedStore.strictLimits);
-      return matchesSearch && matchesState && matchesChain && matchesRegion && matchesCity && matchesType && matchesCounty && matchesConfidence && matchesExpansion && quickMatch;
+      return locationScopeMatch(normalizedStore, nearbyPreference) && matchesSearch && matchesState && matchesChain && matchesRegion && matchesCity && matchesType && matchesCounty && matchesConfidence && matchesExpansion && quickMatch;
     }), storeSort);
-  }, [stores, selectedState, selectedChain, selectedRegion, selectedCity, selectedStoreType, selectedCounty, selectedConfidence, storeFamilyFilter, storeQuickFilter, storeSearch, storeSort, adminMode, scoutNow]);
+  }, [stores, selectedState, selectedChain, selectedRegion, selectedCity, selectedStoreType, selectedCounty, selectedConfidence, storeFamilyFilter, storeQuickFilter, storeSearch, storeSort, adminMode, scoutNow, nearbyPreference]);
 
 
   const pagedFilteredStores = useMemo(() => getScoutPagedItems(filteredStores, storePage, SCOUT_LIST_PAGE_SIZE), [filteredStores, storePage]);
@@ -4587,8 +4590,8 @@ async function handleUpdateStore(e) {
         detail: "Approved drops, shop events, and donation drives will appear here.",
         urgency: "planned",
       }];
-  const scoutOverviewStateLabel = selectedState === "All" ? "All states" : (getStoreDirectoryState(selectedState)?.shortName || selectedState);
-  const scoutOverviewRegionLabel = selectedRegion === "All" ? scoutOverviewStateLabel : selectedRegion;
+  const scoutOverviewStateLabel = selectedState === "All" ? "Nationwide" : (getStoreDirectoryState(selectedState)?.shortName || selectedState);
+  const scoutOverviewRegionLabel = nearbyPreference.mode === 'nearby' && nearbyPreference.area ? `near ${nearbyPreference.area.label}` : nearbyPreference.mode === 'online' ? 'Online' : selectedRegion === "All" ? scoutOverviewStateLabel : selectedRegion;
   // Reports tied to a store in the selected state and region; few or none
   // means the area needs more local reporters before signals are useful.
   const scoutAreaReportCount = overviewAreaReports.length;
@@ -4598,22 +4601,17 @@ async function handleUpdateStore(e) {
   function chooseDirectoryState(stateCode) {
     const state = getStoreDirectoryState(stateCode);
     if (!state) return;
-    setSelectedState(state.name);
-    setSelectedRegion(state.regions.length ? state.defaultRegion : "All");
+    if (!loadedDirectoryStatesRef.current.has(state.code)) { loadedDirectoryStatesRef.current.add(state.code); loadStores(); }
+    setSelectedState('All');
+    setSelectedRegion('All');
     setSelectedCity("All");
+    setSelectedCounty("All");
     if (typeof onStoreDirectoryStateChange === "function") onStoreDirectoryStateChange(state.code);
   }
 
   function renderStoreStatePicker() {
-    const pickerState = getStoreDirectoryState(selectedState) || homeState;
     return (
-      <label className="scout-state-picker" style={{ ...styles.row, alignItems: "center", gap: "8px", margin: "8px 0" }}>
-        <span style={styles.tiny}>State</span>
-        <select style={{ ...styles.input, maxWidth: "220px" }} aria-label="Restocks state" value={pickerState.code} onChange={(event) => chooseDirectoryState(event.target.value)}>
-          {STORE_DIRECTORY_STATES.map((state) => <option key={state.code} value={state.code}>{state.shortName}</option>)}
-        </select>
-        {storeDirectoryStateSource === "detected" && pickerState.code === homeState.code ? <span style={styles.tiny}>Matched from your home area</span> : null}
-      </label>
+      <NationwideLocationPicker onAreaSelected={area => chooseDirectoryState(area.state)} />
     );
   }
 
@@ -5578,7 +5576,7 @@ async function handleUpdateStore(e) {
         ) : null}
 
         {reportsBrowseMode ? (
-          <RestockReportBrowser reports={restockHistory} getStore={getReportStore} renderReport={renderCompactReportCard} now={scoutNow} onReport={() => onQuickReport({})} />
+          <RestockReportBrowser reports={restockHistory} getStore={getReportStore} renderReport={renderCompactReportCard} now={scoutNow} onReport={() => onQuickReport({})} showLocation={false} />
         ) : null}
 
         {scoutSubTab === "reports" && !reportsBrowseMode ? (
@@ -6469,8 +6467,8 @@ async function handleUpdateStore(e) {
             {storeDirectoryView === "landing" ? (
               <>
                 <div className="scout-directory-card" style={styles.card}>
-                  <h2 style={styles.sectionTitle}>{homeState.shortName} Store Directory</h2>
-                  <p style={styles.empty}>Search {homeState.shortName} stores, pick a retailer, then open the exact location you want. {homeRegion} is the default home view.</p>
+                  <h2 style={styles.sectionTitle}>Store Directory</h2>
+                  <p style={styles.empty}>Search by city, ZIP, or store. Your nearby area is remembered; nationwide browsing is always available. Store coverage varies by area.</p>
                   {renderStoreStatePicker()}
                   <input
                     style={styles.input}
@@ -6479,26 +6477,18 @@ async function handleUpdateStore(e) {
                     placeholder="Search store, city, ZIP, nickname, or address"
                   />
                   <div style={styles.row}>
-                    <button type="button" style={storeQuickFilter === "default" ? styles.buttonPrimary : styles.buttonSoft} onClick={() => {
-                      if (!onLocationRequired("nearby-stores")) return;
-                      setStoreQuickFilter("default");
+                    <button type="button" style={storeQuickFilter === "all" ? styles.buttonPrimary : styles.buttonSoft} onClick={() => {
+                      setStoreQuickFilter("all");
                       setSelectedChain("All");
-                      setSelectedState(homeStateName);
-                      setSelectedRegion(homeBrowseRegion);
+                      setSelectedState("All");
+                      setSelectedRegion("All");
                       setStoreDirectoryView("retailer");
-                    }}>Home Region</button>
+                    }}>Show stores</button>
                     <button type="button" style={storeQuickFilter === "favorites" ? styles.buttonPrimary : styles.buttonSoft} onClick={() => {
                       setStoreQuickFilter("favorites");
                       setSelectedChain("All");
                       setStoreDirectoryView("retailer");
                     }}>Favorites</button>
-                    <button type="button" style={styles.buttonSoft} onClick={() => {
-                      setStoreQuickFilter("all");
-                      setSelectedState(homeStateName);
-                      setSelectedRegion("All");
-                      setSelectedChain("All");
-                      setStoreDirectoryView("retailer");
-                    }}>Browse All {homeState.shortName}</button>
                     <button type="button" style={styles.buttonSoft} onClick={() => setMissingStoreModalOpen(true)}>Submit Missing Store</button>
                   </div>
                   {adminMode ? (

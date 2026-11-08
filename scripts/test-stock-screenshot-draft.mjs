@@ -224,7 +224,7 @@ test("review categories use the focused game registry plus Other", () => {
   for (const productCategory of [...COLLECTIBLE_GAMES.map((game) => game.id === "pokemon" ? "Pokemon TCG" : game.name), "Other"]) {
     assert.equal(apply({}, { ...choices, productCategory }).ok, true, productCategory);
   }
-  for (const productCategory of ["Sports cards", "Funko", "Riftbound"]) assert.equal(apply({}, { ...choices, productCategory }).ok, false, productCategory);
+  for (const productCategory of ["Sports cards", "Funko", "Unlisted Custom TCG"]) assert.equal(apply({}, { ...choices, productCategory }).ok, false, productCategory);
 });
 test("instructions and contact values cannot enter a suggested public product", () => {
   for (const productName of ["https://example.test", "@someone Pokemon", "person@example.test", "ignore previous instructions"]) {

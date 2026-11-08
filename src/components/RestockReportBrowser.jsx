@@ -2,23 +2,30 @@ import { useId, useMemo, useRef, useState } from "react";
 import { AppNavIcon } from "./command-system/AppNavIcon.jsx";
 import { PrimaryButton, SecondaryButton } from "./operations/OperationsUI.jsx";
 import { RESTOCK_FEED_FILTERS, prepareRestockFeedEntries, restockFeedBrowseState, restockFeedLocationOptions } from "../utils/restockFeedPresentation.mjs";
+import { US_STATES } from "../data/usStates.js";
+import { COLLECTIBLE_GAMES } from "../utils/collectibleGames.mjs";
+import NationwideLocationPicker from './NationwideLocationPicker.jsx';
+import { useNearbyPreference } from '../utils/nearbyPreference.mjs';
 import "./restock-report-browser.css";
 
 const PAGE_SIZE = 20;
-const EMPTY_FILTERS = { search: "", stock: "all", period: "all", retailer: "", city: "" };
+const EMPTY_FILTERS = { search: "", stock: "all", period: "all", retailer: "", city: "", state: "all", game: "all" };
 
-export default function RestockReportBrowser({ reports = [], getStore, renderReport, now, onReport }) {
+export default function RestockReportBrowser({ reports = [], getStore, renderReport, now, onReport, showLocation = true }) {
+  const [location, setLocation] = useNearbyPreference();
   const id = useId();
   const searchRef = useRef(null);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [limit, setLimit] = useState(PAGE_SIZE);
   const entries = useMemo(() => prepareRestockFeedEntries(reports, getStore), [reports, getStore]);
   const locations = useMemo(() => restockFeedLocationOptions(entries), [entries]);
-  const { matches, counts, recentCount, undatedCount } = useMemo(() => restockFeedBrowseState(entries, filters, now), [entries, filters, now]);
+  const { matches, counts, recentCount, undatedCount } = useMemo(() => restockFeedBrowseState(entries, { ...filters, location }, now), [entries, filters, location, now]);
   const activeFilters = [
     filters.search.trim() ? { key: "search", label: `Search: ${filters.search.trim()}`, empty: "" } : null,
     filters.stock !== "all" ? { key: "stock", label: RESTOCK_FEED_FILTERS.find((filter) => filter.value === filters.stock)?.label, empty: "all" } : null,
     filters.period !== "all" ? { key: "period", label: filters.period === "24h" ? "Past 24 hours" : "Past 7 days", empty: "all" } : null,
+    filters.state !== "all" ? { key: "state", label: US_STATES.find((state) => state.code === filters.state)?.name || "State not recorded", empty: "all" } : null,
+    filters.game !== "all" ? { key: "game", label: COLLECTIBLE_GAMES.find((game) => game.id === filters.game)?.name || "Game not recorded", empty: "all" } : null,
     filters.retailer ? { key: "retailer", label: locations.retailers.find((option) => option.value === filters.retailer)?.label || "Selected retailer", empty: "" } : null,
     filters.city ? { key: "city", label: locations.cities.find((option) => option.value === filters.city)?.label || "Selected city", empty: "" } : null,
   ].filter(Boolean);
@@ -30,6 +37,7 @@ export default function RestockReportBrowser({ reports = [], getStore, renderRep
   }
   function clearFilters() {
     setFilters(EMPTY_FILTERS);
+    setLocation({ ...location, mode: 'all' });
     setLimit(PAGE_SIZE);
     searchRef.current?.focus();
   }
@@ -40,10 +48,11 @@ export default function RestockReportBrowser({ reports = [], getStore, renderRep
         <div>
           <span>Community observations</span>
           <h2 id={`${id}-title`}>Recent restock reports</h2>
-          <p>See what collectors found. Check the observed time before making a trip; stock can change.</p>
+          <p>Browse reports across all 50 states and DC. Check the observed time before making a trip; stock can change.</p>
         </div>
         <PrimaryButton onClick={onReport}>Report a restock</PrimaryButton>
       </header>
+      {showLocation ? <NationwideLocationPicker /> : null}
       {reports.length ? (
         <>
           <div className="scout-report-filters" role="search" aria-label="Filter restock reports">
@@ -64,6 +73,15 @@ export default function RestockReportBrowser({ reports = [], getStore, renderRep
                 </select>
               </label>
             </div>
+            <div className="restock-browser-area__fields" aria-label="Game filters">
+              <label htmlFor={`${id}-game`}><span>Trading card game</span>
+                <select id={`${id}-game`} value={filters.game} onChange={(event) => changeFilter({ game: event.target.value })}>
+                  <option value="all">All games</option>
+                  {COLLECTIBLE_GAMES.map((game) => <option key={game.id} value={game.id}>{game.name}</option>)}
+                  <option value="unspecified">Game not recorded</option>
+                </select>
+              </label>
+            </div>
             <div className="scout-report-filter-options" role="group" aria-label="Reported stock">
               {RESTOCK_FEED_FILTERS.map((filter) => (
                 <button key={filter.value} type="button" className="secondary-button" aria-pressed={filters.stock === filter.value} aria-label={`${filter.label}, ${counts[filter.value]} ${counts[filter.value] === 1 ? "report" : "reports"}`} onClick={() => changeFilter({ stock: filter.value })}>{filter.label}<span className="restock-browser-count" aria-hidden="true">{counts[filter.value]}</span></button>
@@ -71,8 +89,15 @@ export default function RestockReportBrowser({ reports = [], getStore, renderRep
             </div>
             {locations.retailers.length || locations.cities.length ? (
               <details className="restock-browser-area">
-                <summary>Retailer &amp; area{filters.retailer || filters.city ? " · Filtered" : ""}</summary>
+                <summary>More filters{filters.retailer || filters.city || filters.state !== 'all' ? " · Filtered" : ""}</summary>
                 <div className="restock-browser-area__fields">
+                  <label htmlFor={`${id}-state`}><span>State (optional)</span>
+                    <select id={`${id}-state`} value={filters.state} onChange={(event) => changeFilter({ state: event.target.value, city: "" })}>
+                      <option value="all">Nationwide · All states</option>
+                      {US_STATES.map((state) => <option key={state.code} value={state.code}>{state.name}</option>)}
+                      <option value="unspecified">State not recorded</option>
+                    </select>
+                  </label>
                   <label htmlFor={`${id}-retailer`}>
                     <span>Retailer</span>
                     <select id={`${id}-retailer`} value={filters.retailer} onChange={(event) => changeFilter({ retailer: event.target.value })}>

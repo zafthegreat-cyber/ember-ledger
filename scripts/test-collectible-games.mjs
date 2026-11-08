@@ -9,14 +9,14 @@ let passed = 0;
 const test = (name, run) => { run(); passed += 1; console.log(`PASS ${name}`); };
 const freeze = (value) => { if (value && typeof value === "object") { Object.values(value).forEach(freeze); Object.freeze(value); } return value; };
 
-test("focused registry lists five games and only promises the existing Pokémon catalog", () => {
-  assert.deepEqual(COLLECTIBLE_GAMES.map((game) => game.id), ["pokemon", "magic", "yugioh", "one-piece", "lorcana"]);
+test("registry lists thirteen games and only promises the existing Pokémon catalog", () => {
+  assert.deepEqual(COLLECTIBLE_GAMES.map((game) => game.id), ["pokemon", "magic", "yugioh", "one-piece", "lorcana", "flesh-and-blood", "digimon", "dragon-ball-fusion-world", "dragon-ball-masters", "star-wars-unlimited", "gundam", "union-arena", "riftbound"]);
   assert.deepEqual(COLLECTIBLE_GAMES.filter((game) => game.catalogSupported).map((game) => game.id), ["pokemon"]);
   assert.equal(Object.isFrozen(COLLECTIBLE_GAMES), true); assert.equal(COLLECTIBLE_GAMES.every(Object.isFrozen), true);
 });
 test("exact familiar aliases normalize without substring guesses", () => {
   for (const [value, game] of [["Pokémon TCG", "pokemon"], ["MTG", "magic"], ["Magic: The Gathering", "magic"], ["Yu-Gi-Oh!", "yugioh"], ["ONE PIECE CARD GAME", "one-piece"], ["Disney Lorcana", "lorcana"]]) assert.equal(normalizeCollectibleGame(value), game);
-  for (const value of ["Magic sleeves", "Pokémon vs Magic", "One Piece art book", "", null, true, {}, "Digimon"]) assert.equal(normalizeCollectibleGame(value), "unspecified");
+  for (const value of ["Magic sleeves", "Pokémon vs Magic", "One Piece art book", "", null, true, {}, "Unlisted Custom TCG", "Dragon Ball Super", "Star Wars"]) assert.equal(normalizeCollectibleGame(value), "unspecified");
 });
 test("explicit game is authoritative over legacy set, catalog category and source clues", () => {
   assert.equal(getRecordGame({ tcgGame: "magic", setName: "Fusion Strike", category: "Pokemon", source: "pokemon_tcg_api_json" }), "magic");
@@ -27,7 +27,7 @@ test("conflicting explicit supported IDs are withheld instead of arbitrarily cho
   assert.equal(getRecordGame({ tcgGame: "MTG", gameName: "Magic: The Gathering" }), "magic");
 });
 test("unsupported or intentionally unrecorded explicit games cannot fall back to Pokémon", () => {
-  for (const record of [{ tcgGame: "Digimon" }, { gameId: "custom" }, { game: "unspecified" }, { tcgGame: "magic", game: "custom" }, { tcgGame: 1 }, { tcgGame: false }, { tcgGame: {} }]) assert.equal(getRecordGame({ setName: "Fusion Strike", category: "Pokemon", source: "pokemon_tcg_api", ...record }), "unspecified");
+  for (const record of [{ tcgGame: "Unlisted Custom TCG" }, { gameId: "custom" }, { game: "unspecified" }, { tcgGame: "magic", game: "custom" }, { tcgGame: 1 }, { tcgGame: false }, { tcgGame: {} }]) assert.equal(getRecordGame({ setName: "Fusion Strike", category: "Pokemon", source: "pokemon_tcg_api", ...record }), "unspecified");
 });
 test("secondary game fields require exact matches and conflicting categories are withheld", () => {
   assert.equal(getRecordGame({ category: "Pokemon" }), "pokemon");
