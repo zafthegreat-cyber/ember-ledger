@@ -1,4 +1,5 @@
 import { resolve } from "node:path";
+import { realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 // Builds 1–6 already existed. A store operator must still choose a number
@@ -17,6 +18,7 @@ export function resolveNativeBuildNumber(value, { required = false } = {}) {
   return Number(text);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+// Node resolves module URLs through Windows junctions; argv keeps the invoked path.
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(resolve(process.argv[1]))).href) {
   console.log(`Native build number ${resolveNativeBuildNumber(process.env.CODE3_BUILD_NUMBER)} validated. Verify it exceeds the last accepted upload before signing.`);
 }

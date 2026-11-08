@@ -94,6 +94,7 @@ export function makeFallbackUserProfile(user = null) {
     subscriptionStatus: trustedMetadata.subscription_status || trustedMetadata.subscriptionStatus || "none",
     subscriptionProvider: trustedMetadata.subscription_provider || trustedMetadata.subscriptionProvider || "",
     subscriptionProviderId: trustedMetadata.subscription_provider_id || trustedMetadata.subscriptionProviderId || "",
+    appReviewAccess: trustedMetadata.code3_app_review_access === true,
     preferredRegion: metadata.preferred_region || metadata.preferredRegion || "Hampton Roads / 757",
     betaStatus: admin || user?.id === "local-beta" ? "approved" : normalizeBetaStatus(trustedMetadata.beta_status || trustedMetadata.betaStatus || trustedMetadata.beta_access_status || trustedMetadata.betaAccessStatus),
     betaAccessStatus: admin || user?.id === "local-beta" ? "approved" : normalizeBetaStatus(trustedMetadata.beta_access_status || trustedMetadata.betaAccessStatus || trustedMetadata.beta_status || trustedMetadata.betaStatus),
@@ -173,6 +174,9 @@ export function mapProfileRow(row = {}, user = null) {
     subscriptionStatus: row.subscription_status || row.subscriptionStatus || "none",
     subscriptionProvider: row.subscription_provider || row.subscriptionProvider || "",
     subscriptionProviderId: row.subscription_provider_id || row.subscriptionProviderId || "",
+    // Only Auth's server-managed metadata may grant reviewer feature access.
+    // Email addresses, profile rows and user_metadata are not authority.
+    appReviewAccess: getSupabaseAuthMetadata(user).code3_app_review_access === true,
     preferredRegion: row.preferred_region || row.preferredRegion || "Hampton Roads / 757",
     betaStatus: admin ? "approved" : normalizeBetaStatus(row.beta_status || row.betaStatus || row.beta_access_status || row.betaAccessStatus),
     betaAccessStatus: admin ? "approved" : normalizeBetaStatus(row.beta_access_status || row.betaAccessStatus || row.beta_status || row.betaStatus),

@@ -91,6 +91,6 @@ test("other explicit areas and supplied codes survive without a fabricated Virgi
   assert.equal(withCode.region, "Capital District");
   const withoutCode = normalizeImportedStore({ name: "Synthetic shop", state: "West Virginia", region: "Eastern Panhandle" });
   assert.equal(withoutCode.state, "West Virginia");
-  assert.equal(withoutCode.stateCode, "");
+  assert.equal(withoutCode.stateCode, "WV");
   assert.equal(withoutCode.region, "Eastern Panhandle");
 });

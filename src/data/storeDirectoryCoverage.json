@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "directories": {
+    "DC": {
+      "file": "dcStores.json",
+      "count": 96,
+      "sha256": "f73eedf30b6e1e81f3b14f6f85935b57061337ca9f45e9e91b94ebedd7a808ea"
+    },
+    "MD": {
+      "file": "marylandStores.json",
+      "count": 1223,
+      "sha256": "08cacc1e640a10cad32e4024c70d370794489b55fc9b22bc6fc48ef21315f69f"
+    },
+    "NC": {
+      "file": "northCarolinaStores.json",
+      "count": 2580,
+      "sha256": "5d6381fe6d1668bc6b9ac71c077def52df82be28b0b706c60022ab0a0acf416e"
+    },
+    "VA": {
+      "file": "virginiaStores.json",
+      "count": 2302,
+      "sha256": "5d8f42a9802fa157cc43da76a3ae73d75576fe740118bb081dcc2d83a81aad77"
+    }
+  }
+}

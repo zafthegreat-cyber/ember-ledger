@@ -1,6 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import process from "node:process";
 import { BRAND_CONFIG } from "./src/config/brand.js";
@@ -121,6 +121,8 @@ function emberManualChunks(id) {
 }
 
 export default defineConfig({
+  // Match resolved module paths when Windows opens the workspace through a junction.
+  root: realpathSync(process.cwd()),
   define: {
     "import.meta.env.VITE_SENTRY_DSN": JSON.stringify(process.env.VITE_SENTRY_DSN || process.env.SENTRY_DSN || ""),
     __EMBER_TIDE_APP_VERSION__: JSON.stringify(appVersion),

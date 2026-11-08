@@ -94,6 +94,7 @@ function directoryRegionForCity(text = "", city = "", stateName = "") {
   const home = getStoreDirectoryState(stateName);
   const homeRegion = home?.regions.find((region) => region.cities.some((hint) => cityPattern(hint).test(text)));
   if (homeRegion) return homeRegion.name;
+  if (home) return "";
   if (!city) return "";
   const other = STORE_DIRECTORY_STATES.filter((entry) => entry !== home)
     .flatMap((entry) => entry.regions)
@@ -107,23 +108,25 @@ export function normalizeRegionLabel(value = "", context = {}) {
   const state = normalizeKey(context.state);
   const text = compactText(explicit, city, state, context.area, context.county);
   if (!text) return "";
-  const known = ALL_STORE_REGIONS.find((region) => normalizeKey(region) === explicit);
+  const stateName = STATE_ALIASES.get(state) || "";
+  const stateCode = getStoreDirectoryState(stateName)?.code;
+  const known = ALL_STORE_REGIONS.find((region) => normalizeKey(region) === explicit
+    && (!stateCode || storeStateForRegion(region) === stateCode));
   if (known) return known;
-  const hinted = REGION_HINTS.find((entry) => entry.pattern.test(text));
+  const hinted = (!stateCode || stateCode === "VA") && REGION_HINTS.find((entry) => entry.pattern.test(text));
   if (hinted) return hinted.label;
-  const stateName = STATE_ALIASES.get(state) || (/\bvirginia\b/.test(text) && !/west virginia/.test(text) ? "Virginia" : "");
   const byCity = directoryRegionForCity(text, city, stateName);
   if (byCity) return byCity;
   const directoryState = getStoreDirectoryState(stateName);
-  if (directoryState) return directoryState.otherRegion;
+  if (directoryState) return !directoryState.regions.length && explicit && !ALL_STORE_REGIONS.some((region) => normalizeKey(region) === explicit)
+    ? String(value).trim() : directoryState.otherRegion;
   return titleCase(explicit || state || city || "Other");
 }
 
-// Directory regions belong to one state, so a store whose region came from
-// another state's city takes that state (inconsistent source data).
+// A region can fill a missing state, but never replace an explicitly stored one.
 function reconcileStateForRegion(state = "", region = "") {
   const inferredState = getStoreDirectoryState(storeStateForRegion(region))?.name || "";
-  if (!inferredState) return state;
+  if (state || !inferredState) return state;
   return inferredState;
 }
 

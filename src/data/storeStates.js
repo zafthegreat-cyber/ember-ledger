@@ -1,3 +1,5 @@
+import { US_STATES, ZIP_STATE_EXCEPTIONS } from "./usStates.js";
+
 // Store directory states and their regions. This is the single source for
 // which states have a Restocks store directory and how stores are grouped
 // into regions. Pure data and helpers only: the OpenStreetMap importer
@@ -9,7 +11,7 @@ export const DEFAULT_STORE_STATE_CODE = "VA";
 // Each region lists city hints (matched against city and county text) and
 // one or more [lat, lon] centers used when a store has no usable
 // city. Region names must be unique across states.
-export const STORE_DIRECTORY_STATES = [
+const CURATED_DIRECTORY_STATES = [
   {
     code: "VA",
     name: "Virginia",
@@ -176,6 +178,18 @@ export const STORE_DIRECTORY_STATES = [
   },
 ];
 
+// Nationwide reporting does not imply a preloaded store directory in every
+// state. Keep existing regions and supply honest state-wide empty areas for
+// the remaining states; reviewed community stores can populate them later.
+export const STORE_DIRECTORY_STATES = US_STATES.map((state) => ({
+  ...state,
+  file: `${state.name[0].toLowerCase()}${state.name.slice(1).replace(/\s/g, "")}Stores.json`,
+  defaultRegion: state.name,
+  otherRegion: state.name,
+  regions: [],
+  ...CURATED_DIRECTORY_STATES.find((entry) => entry.code === state.code),
+}));
+
 const STATE_BY_CODE = new Map(STORE_DIRECTORY_STATES.map((state) => [state.code, state]));
 const STATE_ALIAS_ENTRIES = STORE_DIRECTORY_STATES.flatMap((state) => [
   [state.code.toLowerCase(), state.code],
@@ -274,6 +288,9 @@ export function inferStoreRegionForState(store = {}, stateValue = store.state) {
   const state = getStoreDirectoryState(stateValue);
   if (!state) return String(store.region || "").trim();
   const explicit = String(store.region || "").trim();
+  // New nationwide areas may already have an owner-entered metro label.
+  // Retain it rather than replacing existing records with a generic label.
+  if (!state.regions.length) return explicit && !storeStateForRegion(explicit) ? explicit : state.otherRegion;
   if (explicit && storeStateForRegion(explicit) === state.code) return explicit;
   const text = cityHintText(store);
   const byCity = state.regions.find((region) => region.cities.some((city) => text.includes(city)));
@@ -286,6 +303,7 @@ export function inferStoreRegionForState(store = {}, stateValue = store.state) {
 export function storeStateFromZip(zip = "") {
   const match = String(zip || "").match(/\b(\d{5})(?:-\d{4})?\b/);
   if (!match) return "";
+  if (Object.hasOwn(ZIP_STATE_EXCEPTIONS, match[1])) return ZIP_STATE_EXCEPTIONS[match[1]];
   const prefix = Number(match[1].slice(0, 3));
   const state = STORE_DIRECTORY_STATES.find((entry) => entry.zipPrefixes.some(([low, high]) => prefix >= low && prefix <= high));
   return state?.code || "";
@@ -302,16 +320,19 @@ export function storeStateFromCoords(lat, lon) {
 export function detectStoreStateFromText(value = "") {
   const text = String(value || "").trim();
   if (!text) return "";
-  const byZip = storeStateFromZip(text);
-  if (byZip) return byZip;
   const lower = text.toLowerCase();
   const exact = normalizeStoreStateCode(lower);
   if (exact) return exact;
-  const codeMatch = text.match(/(?:,|\s)\s*(VA|MD|DC|NC)\.?\s*$/i) || text.match(/\b(D\.C\.)/i);
-  if (codeMatch) return normalizeStoreStateCode(codeMatch[1]);
-  const named = STORE_DIRECTORY_STATES.find((state) => lower.includes(state.name.toLowerCase()) && !(state.code === "VA" && lower.includes("west virginia")));
-  if (named) return named.code;
   if (/washington,?\s*d\.?c\.?/.test(lower)) return "DC";
+  const codeMatch = text.match(/(?:,|\s)\s*([a-z]{2})\.?\s*(?:\d{5}(?:-\d{4})?)?\s*$/i);
+  const explicitCode = codeMatch && normalizeStoreStateCode(codeMatch[1]);
+  if (explicitCode) return explicitCode;
+  // Longest name first keeps West Virginia distinct from Virginia.
+  const named = [...STORE_DIRECTORY_STATES].sort((a, b) => b.name.length - a.name.length)
+    .find((state) => new RegExp(`\\b${state.name.toLowerCase()}\\b`).test(lower));
+  if (named) return named.code;
+  const byZip = storeStateFromZip(text);
+  if (byZip) return byZip;
   const byCity = STORE_DIRECTORY_STATES.find((state) =>
     state.code !== "DC" && state.regions.some((region) => region.cities.some((city) => city.length > 4 && new RegExp(`\\b${city.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(lower)))
   );

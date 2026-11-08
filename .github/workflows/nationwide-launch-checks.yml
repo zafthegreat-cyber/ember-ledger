@@ -1,0 +1,37 @@
+name: Nationwide release checks
+on:
+  pull_request:
+  push:
+    branches: [main, codex/nationwide-launch-20261108]
+permissions:
+  contents: read
+concurrency:
+  group: nationwide-checks-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  release-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: node scripts/prepare-scout-ocr.mjs
+      - run: node scripts/prepare-store-directory.mjs --check
+      - run: npm run test:nationwide-restocks
+      - run: node --no-warnings --test scripts/test-national-launch.mjs
+      - run: node --no-warnings --test scripts/test-native-ocr-assets.mjs scripts/test-scout-screenshot-ocr.mjs
+      - run: node --no-warnings --test scripts/test-app-review-access.mjs scripts/test-account-session-client.mjs scripts/test-tier-foundation.mjs scripts/test-role-management.mjs
+      - run: node scripts/test-scout-store-records.cjs --handlers-only
+      - run: npm run test:cloud-workspace-sync
+      - run: node scripts/test-market-price-preservation.cjs
+      - run: node scripts/test-account-deletion-client.mjs
+      - run: node scripts/test-native-build-readiness.mjs
+      - run: node scripts/test-android-signing-preflight.mjs
+      - run: npm run lint:src
+      - run: npm run build
+      - name: Preserve catalog snapshots during checks
+        run: git diff --exit-code -- src/data/generated/marketPrices.json src/data/generated/pokemonTcgCards.json src/data/generated/sealedProducts.json src/data/generated/catalogImportStatus.json

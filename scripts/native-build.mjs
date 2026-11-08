@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { resolveNativeBuildNumber } from "./native-build-number.mjs";
 import { releasedProviders } from "../src/features/auth/socialAuth.mjs";
+import { prepareNativeOcrModel } from "./native-ocr-assets.mjs";
 
 const settings = { ...loadEnv("native", process.cwd(), "VITE_"), ...process.env };
 const smoke = process.argv.includes("--smoke");
@@ -38,12 +39,14 @@ await build({
   plugins: [{ name: "code3-native-safe-viewport", transformIndexHtml: html => html.replace("viewport-fit=cover", "viewport-fit=contain") }],
   build: { outDir: "dist-native", rollupOptions: { input: "index.html" } },
 });
+const screenshotOcrModel = prepareNativeOcrModel(resolve("dist-native"));
 mkdirSync(resolve("artifacts/native"), { recursive: true });
 writeFileSync(resolve("artifacts/native/web-build.json"), JSON.stringify({
   builtAt: new Date().toISOString(), mode: smoke ? "configuration-smoke-only" : "native-beta",
   buildNumber, sourceCommit: process.env.GITHUB_SHA || null,
   apiOrigin: process.env.VITE_API_BASE_URL, accountServicesConfigured: !smoke,
   socialProviders: releasedProviders(process.env.VITE_AUTH_VERIFIED_PROVIDERS),
+  screenshotOcrModel,
   accountLinkingEnabled: process.env.VITE_AUTH_ACCOUNT_LINKING_VERIFIED === "true",
   storeSigned: false, physicalDeviceTested: false,
 }, null, 2));

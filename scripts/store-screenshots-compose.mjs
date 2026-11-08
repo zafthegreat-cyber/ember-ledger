@@ -15,10 +15,10 @@ const dataUrl = (file) => `data:image/png;base64,${readFileSync(file).toString("
 
 const captions = {
   "1-home": ["Find restocks near you", "Share what you see and help the next collector."],
-  "2-restocks": ["See what collectors just found", "Recent store reports across VA, NC, MD and DC."],
+  "2-restocks": ["See recent community reports", "Share reports nationwide. Store coverage varies by area."],
   "3-report-details": ["Every report, with context", "When it was seen, how trusted it is, and Report or Block in one tap."],
-  "4-report-form": ["Report a restock in seconds", "Pick the store, say what you saw, review, done."],
-  "5-collection": ["Know what your collection is worth", "Sealed product and singles, tracked in one place."],
+  "4-report-form": ["Share a store visit", "Choose a store, say what you saw, then review before saving."],
+  "5-collection": ["Keep your collection organized", "Sealed product and singles, tracked in one place."],
 };
 
 const css = `
@@ -36,14 +36,14 @@ function shotHtml({ w, h, pad, title, sub, img, imgW, imgH, titleSize, subSize, 
   p { margin-top: ${Math.round(subSize * 0.6)}px; color: #f1e6da; font-size: ${subSize}px; font-weight: 400; line-height: 1.35; opacity: .92; }
   .phone { flex: 1 1 auto; min-height: 0; aspect-ratio: ${imgW} / ${imgH}; max-width: ${Math.round(imgW * 1.06)}px; border-radius: ${radius}px; overflow: hidden;
     border: ${Math.round(radius / 7)}px solid #0d0607; box-shadow: 0 0 0 2px rgba(232,198,106,.55), 0 40px 90px rgba(0,0,0,.55); }
-  .phone img { width: 100%; height: 100%; display: block; object-fit: cover; object-position: top; }
+  .phone img { width: 100%; height: 100%; display: block; object-fit: contain; object-position: top; }
   </style></head><body><div class="wrap"><div class="copy"><h1>${title}</h1><p>${sub}</p></div>
   <div class="phone"><img src="${img}"></div></div></body></html>`;
 }
 
 const targets = [
   { set: "ios", w: 1320, h: 2868, pad: 96, imgW: 1150, imgH: 2300, titleSize: 92, subSize: 44, radius: 70 },
-  { set: "play", w: 1080, h: 2160, pad: 72, imgW: 860, imgH: 1625, titleSize: 74, subSize: 36, radius: 54 },
+  { set: "play", w: 1080, h: 1920, pad: 64, imgW: 780, imgH: 1385, titleSize: 66, subSize: 32, radius: 50 },
 ];
 
 const browser = await chromium.launch();

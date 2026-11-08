@@ -35,6 +35,13 @@ jobs:
           node-version: '24'
           cache: npm
       - run: node scripts/native-build-number.mjs
+      - name: Check signing configuration
+        env:
+          CODE3_ANDROID_KEYSTORE_BASE64: ${{ secrets.CODE3_ANDROID_KEYSTORE_BASE64 }}
+          CODE3_ANDROID_STORE_PASSWORD: ${{ secrets.CODE3_ANDROID_STORE_PASSWORD }}
+          CODE3_ANDROID_KEY_ALIAS: ${{ secrets.CODE3_ANDROID_KEY_ALIAS }}
+          CODE3_ANDROID_KEY_PASSWORD: ${{ secrets.CODE3_ANDROID_KEY_PASSWORD }}
+        run: node scripts/check-android-signing.mjs
       - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
           distribution: temurin
@@ -42,6 +49,7 @@ jobs:
       - run: npm ci
       - run: npm run test:native
       - run: node scripts/test-native-build-readiness.mjs
+      - run: node scripts/test-android-signing-preflight.mjs
       - run: npm run native:build
         env:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
@@ -54,7 +62,8 @@ jobs:
           KEYSTORE_BASE64: ${{ secrets.CODE3_ANDROID_KEYSTORE_BASE64 }}
         run: |
           if [ -z "$KEYSTORE_BASE64" ]; then echo "::error::Add the CODE3_ANDROID_KEYSTORE_BASE64 repository secret first."; exit 1; fi
-          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/code3-upload.keystore"
+          umask 077
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/code3-upload.keystore"
           echo "CODE3_ANDROID_KEYSTORE=$RUNNER_TEMP/code3-upload.keystore" >> "$GITHUB_ENV"
       - name: Build signed bundle and APK
         env:
@@ -62,10 +71,12 @@ jobs:
           CODE3_ANDROID_KEY_ALIAS: ${{ secrets.CODE3_ANDROID_KEY_ALIAS }}
           CODE3_ANDROID_KEY_PASSWORD: ${{ secrets.CODE3_ANDROID_KEY_PASSWORD }}
         run: chmod +x android/gradlew && cd android && ./gradlew bundleRelease assembleRelease
-      - name: Remove keystore and collect signed packages
+      - name: Remove temporary keystore
         if: always()
         run: |
           rm -f "$RUNNER_TEMP/code3-upload.keystore"
+      - name: Collect signed packages
+        run: |
           mkdir -p artifacts/native/android-release
           cp android/app/build/outputs/bundle/release/app-release.aab "artifacts/native/android-release/Code3TCG-build-$CODE3_BUILD_NUMBER.aab"
           cp android/app/build/outputs/apk/release/app-release.apk "artifacts/native/android-release/Code3TCG-build-$CODE3_BUILD_NUMBER.apk"

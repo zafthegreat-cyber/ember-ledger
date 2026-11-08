@@ -37,6 +37,7 @@ async function main() {
   } = await import(pathToFileURL(path.join(rootDir, "src", "data", "storeStates.js")).href);
 
   const codes = requestedStateCodes(STORE_DIRECTORY_STATES.map((state) => state.code));
+  if (codes.some(code => !getStoreDirectoryState(code))) throw new Error("Every requested state must be a valid US state or DC.");
   const results = [];
   for (const [index, code] of codes.entries()) {
     const state = getStoreDirectoryState(code);
@@ -62,6 +63,11 @@ async function main() {
     }
     console.log(`${state.code}: ${stores.length} stores (${synced.importedFromOverpass} from Overpass)${dryRun ? ", dry run" : ` -> ${state.file}`}`);
     results.push({ state: state.code, file: state.file, written: !dryRun, stores: stores.length, fromOverpass: synced.importedFromOverpass, regionCounts });
+  }
+
+  if (!dryRun) {
+    const { prepareStoreDirectory } = await import("./prepare-store-directory.mjs");
+    await prepareStoreDirectory({ root: rootDir });
   }
 
   console.log(JSON.stringify({ ok: results.every((row) => !row.error), dryRun, results }, null, 2));

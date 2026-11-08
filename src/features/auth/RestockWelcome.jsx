@@ -3,7 +3,7 @@ import "./restock-welcome.css";
 export default function RestockWelcome({ onCreateAccount }) {
   return <div className="auth-login-scene restock-welcome">
     <div className="auth-login-scene-copy">
-      <p className="restock-welcome-region">Virginia · North Carolina · Maryland · DC</p>
+      <p className="restock-welcome-region">All 50 states + DC</p>
       <h2>Find restocks. Share what you see.</h2>
       <p>Check community observations before your next trip. After your own store visit, help the next collector with what, where, and when.</p>
       <button type="button" className="ember-gradient-button restock-welcome-cta" onClick={onCreateAccount}>Create a free account</button>

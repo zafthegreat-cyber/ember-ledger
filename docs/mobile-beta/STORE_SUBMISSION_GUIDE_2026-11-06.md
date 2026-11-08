@@ -51,12 +51,20 @@ Actions tab → run each workflow with **build number 7** (or higher than anythi
 Install both on your own phones (TestFlight app on iPhone; the internal-testing opt-in link on Android) and run through: sign in, browse Restocks, submit a restock report with a photo, add to collection, block and unblock someone, sign out, and delete a throwaway account.
 
 ### 5. Reviewer account
-Create a dedicated account for store reviewers, such as `appreview@code3tcg.com`, with a few synthetic collection items and no real personal data. Never give reviewers your own account. Enter it under App Store Connect → App Review Information, and Play Console → App content → App access.
+Use the existing dedicated **playreview@code3tcg.com** account and its existing reviewer password. Keep the password only in the store's secure App access fields. Never give reviewers the owner's account.
+
+November 8 verification: sign-in succeeded, email is confirmed, no verified MFA factor is enrolled, and the account has active complimentary Seller/premium access without a trial expiry. Auth's server-managed `code3_app_review_access: true` flag is now set for this account. The nationwide candidate reads that flag to enable the union of all customer-plan features, including Family and Shop, and expose the optional navigation. Tests verify that it grants no staff role, moderation, raw restock history, or access to other users' private records. No email-address allowlist or user-editable metadata grants access.
+
+**Release gate:** the extra member-access behavior is in the candidate, not the older published web/native app. Build 7 does not contain it. Include it in the next signed bundle and verify a fresh reviewer sign-in before declaring full access in Play Console. ACO/AIO, child accounts, and other future-only tools remain labelled as future work; an access flag cannot make unreleased services functional. Finish the unresolved cloud conflict through the normal comparison/recovery flow before using this browser session as a sync acceptance result.
+
+App access instructions (under 500 characters, use only after the candidate is verified):
+
+> Sign in with playreview@code3tcg.com and the password provided in this form. All released member features are complimentary; no purchase, invitation or MFA is required. Use the workspace menu for Collect, Find and Sell. Settings includes optional tools, privacy and account deletion. ACO/AIO and other features labelled Coming soon are not released. The sample collection and private review report are synthetic.
 
 ### 6. Screenshots and graphics
-Ready-made images are in [store-listing](./store-listing/); upload them in order 1–5.
+The historical images in [store-listing](./store-listing/) need regeneration and visual review against the nationwide candidate. Do not upload the old four-state screenshots as current release evidence.
 - **iPhone (6.9-inch, 1320×2868):** the five `app-store-iphone-6.9-*.jpg` files.
-- **Google Play phone (1080×2160):** the five `google-play-phone-*.jpg` files, plus `google-play-feature-graphic.png` (1024×500) and the 512×512 icon `public/icon-512.png`.
+- **Google Play phone (1080×1920 after regeneration):** the five `google-play-phone-*.jpg` files, plus `google-play-feature-graphic.png` (1024×500) and the 512×512 icon `public/icon-512.png`.
 - They use sample data with generic product names and no product photos. To regenerate after UI changes, start the dev server on port 5320 and run `node scripts/store-screenshots-capture.mjs . <raw-folder>`, then `node scripts/store-screenshots-compose.mjs . <raw-folder> docs/mobile-beta/store-listing`.
 - Don't show official Pokémon card art, logos or product photos you don't have rights to, and don't put "Pokémon" in Apple keywords. Both stores reject other companies' trademarks used this way.
 
@@ -77,7 +85,7 @@ Code 3 TCG helps trading card collectors find restocks and keep their collection
 
 RESTOCKS
 • Browse recent restock reports from other collectors at stores near you.
-• Store directory for Virginia, North Carolina, Maryland and Washington, DC.
+• Nationwide community reporting across all 50 US states and Washington, DC. Preloaded store directories currently cover Virginia, North Carolina, Maryland and DC; local coverage varies.
 • Share what you saw with a photo, the items and the time. Reports are community observations, and stock can change.
 
 COLLECTION

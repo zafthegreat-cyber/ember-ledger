@@ -51,8 +51,13 @@ check(
     app.includes('const VaultPage = lazy(() => import("./pages/Vault"))') &&
     app.includes('const ForgePage = lazy(() => import("./pages/Forge"))') &&
     app.includes('const MarketPage = lazy(() => import("./pages/Market"))') &&
-    app.includes('const SparkPage = lazy(() => import("./pages/Spark"))') &&
-    app.includes('const MenuPage = lazy(() => import("./pages/Menu"))')
+    app.includes('const SparkPage = lazy(() => import("./pages/Spark"))')
+);
+
+check(
+  "Settings and sync recovery ship with the app instead of a deferred Menu chunk",
+  app.includes('import MenuPage from "./pages/Menu.jsx"') &&
+    !app.includes('import("./pages/Menu")')
 );
 
 check(

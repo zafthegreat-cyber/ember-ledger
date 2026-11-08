@@ -80,6 +80,17 @@ assert.equal(untrusted.fullName,"official admin ember"); checks++;
 const trusted=makeFallbackUserProfile({id:"user-a",email:"user@example.test",app_metadata:{role:"admin"}});
 assert.equal(trusted.appAccess,true); checks++;
 {
+  const row={id:"reviewer-a",tier:"pro",app_role:"user",user_role:"user",app_access:true};
+  const ordinary={id:row.id,email:"reviewer@example.test"};
+  assert.equal(mapProfileRow({...row,appReviewAccess:true},{...ordinary,user_metadata:{code3_app_review_access:true}}).appReviewAccess,false); checks++;
+  assert.equal(makeFallbackUserProfile({...ordinary,user_metadata:{code3_app_review_access:true}}).appReviewAccess,false); checks++;
+  const reviewer=mapProfileRow(row,{...ordinary,app_metadata:{code3_app_review_access:true}});
+  assert.equal(reviewer.appReviewAccess,true); checks++;
+  assert.equal(reviewer.isAdmin,false); checks++;
+  assert.equal(reviewer.isModerator,false); checks++;
+  assert.equal(mapProfileRow(row,{...ordinary,app_metadata:{code3_app_review_access:"true"}}).appReviewAccess,false); checks++;
+}
+{
   let inserted;
   let conflictOptions;
   const saved={id:"user-a",display_name:"Already saved collector",app_role:"beta_user",user_role:"user",tier:"free",app_access:true};
