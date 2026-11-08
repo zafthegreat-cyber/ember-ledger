@@ -84,6 +84,14 @@ const GAME_PATTERNS = [
   ["Yu-Gi-Oh!", /\byu[\s-]?gi[\s-]?oh!?\b/i],
   ["One Piece", /\bone\s+piece\b/i],
   ["Disney Lorcana", /\b(?:disney\s+)?lorcana\b/i],
+  ["Flesh and Blood", /\bflesh\s+(?:and|&)\s+blood\b|\bFAB\b/i],
+  ["Digimon", /\bdigimon\b/i],
+  ["Dragon Ball Super: Fusion World", /\b(?:dragon\s+ball\s+(?:super\s+)?(?:card\s+game\s+)?fusion\s+world|fusion\s+world|DBFW)\b/i],
+  ["Dragon Ball Super: Masters", /\b(?:dragon\s+ball\s+(?:super\s*:?\s*)?(?:card\s+game\s+)?masters|DBS\s+masters|DBSM)\b/i],
+  ["Star Wars: Unlimited", /\bstar\s+wars\s*:?\s*unlimited\b|\bSWU\b/i],
+  ["Gundam Card Game", /\bgundam\b/i],
+  ["Union Arena", /\bunion\s+arena\b/i],
+  ["Riftbound", /\briftbound\b/i],
 ];
 
 // Only recognized product/set fragments become suggestions. Authors, prose,

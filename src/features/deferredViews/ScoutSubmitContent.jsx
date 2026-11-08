@@ -4,6 +4,7 @@ import StockScreenshotImport from "../../components/StockScreenshotImport.jsx";
 import { RecentRestockStores, RestockLocalSaveNotice, RestockOfflineNotice } from "../../components/RestockShortcuts.jsx";
 import { recentReportedStoreRows } from "../../utils/restockShortcuts.mjs";
 import { normalizeStoreStateCode } from "../../data/storeStates.js";
+import { getRecordGame, normalizeCollectibleGame } from "../../utils/collectibleGames.mjs";
 import ManualStoreAreaFields from "../../components/ManualStoreAreaFields.jsx";
 import "./scout-submit.css";
 import "./stock-report-easy.css";
@@ -146,7 +147,9 @@ export default function ScoutSubmitContent({ scope }) {
     const locationAvailable = Boolean(locationSettings.trackingEnabled || locationText);
     const locationOrigin = parseManualLocationCoordinates(locationText);
     const productQuery = String(quickScoutReportForm.productName || "").trim();
-    const productMatches = productQuery.length >= 2 ? getCatalogPickerResults(productQuery, 6) : [];
+    const reportGame = normalizeCollectibleGame(quickScoutReportForm.productCategory);
+    const productMatches = productQuery.length >= 2 ? getCatalogPickerResults(productQuery, 6)
+      .filter((product) => reportGame === "unspecified" || getRecordGame(product) === reportGame) : [];
     const quickProductChips = [
       "Pokemon",
       "Prismatic Evolutions",
@@ -322,6 +325,7 @@ export default function ScoutSubmitContent({ scope }) {
       manualLocation: "", manualLocationOpen: false, storeConfirmed: false,
     }));
     const selectScoutCatalogProduct = (product = {}) => {
+      if (reportGame !== "unspecified" && getRecordGame(product) !== reportGame) return;
       const known = buildCatalogAutofillDetails(product);
       setQuickScoutReportMessage("");
       setQuickScoutReportForm((current) => ({
@@ -329,7 +333,7 @@ export default function ScoutSubmitContent({ scope }) {
         catalogProductId: product.id || "",
         catalogProductName: catalogTitle(product),
         productName: catalogTitle(product),
-        productCategory: "Pokemon TCG",
+        productCategory: getRecordGame(product) === "pokemon" ? "Pokemon TCG" : current.productCategory,
         productType: known.productType || product.productType || product.product_type || "",
         productSetName: known.setName || catalogExpansionName(product) || "",
         productImageUrl: known.itemImage || catalogImage(product) || "",
@@ -1142,7 +1146,7 @@ export default function ScoutSubmitContent({ scope }) {
                     aria-describedby="scout-report-catalog-help"
                   />
                 </label>
-                <p id="scout-report-catalog-help" className="scout-report-catalog-help">Choose a catalog match or keep your own wording. A category alone is enough.</p>
+                <p id="scout-report-catalog-help" className="scout-report-catalog-help">{reportGame !== "unspecified" && reportGame !== "pokemon" ? "Use the product name from the shelf or screenshot. Live catalog lookup is not connected for this game yet." : "Choose a catalog match or keep your own wording. A category alone is enough."}</p>
                 {quickScoutReportForm.catalogProductId ? (
                   <article className="scout-report-catalog-selection" aria-label="Selected catalog product">
                     {renderScoutReferenceThumb(selectedCatalogProduct || {}, quickScoutReportForm.productImageUrl)}

@@ -2,10 +2,12 @@ import { useId, useMemo, useRef, useState } from "react";
 import { AppNavIcon } from "./command-system/AppNavIcon.jsx";
 import { PrimaryButton, SecondaryButton } from "./operations/OperationsUI.jsx";
 import { RESTOCK_FEED_FILTERS, prepareRestockFeedEntries, restockFeedBrowseState, restockFeedLocationOptions } from "../utils/restockFeedPresentation.mjs";
+import { US_STATES } from "../data/usStates.js";
+import { COLLECTIBLE_GAMES } from "../utils/collectibleGames.mjs";
 import "./restock-report-browser.css";
 
 const PAGE_SIZE = 20;
-const EMPTY_FILTERS = { search: "", stock: "all", period: "all", retailer: "", city: "" };
+const EMPTY_FILTERS = { search: "", stock: "all", period: "all", retailer: "", city: "", state: "all", game: "all" };
 
 export default function RestockReportBrowser({ reports = [], getStore, renderReport, now, onReport }) {
   const id = useId();
@@ -19,6 +21,8 @@ export default function RestockReportBrowser({ reports = [], getStore, renderRep
     filters.search.trim() ? { key: "search", label: `Search: ${filters.search.trim()}`, empty: "" } : null,
     filters.stock !== "all" ? { key: "stock", label: RESTOCK_FEED_FILTERS.find((filter) => filter.value === filters.stock)?.label, empty: "all" } : null,
     filters.period !== "all" ? { key: "period", label: filters.period === "24h" ? "Past 24 hours" : "Past 7 days", empty: "all" } : null,
+    filters.state !== "all" ? { key: "state", label: US_STATES.find((state) => state.code === filters.state)?.name || "State not recorded", empty: "all" } : null,
+    filters.game !== "all" ? { key: "game", label: COLLECTIBLE_GAMES.find((game) => game.id === filters.game)?.name || "Game not recorded", empty: "all" } : null,
     filters.retailer ? { key: "retailer", label: locations.retailers.find((option) => option.value === filters.retailer)?.label || "Selected retailer", empty: "" } : null,
     filters.city ? { key: "city", label: locations.cities.find((option) => option.value === filters.city)?.label || "Selected city", empty: "" } : null,
   ].filter(Boolean);
@@ -40,7 +44,7 @@ export default function RestockReportBrowser({ reports = [], getStore, renderRep
         <div>
           <span>Community observations</span>
           <h2 id={`${id}-title`}>Recent restock reports</h2>
-          <p>See what collectors found. Check the observed time before making a trip; stock can change.</p>
+          <p>Browse reports across all 50 states and DC. Check the observed time before making a trip; stock can change.</p>
         </div>
         <PrimaryButton onClick={onReport}>Report a restock</PrimaryButton>
       </header>
@@ -61,6 +65,22 @@ export default function RestockReportBrowser({ reports = [], getStore, renderRep
                   <option value="all">Any time</option>
                   <option value="24h">Past 24 hours</option>
                   <option value="7d">Past 7 days</option>
+                </select>
+              </label>
+            </div>
+            <div className="restock-browser-area__fields" aria-label="State and game filters">
+              <label htmlFor={`${id}-state`}><span>State</span>
+                <select id={`${id}-state`} value={filters.state} onChange={(event) => changeFilter({ state: event.target.value, city: "" })}>
+                  <option value="all">Nationwide · All states</option>
+                  {US_STATES.map((state) => <option key={state.code} value={state.code}>{state.name}</option>)}
+                  <option value="unspecified">State not recorded</option>
+                </select>
+              </label>
+              <label htmlFor={`${id}-game`}><span>Trading card game</span>
+                <select id={`${id}-game`} value={filters.game} onChange={(event) => changeFilter({ game: event.target.value })}>
+                  <option value="all">All games</option>
+                  {COLLECTIBLE_GAMES.map((game) => <option key={game.id} value={game.id}>{game.name}</option>)}
+                  <option value="unspecified">Game not recorded</option>
                 </select>
               </label>
             </div>

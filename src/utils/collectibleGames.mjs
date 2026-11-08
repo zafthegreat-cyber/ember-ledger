@@ -8,6 +8,14 @@ export const COLLECTIBLE_GAMES = Object.freeze([
   Object.freeze({ id: "yugioh", name: "Yu-Gi-Oh!", shortName: "YGO", catalogSupported: false }),
   Object.freeze({ id: "one-piece", name: "One Piece", shortName: "OP", catalogSupported: false }),
   Object.freeze({ id: "lorcana", name: "Disney Lorcana", shortName: "LOR", catalogSupported: false }),
+  Object.freeze({ id: "flesh-and-blood", name: "Flesh and Blood", shortName: "FAB", catalogSupported: false }),
+  Object.freeze({ id: "digimon", name: "Digimon", shortName: "DIGI", catalogSupported: false }),
+  Object.freeze({ id: "dragon-ball-fusion-world", name: "Dragon Ball Super: Fusion World", shortName: "DBFW", catalogSupported: false }),
+  Object.freeze({ id: "dragon-ball-masters", name: "Dragon Ball Super: Masters", shortName: "DBSM", catalogSupported: false }),
+  Object.freeze({ id: "star-wars-unlimited", name: "Star Wars: Unlimited", shortName: "SWU", catalogSupported: false }),
+  Object.freeze({ id: "gundam", name: "Gundam Card Game", shortName: "GCG", catalogSupported: false }),
+  Object.freeze({ id: "union-arena", name: "Union Arena", shortName: "UA", catalogSupported: false }),
+  Object.freeze({ id: "riftbound", name: "Riftbound", shortName: "RIFT", catalogSupported: false }),
 ]);
 
 function text(value) { return typeof value === "string" ? value.trim() : ""; }
@@ -18,7 +26,21 @@ const aliases = new Map([
   ["yugioh", ["yugioh", "yu gi oh", "yu gi oh tcg", "yugioh tcg", "yu gi oh trading card game"]],
   ["one-piece", ["one piece", "onepiece", "one piece tcg", "one piece card game"]],
   ["lorcana", ["lorcana", "disney lorcana", "disney lorcana tcg"]],
+  ["flesh-and-blood", ["flesh and blood", "flesh & blood", "flesh and blood tcg", "fab"]],
+  ["digimon", ["digimon", "digimon tcg", "digimon card game"]],
+  ["dragon-ball-fusion-world", ["dragon ball super fusion world", "dragon ball super card game fusion world", "dragon ball fusion world", "fusion world", "dbfw"]],
+  ["dragon-ball-masters", ["dragon ball super masters", "dragon ball super card game masters", "dragon ball masters", "dbs masters", "dbsm"]],
+  ["star-wars-unlimited", ["star wars unlimited", "star wars unlimited tcg", "swu"]],
+  ["gundam", ["gundam", "gundam card game", "gundam tcg", "gcg"]],
+  ["union-arena", ["union arena", "union arena tcg"]],
+  ["riftbound", ["riftbound", "riftbound tcg", "riftbound league of legends", "riftbound league of legends trading card game"]],
 ].flatMap(([id, values]) => values.map((value) => [key(value), id])));
+// Persisted canonical IDs and their display names always round-trip, including
+// hyphenated IDs that differ from a publisher's full title.
+for (const game of COLLECTIBLE_GAMES) {
+  aliases.set(key(game.id), game.id);
+  aliases.set(key(game.name), game.id);
+}
 
 export function normalizeCollectibleGame(value) { return aliases.get(key(value)) || "unspecified"; }
 
