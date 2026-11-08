@@ -15,7 +15,7 @@ self.onmessage = async ({ data }) => {
       langPath: new URL("lang", base).href,
       workerBlobURL: false,
       cacheMethod: "none",
-      gzip: true,
+      gzip: data.gzip !== false,
       logger: (entry) => self.postMessage({ type: "progress", status: entry.status, progress: entry.progress }),
       // Errors also reject the current job; do not leak text or throw a second
       // uncaught error containing worker internals into the app's global logger.

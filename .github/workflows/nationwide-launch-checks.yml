@@ -19,9 +19,11 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts
+      - run: node scripts/prepare-scout-ocr.mjs
       - run: node scripts/prepare-store-directory.mjs --check
       - run: npm run test:nationwide-restocks
       - run: node --no-warnings --test scripts/test-national-launch.mjs
+      - run: node --no-warnings --test scripts/test-native-ocr-assets.mjs scripts/test-scout-screenshot-ocr.mjs
       - run: node --no-warnings --test scripts/test-app-review-access.mjs scripts/test-account-session-client.mjs scripts/test-tier-foundation.mjs scripts/test-role-management.mjs
       - run: node scripts/test-scout-store-records.cjs --handlers-only
       - run: npm run test:cloud-workspace-sync

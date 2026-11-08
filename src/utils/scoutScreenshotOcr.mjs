@@ -9,6 +9,9 @@ export const SCOUT_SCREENSHOT_LIMITS = Object.freeze({
 });
 
 const TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+// Android asset packaging removes .gz and serves the unpacked model. Native
+// builds prepare the same uncompressed filename for both Android and iOS.
+export const SCOUT_SCREENSHOT_MODEL_GZIP = import.meta.env?.VITE_NATIVE_BUILD !== "true";
 const result = (status, code, message, extra = {}) => ({ status, code, message, text: "", confidence: null, engine: "tesseract-english", language: "eng", ...extra });
 const failure = (code) => Object.assign(new Error(code), { code });
 const u16 = (bytes, offset) => (bytes[offset] << 8) | bytes[offset + 1];
@@ -143,7 +146,7 @@ export async function extractScoutScreenshotText(file, { signal, onProgress, tim
           } else if (data?.type === "result") resolve(data);
           else if (data?.type === "failure") reject(failure("ocr_failed"));
         };
-        worker.postMessage({ type: "recognize", image: cleanBytes }, [cleanBytes.buffer]);
+        worker.postMessage({ type: "recognize", image: cleanBytes, gzip: SCOUT_SCREENSHOT_MODEL_GZIP }, [cleanBytes.buffer]);
       });
       ensureActive();
       const text = normalizeScoutScreenshotText(response.text);

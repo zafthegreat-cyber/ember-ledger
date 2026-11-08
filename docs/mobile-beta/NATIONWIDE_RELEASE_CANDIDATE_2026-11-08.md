@@ -14,6 +14,7 @@ Cached directories currently cover VA, NC, MD and DC only. Coverage is verified 
 - Public release-config checks reject local auth, QA bypasses, missing account services and public server secrets. No new credential is bundled.
 - Settings is eagerly available across releases; missing asset requests return an uncached 404 rather than SPA HTML in the candidate's Vercel routing. The old production deployment still returned HTML for a missing asset during the public audit.
 - Android signing has early validation and private cleanup. Existing signing identity is retained. The old build 7 must not be represented as containing this candidate.
+- Inspecting the signed Android package found a missing OCR model URL: Android unpacked `eng.traineddata.gz`, while the reader still requested the compressed name. Native builds now deliberately package `eng.traineddata` and request it uncompressed on Android/iOS; web builds keep the compressed model. Model, worker and compiled-mode regression tests cover that contract. Every generated native web asset must also match its packaged bundle entry before distribution.
 - Complimentary reviewer access is separate from administration. See the updated submission guide for the account and release gate.
 
 ## Verification and remaining release gates
