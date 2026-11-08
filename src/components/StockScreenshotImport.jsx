@@ -2,9 +2,11 @@ import { useEffect, useId, useRef, useState } from "react";
 import { COLLECTIBLE_GAMES } from "../utils/collectibleGames.mjs";
 import { extractScoutScreenshotText, validateScoutScreenshotFile } from "../utils/scoutScreenshotOcr.mjs";
 import { createStockScreenshotPatch, parseStockScreenshotText } from "../utils/stockScreenshotDraft.mjs";
+import ManualStoreAreaFields from "./ManualStoreAreaFields.jsx";
 import "./stock-screenshot-import.css";
 
 const EMPTY_STORES = Object.freeze([]);
+const MANUAL_LOCATION = "__manual_location__";
 const FLAG_LABELS = {
   observed_time_required: "Confirm when the stock was seen. The screenshot's clock is not the observation time.",
   source_time_not_observed_time: "A post time or relative date needs your review.",
@@ -35,6 +37,7 @@ export default function StockScreenshotImport({ stores = EMPTY_STORES, reportDra
   const [category, setCategory] = useState("");
   const [status, setStatus] = useState("");
   const [chosenStore, setChosenStore] = useState("");
+  const [manualStore, setManualStore] = useState(() => ({ name: reportDraft.manualLocation || reportDraft.storeName || "", city: reportDraft.city || "", state: reportDraft.state || "" }));
   const [observedTime, setObservedTime] = useState("");
   const [timeConfirmed, setTimeConfirmed] = useState(false);
   const [replace, setReplace] = useState(false);
@@ -129,7 +132,8 @@ export default function StockScreenshotImport({ stores = EMPTY_STORES, reportDra
   function apply() {
     if (reviewStale) { setError("The post text changed since the last review. Choose \"Find report details\" again and check the suggestions before using them."); return; }
     const result = createStockScreenshotPatch(reportDraft, {
-      storeId: chosenStore || reportDraft.storeId || "", productName, productCategory: category,
+      storeId: chosenStore === MANUAL_LOCATION ? "" : chosenStore || reportDraft.storeId || "", productName, productCategory: category,
+      manualStore: chosenStore === MANUAL_LOCATION ? manualStore : undefined,
       reportType: status, platform, reportDate: observedTime.slice(0, 10), reportTime: observedTime.slice(11, 16),
       observedTimeConfirmed: timeConfirmed, replaceEnteredFields: replace,
     }, { stores: knownStores });
@@ -166,7 +170,11 @@ export default function StockScreenshotImport({ stores = EMPTY_STORES, reportDra
       <header><h4 id={`${id}-review-heading`} ref={reviewHeadingRef} tabIndex={-1}>Review screenshot details</h4><p>Confirm the exact store and when the stock was seen. Suggestions are a starting point.</p></header>
       {suggestions?.flags?.length ? <ul className="stock-screenshot-review-flags">{[...new Set(suggestions.flags.map((flag) => FLAG_LABELS[flag]).filter(Boolean))].map((label) => <li key={label}>{label}</li>)}</ul> : null}
       <div className="stock-screenshot-review-fields">
-        <label>Exact store<select value={chosenStore} onChange={(event) => setChosenStore(event.target.value)}><option value="">{reportDraft.storeId || reportDraft.manualLocation ? "Keep the store already entered in the report" : "Choose the exact location"}</option>{orderedStores.map((store) => <option key={storeId(store)} value={storeId(store)}>{[storeName(store), store.city, store.address].filter(Boolean).join(" · ")}</option>)}</select></label>
+        <label>Exact store<select value={chosenStore} onChange={(event) => setChosenStore(event.target.value)}><option value="">{reportDraft.storeId || reportDraft.manualLocation ? "Keep the store already entered in the report" : "Choose the exact location"}</option><option value={MANUAL_LOCATION}>Enter a store not listed</option>{orderedStores.map((store) => <option key={storeId(store)} value={storeId(store)}>{[storeName(store), store.city, store.state || store.stateCode, store.address].filter(Boolean).join(" · ")}</option>)}</select></label>
+        {chosenStore === MANUAL_LOCATION ? <div className="scout-manual-store-panel">
+          <label>Store name<input value={manualStore.name} maxLength={200} onChange={event => setManualStore(current => ({ ...current, name: event.target.value }))} /></label>
+          <ManualStoreAreaFields value={manualStore} onChange={(field, value) => setManualStore(current => ({ ...current, [field]: value }))} />
+        </div> : null}
         <label>Products mentioned<textarea value={productName} maxLength={1200} onChange={(event) => { edited.current.add("items"); setProductName(event.target.value); }} placeholder="For example: Prismatic Evolutions ETBs" /></label>
         <label>Product category<select value={category} onChange={(event) => { edited.current.add("category"); setCategory(event.target.value); }}><option value="">Choose a category</option>{categoryOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
         <label>Stock status in the post<select value={status} onChange={(event) => { edited.current.add("status"); setStatus(event.target.value); }}><option value="">Choose after reviewing</option><option value="stock_on_shelf">Stock seen</option><option value="low_stock">Low stock</option><option value="no_stock">No stock</option><option value="restock_happening_now">Stocking now</option></select></label>

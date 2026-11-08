@@ -48,12 +48,19 @@ test("actual Restocks screen switches nationwide and opens a correctly scoped st
     assert.equal(dialog.querySelector('select[aria-label="State"]').value, "Texas");
     assert.equal(dialog.querySelector('select[aria-label="State"]').options.length, 52);
     assert.match(dialog.textContent, /until approved/);
-    const original = { id: "nationwide-private-report", userId: "local-beta-scout", state: "CA", city: "Richmond", region: "", storeName: "Synthetic manual store", stockStatus: "no_stock", observedAt: "2026-10-01T12:00:00Z", visibility: "private_from_map", price: 81.05 };
-    localStorage.setItem("et-tcg-beta-scout", JSON.stringify({ reports: [original], stores: [{ id: "nationwide-store-ca", name: "Synthetic Richmond shop", state: "CA", city: "Richmond", region: "East Bay", active: true, latitude: 37.9358, longitude: -122.3477 }] }));
+    const original = { id: "nationwide-private-report", userId: "local-beta-scout", state: "CA", city: "Richmond", region: "", storeName: "Synthetic manual store", stockStatus: "no_stock", observedAt: "2026-10-01T12:00:00Z", createdAt: new Date().toISOString(), visibility: "private_from_map", price: 81.05 };
+    const otherReport = { id: "nationwide-va-report", storeId: "nationwide-store-va", state: "VA", city: "Norfolk", storeName: "Virginia fixture", stockStatus: "in_stock", observedAt: new Date().toISOString(), visibility: "private_from_map", userId: "local-beta-scout" };
+    localStorage.setItem("et-tcg-beta-scout", JSON.stringify({ reports: [original, otherReport], stores: [{ id: "nationwide-store-ca", name: "Synthetic Richmond shop", state: "CA", city: "Richmond", region: "East Bay", active: true, latitude: 37.9358, longitude: -122.3477 }, { id: "nationwide-store-va", name: "Virginia fixture", state: "VA", city: "Norfolk", region: "Hampton Roads / 757", active: true, favorite: true, watched: true, latitude: 36.85, longitude: -76.29 }] }));
     await act(async () => { root.render(React.createElement(Scout, { key: "saved-locations", storeDirectoryState: "CA" })); });
     assert.match(document.body.textContent, /Only 1 report in California/);
     assert.match(document.body.textContent, /Synthetic Richmond shop/, "Custom metro labels must not hide stores from the statewide view");
+    assert.match(document.body.textContent, /No current report/, "Uploading old history today must not create a current signal");
     assert.deepEqual(JSON.parse(localStorage.getItem("et-tcg-beta-scout")).reports[0], original);
+    picker = document.querySelector('select[aria-label="Restocks state"]');
+    await act(async () => { picker.value = "TX"; picker.dispatchEvent(new dom.window.Event("change", { bubbles: true })); });
+    assert.equal(document.querySelectorAll('.scout-command-radar .scout-tile-map-pin').length, 0, "An empty Texas map must not fall back to California or Virginia, including watched/trusted/report pins");
+    assert.match(document.body.textContent, /No reports in Texas yet/);
+    assert.match(document.querySelector('[aria-label="Restocks intelligence rail"]').textContent, /No current report/);
   } finally {
     if (root) await act(async () => root.unmount());
     dom.window.close();

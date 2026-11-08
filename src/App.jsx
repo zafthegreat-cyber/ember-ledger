@@ -101,7 +101,7 @@ import {
 import { POKEMON_SETS } from "./data/pokemonSetCatalog";
 import { COLLECTIBLE_GAMES, getRecordGame } from "./utils/collectibleGames.mjs";
 import "./data/storeGroups";
-import { DEFAULT_STORE_STATE_CODE, STORE_DIRECTORY_STATES, STORE_DIRECTORY_STATE_CODES, detectStoreStateFromText, normalizeStoreStateCode, storeStateShortName } from "./data/storeStates";
+import { DEFAULT_STORE_STATE_CODE, STORE_DIRECTORY_STATES, STORE_DIRECTORY_STATE_CODES, detectStoreStateFromText, getStoreDirectoryState, normalizeStoreStateCode, storeStateShortName } from "./data/storeStates";
 import { MARKET_SOURCES, MARKET_STATUS, MARKET_STATUS_LABELS } from "./data/marketSources";
 import { CATALOG_IMPORT_SOURCES, flagCatalogDuplicates, validateCatalogImport } from "./utils/catalogImportUtils";
 import { CATALOG_SORT_OPTIONS, compareCatalogProducts, getCardSortMeta } from "./utils/catalogSortUtils";
@@ -918,7 +918,8 @@ const runtimeParams = typeof window !== "undefined" ? new URLSearchParams(window
 const BETA_LOCAL_MODE = isLocalDevelopmentIdentityEnabled({
   queryEnabled: runtimeParams?.get("betaLocalMode") === "true",
 });
-const QA_UNLOCK_PAID_FEATURES = runtimeParams?.get("qaUnlockPaid") === "true" || import.meta.env.VITE_QA_UNLOCK_PAID_FEATURES === "true";
+const QA_UNLOCK_PAID_FEATURES = import.meta.env.DEV && isLocalDevelopmentIdentityEnabled({ queryEnabled: true })
+  && (runtimeParams?.get("qaUnlockPaid") === "true" || import.meta.env.VITE_QA_UNLOCK_PAID_FEATURES === "true");
 const SUBSCRIPTIONS_LIVE = false;
 const FEATURE_GATES_ENABLED = true;
 const LOCAL_STORAGE_KEY = "et-tcg-beta-data";
@@ -8038,6 +8039,7 @@ export default function App() {
 
 
   const smartSetupPreferences = normalizeSmartSetupPreferences(betaReadinessData.onboarding?.smartSetup || {});
+  const appReviewAccessActive = !guestPreviewActive && currentUserProfile?.appReviewAccess === true;
   // Restocks store directory state: the user's pick, else a guess from their
   // home area (ZIP, "City, ST"), else Virginia.
   const chosenStoreDirectoryState = normalizeStoreStateCode((guestPreviewActive && guestStoreState) || locationSettings.storeState);
@@ -8057,20 +8059,20 @@ export default function App() {
     setupPreferences: smartSetupPreferences,
     userType: currentUserProfile?.userType || currentUserProfile?.user_type || userType,
     dashboardPreset: currentUserProfile?.dashboardPreset || currentUserProfile?.dashboard_preset || dashboardPreset,
-    personaPreference: appSetupPersonalization?.experiencePersona,
+    personaPreference: appSetupPersonalization?.experiencePersona || (appReviewAccessActive ? "seller" : ""),
     adminVisible: adminViewingAsAdmin,
     ownerVisible: !guestPreviewActive && ownerSession.status === OWNER_SESSION_STATES.AUTHORIZED && adminViewingAsAdmin,
     canPreview: canPreviewPlans,
     preview: { enabled: tierPreviewActive, tier: adminPreviewTier, persona: adminPreviewPersona },
   });
   const optionalExperienceTools = appSetupPersonalization?.optionalTools || {};
-  const showFamilyExperience = experiencePresentation.isPreview
+  const showFamilyExperience = appReviewAccessActive || (experiencePresentation.isPreview
     ? experiencePresentation.showFamilyTools
     : appSetupPersonalization?.optionalToolsCustomized?.includes("family")
       ? optionalExperienceTools.family === true
-      : experiencePresentation.showFamilyTools || optionalExperienceTools.family === true;
-  const showCommunityExperience = experiencePresentation.showAdminTools || (!experiencePresentation.isPreview && optionalExperienceTools.community === true);
-  const showAssistantExperience = experiencePresentation.showAdminTools || (!experiencePresentation.isPreview && optionalExperienceTools.assistant === true);
+      : experiencePresentation.showFamilyTools || optionalExperienceTools.family === true);
+  const showCommunityExperience = appReviewAccessActive || experiencePresentation.showAdminTools || (!experiencePresentation.isPreview && optionalExperienceTools.community === true);
+  const showAssistantExperience = appReviewAccessActive || experiencePresentation.showAdminTools || (!experiencePresentation.isPreview && optionalExperienceTools.assistant === true);
   const ownerToolsVisible = experiencePresentation.showOwnerTools;
   const regularPreviewPlanProfile = actualAdminUser && !adminViewingAsAdmin
     ? createTierPreviewProfile(tierPreviewActive ? adminPreviewTier : normalizePreviewTier(currentTier) || "free")
@@ -8094,7 +8096,7 @@ export default function App() {
     subscriptionProfile?.is_moderator
   );
   const adminHeavyDataVisible = !guestPreviewActive && earlyAdminProfileSignal && adminModeStorageReady && adminViewMode === "admin";
-  const commandDeskSellerAccess = experiencePresentation.showBusinessTools || experiencePresentation.showAdminTools;
+  const commandDeskSellerAccess = appReviewAccessActive || experiencePresentation.showBusinessTools || experiencePresentation.showAdminTools;
   const adaptiveAdminNavVisible = Boolean(
     !guestPreviewActive &&
     adminModeStorageReady &&
@@ -8109,10 +8111,10 @@ export default function App() {
   );
   const smartSetupRecommendation = recommendSmartSetup(smartSetupPreferences, { adminAllowed: adaptiveAdminNavVisible });
   const adaptiveUiState = resolveAdaptiveUiState({
-    userType: experiencePresentation.showBusinessTools ? "seller" : "collector",
-    dashboardPreset: showFamilyExperience ? "family" : experiencePresentation.showBusinessTools ? "seller" : "collector",
-    isSellerExperience: experiencePresentation.showBusinessTools,
-    sellerToolsEnabled: experiencePresentation.showBusinessTools,
+    userType: commandDeskSellerAccess ? "seller" : "collector",
+    dashboardPreset: showFamilyExperience ? "family" : commandDeskSellerAccess ? "seller" : "collector",
+    isSellerExperience: commandDeskSellerAccess,
+    sellerToolsEnabled: commandDeskSellerAccess,
     adminToolsVisible: adaptiveAdminNavVisible,
     moderatorToolsVisible: adaptiveModeratorNavVisible && !adaptiveAdminNavVisible,
     currentRoute: activeTab,
@@ -8141,7 +8143,7 @@ export default function App() {
   }
 
   function quickAddSellerToolsEnabled() {
-    return experiencePresentation.showBusinessTools || experiencePresentation.showAdminTools;
+    return commandDeskSellerAccess;
   }
 
   function updateAppSetupPersonalization(updater, message = "") {
@@ -8301,7 +8303,7 @@ export default function App() {
     && !ownerCenterAuthorized;
   const presentedProductWorkspaces = availableProductWorkspaces.filter((workspace) => {
     if (workspace.id === WORKSPACE_IDS.BOT) return ownerToolsVisible;
-    if ([WORKSPACE_IDS.BUSINESS, WORKSPACE_IDS.SELL].includes(workspace.id)) return experiencePresentation.showBusinessTools || experiencePresentation.showAdminTools;
+    if ([WORKSPACE_IDS.BUSINESS, WORKSPACE_IDS.SELL].includes(workspace.id)) return commandDeskSellerAccess;
     return true;
   });
   const switcherWorkspaces = presentedProductWorkspaces.map((workspace) => ({
@@ -21623,7 +21625,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   }
 
   function scoutActiveAreaText() {
-    return String(
+    const area = String(
       locationSettings.manualLocation ||
       locationSettings.selectedSavedLocation ||
       currentUserProfile?.homeArea ||
@@ -21632,6 +21634,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       currentUserProfile?.preferred_region ||
       ""
     ).trim();
+    const state = getStoreDirectoryState(storeDirectoryState);
+    const detected = detectStoreStateFromText(area);
+    return state && (!area || (detected && detected !== state.code)) ? state.shortName : area;
   }
 
   function scoutAreaHints(value = "") {
@@ -21768,6 +21773,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     }
     const manualName = manualLocation || formStoreName;
     if (manualName) {
+      if (!scoutText(form.city) || !normalizeStoreStateCode(form.state)) {
+        return { valid: false, mode: "manual", message: "Enter the store city and choose its state before continuing.", storeId: "" };
+      }
       const store = {
         id: "",
         storeId: "",
@@ -21775,6 +21783,8 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
         nickname: manualName,
         retailer: formRetailer || "Manual",
         city: form.city || "",
+        state: form.state || "",
+        region: form.region || "",
         address: form.address || "",
       };
       return {
@@ -31806,6 +31816,7 @@ function renderForgeBusinessLedgerPanel() {
     betaTester: !guestPreviewActive && !actualAdminUser && (BETA_LOCAL_MODE || currentUserProfile?.betaTester || currentUserProfile?.isBetaTester),
     localBeta: !tierPreviewActive && BETA_LOCAL_MODE,
     qaUnlock: !tierPreviewActive && QA_UNLOCK_PAID_FEATURES,
+    reviewAccess: !tierPreviewActive && appReviewAccessActive,
     // Scout-earned unlock: reporters who reach the point threshold see current
     // store details and alerts without a paid plan (see featureGates.js).
     scoutPoints: tierPreviewActive ? 0 : getScoutPoints(currentUserProfile || {}, scoutSnapshot.scoutProfile || {}),
@@ -31814,6 +31825,7 @@ function renderForgeBusinessLedgerPanel() {
   const tierAccess = getTierAccess(regularPreviewPlanProfile, {
     admin: adminViewingAsAdmin && roleAdminUser,
     betaTester: featureGateOptions.betaTester,
+    reviewAccess: featureGateOptions.reviewAccess,
   });
   const currentTierLabel = tierAccess.tierLabel || TIER_LABELS[currentTier] || TIER_LABELS[PLAN_TYPES.FREE] || "Free";
   const openPlanComparisonPreview = () => setActiveTab("membership");
@@ -45259,6 +45271,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         renderProductImageFallback,
         resolveQuickScoutStoreSelection,
         scoutActiveAreaText,
+        storeDirectoryState,
         scoutForecastPreviewRows,
         scoutGuessPoints,
         scoutGuessRows,

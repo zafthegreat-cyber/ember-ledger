@@ -26,7 +26,7 @@ import RestockReportDetails from "../components/RestockReportDetails.jsx";
 import StoreObservationSummary from "../components/StoreObservationSummary.jsx";
 import ScoutDeleteReportDialog from "../components/ScoutDeleteReportDialog.jsx";
 import { createRestockDetailsHistory } from "../utils/restockDetailsHistory.mjs";
-import { restockReportObservedLabel, restockReportStockGroup, restockReportStockLabel, restockReportTrustLabel } from "../utils/restockFeedPresentation.mjs";
+import { restockReportObservedLabel, restockReportObservedTimestamp, restockReportStockGroup, restockReportStockLabel, restockReportTrustLabel } from "../utils/restockFeedPresentation.mjs";
 import { hasVerifiedScoutReportStatus } from "../utils/scoutReportVerification.mjs";
 import { AppNavIcon, CommandBoardSection, CommandBoardV4, CommandMetricGrid } from "../components/command-system";
 import "./scout-reports.css";
@@ -66,7 +66,7 @@ import {
 import { BEST_BUY_ALERT_TYPES, BEST_BUY_NIGHTLY_DEFAULTS, BEST_BUY_STOCK_STATUSES } from "../data/bestBuyStockSeed";
 import { SCOUT_CONFIDENCE_LEVELS, SCOUT_HISTORICAL_INTEL_SEED, SCOUT_SOURCE_TYPES, SCOUT_STORE_ALIASES, SCOUT_VISIBILITY_COPY, buildScoutRestockPatterns } from "../data/scoutRestockIntelSeed";
 import { DROP_RADAR_GUESS_LOCKED_MESSAGE, MIN_SCOUT_POINTS_FOR_GUESS, canSubmitScoutGuess, getScoutPoints, shouldUseDropRadarSeed } from "../utils/dropRadarUtils.mjs";
-import { normalizeCityLabel } from "../utils/regionalBrowsingUtils.js";
+import { matchesRegionalAreaFilters, normalizeCityLabel } from "../utils/regionalBrowsingUtils.js";
 const MISSING_STORE_STATES = [...STORE_DIRECTORY_STATES.map((state) => state.name), "Other"];
 import {
   cacheBestBuyStockResult,
@@ -1327,6 +1327,7 @@ export default function Scout({
   const [selectedState, setSelectedState] = useState(homeStateName);
   const [selectedChain, setSelectedChain] = useState("All");
   const [selectedRegion, setSelectedRegion] = useState(homeBrowseRegion);
+  const matchesOverviewArea = useCallback((store) => matchesRegionalAreaFilters(store, { state: selectedState, region: selectedRegion }), [selectedState, selectedRegion]);
   const [selectedCity, setSelectedCity] = useState("All");
   const [selectedStoreType, setSelectedStoreType] = useState("All");
   const [storeFamilyFilter, setStoreFamilyFilter] = useState("all");
@@ -3839,6 +3840,12 @@ async function handleUpdateStore(e) {
     };
   }, [reportStoreMap]);
 
+  const overviewAreaReports = useMemo(() => visibleAllReports.filter(report => matchesOverviewArea(getReportStore(report))), [visibleAllReports, getReportStore, matchesOverviewArea]);
+  const overviewRecentReports = useMemo(() => overviewAreaReports.filter(report => {
+    const observed = restockReportObservedTimestamp(report);
+    return observed !== null && observed <= scoutNow && observed >= scoutNow - 24 * 60 * 60 * 1000;
+  }), [overviewAreaReports, scoutNow]);
+
   const reportsByStore = useMemo(() => {
     return visibleAllReports.reduce((acc, report) => {
       const storeId = getReportStoreId(report);
@@ -3910,7 +3917,7 @@ async function handleUpdateStore(e) {
       });
   }, [stores, reportsByStore, adminMode, scoutNow, homeStateName]);
 
-  const topTrustedShopProfiles = useMemo(() => trustedShopProfiles.slice(0, 4), [trustedShopProfiles]);
+  const topTrustedShopProfiles = useMemo(() => trustedShopProfiles.filter(profile => matchesOverviewArea(profile.store)).slice(0, 4), [trustedShopProfiles, matchesOverviewArea]);
 
   const scoutReliabilitySummary = useMemo(() => {
     const strong = trustedShopProfiles.filter((profile) => profile.confidence === "Strong").length;
@@ -4408,8 +4415,8 @@ async function handleUpdateStore(e) {
   ), "distance").slice(0, 3);
   const watchedStoreSlotLimit = 3;
   const watchedStoreUsagePercent = Math.min(100, Math.round((watchedStoreOverviewRows.length / watchedStoreSlotLimit) * 100));
-  const scoutOverviewReportRows = [...visibleAllReports]
-    .sort((a, b) => getStoreReportTimestamp(b) - getStoreReportTimestamp(a))
+  const scoutOverviewReportRows = [...overviewRecentReports]
+    .sort((a, b) => restockReportObservedTimestamp(b) - restockReportObservedTimestamp(a))
     .slice(0, 3)
     .map((report, index) => {
       const store = getReportStore(report);
@@ -4480,18 +4487,16 @@ async function handleUpdateStore(e) {
       (selectedState === "All" || normalizeStateLabel(store.state) === selectedState) &&
       (selectedRegion === "All" || normalizeStoreRegion(store.region) === selectedRegion)
     );
-    const mapDirectoryRows = [...(regionalStoreRows.length ? regionalStoreRows : activeStoreRows)].sort((left, right) => {
+    const mapDirectoryRows = [...regionalStoreRows].sort((left, right) => {
       const leftHasCoordinates = hasExactCoordinates(left);
       const rightHasCoordinates = hasExactCoordinates(right);
       if (leftHasCoordinates !== rightHasCoordinates) return rightHasCoordinates ? 1 : -1;
       return String(getStoreDisplayName(left)).localeCompare(String(getStoreDisplayName(right)));
     });
     const topProfileStore = scoutOverviewTopProfile?.store || null;
-    const mapTopProfile = topProfileStore && (
-      selectedRegion === "All" || normalizeStoreRegion(topProfileStore.region) === selectedRegion
-    ) ? scoutOverviewTopProfile : null;
+    const mapTopProfile = topProfileStore && matchesOverviewArea(topProfileStore) ? scoutOverviewTopProfile : null;
     const candidateRows = [
-      ...watchedStoreOverviewRows.map((store) => addMapRow(store, {
+      ...watchedStoreOverviewRows.filter(matchesOverviewArea).map((store) => addMapRow(store, {
         id: store.id,
         store,
         watchlisted: true,
@@ -4503,7 +4508,7 @@ async function handleUpdateStore(e) {
         trusted: true,
         area: mapTopProfile.areaLabel,
       }) : null,
-      ...visibleAllReports.slice(0, 8).map((report) => {
+      ...overviewRecentReports.slice(0, 8).map((report) => {
         const store = getReportStore(report);
         return addMapRow({ ...report, store }, {
           id: report.id || report.reportId || report.report_id || store.id,
@@ -4529,7 +4534,7 @@ async function handleUpdateStore(e) {
         return String(left.name || "").localeCompare(String(right.name || ""));
       })
       .slice(0, 18);
-  }, [adminMode, scoutOverviewTopProfile, selectedRegion, selectedState, stores, visibleAllReports, watchedStoreOverviewRows, getReportStore]);
+  }, [adminMode, scoutOverviewTopProfile, selectedRegion, selectedState, stores, overviewRecentReports, watchedStoreOverviewRows, getReportStore, matchesOverviewArea]);
   if (selectedMapStoreId && !scoutOverviewMapRows.some((row) => String(row.id) === String(selectedMapStoreId))) {
     setSelectedMapStoreId("");
   }
@@ -4546,7 +4551,7 @@ async function handleUpdateStore(e) {
     Number.isFinite(selectedMapStoreCoordinates.lng)
   );
   const scoutOverviewStats = [
-    { label: "Current reports", value: visibleAllReports.length, detail: "area-level signals" },
+    { label: "Current reports", value: overviewRecentReports.length, detail: "selected area · past 24 hours" },
     { label: "Watched stores", value: `${watchedStoreOverviewRows.length}/${watchedStoreSlotLimit}`, detail: "free launch slots" },
     { label: "Trusted shops", value: topTrustedShopProfiles.length, detail: "ranked by proof" },
     { label: "Active alerts", value: visibleScoutAlerts.length, detail: "Restocks and drops" },
@@ -4586,13 +4591,7 @@ async function handleUpdateStore(e) {
   const scoutOverviewRegionLabel = selectedRegion === "All" ? scoutOverviewStateLabel : selectedRegion;
   // Reports tied to a store in the selected state and region; few or none
   // means the area needs more local reporters before signals are useful.
-  const scoutAreaReportCount = visibleAllReports.filter((report) => {
-    const store = getReportStore(report);
-    const region = normalizeStoreRegion(store.region);
-    const stateCode = normalizeStoreStateCode(store.state) || storeStateForRegion(region);
-    if (selectedState !== "All" && stateCode !== normalizeStoreStateCode(selectedState)) return false;
-    return selectedRegion === "All" || region === selectedRegion;
-  }).length;
+  const scoutAreaReportCount = overviewAreaReports.length;
 
   // Switches Restocks to another directory state and remembers it as the
   // user's state when the app supports that.
@@ -4640,7 +4639,7 @@ async function handleUpdateStore(e) {
   const scoutCommandStatus = [
     { key: "region", icon: "workspace", label: "Area", value: scoutCommandAreaLabel, detail: "manual location" },
     { key: "stores", icon: "scout", label: "Mapped stores", value: scoutOverviewMappedStoreCount, detail: "coordinate-backed" },
-    { key: "reports", icon: "data", label: "Recent reports", value: totals.reports, detail: "proof and confidence" },
+    { key: "reports", icon: "data", label: "Recent reports", value: overviewRecentReports.length, detail: "selected area · past 24 hours" },
     { key: "watched", icon: "bell", label: "Watched stores", value: `${watchedStoreOverviewRows.length}/${watchedStoreSlotLimit}`, detail: "alert priority" },
     { key: "safety", icon: "admin", label: "Family guard", value: "Protected", detail: "area-only location" },
   ];

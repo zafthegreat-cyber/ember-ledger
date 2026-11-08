@@ -97,7 +97,7 @@ test("nationwide manual location survives the deployed notes format and account-
 });
 
 test("states without bundled stores load empty without fetching an undefined URL or Virginia fallback", async () => {
-  const result = await build({ entryPoints: ["src/data/storeDirectory.js"], bundle: true, platform: "node", format: "esm", write: false, outdir: "out", loader: { ".json": "file" }, logLevel: "silent" });
+  const result = await build({ entryPoints: ["src/data/storeDirectory.js"], bundle: true, platform: "node", format: "esm", write: false, outdir: "out", logLevel: "silent" });
   const code = result.outputFiles.find(file => file.path.endsWith(".js")).text;
   const module = await import(`data:text/javascript;base64,${Buffer.from(code).toString("base64")}`);
   const originalFetch = globalThis.fetch;

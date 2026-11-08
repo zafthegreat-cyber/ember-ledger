@@ -855,11 +855,20 @@ export function getTierAccess(profile = {}, options = {}) {
   const admin = Boolean(options.admin) || isAdminUser(profileObject);
   const tier = admin ? PLAN_IDS.ADMIN : getUserTier(profileObject);
   const base = TIER_ACCESS_RULES[tier] || TIER_ACCESS_RULES[PLAN_IDS.FREE];
+  const reviewAccess = options.reviewAccess === true && !admin;
+  const memberRules = reviewAccess ? PUBLIC_TIER_ORDER.map((id) => TIER_ACCESS_RULES[id]) : [];
+  const reviewed = reviewAccess ? Object.fromEntries(Object.entries(base).map(([key, value]) => [
+    key,
+    typeof value === "boolean" ? memberRules.some((rule) => rule[key] === true)
+      : key === "scoutStoreSwapDays" ? Math.min(...memberRules.map((rule) => rule[key]))
+        : Math.max(...memberRules.map((rule) => rule[key])),
+  ])) : base;
   return {
-    ...base,
+    ...reviewed,
     plan_tier: admin ? PLAN_IDS.ADMIN : tier,
     planTier: admin ? PLAN_IDS.ADMIN : tier,
-    tierLabel: PLAN_LABELS[admin ? PLAN_IDS.ADMIN : tier] || PLAN_LABELS[PLAN_IDS.FREE],
+    tierLabel: reviewAccess ? "App review · all member features" : PLAN_LABELS[admin ? PLAN_IDS.ADMIN : tier] || PLAN_LABELS[PLAN_IDS.FREE],
+    isAppReview: reviewAccess,
     isBeta: Boolean(options.betaTester || isBetaTester(profileObject)),
     isAdmin: admin,
     isApproved: isApprovedUser(profileObject),
@@ -936,6 +945,9 @@ export function canUseFeature(userPlan = PLAN_IDS.FREE, featureKey, options = {}
   const tier = typeof userPlan === "object" ? getUserTier(profile) : normalizeTier(userPlan);
   const allowedPlans = FEATURE_GATES[featureKey];
   if (!allowedPlans) return false;
+  // A reviewer gets the union of customer plans, never moderation, catalog
+  // management, raw history or other features reserved for staff.
+  if (options.reviewAccess === true && allowedPlans.some((plan) => PUBLIC_TIER_ORDER.includes(plan))) return true;
   if (allowedPlans.map(normalizeTier).includes(tier)) return true;
   return isScoutEarnedFeature(featureKey) && hasScoutEarnedUnlock(profile, options);
 }

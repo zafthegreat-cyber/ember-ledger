@@ -3,8 +3,8 @@ import { PrivateStorageImage } from "../../components/PrivateReceipt.jsx";
 import StockScreenshotImport from "../../components/StockScreenshotImport.jsx";
 import { RecentRestockStores, RestockLocalSaveNotice, RestockOfflineNotice } from "../../components/RestockShortcuts.jsx";
 import { recentReportedStoreRows } from "../../utils/restockShortcuts.mjs";
-import { US_STATES } from "../../data/usStates.js";
 import { normalizeStoreStateCode } from "../../data/storeStates.js";
+import ManualStoreAreaFields from "../../components/ManualStoreAreaFields.jsx";
 import "./scout-submit.css";
 import "./stock-report-easy.css";
 import "./stock-report-guidance.css";
@@ -80,6 +80,7 @@ export default function ScoutSubmitContent({ scope }) {
     renderProductImageFallback,
     resolveQuickScoutStoreSelection,
     scoutActiveAreaText,
+    storeDirectoryState = "",
     scoutForecastPreviewRows,
     scoutGuessPoints,
     scoutGuessRows,
@@ -133,7 +134,8 @@ export default function ScoutSubmitContent({ scope }) {
   };
 
   function renderScoutSubmitFlowContent() {
-    const stores = getScoutQuickStores();
+    const selectedStateCode = normalizeStoreStateCode(storeDirectoryState);
+    const stores = getScoutQuickStores().filter(store => !selectedStateCode || normalizeStoreStateCode(store.state || store.stateCode) === selectedStateCode);
     const currentType = quickScoutReportTypeMeta();
     const storeSelection = resolveQuickScoutStoreSelection();
     const selectedStore = storeSelection.mode === "known" ? storeSelection.store : null;
@@ -592,27 +594,14 @@ export default function ScoutSubmitContent({ scope }) {
                   placeholder="Manual store/location if missing"
                 />
                 {!quickScoutReportForm.storeId && quickScoutReportForm.manualLocation.trim() ? (
-                  <div className="scout-manual-store-area">
-                    <label>
-                      <span>Store city</span>
-                      <input aria-label="Manual store city" value={quickScoutReportForm.city || ""} onChange={(event) => updateQuickScoutReportForm("city", event.target.value)} placeholder="City" autoComplete="address-level2" />
-                    </label>
-                    <label>
-                      <span>Store state</span>
-                      <select aria-label="Manual store state" value={normalizeStoreStateCode(quickScoutReportForm.state)} onChange={(event) => updateQuickScoutReportForm("state", event.target.value)}>
-                        <option value="">Choose a state</option>
-                        {US_STATES.map((state) => <option key={state.code} value={state.code}>{state.shortName}</option>)}
-                      </select>
-                    </label>
-                    <p>Use the store’s location so collectors can find this report in the right area.</p>
-                  </div>
+                  <ManualStoreAreaFields value={quickScoutReportForm} onChange={updateQuickScoutReportForm} />
                 ) : null}
                 {selectedStoreContext ? (
                   <article className="scout-report-store-card selected scout-report-store-card--compact">
                     <div className="scout-report-store-main">
                       <div>
                         <strong>{getScoutStoreDisplayName(selectedStoreContext)}</strong>
-                        <p>{getScoutQuickRetailer(selectedStoreContext)}{selectedStoreContext.city ? ` | ${selectedStoreContext.city}` : ""}{selectedStoreContext.address ? ` | ${selectedStoreContext.address}` : ""}</p>
+                        <p>{getScoutQuickRetailer(selectedStoreContext)}{[selectedStoreContext.city, selectedStoreContext.state].filter(Boolean).length ? ` | ${[selectedStoreContext.city, selectedStoreContext.state].filter(Boolean).join(", ")}` : ""}{selectedStoreContext.address ? ` | ${selectedStoreContext.address}` : ""}</p>
                         {scoutStoreAliasDisplayValues(selectedStoreContext).length ? (
                           <small className="scout-store-alias-line">Also searchable as: {scoutStoreAliasDisplayValues(selectedStoreContext).join(", ")}</small>
                         ) : null}
@@ -881,7 +870,7 @@ export default function ScoutSubmitContent({ scope }) {
                 <div className="scout-report-store-main">
                   <div>
                     <strong>{getScoutStoreDisplayName(selectedStoreContext)}</strong>
-                    <p>{getScoutQuickRetailer(selectedStoreContext)}{selectedStoreContext.city ? ` | ${selectedStoreContext.city}` : ""}{getScoutQuickStoreZip(selectedStoreContext) ? ` | ${getScoutQuickStoreZip(selectedStoreContext)}` : ""}{selectedStoreContext.address ? ` | ${selectedStoreContext.address}` : ""}</p>
+                    <p>{getScoutQuickRetailer(selectedStoreContext)}{[selectedStoreContext.city, selectedStoreContext.state].filter(Boolean).length ? ` | ${[selectedStoreContext.city, selectedStoreContext.state].filter(Boolean).join(", ")}` : ""}{getScoutQuickStoreZip(selectedStoreContext) ? ` | ${getScoutQuickStoreZip(selectedStoreContext)}` : ""}{selectedStoreContext.address ? ` | ${selectedStoreContext.address}` : ""}</p>
                     {scoutStoreAliasDisplayValues(selectedStoreContext).length ? (
                       <small className="scout-store-alias-line">Also searchable as: {scoutStoreAliasDisplayValues(selectedStoreContext).join(", ")}</small>
                     ) : null}
@@ -1010,6 +999,7 @@ export default function ScoutSubmitContent({ scope }) {
                         placeholder="Store name, city, or general location"
                       />
                     </label>
+                    <ManualStoreAreaFields value={quickScoutReportForm} onChange={updateQuickScoutReportForm} />
                     <small>Manual locations are posted with an unusual/needs review signal if the store is not in the directory.</small>
                   </div>
                 ) : null}
@@ -1335,7 +1325,7 @@ export default function ScoutSubmitContent({ scope }) {
                     <span>Store and time</span>
                     <button type="button" className="ghost-button" aria-label="Edit store and time" disabled={quickScoutReportSubmitting} onClick={() => goToScoutWizardStep("where")}>Edit</button>
                   </div>
-                  <strong>{[storeSelection.storeName, storeSelection.address, storeSelection.city].filter(Boolean).join(", ") || selectedStoreSummary}</strong>
+                  <strong>{[storeSelection.storeName, storeSelection.address, storeSelection.city, storeSelection.state].filter(Boolean).join(", ") || selectedStoreSummary}</strong>
                   <span className="scout-review-observed-time">Observed: {quickScoutDateLabel()}</span>
                 </div>
                 <div className="scout-review-group" role="group" aria-label="Shelf status and products">

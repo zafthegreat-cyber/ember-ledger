@@ -910,14 +910,14 @@ function isRelevantOsmStore(store = {}) {
 }
 
 // stateName limits seeds to one state; files without a state count as Virginia.
-async function readExistingStoreSeeds(stateName = "") {
+async function readExistingStoreSeeds(stateName = "", stateCode = "") {
   const fileNames = (await fs.readdir(seedStoreDir)).filter((fileName) => fileName.endsWith(".json")).sort();
   const rows = [];
   for (const fileName of fileNames) {
     const parsed = await readJson(path.join(seedStoreDir, fileName), { stores: [] });
     for (const store of parsed.stores || []) {
       const seedState = String(store.state || parsed.state || "Virginia").toLowerCase();
-      if (stateName && ![stateName.toLowerCase(), stateCodeFor(stateName).toLowerCase()].includes(seedState)) continue;
+      if (stateName && ![stateName.toLowerCase(), stateCode.toLowerCase()].includes(seedState)) continue;
       rows.push({
         ...store,
         id: `seed-${slug(`${store.chain || store.retailer}-${store.address}-${store.city}-${store.zip || store.zipCode}`)}`,
@@ -977,12 +977,6 @@ function mergeStores(seedStores = [], osmStores = []) {
   );
 }
 
-const STATE_CODES = { Virginia: "VA", Maryland: "MD", "District of Columbia": "DC", "North Carolina": "NC" };
-
-function stateCodeFor(stateName = "") {
-  return STATE_CODES[stateName] || String(stateName || "").slice(0, 2).toUpperCase();
-}
-
 function overpassQuery(stateCode = "VA") {
   const chainRegex = STORE_CHAIN_PATTERNS.map((chain) => chain.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
   return `
@@ -997,24 +991,30 @@ out center tags;
 `;
 }
 
-async function syncStateStores(stateName = "Virginia", { timeoutMs = FETCH_TIMEOUT_MS } = {}) {
-  const stateCode = stateCodeFor(stateName);
-  const seedStores = await readExistingStoreSeeds(stateName);
+async function syncStateStores(stateName = "Virginia", { timeoutMs = FETCH_TIMEOUT_MS, fetcher = fetchJson } = {}) {
+  const { getStoreDirectoryState } = await import("../src/data/storeStates.js");
+  const state = getStoreDirectoryState(stateName);
+  if (!state) throw new Error("Choose a valid US state or DC before importing stores.");
+  stateName = state.name;
+  const stateCode = state.code;
+  const seedStores = await readExistingStoreSeeds(stateName, stateCode);
   if (String(process.env.SKIP_OVERPASS || "").toLowerCase() === "true") {
     return { stores: mergeStores(seedStores, []), importedFromOverpass: 0, overpassError: "" };
   }
   try {
     const body = new URLSearchParams({ data: overpassQuery(stateCode) });
-    const payload = await fetchJson("https://overpass-api.de/api/interpreter", {
+    const payload = await fetcher("https://overpass-api.de/api/interpreter", {
       method: "POST",
       body,
       signal: AbortSignal.timeout(timeoutMs),
       headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
     }, 2);
-    const osmStores = (payload?.elements || [])
+    if (!Array.isArray(payload?.elements) || payload.remark) throw new Error("The store directory response was incomplete. Cached stores were kept.");
+    const osmStores = payload.elements
       .map((element) => osmStoreFromElement(element, stateName))
       .filter((store) => store.name && store.chain && (store.latitude || store.longitude || store.address))
       .filter(isRelevantOsmStore);
+    if (!osmStores.length) throw new Error("The store directory returned no usable locations. Cached stores were kept.");
     return { stores: mergeStores(seedStores, osmStores), importedFromOverpass: osmStores.length, overpassError: "" };
   } catch (error) {
     return { stores: mergeStores(seedStores, []), importedFromOverpass: 0, overpassError: error.message || String(error) };

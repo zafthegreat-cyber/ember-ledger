@@ -1,4 +1,5 @@
 import { COLLECTIBLE_GAMES } from "./collectibleGames.mjs";
+import { normalizeStoreStateCode, storeStateName } from "../data/storeStates.js";
 
 // Screenshot/OCR content is untrusted third-party text. This module only proposes
 // bounded draft fields; it never fetches links, executes text, or submits reports.
@@ -293,15 +294,27 @@ export function createStockScreenshotPatch(draft = {}, choices = {}, { stores = 
   if (!PLATFORMS.has(platform)) return failure("Choose Facebook, Discord, or another screenshot source.");
   const replace = choices.replaceEnteredFields === true;
   const existingStoreId = text(draft.storeId, 120);
+  const requestedManual = choices.manualStore && typeof choices.manualStore === "object" && !Array.isArray(choices.manualStore) ? choices.manualStore : null;
   const keepManualStore = !replace && blank(existingStoreId) && draft.storeConfirmed === true && Boolean(text(draft.manualLocation, 200));
-  const selectedStoreId = keepManualStore ? "" : !replace && existingStoreId ? existingStoreId : text(choices.storeId, 120) || existingStoreId;
+  const selectedStoreId = keepManualStore || (requestedManual && (replace || !existingStoreId)) ? "" : !replace && existingStoreId ? existingStoreId : text(choices.storeId, 120) || existingStoreId;
   const knownStore = (Array.isArray(stores) ? stores : []).map(canonicalStore).find((store) => store?.id === selectedStoreId);
-  if (!knownStore && !keepManualStore) return failure("Choose and confirm the exact store, or keep your confirmed manual location.");
+  const manual = !knownStore && !keepManualStore && (!existingStoreId || replace) && requestedManual;
+  if (manual && (!text(manual.name, 200) || !text(manual.city, 80) || !normalizeStoreStateCode(manual.state))) return failure("Enter the store name, city, and US state before using these details.");
+  if (!knownStore && !keepManualStore && !manual) return failure("Choose and confirm the exact store, or keep your confirmed manual location.");
   const patch = {};
   const preservedFields = [];
   if (knownStore && (replace || blank(draft.storeId))) patch.storeId = knownStore.id;
   if (!replace && existingStoreId && text(choices.storeId, 120) && text(choices.storeId, 120) !== existingStoreId) preservedFields.push("storeId");
   if (keepManualStore && text(choices.storeId, 120)) preservedFields.push("storeId");
+  if (requestedManual && (knownStore || keepManualStore)) preservedFields.push("storeId");
+  if (manual) {
+    const value = (field, proposed) => !replace && !blank(draft[field]) ? draft[field] : proposed;
+    const state = normalizeStoreStateCode(value("state", manual.state));
+    Object.assign(patch, { storeId: "", storeName: value("storeName", text(manual.name, 200)),
+      manualLocation: value("manualLocation", text(manual.name, 200)), city: value("city", text(manual.city, 80)), state,
+      region: value("region", storeStateName(state)), retailer: value("retailer", "Manual"),
+      storeConfirmed: false, manualLocationOpen: true, needsStoreReview: true });
+  }
   // Keep every reviewed name supported by the form. Read one extra character
   // only to reject an oversized value rather than silently save a partial item.
   const productName = text(choices.productName, MAX_PRODUCT_NAME_LENGTH + 1);
