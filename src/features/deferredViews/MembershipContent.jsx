@@ -17,6 +17,7 @@ export default function MembershipContent({ scope }) {
     currentTierLabel,
     currentUserProfile,
     experiencePresentation,
+    featureAllowed,
     getLockedFeatureDetails,
     getTierAccess,
     getTierAddOns,
@@ -34,7 +35,7 @@ export default function MembershipContent({ scope }) {
     const planLabel = currentTierLabel || tierAccess.tierLabel || TIER_LABELS[currentTier] || "Free";
     const planHeading = isPreview ? "Preview plan" : "Current plan";
     const trialActive = !isPreview && isTrialActive(currentUserProfile);
-    const planDetail = isPreview ? "Preview only; your account is unchanged." : trialActive ? "Trial is active." : "No active trial.";
+    const planDetail = isPreview ? "Preview only; your account is unchanged." : tierAccess.isAppReview ? "Complimentary access to every released member feature." : trialActive ? "Trial is active." : "No active trial.";
     const freeStoreSlots = getTierAccess({ tier: "free" }).scoutStoreSlots;
     const tierCards = getTierPricingCards().map((tier) => ({
       ...tier,
@@ -42,8 +43,9 @@ export default function MembershipContent({ scope }) {
       access: getTierAccess({ tier: tier.id }),
     }));
     const addOns = getTierAddOns();
-    const planScoutDetailsAllowed = canUseFeature({ tier: plan }, "scout_current_details");
-    const betaStatusLabel = tierAccess.isBeta || BETA_LOCAL_MODE ? "Active beta access" : "Approval required";
+    const allowed = featureAllowed || ((feature) => canUseFeature({ tier: plan }, feature));
+    const planScoutDetailsAllowed = allowed("scout_current_details");
+    const betaStatusLabel = tierAccess.isAppReview ? "Complimentary app review" : tierAccess.isBeta || BETA_LOCAL_MODE ? "Active beta access" : "Approval required";
     const adminStatusVisible = Boolean(adminViewingAsAdmin && !isPreview);
     const freeCoreFeatures = [
       {
@@ -100,7 +102,7 @@ export default function MembershipContent({ scope }) {
       },
     ];
     const lockPreviewKeys = ["restock_predictions", "seller_tools", "kid_profiles", "shop_profile_tools"];
-    const lockPreviews = lockPreviewKeys.map((featureKey) => getLockedFeatureDetails(featureKey));
+    const lockPreviews = lockPreviewKeys.filter((featureKey) => !allowed(featureKey)).map((featureKey) => getLockedFeatureDetails(featureKey));
     return (
       <div className="membership-command-only-route membership-v4-route" data-qa="tier-pricing-explainer">
         {import.meta.env.VITE_CODE3_STRIPE_SANDBOX_ENABLED === "true" && !isPreview && !isNativePlatform() && <StripeSandboxBilling />}
@@ -130,11 +132,13 @@ export default function MembershipContent({ scope }) {
               { key: "free", icon: "vault", label: "Core collecting", detail: "Vault, Market, Business basics" },
               { key: "scout", icon: "scout", label: "Fair Restocks", detail: "Reports stay current and safe", action: () => document.getElementById("membership-scout-guardrails")?.scrollIntoView({ behavior: "smooth", block: "start" }) },
               { key: "family", icon: "community", label: "Family access", detail: "Special needs and kid support path" },
-              { key: "seller", icon: "market", label: "Seller scale", detail: "Locked until enabled" },
+              { key: "seller", icon: "market", label: "Seller scale", detail: allowed("seller_tools") ? "Enabled for this account" : "Locked until enabled" },
             ],
             actions: [
               { label: "Review Guardrails", icon: "scout", onClick: () => document.getElementById("membership-scout-guardrails")?.scrollIntoView({ behavior: "smooth", block: "start" }) },
-              { label: "Request Access", icon: "help", onClick: () => requestLockedFeatureAccess("seller_tools") },
+              tierAccess.isAppReview
+                ? { label: "Open inventory", icon: "market", onClick: () => setActiveTab("inventory") }
+                : { label: "Request Access", icon: "help", onClick: () => requestLockedFeatureAccess("seller_tools") },
             ],
           }}
           routes={[
@@ -219,7 +223,7 @@ export default function MembershipContent({ scope }) {
                   <ul>
                     {tier.features.slice(0, 5).map((feature) => <li key={`${tier.id}-${feature}`}>{feature}</li>)}
                   </ul>
-                  <button type="button" className="command-board-v4-secondary-action" disabled>{tier.cta}</button>
+                  <button type="button" className="command-board-v4-secondary-action" disabled>{tierAccess.isAppReview ? "Included for app review" : tier.cta}</button>
                 </article>
               ))}
             </div>

@@ -40266,6 +40266,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         adminViewingAsAdmin,
         canUseFeature,
         currentTier: tierAccess.planTier,
+        featureAllowed,
         currentUserProfile,
         getLockedFeatureDetails,
         getTierAccess,
