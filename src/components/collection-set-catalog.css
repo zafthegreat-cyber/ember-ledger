@@ -1,0 +1,37 @@
+.app.app-command-shell[data-theme] .set-catalog{display:grid;min-width:0;gap:16px}
+.app.app-command-shell[data-theme] .set-catalog-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.app.app-command-shell[data-theme] .set-catalog-heading>div{display:grid;gap:6px;min-width:0}
+.app.app-command-shell[data-theme] .set-catalog h3{font:600 1.125rem/1.4 var(--font-ui);color:var(--text-primary)}
+.app.app-command-shell[data-theme] .set-catalog-heading p{color:var(--text-secondary);font:400 .875rem/1.5 var(--font-ui)}
+.app.app-command-shell[data-theme] .set-catalog-heading p>span{display:block;color:var(--text-primary)}
+.app.app-command-shell[data-theme] .set-catalog-controls{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.app.app-command-shell[data-theme] .set-catalog-kinds{display:flex;gap:4px;padding:4px;border:1px solid var(--border-subtle);border-radius:10px;background:var(--surface-inset)}
+.app.app-command-shell[data-theme] .set-catalog-kinds button,.app.app-command-shell[data-theme] .set-catalog-owned-toggle{min-height:44px;min-width:44px;padding:9px 10px;border:1px solid transparent!important;border-radius:7px;background:transparent!important;color:var(--text-secondary)!important;font:600 .875rem/1.4 var(--font-ui);cursor:pointer}
+.app.app-command-shell[data-theme] .set-catalog-kinds [aria-pressed="true"],.app.app-command-shell[data-theme] .set-catalog-owned-toggle[aria-pressed="true"]{border-color:var(--action-primary)!important;background:var(--surface-primary)!important;color:var(--text-primary)!important}
+.app.app-command-shell[data-theme] .set-catalog-owned-toggle{border-color:var(--border-strong)!important;padding-inline:8px}
+.app.app-command-shell[data-theme] .set-catalog>.ops-field>span:first-child{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+.app.app-command-shell[data-theme] .set-catalog-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:0;padding:0;list-style:none;min-width:0}
+.app.app-command-shell[data-theme] .set-catalog-grid>li{display:grid;min-width:0}
+.app.app-command-shell[data-theme] .set-catalog-product{display:grid;grid-template-rows:auto 1fr;width:100%;min-width:0;padding:0;overflow:hidden;border:1px solid var(--border-subtle)!important;border-radius:10px;background:var(--surface-primary)!important;color:var(--text-primary)!important;text-align:left;box-shadow:none;cursor:pointer}
+.app.app-command-shell[data-theme] .set-catalog-product[data-owned="true"]{border:2px solid var(--action-primary)!important}
+.app.app-command-shell[data-theme] .set-catalog-product-media{position:relative;display:grid;place-items:center;aspect-ratio:4/5;min-width:0;background:#f7f3eb;padding:8px}
+.app.app-command-shell[data-theme] .set-catalog-product-media img{width:100%;height:100%;min-height:0;max-height:100%;object-fit:contain}
+.app.app-command-shell[data-theme] .set-catalog-photo-fallback{display:grid;place-items:center;min-height:100px;width:100%;height:100%;color:#7a0f1e}
+.app.app-command-shell[data-theme] .set-catalog-photo-fallback svg{width:36px;height:36px}
+.app.app-command-shell[data-theme] .set-catalog-owned-badge{position:absolute;bottom:8px;left:6px;right:6px;max-width:100%;padding:5px 6px;border:1px solid #7a0f1e;border-radius:5px;background:#fbf4e6;color:#550000;font:650 .75rem/1.4 var(--font-ui);text-align:center;overflow-wrap:anywhere}
+.app.app-command-shell[data-theme] .set-catalog-product-copy{display:grid;align-content:start;gap:7px;padding:12px;min-width:0}
+.app.app-command-shell[data-theme] .set-catalog-product-copy>strong{color:var(--text-primary);font:600 .9375rem/1.4 var(--font-ui);overflow-wrap:anywhere}
+.app.app-command-shell[data-theme] .set-catalog-product-copy>span{color:var(--text-secondary);font:400 .8125rem/1.5 var(--font-ui);overflow-wrap:anywhere}
+.app.app-command-shell[data-theme] :is(.set-catalog-note,.set-catalog-result-count){color:var(--text-secondary);font:400 .8125rem/1.6 var(--font-ui);overflow-wrap:anywhere}
+.app.app-command-shell[data-theme] .set-catalog-notice{display:grid;gap:8px;padding:12px;border:1px solid var(--border-subtle);border-radius:8px;color:var(--text-secondary);font:400 .875rem/1.5 var(--font-ui)}
+.app.app-command-shell[data-theme] .set-catalog-notice>button{justify-self:start}
+.app.app-command-shell[data-theme] .set-catalog-more{display:grid;justify-items:center}
+.app.app-command-shell[data-theme] .set-catalog-item-detail{display:grid;gap:14px;min-width:0}
+.app.app-command-shell[data-theme] .set-catalog-item-detail>p{margin:0;color:var(--text-secondary);font:400 .9375rem/1.5 var(--font-ui);overflow-wrap:anywhere}
+.app.app-command-shell[data-theme] .set-catalog-item-photo{display:grid;place-items:center;padding:12px;background:#f7f3eb;border-radius:8px;max-height:280px}
+.app.app-command-shell[data-theme] .set-catalog-item-photo img{width:100%;height:240px;object-fit:contain}
+.app.app-command-shell[data-theme] .set-catalog-copies{display:grid;gap:8px}
+.app.app-command-shell[data-theme] .set-catalog-item-detail .set-catalog-detail-owned{color:var(--text-primary);font-weight:650}
+@media(min-width:680px){.app.app-command-shell[data-theme] .set-catalog-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}}
+@media(min-width:1100px){.app.app-command-shell[data-theme] .set-catalog-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:359px){.app.app-command-shell[data-theme] .set-catalog-kinds button{padding-inline:8px}}

@@ -4,6 +4,7 @@ import { existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import process from "node:process";
 import { BRAND_CONFIG } from "./src/config/brand.js";
+import { setCatalogPlugin } from "./build/setCatalogPlugin.mjs";
 
 const brandReplacements = {
   __BRAND_NAME__: BRAND_CONFIG.applicationDisplayName,
@@ -127,7 +128,7 @@ export default defineConfig({
     "import.meta.env.VITE_SENTRY_DSN": JSON.stringify(process.env.VITE_SENTRY_DSN || process.env.SENTRY_DSN || ""),
     __EMBER_TIDE_APP_VERSION__: JSON.stringify(appVersion),
   },
-  plugins: [react(), brandMetadataPlugin(), appVersionPlugin()],
+  plugins: [react(), brandMetadataPlugin(), appVersionPlugin(), setCatalogPlugin()],
   server: {
     watch: {
       ignored: [
