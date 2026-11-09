@@ -41,6 +41,19 @@ test("publisher supplemental artwork uses the exact English expansion or product
   assert.equal(resolve("Trick or Trade BOOster Bundle 2024"), null);
 });
 
+test("Battle Academy editions use their own publisher references without borrowing another year", () => {
+  for (const year of [2022, 2024]) {
+    const art = resolve(`Battle Academy ${year}`);
+    assert.equal(art.id, `official-battle-academy-${year}`);
+    assert.equal(art.sourcePage, `https://press.pokemon.com/en/products/Pokemon-TCG-Battle-Academy-${year}`);
+    assert.match(art.sourceUrl, /Pokemon_TCG_Battle_Academy_Logo\.png/);
+    assert.equal(resolveSetArtwork({ game: "magic", name: art.name }), null);
+    assert.equal(resolve(art.name, { language: "Japanese" }), null);
+  }
+  assert.equal(resolve("Battle Academy 2025"), null);
+  assert.equal(resolve("Back to School"), null);
+});
+
 test("the sets in the reported artwork mismatch resolve to their exact verified identity", () => {
   for (const [name, id] of [["Aquapolis", "ecard2"], ["Arceus", "pl4"], ["White Flare", "rsv10pt5"], ["Destined Rivals", "sv10"], ["Journey Together", "sv9"], ["Prismatic Evolutions", "sv8pt5"], ["Surging Sparks", "sv8"], ["Fusion Strike", "swsh8"]]) {
     assert.equal(resolve(name)?.id, id, name);

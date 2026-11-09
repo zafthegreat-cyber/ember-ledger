@@ -78,6 +78,7 @@ function numberKey(value) {
   // Only normalize plain zero-padding; TG/GG/promo prefixes remain distinct.
   return /^\d+[a-z]?$/.test(numerator) ? numerator.replace(/^0+(?=\d)/, "") : normalized(numerator).replace(/ /g, "");
 }
+export { canonicalKey as collectionSetNameKey, numberKey as collectionSetCardNumberKey };
 function language(record) {
   const candidate = first(record, ["language", "languageName", "language_name", "languageCode", "language_code", "cardLanguage", "card_language"]);
   const key = normalized(candidate);
@@ -182,7 +183,7 @@ export function buildCollectionSetRows({ items = [], knownSets = [], catalogProd
       releaseDate: uniqueMetadataValue(group.metadata, (record) => validDate(first(record, ["releaseDate", "release_date"]))) || "",
       logoUrl: uniqueMetadataValue(artworkMetadata, (record) => first(record, ["logoUrl", "logo_url"])) || setArtwork?.logoUrl || "",
       symbolUrl: uniqueMetadataValue(artworkMetadata, (record) => first(record, ["symbolUrl", "symbol_url"])) || setArtwork?.symbolUrl || "",
-      ownedItems: group.ownedItems, artworkRecord, artworkSource,
+      ownedItems: group.ownedItems, catalogRecords: group.catalogRecords, artworkRecord, artworkSource,
       totalValue: valuation.total, knownValueCount: valuation.knownCount, itemCount: group.ownedItems.length,
       unknownValueCount: valuation.unknownCount, valuationLabel: valuation.valuationLabel, isValueValid: valuation.isValid,
       uniqueCardCount, unknownCardIdentityCount,

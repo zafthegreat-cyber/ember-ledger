@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "reviewedAt": "2026-10-24",
+  "reviewedAt": "2026-11-08",
   "provider": {
     "fileSha256": "9DF2F1E4DE63037925CED583AFC1FA7CF807E0F1240B21F292F0EEA2782A3859",
     "commit": "39a26a144c8b6ef6c2fb17b2c29d0bb7121e3a11",
@@ -3620,6 +3620,40 @@
       "dimensions": {
         "height": 55,
         "width": 240
+      }
+    },
+    {
+      "id": "official-battle-academy-2022",
+      "name": "Battle Academy 2022",
+      "language": "en",
+      "game": "pokemon",
+      "aliases": [
+        "Pokémon TCG Battle Academy (2022)"
+      ],
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/official-battle-academy-2022.png",
+      "sourceUrl": "https://imguscdn.gamespress.com/cdn/files/PokemonAmerica/2020/05/29194353-2c8b6084-9a69-4fd7-b4e0-491f8ea5a749/Pokemon_TCG_Battle_Academy_Logo.png?w=240&mode=max&otf=y&quality=90&format=png&bgcolor=transparent&sky=6e35061b765d3abeabe4ff3994afb7d1513934ee478bec9d3e71a30bb9184976",
+      "sourcePage": "https://press.pokemon.com/en/products/Pokemon-TCG-Battle-Academy-2022",
+      "sha256": "ab7db0dedce13f85d72d5d89ab176820167abc7db4ebb14903f7d4d7de4f98ab",
+      "dimensions": {
+        "width": 240,
+        "height": 162
+      }
+    },
+    {
+      "id": "official-battle-academy-2024",
+      "name": "Battle Academy 2024",
+      "language": "en",
+      "game": "pokemon",
+      "aliases": [
+        "Pokémon TCG Battle Academy (2024)"
+      ],
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/official-battle-academy-2024.png",
+      "sourceUrl": "https://imguscdn.gamespress.com/cdn/files/PokemonAmerica/2024/06/280007-56f20907/Pokemon_TCG_Battle_Academy_Logo.png?w=240&mode=max&otf=y&quality=90&format=png&bgcolor=transparent&sky=7b787be4c1ccf6a3608e790acd983c594164639abaefd1ffa8c6786fdaf61473",
+      "sourcePage": "https://press.pokemon.com/en/products/Pokemon-TCG-Battle-Academy-2024",
+      "sha256": "ab7db0dedce13f85d72d5d89ab176820167abc7db4ebb14903f7d4d7de4f98ab",
+      "dimensions": {
+        "width": 240,
+        "height": 162
       }
     }
   ],
