@@ -49,7 +49,7 @@ test("actual Restocks screen scopes nearby reports and store suggestions with th
       if (nearby?.mode === "nearby" && nearby.area?.state === state) return;
       await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
     }
-    assert.fail(\`The city/ZIP picker did not apply the \${state} area deep link\`);
+    assert.fail("The city/ZIP picker did not apply the " + state + " area deep link");
   }
   try {
     ScoutComponent = await component("src/pages/Scout.jsx");
