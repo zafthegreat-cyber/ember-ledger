@@ -285,3 +285,245 @@ html body .app.app-command-shell[data-theme] :is(button, a, summary):focus-visib
     transform: none !important;
   }
 }
+
+
+/* Second pass — make the busy product screens easier to use. */
+/* Scout: emphasize evidence and sources instead of decorating stock states. */
+html body .app.app-command-shell[data-theme] .scout-feed-report-card {
+  border-radius: 16px;
+  padding: clamp(14px, 2vw, 20px);
+  gap: 14px;
+  box-shadow: var(--premium-card-shadow);
+}
+html body .app.app-command-shell[data-theme="dark"] .scout-feed-report-card {
+  border-color: var(--premium-hairline);
+  background: var(--premium-panel);
+}
+html body .app.app-command-shell[data-theme] .scout-feed-report-card h3 {
+  font-family: var(--c3-font-heading);
+  font-size: 18px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+html body .app.app-command-shell[data-theme] .scout-feed-report-card__photo img {
+  border-radius: 11px;
+  border: 1px solid var(--premium-hairline);
+}
+html body .app.app-command-shell[data-theme] .scout-feed-report-card__footer {
+  border-color: var(--premium-hairline);
+}
+html body .app.app-command-shell[data-theme] .scout-feed-report-card__footer button {
+  min-height: 44px;
+  border-radius: 10px;
+}
+html body .app.app-command-shell[data-theme] :is(
+  .scout-command-radar,
+  .scout-command-side-rail > article,
+  .scout-command-lower > article
+) {
+  border-radius: 16px !important;
+}
+html body .app.app-command-shell[data-theme] .scout-command-heading :is(h2, p) {
+  max-width: 100%;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+/* Vault: values and physical collection details should not be microscopic. */
+html body .app.app-command-shell[data-theme] .vault-v4-dashboard .vault-portfolio-breakdown-row {
+  border-radius: 11px;
+  padding: 10px !important;
+  gap: 6px 8px !important;
+}
+html body .app.app-command-shell[data-theme] .vault-v4-dashboard .vault-portfolio-breakdown-row :is(span, small) {
+  font-size: 11px !important;
+  line-height: 1.35;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+html body .app.app-command-shell[data-theme] .vault-v4-dashboard .vault-portfolio-breakdown-row strong {
+  font-size: 15px !important;
+  font-variant-numeric: tabular-nums;
+}
+html body .app.app-command-shell[data-theme] .vault-v4-dashboard :is(.vault-command-board-grid > article, .vault-command-overview-card) {
+  border-radius: 16px !important;
+}
+html body .app.app-command-shell[data-theme] .vault-v4-dashboard .vault-status-chip-row {
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  padding: 3px 0 6px;
+}
+html body .app.app-command-shell[data-theme] .vault-v4-dashboard .vault-status-chip-row > * {
+  min-height: 30px;
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  font-size: 11px !important;
+  line-height: 1.3;
+}
+
+/* Market: the result itself is the star; action controls stay tappable. */
+html body .app.app-command-shell[data-theme] .market-command-board :is(.market-v4-search-panel, .market-v4-side-rail > article) {
+  border-radius: 16px !important;
+}
+html body .app.app-command-shell[data-theme] .market-command-only-route .market-v4-result-row {
+  border-radius: 14px;
+  padding: 14px;
+  gap: 12px;
+}
+html body .app.app-command-shell[data-theme="dark"] .market-command-only-route .market-v4-result-row {
+  border-color: var(--premium-hairline);
+  background: var(--premium-panel);
+}
+html body .app.app-command-shell[data-theme] .market-command-only-route .market-v4-result-row .market-v4-thumb {
+  border-radius: 10px;
+  background: var(--surface-inset);
+  border: 1px solid var(--border-subtle);
+}
+html body .app.app-command-shell[data-theme] .market-command-only-route .market-v4-result-actions {
+  gap: 8px;
+}
+html body .app.app-command-shell[data-theme] .market-command-only-route .market-v4-result-actions button {
+  min-height: 44px;
+  font-size: 13px !important;
+  font-weight: 600;
+  line-height: 1.3;
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+html body .app.app-command-shell[data-theme] .market-v4-search-form :is(input, button) {
+  min-height: 46px;
+  border-radius: 11px;
+  font-size: 14px;
+}
+
+/* Forge: keep actual business records legible and not clipped. */
+html body .app.app-command-shell[data-theme] .forge-page-command-route :is(
+  .forge-v4-command-matrix > section,
+  .forge-v4-operations-strip > article
+) {
+  border-radius: 16px;
+  box-shadow: var(--premium-card-shadow);
+}
+html body .app.app-command-shell[data-theme="dark"] .forge-page-command-route :is(
+  .forge-v4-command-matrix > section,
+  .forge-v4-operations-strip > article
+) {
+  background: var(--premium-panel) !important;
+  border-color: var(--premium-hairline);
+}
+html body .app.app-command-shell[data-theme] .forge-v4-priority-list button {
+  min-height: 72px !important;
+  padding: 12px !important;
+  border-radius: 11px !important;
+}
+html body .app.app-command-shell[data-theme] .forge-v4-priority-list button > strong {
+  font-size: 15px !important;
+  line-height: 1.3;
+}
+html body .app.app-command-shell[data-theme] .forge-v4-priority-list button > :is(span, small, em) {
+  font-size: 12px !important;
+  line-height: 1.4;
+  white-space: normal;
+}
+html body .app.app-command-shell[data-theme] .forge-v4-priority-list button:focus-visible {
+  outline: 3px solid var(--c3-focus);
+  outline-offset: 2px;
+}
+
+/* Phone flow: show vital work rather than silently hiding whole sections. */
+@media (max-width: 700px) {
+  html body .app.app-command-shell[data-theme] .command-board-v4-route-strip {
+    display: flex !important;
+    width: 100%;
+    min-width: 0;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    border-radius: 12px !important;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 8px;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+  html body .app.app-command-shell[data-theme] .command-board-v4-route-strip > button {
+    min-height: 44px !important;
+    min-width: 104px;
+    flex: 0 0 auto;
+    padding: 9px 12px !important;
+    scroll-snap-align: start;
+    line-height: 1.2;
+  }
+  html body .app.app-command-shell[data-theme] .scout-command-heading p {
+    display: block !important;
+    font-size: 12px !important;
+    line-height: 1.45 !important;
+  }
+  html body .app.app-command-shell[data-theme] .scout-feed-report-card__photo {
+    flex-basis: 68px;
+  }
+  html body .app.app-command-shell[data-theme] .scout-feed-report-card__photo img {
+    width: 68px;
+    height: 68px;
+  }
+  html body .app.app-command-shell[data-theme] .vault-v4-dashboard .vault-status-chip-row > :nth-child(n + 3) {
+    display: inline-flex !important;
+  }
+  html body .app.app-command-shell[data-theme] .forge-page-command-route .forge-v4-operations-strip {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px;
+  }
+  html body .app.app-command-shell[data-theme] .forge-page-command-route .forge-v4-operations-strip > :nth-child(n + 3) {
+    display: grid !important;
+  }
+  html body .app.app-command-shell[data-theme] .forge-page-command-route .forge-v4-command-matrix {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+    margin-top: 14px;
+  }
+  html body .app.app-command-shell[data-theme] .forge-page-command-route .forge-v4-command-matrix > section {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 16px !important;
+  }
+  html body .app.app-command-shell[data-theme] .forge-page-command-route .exchange-v4-hub-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px;
+  }
+  html body .app.app-command-shell[data-theme] .forge-page-command-route .exchange-v4-hub-card {
+    min-height: 134px !important;
+    max-height: none !important;
+    padding: 12px !important;
+    border-radius: 14px;
+  }
+  html body .app.app-command-shell[data-theme] .forge-page-command-route .exchange-v4-hub-card p {
+    display: block !important;
+    white-space: normal;
+    line-height: 1.4;
+    font-size: 12px !important;
+    overflow: visible;
+  }
+  html body .app.app-command-shell[data-theme] .forge-page-command-route .exchange-v4-hub-card :is(span, small, b) {
+    white-space: normal;
+    overflow: visible;
+    line-height: 1.35;
+  }
+  html body .app.app-command-shell[data-theme] .market-command-only-route .market-v4-result-actions button {
+    flex: 1 1 110px;
+  }
+}
+@media (max-width: 380px) {
+  html body .app.app-command-shell[data-theme] .forge-page-command-route .forge-v4-operations-strip {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  html body .app.app-command-shell[data-theme] .market-command-only-route .market-v4-result-row {
+    padding: 12px;
+    gap: 8px;
+  }
+}
