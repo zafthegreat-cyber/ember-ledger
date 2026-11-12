@@ -4487,6 +4487,7 @@ async function handleUpdateStore(e) {
       "distance"
     );
     const regionalStoreRows = activeStoreRows.filter((store) =>
+      matchesOverviewArea(store) &&
       (selectedState === "All" || normalizeStateLabel(store.state) === selectedState) &&
       (selectedRegion === "All" || normalizeStoreRegion(store.region) === selectedRegion)
     );
