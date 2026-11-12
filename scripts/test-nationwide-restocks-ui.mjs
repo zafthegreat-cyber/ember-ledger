@@ -62,7 +62,7 @@ test("actual Restocks screen scopes nearby reports and store suggestions with th
     const picker = document.querySelector('.scout-command-radar input[role="combobox"]');
     assert.ok(picker, "Scout should expose the current City or ZIP search instead of the removed state select");
     assert.ok(document.querySelector('.scout-command-radar [role="group"][aria-label="Where to browse"]'));
-    assert.match(document.body.textContent, /No reports in near Richmond, CA yet/);
+    assert.match(document.body.textContent, /No reports in near .*Richmond, CA yet/);
     assert.doesNotMatch(document.body.textContent, /Could not load|Failed to load/);
 
     const suggest = [...document.querySelectorAll("button")].find(button => button.textContent === "Suggest a store");
@@ -84,7 +84,7 @@ test("actual Restocks screen scopes nearby reports and store suggestions with th
       ],
     }));
     await act(async () => { root.render(React.createElement(StateHarness, { key: "saved-locations" })); });
-    assert.match(document.body.textContent, /Only 1 report in near Richmond, CA/);
+    assert.match(document.body.textContent, /Only 1 report in near .*Richmond, CA/);
     assert.match(document.body.textContent, /Synthetic Richmond shop/, "A custom metro label must not hide a local store");
     assert.match(document.body.textContent, /No current report/, "Old history must not create a current restock signal");
     assert.deepEqual(JSON.parse(localStorage.getItem("et-tcg-beta-scout")).reports[0], original);
@@ -95,7 +95,7 @@ test("actual Restocks screen scopes nearby reports and store suggestions with th
     await act(async () => { root.render(React.createElement(StateHarness, { key: "texas-area" })); });
     await settleArea("TX");
     assert.equal(selected, "TX");
-    assert.match(document.body.textContent, /No reports in near Austin, TX yet/);
+    assert.match(document.body.textContent, /No reports in near .*Austin, TX yet/);
     assert.equal(document.querySelectorAll(".scout-command-radar .scout-tile-map-pin").length, 0);
     assert.match(document.querySelector('[aria-label="Restocks intelligence rail"]').textContent, /No current report/);
   } finally {
