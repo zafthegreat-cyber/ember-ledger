@@ -527,3 +527,96 @@ html body .app.app-command-shell[data-theme] .forge-v4-priority-list button:focu
     gap: 8px;
   }
 }
+
+
+/* Scout area selector: original Code 3 TCG controls, not a generic widget. */
+html body .app.app-command-shell[data-theme] .scout-command-board-v5 .nationwide-location {
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  margin: 14px 0;
+  border: 1px solid var(--premium-hairline);
+  border-radius: 16px;
+  background: var(--surface-secondary);
+}
+html body .app.app-command-shell[data-theme="dark"] .scout-command-board-v5 .nationwide-location {
+  background: var(--premium-panel);
+}
+html body .app.app-command-shell[data-theme] .scout-command-board-v5 .nationwide-location > label {
+  display: block;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: .01em;
+}
+html body .app.app-command-shell[data-theme] .scout-command-board-v5 .nationwide-location :is(input, button) {
+  min-height: 46px;
+  border: 1px solid var(--border-strong);
+  border-radius: 11px;
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  box-shadow: none !important;
+  font-family: var(--c3-font-body);
+  font-size: 14px;
+  line-height: 1.35;
+}
+html body .app.app-command-shell[data-theme] .scout-command-board-v5 .nationwide-location input {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  padding: 10px 13px;
+}
+html body .app.app-command-shell[data-theme] .scout-command-board-v5 .nationwide-location .nationwide-location__search {
+  min-width: 0;
+  gap: 8px;
+}
+html body .app.app-command-shell[data-theme] .scout-command-board-v5 .nationwide-location .nationwide-location__modes {
+  gap: 8px;
+}
+html body .app.app-command-shell[data-theme] .scout-command-board-v5 .nationwide-location__modes button[aria-pressed="true"] {
+  border-color: var(--c3-gold) !important;
+  background: var(--c3-gold) !important;
+  color: #241b13 !important;
+  font-weight: 750;
+}
+html body .app.app-command-shell[data-theme] .scout-command-board-v5 .nationwide-location ul {
+  display: grid;
+  gap: 3px;
+  border-color: var(--premium-hairline);
+  border-radius: 12px;
+  background: var(--surface-elevated);
+  box-shadow: var(--premium-card-shadow);
+}
+html body .app.app-command-shell[data-theme] .scout-command-board-v5 .nationwide-location ul button {
+  width: 100%;
+  min-height: 44px;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--text-primary) !important;
+  text-align: left;
+}
+html body .app.app-command-shell[data-theme] .scout-command-board-v5 .nationwide-location li[aria-selected="true"] button {
+  border-radius: 8px;
+  outline: 2px solid var(--c3-gold) !important;
+  outline-offset: -2px;
+}
+html body .app.app-command-shell[data-theme] .scout-command-board-v5 .nationwide-location :is(.nationwide-location__summary, small, p) {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+html body .app.app-command-shell[data-theme] .scout-command-board-v5 .nationwide-location :is(input, button, summary):focus-visible {
+  outline: 3px solid var(--c3-focus) !important;
+  outline-offset: 3px;
+}
+@media (max-width: 420px) {
+  html body .app.app-command-shell[data-theme] .scout-command-board-v5 .nationwide-location {
+    padding: 12px;
+    gap: 10px;
+  }
+  html body .app.app-command-shell[data-theme] .scout-command-board-v5 .nationwide-location__modes button {
+    flex: 1 1 90px;
+    padding-inline: 8px;
+    font-size: 13px;
+  }
+}
