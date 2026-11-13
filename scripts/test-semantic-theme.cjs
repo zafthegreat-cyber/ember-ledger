@@ -7,8 +7,8 @@ const { chromium } = require("@playwright/test");
 const base = new URL(process.env.APP_URL || "http://127.0.0.1:5381/");
 assert.ok(["127.0.0.1", "localhost", "[::1]"].includes(base.hostname), "Theme QA is restricted to loopback");
 const colors = {
-  light: ["#FBF4E6", "#FFFCF7", "#222222", "#675852", "#7A0F1E", "#FFFFFF", "#DCD0C8"],
-  dark: ["#141619", "#202328", "#FBF4E6", "#C1BDC4", "#E8C86B", "#241B13", "#41454E"],
+  light: ["#FBF4E6", "#FFFFFF", "#20242C", "#675852", "#7A0F1E", "#FFFFFF", "#DCD0C8"],
+  dark: ["#14171D", "#20252E", "#F3F4F6", "#C1BDC4", "#D4AF37", "#20242C", "#41454E"],
 };
 const tokens = ["--app-background", "--surface-primary", "--text-primary", "--text-secondary", "--action-primary", "--on-primary", "--border-subtle"];
 const routes = [
@@ -85,7 +85,7 @@ function installFixture({ theme }) {
             const canvas=await page.evaluate(()=>[document.documentElement,document.body].map(el=>getComputedStyle(el).backgroundColor));
             assert.ok(canvas.every(color=>color===hexToRgb(colors[theme][0])),"Outer page canvas follows saved theme: "+canvas.join(","));
             const buttons=await page.locator(".ops-button--primary:visible, .command-board-v4-primary-action:visible, .topbar-quick-add-button:visible, .mobile-quick-add-fab:visible").evaluateAll(nodes=>nodes.filter(el=>!el.disabled).map(el=>{const s=getComputedStyle(el);return {text:el.textContent,background:s.backgroundColor,color:s.color,height:el.getBoundingClientRect().height,gold:Boolean(el.matches(".topbar-quick-add-button")||el.closest(".home-layout,.everyday-workspace")),labels:[...el.querySelectorAll("b,strong,span")].map(label=>getComputedStyle(label).color)};}));
-            for(const button of buttons){assert.equal(button.background,hexToRgb(button.gold?"#D4AF37":colors[theme][4]),button.text);assert.equal(button.color,hexToRgb(button.gold?"#241B13":colors[theme][5]),button.text);assert.ok(button.height>=43.5,"44px action: "+button.text);assert.ok(button.labels.every(color=>color===button.color),"Nested primary label contrast: "+button.text);}
+            for(const button of buttons){assert.equal(button.background,hexToRgb(button.gold?"#D4AF37":colors[theme][4]),button.text);assert.equal(button.color,hexToRgb(button.gold?(theme==="dark"?"#20242C":"#241B13"):colors[theme][5]),button.text);assert.ok(button.height>=43.5,"44px action: "+button.text);assert.ok(button.labels.every(color=>color===button.color),"Nested primary label contrast: "+button.text);}
             assert.equal(await page.evaluate(()=>localStorage.getItem("et-tcg-app-theme")),theme);
             assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),"No horizontal overflow");
             await page.keyboard.press("Tab");
