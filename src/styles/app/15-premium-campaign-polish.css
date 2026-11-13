@@ -1,0 +1,622 @@
+/*
+ * Code 3 TCG premium UI polish — presentation only.
+ * Inspired by the approved maroon / purple / gold campaign look.
+ * No product imagery, retailer claims, or new behavior introduced.
+ * Existing logos remain managed by BRAND_ASSETS; keep safety/status
+ * colors semantic rather than using gold for every state.
+ */
+
+html body .app.app-command-shell[data-theme] {
+  --premium-radius: 18px;
+  --premium-radius-lg: 24px;
+  --premium-hairline: color-mix(in srgb, var(--c3-gold) 18%, var(--border-subtle));
+  --premium-card-shadow: 0 10px 30px rgb(28 12 23 / 7%);
+  --premium-panel: var(--surface-primary);
+  --premium-raised: var(--surface-elevated);
+  --premium-text: var(--text-primary);
+}
+
+html body .app.app-command-shell[data-theme="dark"] {
+  --premium-hairline: #5c4650;
+  --premium-card-shadow: 0 16px 38px rgb(4 2 8 / 24%);
+  --premium-panel: #25212a;
+  --premium-raised: #302633;
+  --premium-text: #fff8e9;
+  background:
+    radial-gradient(ellipse at 88% 4%, rgb(75 27 107 / 13%), transparent 43%),
+    radial-gradient(ellipse at 4% 72%, rgb(122 15 30 / 9%), transparent 48%),
+    var(--app-background);
+}
+
+/* Maintain actual brand fonts, logo, and page labels; strengthen hierarchy. */
+html body .app.app-command-shell[data-theme] :is(.ops-page-header h1, .home-layout > .ops-page-header h1, .command-board-v4-hero-copy h1) {
+  font-family: var(--c3-font-heading);
+  font-weight: 600;
+  letter-spacing: -.035em;
+  line-height: 1.13;
+  text-wrap: balance;
+}
+html body .app.app-command-shell[data-theme] .ops-page-header h1 {
+  font-size: clamp(26px, 3vw, 38px);
+}
+html body .app.app-command-shell[data-theme] :is(.ops-section-header h2, .command-board-section-heading h2) {
+  font-family: var(--c3-font-heading);
+  font-weight: 600;
+  letter-spacing: -.02em;
+}
+html body .app.app-command-shell[data-theme] :is(.ops-page-header p, .ops-section-header p, .command-board-v4-hero-copy p) {
+  line-height: 1.55;
+}
+
+/* Polished branded frame; retain sticky positions and existing navigation. */
+html body .app.app-command-shell[data-theme="dark"] :is(.topbar, .ops-desktop-sidebar, .ops-mobile-nav) {
+  background: linear-gradient(145deg, #271722 0%, #201b29 72%, #20191f 100%) !important;
+  border-color: var(--premium-hairline) !important;
+}
+html body .app.app-command-shell[data-theme="dark"] .topbar {
+  border-top: 2px solid var(--c3-gold) !important;
+}
+html body .app.app-command-shell[data-theme] .topbar-brand-mark img {
+  object-fit: contain;
+}
+html body .app.app-command-shell[data-theme] .ops-desktop-sidebar nav button,
+html body .app.app-command-shell[data-theme] .ops-mobile-nav button {
+  transition: background-color .18s ease, border-color .18s ease, color .18s ease;
+}
+html body .app.app-command-shell[data-theme="dark"] .ops-desktop-sidebar nav button.is-active,
+html body .app.app-command-shell[data-theme="dark"] .ops-mobile-nav button.is-active {
+  color: #f6de8b !important;
+  background: rgb(212 175 55 / 12%) !important;
+  box-shadow: inset 0 -2px var(--c3-gold);
+}
+html body .app.app-command-shell[data-theme="dark"] .ops-desktop-sidebar nav button.is-active {
+  box-shadow: inset 3px 0 var(--c3-gold);
+}
+
+/* One expressive hero on Home, not a noisy gradient behind every record. */
+html body .app.app-command-shell[data-theme] .home-layout .home-restock-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: var(--premium-radius-lg) !important;
+  padding: clamp(20px, 3vw, 34px) !important;
+  box-shadow: var(--premium-card-shadow) !important;
+}
+html body .app.app-command-shell[data-theme="dark"] .home-layout .home-restock-hero {
+  background:
+    radial-gradient(circle at 98% 0%, rgb(212 175 55 / 10%), transparent 33%),
+    linear-gradient(112deg, #681526 0%, #39142c 50%, #231628 100%) !important;
+  border: 1px solid #6b4050 !important;
+  border-top: 3px solid var(--c3-gold) !important;
+}
+html body .app.app-command-shell[data-theme] .home-layout .home-restock-hero::after {
+  opacity: .24;
+  border-color: var(--c3-gold);
+  pointer-events: none;
+}
+html body .app.app-command-shell[data-theme] .home-restock-copy h2 {
+  font-family: var(--c3-font-heading);
+  font-size: clamp(24px, 3.2vw, 36px);
+  font-weight: 600;
+  letter-spacing: -.03em;
+  line-height: 1.18;
+}
+html body .app.app-command-shell[data-theme="dark"] .home-restock-copy :is(h2, h2 strong) {
+  color: #fff8ea !important;
+}
+html body .app.app-command-shell[data-theme="dark"] .home-restock-copy :is(p, small) {
+  color: #e7cfd6 !important;
+}
+
+/* Consistent card geometry and depth across Hearth and the workspace pages. */
+html body .app.app-command-shell[data-theme] :is(
+  .home-layout .ops-home-section,
+  .home-layout .home-records-group,
+  .home-layout .home-discover-card,
+  .ops-metric-card,
+  .ops-record-card,
+  .ops-data-table,
+  .ops-dialog,
+  .ops-bottom-sheet
+) {
+  border-radius: var(--premium-radius) !important;
+  box-shadow: var(--premium-card-shadow) !important;
+}
+html body .app.app-command-shell[data-theme="dark"] :is(
+  .home-layout .ops-home-section,
+  .home-layout .home-records-group,
+  .home-layout .home-discover-card,
+  .ops-metric-card,
+  .ops-record-card,
+  .ops-data-table
+) {
+  background: var(--premium-panel) !important;
+  border: 1px solid var(--premium-hairline) !important;
+}
+html body .app.app-command-shell[data-theme] .home-layout .home-discover-card {
+  transition: box-shadow .18s ease, border-color .18s ease, transform .18s ease;
+}
+html body .app.app-command-shell[data-theme] .home-layout .home-discover-card::before {
+  top: 0;
+  width: 58px;
+  height: 3px;
+  border-radius: 0 0 4px 4px;
+  background: var(--c3-gold);
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  html body .app.app-command-shell[data-theme] .home-layout .home-discover-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 34px rgb(28 12 23 / 18%) !important;
+  }
+}
+html body .app.app-command-shell[data-theme] .home-layout .home-discover-copy strong {
+  font-family: var(--c3-font-heading);
+  line-height: 1.16;
+}
+html body .app.app-command-shell[data-theme] .home-layout .home-shortcut-icon {
+  border-radius: 12px;
+}
+html body .app.app-command-shell[data-theme] .home-layout .home-record-shortcut {
+  min-height: 76px;
+}
+
+/* Existing Scout / Vault / Forge / Market panels gain an editorial surface. */
+html body .app.app-command-shell[data-theme] .command-board-v4 :is(
+  .command-board-v4-plan-card,
+  .et-mockup-section-card,
+  .vault-command-board-grid > article
+) {
+  border-radius: var(--premium-radius) !important;
+}
+html body .app.app-command-shell[data-theme="dark"] .command-board-v4 :is(
+  .command-board-v4-plan-card,
+  .et-mockup-section-card,
+  .vault-command-board-grid > article
+) {
+  background: var(--premium-panel) !important;
+  border-color: var(--premium-hairline) !important;
+  box-shadow: var(--premium-card-shadow);
+}
+html body .app.app-command-shell[data-theme] .command-board-v4-hero {
+  gap: 14px;
+  padding-block: 12px 20px;
+  border-bottom-color: var(--premium-hairline);
+}
+html body .app.app-command-shell[data-theme] .command-board-v4-hero-copy h1 {
+  font-size: clamp(27px, 3.2vw, 42px);
+}
+html body .app.app-command-shell[data-theme] .command-board-v4-plan-grid button {
+  min-height: 58px;
+  padding: 10px 12px;
+  border-radius: 12px !important;
+  text-align: left;
+}
+html body .app.app-command-shell[data-theme="dark"] .command-board-v4-plan-grid button {
+  background: var(--premium-raised) !important;
+  border-color: var(--premium-hairline) !important;
+}
+html body .app.app-command-shell[data-theme] .command-board-v4-plan-grid button :is(span, small) {
+  font-size: max(11px, .72rem) !important;
+  line-height: 1.28;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+html body .app.app-command-shell[data-theme] :is(
+  .command-board-v4-hero-copy > span,
+  .command-board-v4-plan-heading > span,
+  .home-layout .home-group-label
+) {
+  letter-spacing: .08em;
+}
+
+/* Gold for priority actions, maroon and purple for brand identity.
+   Danger/success/confidence badges keep their own semantic colors. */
+html body .app.app-command-shell[data-theme] :is(
+  .ops-button--primary,
+  .command-board-v4-primary-action,
+  .home-restock-actions .ops-button--primary
+):not(:disabled) {
+  border-radius: 12px !important;
+  box-shadow: 0 5px 16px rgb(73 37 11 / 15%) !important;
+}
+html body .app.app-command-shell[data-theme="dark"] :is(
+  .ops-button--primary,
+  .command-board-v4-primary-action,
+  .home-restock-actions .ops-button--primary
+):not(:disabled) {
+  background: linear-gradient(120deg, #f2d47c, #d4af37) !important;
+  border-color: #cfa633 !important;
+  color: #241b13 !important;
+}
+html body .app.app-command-shell[data-theme] :is(
+  .ops-button,
+  .command-board-v4-primary-action,
+  .command-board-v4-secondary-action
+) {
+  min-height: 44px;
+}
+html body .app.app-command-shell[data-theme] :is(input, select, textarea) {
+  border-radius: 12px;
+}
+html body .app.app-command-shell[data-theme] :is(input, select, textarea):focus-visible {
+  outline: 3px solid var(--c3-focus);
+  outline-offset: 2px;
+}
+html body .app.app-command-shell[data-theme] :is(button, a, summary):focus-visible {
+  outline-offset: 3px;
+}
+
+/* Mobile: spacious touch targets without a second nav or clipped content. */
+@media (max-width: 760px) {
+  html body .app.app-command-shell[data-theme] .home-layout {
+    padding-top: 18px;
+  }
+  html body .app.app-command-shell[data-theme] .home-layout .ops-home-section {
+    padding: 18px !important;
+  }
+  html body .app.app-command-shell[data-theme] .home-layout .home-discover-card {
+    padding: 20px !important;
+  }
+  html body .app.app-command-shell[data-theme] .command-board-v4-plan-card {
+    gap: 12px;
+    padding: 16px !important;
+  }
+  html body .app.app-command-shell[data-theme] .command-board-v4-plan-grid {
+    gap: 10px;
+  }
+  html body .app.app-command-shell[data-theme] .command-board-v4-plan-grid button {
+    min-height: 64px;
+  }
+  html body .app.app-command-shell[data-theme] .ops-mobile-nav {
+    border-radius: 18px !important;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  html body .app.app-command-shell[data-theme] .ops-mobile-nav button {
+    min-height: 48px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html body .app.app-command-shell[data-theme] .home-discover-card,
+  html body .app.app-command-shell[data-theme] .ops-mobile-nav button,
+  html body .app.app-command-shell[data-theme] .ops-desktop-sidebar nav button {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+
+/* Second pass — make the busy product screens easier to use. */
+/* Scout: emphasize evidence and sources instead of decorating stock states. */
+html body .app.app-command-shell[data-theme] .scout-feed-report-card {
+  border-radius: 16px;
+  padding: clamp(14px, 2vw, 20px);
+  gap: 14px;
+  box-shadow: var(--premium-card-shadow);
+}
+html body .app.app-command-shell[data-theme="dark"] .scout-feed-report-card {
+  border-color: var(--premium-hairline);
+  background: var(--premium-panel);
+}
+html body .app.app-command-shell[data-theme] .scout-feed-report-card h3 {
+  font-family: var(--c3-font-heading);
+  font-size: 18px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+html body .app.app-command-shell[data-theme] .scout-feed-report-card__photo img {
+  border-radius: 11px;
+  border: 1px solid var(--premium-hairline);
+}
+html body .app.app-command-shell[data-theme] .scout-feed-report-card__footer {
+  border-color: var(--premium-hairline);
+}
+html body .app.app-command-shell[data-theme] .scout-feed-report-card__footer button {
+  min-height: 44px;
+  border-radius: 10px;
+}
+html body .app.app-command-shell[data-theme] :is(
+  .scout-command-radar,
+  .scout-command-side-rail > article,
+  .scout-command-lower > article
+) {
+  border-radius: 16px !important;
+}
+html body .app.app-command-shell[data-theme] .scout-command-heading :is(h2, p) {
+  max-width: 100%;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+/* Vault: values and physical collection details should not be microscopic. */
+html body .app.app-command-shell[data-theme] .vault-v4-dashboard .vault-portfolio-breakdown-row {
+  border-radius: 11px;
+  padding: 10px !important;
+  gap: 6px 8px !important;
+}
+html body .app.app-command-shell[data-theme] .vault-v4-dashboard .vault-portfolio-breakdown-row :is(span, small) {
+  font-size: 11px !important;
+  line-height: 1.35;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+html body .app.app-command-shell[data-theme] .vault-v4-dashboard .vault-portfolio-breakdown-row strong {
+  font-size: 15px !important;
+  font-variant-numeric: tabular-nums;
+}
+html body .app.app-command-shell[data-theme] .vault-v4-dashboard :is(.vault-command-board-grid > article, .vault-command-overview-card) {
+  border-radius: 16px !important;
+}
+html body .app.app-command-shell[data-theme] .vault-v4-dashboard .vault-status-chip-row {
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  padding: 3px 0 6px;
+}
+html body .app.app-command-shell[data-theme] .vault-v4-dashboard .vault-status-chip-row > * {
+  min-height: 30px;
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  font-size: 11px !important;
+  line-height: 1.3;
+}
+
+/* Market: the result itself is the star; action controls stay tappable. */
+html body .app.app-command-shell[data-theme] .market-command-board :is(.market-v4-search-panel, .market-v4-side-rail > article) {
+  border-radius: 16px !important;
+}
+html body .app.app-command-shell[data-theme] .market-command-only-route .market-v4-result-row {
+  border-radius: 14px;
+  padding: 14px;
+  gap: 12px;
+}
+html body .app.app-command-shell[data-theme="dark"] .market-command-only-route .market-v4-result-row {
+  border-color: var(--premium-hairline);
+  background: var(--premium-panel);
+}
+html body .app.app-command-shell[data-theme] .market-command-only-route .market-v4-result-row .market-v4-thumb {
+  border-radius: 10px;
+  background: var(--surface-inset);
+  border: 1px solid var(--border-subtle);
+}
+html body .app.app-command-shell[data-theme] .market-command-only-route .market-v4-result-actions {
+  gap: 8px;
+}
+html body .app.app-command-shell[data-theme] .market-command-only-route .market-v4-result-actions button {
+  min-height: 44px;
+  font-size: 13px !important;
+  font-weight: 600;
+  line-height: 1.3;
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+html body .app.app-command-shell[data-theme] .market-v4-search-form :is(input, button) {
+  min-height: 46px;
+  border-radius: 11px;
+  font-size: 14px;
+}
+
+/* Forge: keep actual business records legible and not clipped. */
+html body .app.app-command-shell[data-theme] .forge-page-command-route :is(
+  .forge-v4-command-matrix > section,
+  .forge-v4-operations-strip > article
+) {
+  border-radius: 16px;
+  box-shadow: var(--premium-card-shadow);
+}
+html body .app.app-command-shell[data-theme="dark"] .forge-page-command-route :is(
+  .forge-v4-command-matrix > section,
+  .forge-v4-operations-strip > article
+) {
+  background: var(--premium-panel) !important;
+  border-color: var(--premium-hairline);
+}
+html body .app.app-command-shell[data-theme] .forge-v4-priority-list button {
+  min-height: 72px !important;
+  padding: 12px !important;
+  border-radius: 11px !important;
+}
+html body .app.app-command-shell[data-theme] .forge-v4-priority-list button > strong {
+  font-size: 15px !important;
+  line-height: 1.3;
+}
+html body .app.app-command-shell[data-theme] .forge-v4-priority-list button > :is(span, small, em) {
+  font-size: 12px !important;
+  line-height: 1.4;
+  white-space: normal;
+}
+html body .app.app-command-shell[data-theme] .forge-v4-priority-list button:focus-visible {
+  outline: 3px solid var(--c3-focus);
+  outline-offset: 2px;
+}
+
+/* Phone flow: show vital work rather than silently hiding whole sections. */
+@media (max-width: 700px) {
+  html body .app.app-command-shell[data-theme] .command-board-v4-route-strip {
+    display: flex !important;
+    width: 100%;
+    min-width: 0;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    border-radius: 12px !important;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 8px;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+  html body .app.app-command-shell[data-theme] .command-board-v4-route-strip > button {
+    min-height: 44px !important;
+    min-width: 104px;
+    flex: 0 0 auto;
+    padding: 9px 12px !important;
+    scroll-snap-align: start;
+    line-height: 1.2;
+  }
+  html body .app.app-command-shell[data-theme] .scout-command-heading p {
+    display: block !important;
+    font-size: 12px !important;
+    line-height: 1.45 !important;
+  }
+  html body .app.app-command-shell[data-theme] .scout-feed-report-card__photo {
+    flex-basis: 68px;
+  }
+  html body .app.app-command-shell[data-theme] .scout-feed-report-card__photo img {
+    width: 68px;
+    height: 68px;
+  }
+  html body .app.app-command-shell[data-theme] .vault-v4-dashboard .vault-status-chip-row > :nth-child(n + 3) {
+    display: inline-flex !important;
+  }
+  html body .app.app-command-shell[data-theme] .forge-page-command-route .forge-v4-operations-strip {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px;
+  }
+  html body .app.app-command-shell[data-theme] .forge-page-command-route .forge-v4-operations-strip > :nth-child(n + 3) {
+    display: grid !important;
+  }
+  html body .app.app-command-shell[data-theme] .forge-page-command-route .forge-v4-command-matrix {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+    margin-top: 14px;
+  }
+  html body .app.app-command-shell[data-theme] .forge-page-command-route .forge-v4-command-matrix > section {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 16px !important;
+  }
+  html body .app.app-command-shell[data-theme] .forge-page-command-route .exchange-v4-hub-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px;
+  }
+  html body .app.app-command-shell[data-theme] .forge-page-command-route .exchange-v4-hub-card {
+    min-height: 134px !important;
+    max-height: none !important;
+    padding: 12px !important;
+    border-radius: 14px;
+  }
+  html body .app.app-command-shell[data-theme] .forge-page-command-route .exchange-v4-hub-card p {
+    display: block !important;
+    white-space: normal;
+    line-height: 1.4;
+    font-size: 12px !important;
+    overflow: visible;
+  }
+  html body .app.app-command-shell[data-theme] .forge-page-command-route .exchange-v4-hub-card :is(span, small, b) {
+    white-space: normal;
+    overflow: visible;
+    line-height: 1.35;
+  }
+  html body .app.app-command-shell[data-theme] .market-command-only-route .market-v4-result-actions button {
+    flex: 1 1 110px;
+  }
+}
+@media (max-width: 380px) {
+  html body .app.app-command-shell[data-theme] .forge-page-command-route .forge-v4-operations-strip {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  html body .app.app-command-shell[data-theme] .market-command-only-route .market-v4-result-row {
+    padding: 12px;
+    gap: 8px;
+  }
+}
+
+
+/* Scout area selector: original Code 3 TCG controls, not a generic widget. */
+html body .app.app-command-shell[data-theme] .scout-command-board-v5 .nationwide-location {
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  margin: 14px 0;
+  border: 1px solid var(--premium-hairline);
+  border-radius: 16px;
+  background: var(--surface-secondary);
+}
+html body .app.app-command-shell[data-theme="dark"] .scout-command-board-v5 .nationwide-location {
+  background: var(--premium-panel);
+}
+html body .app.app-command-shell[data-theme] .scout-command-board-v5 .nationwide-location > label {
+  display: block;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: .01em;
+}
+html body .app.app-command-shell[data-theme] .scout-command-board-v5 .nationwide-location :is(input, button) {
+  min-height: 46px;
+  border: 1px solid var(--border-strong);
+  border-radius: 11px;
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  box-shadow: none !important;
+  font-family: var(--c3-font-body);
+  font-size: 14px;
+  line-height: 1.35;
+}
+html body .app.app-command-shell[data-theme] .scout-command-board-v5 .nationwide-location input {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  padding: 10px 13px;
+}
+html body .app.app-command-shell[data-theme] .scout-command-board-v5 .nationwide-location .nationwide-location__search {
+  min-width: 0;
+  gap: 8px;
+}
+html body .app.app-command-shell[data-theme] .scout-command-board-v5 .nationwide-location .nationwide-location__modes {
+  gap: 8px;
+}
+html body .app.app-command-shell[data-theme] .scout-command-board-v5 .nationwide-location__modes button[aria-pressed="true"] {
+  border-color: var(--c3-gold) !important;
+  background: var(--c3-gold) !important;
+  color: #241b13 !important;
+  font-weight: 750;
+}
+html body .app.app-command-shell[data-theme] .scout-command-board-v5 .nationwide-location ul {
+  display: grid;
+  gap: 3px;
+  border-color: var(--premium-hairline);
+  border-radius: 12px;
+  background: var(--surface-elevated);
+  box-shadow: var(--premium-card-shadow);
+}
+html body .app.app-command-shell[data-theme] .scout-command-board-v5 .nationwide-location ul button {
+  width: 100%;
+  min-height: 44px;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--text-primary) !important;
+  text-align: left;
+}
+html body .app.app-command-shell[data-theme] .scout-command-board-v5 .nationwide-location li[aria-selected="true"] button {
+  border-radius: 8px;
+  outline: 2px solid var(--c3-gold) !important;
+  outline-offset: -2px;
+}
+html body .app.app-command-shell[data-theme] .scout-command-board-v5 .nationwide-location :is(.nationwide-location__summary, small, p) {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+html body .app.app-command-shell[data-theme] .scout-command-board-v5 .nationwide-location :is(input, button, summary):focus-visible {
+  outline: 3px solid var(--c3-focus) !important;
+  outline-offset: 3px;
+}
+@media (max-width: 420px) {
+  html body .app.app-command-shell[data-theme] .scout-command-board-v5 .nationwide-location {
+    padding: 12px;
+    gap: 10px;
+  }
+  html body .app.app-command-shell[data-theme] .scout-command-board-v5 .nationwide-location__modes button {
+    flex: 1 1 90px;
+    padding-inline: 8px;
+    font-size: 13px;
+  }
+}
