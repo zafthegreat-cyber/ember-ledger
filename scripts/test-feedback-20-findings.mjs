@@ -14,6 +14,7 @@ import { businessRecordMatchesQuery, businessRecordSearchText } from "../src/uti
 import { availableQuantity, isSoldOut, projectedResaleTotal, projectedResaleTotalNote, recordQuantity, remainingStockCost, unitsOnHandTotal } from "../src/utils/businessInventoryTotals.mjs";
 import { amountIssue, presentAmount, presentMoney, recordCurrency } from "../src/utils/recordPresentation.mjs";
 import { buildPortfolioCsv, getPortfolioItemValuation, summarizePortfolio } from "../src/utils/collectionPortfolio.mjs";
+import { collectionExportRows, collectionRowsCsv } from "../src/utils/collectionNext.mjs";
 
 const src = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const stores = [{ id: "s1", name: "Target Short Pump", city: "Richmond", state: "VA" }];
@@ -198,10 +199,63 @@ test("F19: portfolio export uses the shared file adapter with a duplicate-click 
   const component = src("src/components/CollectionPortfolio.jsx");
   assert.match(component, /import \{ exportFile, exportFileError, exportFileStatus \} from "\.\.\/native\/nativeFiles\.js";/);
   assert.match(component, /if \(exportingRef\.current\) return;/);
-  assert.match(component, /await exportFile\(\{ blob, filename: "code3-tcg-portfolio\.csv" \}\)/);
+  assert.match(component, /await exportFile\(\{ blob, filename: exportScope === "results" \? "code3-tcg-collection-results\.csv" : "code3-tcg-portfolio\.csv" \}\)/);
   assert.match(component, /exportFileError\(error\)/);
   assert.doesNotMatch(component, /anchor\.click\(\)/);
-  assert.match(component, /Export \$\{activeName === "All portfolios" \? "all portfolios" : "this portfolio"\}/);
+  assert.match(component, /<CollectionExportReview[^>]+onExport=\{exportPortfolio\}/);
+});
+
+test("F19: the reviewed export callback preserves scope, redaction, duplicate guards and retry after failure", async () => {
+  const component = src("src/components/CollectionPortfolio.jsx");
+  const start = component.indexOf("  async function exportPortfolio(config) {");
+  const end = component.indexOf("\n  function reloadSettings()", start);
+  assert.ok(start >= 0 && end > start, "exercise the actual callback, not a duplicate implementation");
+  const callback = component.slice(start, end).trim();
+  const records = [{ id: "one", name: "Selected", quantity: 1, marketPrice: 90, allocatedItemCost: 17, notes: "private-note" }, { id: "two", name: "Other", quantity: 2, marketPrice: 10 }];
+  const before = JSON.stringify(records);
+  const makeExport = (options = {}) => {
+    const calls = [], messages = [], loading = [];
+    let closes = 0, locked = 0;
+    const ref = { current: false };
+    const dependencies = {
+      exportScope: "results", shown: records.slice(0, 1), portfolioItems: records, features: { export: true },
+      onLockedFeature: () => { locked++; }, exportingRef: ref, setExporting: (value) => loading.push(value),
+      setMessage: (message) => messages.push(message), activeName: "All portfolios", collectionRowsCsv, collectionExportRows,
+      hidden: false, exportFile: async (file) => { calls.push({ filename: file.filename, text: await file.blob.text() }); return { status: "downloaded" }; },
+      exportFileStatus: () => "Export ready", closeDialog: () => { closes++; },
+      exportFileError: () => "No saved backup was confirmed; your records are unchanged.", ...options,
+    };
+    const run = new Function(...Object.keys(dependencies), `return (${callback});`)(...Object.values(dependencies));
+    return { run, ref, calls, messages, loading, get closes() { return closes; }, get locked() { return locked; } };
+  };
+  const config = { fields: ["name", "cost", "notes", "unitEstimate"], privateDetails: false };
+  const selected = makeExport();
+  await Promise.all([selected.run(config), selected.run(config)]);
+  assert.equal(selected.calls.length, 1, "same-tick duplicate tap cannot start a second export");
+  assert.equal(selected.calls[0].filename, "code3-tcg-collection-results.csv");
+  assert.match(selected.calls[0].text, /Selected/);
+  assert.doesNotMatch(selected.calls[0].text, /Other|Recorded cost|Notes|private-note/);
+  assert.equal(selected.closes, 1);
+  assert.deepEqual(selected.loading, [true, false]);
+  const all = makeExport({ exportScope: "portfolio", hidden: true });
+  await all.run({ ...config, privateDetails: true });
+  assert.equal(all.calls[0].filename, "code3-tcg-portfolio.csv");
+  assert.match(all.calls[0].text, /Other/);
+  assert.match(all.calls[0].text, /private-note/);
+  assert.doesNotMatch(all.calls[0].text, /Recorded cost|Unit estimate/);
+  let attempts = 0;
+  const interrupted = makeExport({ exportFile: async () => { attempts++; throw new Error("share canceled"); } });
+  await interrupted.run(config);
+  assert.equal(interrupted.ref.current, false);
+  assert.equal(interrupted.closes, 0);
+  assert.match(interrupted.messages.at(-1), /No file was confirmed; your records are unchanged/);
+  await interrupted.run(config);
+  assert.equal(attempts, 2, "failure releases the synchronous guard for a retry");
+  const unavailable = makeExport({ features: { export: false } });
+  await unavailable.run(config);
+  assert.equal(unavailable.locked, 1);
+  assert.equal(unavailable.calls.length, 0);
+  assert.equal(JSON.stringify(records), before, "exports never mutate records or their latest prices");
 });
 
 test("F20: password auth handler has a synchronous in-flight guard cleared in finally", () => {

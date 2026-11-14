@@ -1,5 +1,7 @@
 import ItemPhoto from "../components/ItemPhoto.jsx";
-import { useId, useRef, useState } from "react";
+import SavedSearches from "../features/market/SavedSearches.jsx";
+import { useContext, useId, useRef, useState } from "react";
+import { ExperiencePresentationContext } from "../utils/experiencePresentationContext";
 import "./market-search-results.css";
 import { buildManualMarketDraft, formatMarketQuoteValue, getMarketQuoteContext, getMarketResultMatchLabel } from "../utils/marketSearchPresentation.mjs";
 import {
@@ -8,6 +10,9 @@ import {
 } from "../components/command-system";
 
 export default function MarketPage(props) {
+  // MUST-11 (Nov 13): collectors see search, results and the watch list; the
+  // decision rail, metric grid and feature-system cards stay for admins.
+  const fullBoard = Boolean(useContext(ExperiencePresentationContext)?.showAdminTools);
   const {
     catalogImage,
     catalogSearch,
@@ -165,8 +170,8 @@ export default function MarketPage(props) {
         className="market-command-board"
         ariaLabel="Market Command Center"
         label="Market"
-        title="Market Command Center"
-        description="Search products, compare fair-value context, manage watch targets, and move researched items into Vault or Exchange without checkout, stock promises, or seller matching."
+        title={fullBoard ? "Market Command Center" : "Market"}
+        description={fullBoard ? "Search products, compare fair-value context, manage watch targets, and move researched items into Vault or Exchange without checkout, stock promises, or seller matching." : "Search a card or product, see its price range, and watch the ones you care about."}
         primaryAction={{ label: "Search Market", icon: "search", onClick: marketFocusSearch }}
         secondaryActions={[
           { label: "Check Deal", icon: "market", onClick: openDealFinderModal },
@@ -225,6 +230,7 @@ export default function MarketPage(props) {
               </label>
               <button type="submit" disabled={Boolean(supabaseCatalogStatus.loading) || !String(catalogSearch || "").trim()}>{supabaseCatalogStatus.loading ? "Searching…" : "Search Market"}</button>
             </form>
+            <SavedSearches currentQuery={submittedQuery} hasRun={Boolean(catalogSearchHasRun)} onRun={(query) => { setCatalogSearch(query); submitCatalogSearch(query); }} />
             <p id={searchStatusId} role="status" aria-live="polite" aria-atomic="true">
               {supabaseCatalogStatus.loading ? "Searching the catalog…" : catalogSearchHasRun ? `${marketResultCount} catalog result${marketResultCount === 1 ? "" : "s"}${submittedQuery ? ` for “${submittedQuery}”` : ""}.` : "Search by card name and number, set, UPC or SKU."}
             </p>
@@ -288,8 +294,8 @@ export default function MarketPage(props) {
                 </article>
               ) : (
                 <article className="market-v4-empty-state">
-                  <strong>Search first, then decide.</strong>
-                  <p>Market should feel like a collector research desk: range, liquidity, confidence, watch targets, and safe next steps before money moves.</p>
+                  <strong>Search for a card or product to start.</strong>
+                  <p>Try a name, a set, or a card number like 4/102. Prices here are saved estimates, not offers.</p>
                   <button type="button" onClick={marketFocusSearch}>Focus Search</button>
                 </article>
               )}
@@ -306,15 +312,15 @@ export default function MarketPage(props) {
               </nav>
             ) : null}
 
-            <div className="market-v4-value-ribbon" aria-label="Value range ribbon">
+            {fullBoard ? <div className="market-v4-value-ribbon" aria-label="Value range ribbon">
               <span>Low: Unknown</span>
               <span>Market: Unknown</span>
               <span>High: Unknown</span>
               <strong>Choose a product to compare price sources.</strong>
-            </div>
+            </div> : null}
           </section>
 
-          <aside className="market-v4-side-rail" aria-label="Market decision rail">
+          {fullBoard ? <aside className="market-v4-side-rail" aria-label="Market decision rail">
             <article>
               <span>What should I do next?</span>
               <h3>Set a target before chasing the drop.</h3>
@@ -332,11 +338,11 @@ export default function MarketPage(props) {
                 {marketSafetyRows.map((row) => <small key={row}>{row}</small>)}
               </div>
             </article>
-          </aside>
+          </aside> : null}
 
-          <CommandMetricGrid items={marketMetricItems} className="market-v4-metrics" ariaLabel="Market intelligence metrics" />
+          {fullBoard ? <CommandMetricGrid items={marketMetricItems} className="market-v4-metrics" ariaLabel="Market intelligence metrics" /> : null}
 
-          <section className="market-v4-lower-grid" aria-label="Market feature system">
+          {fullBoard ? <section className="market-v4-lower-grid" aria-label="Market feature system">
             {marketDecisionCards.map((card) => (
               <article key={card.key}>
                 <div className="market-v4-panel-heading compact">
@@ -349,7 +355,7 @@ export default function MarketPage(props) {
                 <p>{card.detail}</p>
               </article>
             ))}
-          </section>
+          </section> : null}
         </div>
       </CommandBoardV4>
     </div>

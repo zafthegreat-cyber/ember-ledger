@@ -454,19 +454,19 @@ export default function SparkPage(props) {
               <article>
                 <strong>Kid Packs</strong>
                 <div className="spark-v4-record-list">
-                  {recentSparkKidPacks.length ? recentSparkKidPacks.map(renderSparkKidPackRow) : <small>No kid packs planned yet.</small>}
+                  {recentSparkKidPacks.length ? recentSparkKidPacks.map(renderSparkKidPackRow) : <p className="empty-state small-empty-state">No kid packs planned yet.</p>}
                 </div>
               </article>
               <article>
                 <strong>Giving Ledger</strong>
                 <div className="spark-v4-record-list">
-                  {recentSparkGifts.length ? recentSparkGifts.map(renderSparkGiftRow) : <small>No Spark Gifts logged yet.</small>}
+                  {recentSparkGifts.length ? recentSparkGifts.map(renderSparkGiftRow) : <p className="empty-state small-empty-state">No Spark Gifts logged yet.</p>}
                 </div>
               </article>
               <article>
                 <strong>Event Support Planner</strong>
                 <div className="spark-v4-record-list">
-                  {recentSparkEventPlans.length ? recentSparkEventPlans.map(renderSparkEventSupportRow) : <small>No Event Support plans yet.</small>}
+                  {recentSparkEventPlans.length ? recentSparkEventPlans.map(renderSparkEventSupportRow) : <p className="empty-state small-empty-state">No Event Support plans yet.</p>}
                 </div>
               </article>
             </div>

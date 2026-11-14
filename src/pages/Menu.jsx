@@ -1,7 +1,8 @@
-import { useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import { AppNavIcon } from "../components/command-system/AppNavIcon.jsx";
 import { PageHeader, SecondaryButton } from "../components/operations/OperationsUI.jsx";
-import CloudSyncPanel from "../features/persistence/CloudSyncPanel.jsx";
+// Audit 2026-11-14: loaded when Settings opens, not with the first page (it pulls in backup/restore code).
+const CloudSyncPanel = lazy(() => import("../features/persistence/CloudSyncPanel.jsx"));
 import BlockedUsersPanel from "../components/BlockedUsersPanel.jsx";
 import { useCloudWorkspace } from "../features/persistence/CloudWorkspaceContext.js";
 import { resolveExperiencePresentation } from "../utils/experiencePresentation.js";
@@ -87,6 +88,9 @@ export default function MenuPage(props) {
     showFamilyExperience,
     showCommunityExperience,
     signedInWithSupabase,
+    signOut,
+    startAppTour,
+    userEmail = "",
   } = props;
   const presentation = experiencePresentation || resolveExperiencePresentation();
   const showFamily = presentation.showAdminTools || (typeof showFamilyExperience === "boolean" ? showFamilyExperience : presentation.showFamilyTools);
@@ -121,9 +125,13 @@ export default function MenuPage(props) {
           <div className="settings-layout__identity">
             <span className="settings-layout__eyebrow">Current workspace</span>
             <h2>{activeWorkspaceName || "My Personal Space"}</h2>
-            <p><span className="settings-layout__account-type">{accountLabel}</span><span>{accessLabel}</span></p>
+            <p><span className="settings-layout__account-type">{accountLabel}</span><span>{accessLabel}</span>{userEmail ? <span className="settings-layout__email">{userEmail}</span> : null}</p>
           </div>
-          <SecondaryButton onClick={() => openUtilityPage("profile")}>Open Profile<SettingsArrow /></SecondaryButton>
+          <div className="settings-layout__account-actions">
+            <SecondaryButton onClick={() => openUtilityPage("profile")}>Open Profile<SettingsArrow /></SecondaryButton>
+            {typeof startAppTour === "function" ? <SecondaryButton onClick={startAppTour}><AppNavIcon kind="search" />Take the tour</SecondaryButton> : null}
+            {typeof signOut === "function" && signedInWithSupabase ? <button type="button" className="settings-layout__sign-out" onClick={signOut}>Sign out</button> : null}
+          </div>
           <dl className="settings-layout__account-meta">
             <div><dt>Experience</dt><dd>{presentation.personaLabel}</dd></div>
             {showFamily ? <div><dt>Family protection</dt><dd>{familyProtectionLabel}</dd></div> : null}
@@ -145,12 +153,12 @@ export default function MenuPage(props) {
                 </SettingsDisclosure>
               ) : null}
               <SettingsRow icon="account" title="Account & security" description="Sign-in, private account details, and access" onClick={() => openUtilityPage("account")} />
-              <SettingsRow icon="bell" title="Notifications" description="Open Beacon to review alerts and reminders" status={notificationUnreadCount ? `${notificationUnreadCount} unread` : "All quiet"} onClick={() => openBeacon("you_beacon")} />
+              <SettingsRow icon="bell" title="Notifications" description="Review your alerts and reminders" status={notificationUnreadCount ? `${notificationUnreadCount} unread` : "All quiet"} onClick={() => openBeacon("you_beacon")} />
               <SettingsRow icon="plan" title="Plans & access" description="Plan limits and access review" onClick={() => openUtilityPage("membership")} />
             </SettingsGroup>
 
             <SettingsGroup id="settings-support-heading" title="Records & support">
-              {cloudWorkspace && <SettingsDisclosure icon="data" title="Cloud saving & recovery" description="Account backups, device sync, and signed-in devices" reviewRequested={cloudSyncReviewRequested} onReviewShown={onCloudSyncReviewShown}><CloudSyncPanel /></SettingsDisclosure>}
+              {cloudWorkspace && <SettingsDisclosure icon="data" title="Cloud saving & recovery" description="Account backups, device sync, and signed-in devices" reviewRequested={cloudSyncReviewRequested} onReviewShown={onCloudSyncReviewShown}><Suspense fallback={<p className="compact-subtitle">Loading cloud saving…</p>}><CloudSyncPanel /></Suspense></SettingsDisclosure>}
               <SettingsRow icon="data" title="Archive & backups" description="Receipts, proof, exports, and private records" status={commandDeskSellerAccess ? "Seller records" : undefined} onClick={() => openUtilityPage("dataBackup")} />
               <SettingsRow icon="help" title="Help & app status" description="Get help, share feedback, or check known issues" onClick={() => openUtilityPage("help")} />
               {typeof renderAppBuildDetails === "function" ? (

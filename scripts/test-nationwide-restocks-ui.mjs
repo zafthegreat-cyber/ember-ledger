@@ -86,7 +86,8 @@ test("actual Restocks screen scopes nearby reports and store suggestions with th
     await act(async () => { root.render(React.createElement(StateHarness, { key: "saved-locations" })); });
     assert.match(document.body.textContent, /Only 1 report in near .*Richmond, CA/);
     assert.match(document.body.textContent, /Synthetic Richmond shop/, "A custom metro label must not hide a local store");
-    assert.match(document.body.textContent, /No current report/, "Old history must not create a current restock signal");
+    // The Current Signal card is admin-only since the MUST-11 declutter; members see the feed's empty state.
+    assert.match(document.body.textContent, /No current (restock )?report/, "Old history must not create a current restock signal");
     assert.deepEqual(JSON.parse(localStorage.getItem("et-tcg-beta-scout")).reports[0], original);
 
     // A new location deep link must update the state and nearby scope, not
@@ -97,7 +98,8 @@ test("actual Restocks screen scopes nearby reports and store suggestions with th
     assert.equal(selected, "TX");
     assert.match(document.body.textContent, /No reports in near .*Austin, TX yet/);
     assert.equal(document.querySelectorAll(".scout-command-radar .scout-tile-map-pin").length, 0);
-    assert.match(document.querySelector('[aria-label="Restocks intelligence rail"]').textContent, /No current report/);
+    // Members' rail holds only Watched Stores now; the empty state lives in the report feed.
+    assert.match(document.body.textContent, /No current (restock )?report/);
   } finally {
     if (root) await act(async () => root.unmount());
     dom.window.close();

@@ -86,7 +86,8 @@ export const BRAND_LEGAL_NOTICE =
 export const POKEMON_AFFILIATION_NOTICE =
   "Pokémon is a trademark of its respective owner. Code 3 TCG is not affiliated with or endorsed by The Pokémon Company, Nintendo, Game Freak, or Creatures.";
 
-export const SIGNUP_TERMS_TEXT = "I agree to the Terms of Use and Privacy Policy.";
+// Audit 2026-11-14: the required consent box also confirms age (Play target audience 13+, no age gate before).
+export const SIGNUP_TERMS_TEXT = "I am 13 or older and I agree to the Terms of Use and Privacy Policy.";
 export const SIGNUP_BETA_ACK_TEXT = "I understand Code 3 TCG is in development and features may change.";
 
 export const BETA_ACCESS_MODES = ["open_beta", "invite_only", "waitlist"];
@@ -196,8 +197,8 @@ export const FOR_PARENTS_COPY = [
 ];
 
 export const KNOWN_LIMITATIONS = [
-  "OCR is not fully wired yet.",
-  "Photo lookup may be beta/placeholder.",
+  "Reading text from photos is still being built, so type details in when a scan misses.",
+  "Photo lookup can miss a match; search by name or number instead.",
   "Grade Assist is an estimate, not a guaranteed grade.",
   "Market values may be incomplete or unavailable.",
   "Forecasts are estimates, not guarantees.",

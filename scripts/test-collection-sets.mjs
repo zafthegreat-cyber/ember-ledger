@@ -78,8 +78,9 @@ test("catalog discovery cannot promote product logos, checklist metadata or pric
   const product = freeze({ id: "cat", setName: "Fusion Strike", catalogType: "card", cardNumber: "7/264", imageUrl: "/existing-art.png", marketPrice: 999, releaseDate: "2000-01-01", printedTotal: 999, logoUrl: "/not-a-set-logo.svg" });
   const row = first({ catalogProducts: [product] });
   assert.equal(row.artworkRecord, product); assert.equal(row.artworkSource, "catalog"); assert.equal(row.itemCount, 0); assert.equal(row.knownValueCount, 0); assert.equal(row.uniqueCardCount, 0); assert.equal(row.totalCards, null); assert.equal(row.releaseDate, "");
-  assert.equal(row.logoUrl, resolveSetArtwork({ game: "pokemon", name: "Fusion Strike" }).logoUrl);
-  assert.notEqual(row.logoUrl, product.logoUrl, "The exact known set can use its identity logo; the product cannot supply one");
+  // Audit 2026-11-14: no official set logos ship, so a known set has no logo either.
+  assert.equal(resolveSetArtwork({ game: "pokemon", name: "Fusion Strike" }), null);
+  assert.equal(row.logoUrl, "", "A product photo is never used as a set logo");
 });
 test("saved private and legacy photo references stay intact for existing product detail compatibility", () => {
   for (const photo of [{ itemImage: "private:photo" }, { item_image: "/my-photo.png" }, { displayImage: "/display.png" }, { photos: [{ url: "/photo.png" }] }, { images: { large: "/nested.png" } }]) {

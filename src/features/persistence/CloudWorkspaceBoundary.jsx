@@ -1,14 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { isSupabaseConfigured, supabase } from "../../supabaseClient.js";
 import { isLocalDevelopmentIdentityEnabled } from "../../services/ownerSession.js";
 import { CloudWorkspaceContext } from "./CloudWorkspaceContext.js";
-import { createCloudWorkspaceSync } from "./cloudWorkspaceSync.js";
 import { claimWorkspaceOwner, hasPendingWorkspaceOwnerSwitch, hasWorkspaceLocalRecords, readWorkspaceBinding, recoverWorkspaceOwnerSwitch, switchWorkspaceOwner } from "./workspaceOwnerBinding.js";
 import { hasSessionDrafts, readSessionDraftBinding, hasPendingSessionDraftSwitch, recoverSessionDraftSwitch, switchSessionDraftOwner } from "./workspaceSessionBinding.js";
-import { acquireWorkspaceReadLease, applyWorkspaceSources, hasPendingWorkspaceRecovery, recoverWorkspaceSources } from "../backup/workspaceRecovery.js";
-import WorkspaceRestorePanel from "../backup/WorkspaceRestorePanel.jsx";
-import { planWorkspaceRestore } from "../backup/workspaceRestorePlan.js";
-import { exportLegacyCloudBackup, inspectLegacyCloudBackup, restoreLegacyCloudBackup } from "../backup/legacyCloudBackup.js";
+// Audit 2026-11-14: only the small startup checks load with the first page. Recovery, sync and restore
+// code (backup format, validation, inventory cost rules: ~490 KB) loads when a signed-in user is opened.
+import { acquireWorkspaceReadLease, hasPendingWorkspaceRecovery } from "../backup/workspaceRecoveryState.js";
+const loadRecovery = () => import("../backup/workspaceRecovery.js");
+const loadCloudSync = () => import("./cloudWorkspaceSync.js");
+const loadRestorePlan = () => import("../backup/workspaceRestorePlan.js");
+const loadLegacyCloudBackup = () => import("../backup/legacyCloudBackup.js");
+const WorkspaceRestorePanel = lazy(() => import("../backup/WorkspaceRestorePanel.jsx"));
 import { confirmAccountOperation, consumeAccountConfirmation } from "../../services/accountSessionService.js";
 import WorkspaceRecoverySignIn from "./WorkspaceRecoverySignIn.jsx";
 import WorkspaceSupportDetails from "./WorkspaceSupportDetails.jsx";
@@ -108,7 +111,7 @@ function ProtectedCloudWorkspaceBoundary({ children, client = supabase, configur
     };
     if (hasPendingWorkspaceOwnerSwitch(localStorage)) await recoverWorkspaceOwnerSwitch({ storage: localStorage, assertCurrent });
     if (hasPendingSessionDraftSwitch(sessionStorage)) recoverSessionDraftSwitch({ storage: sessionStorage, assertCurrent });
-    if (hasPendingWorkspaceRecovery(localStorage)) await recoverWorkspaceSources({ storage: localStorage, ownerId: user.id, assertCurrent });
+    if (hasPendingWorkspaceRecovery(localStorage)) await (await loadRecovery()).recoverWorkspaceSources({ storage: localStorage, ownerId: user.id, assertCurrent });
     if (ticket !== generation.current) return;
     const binding = readWorkspaceBinding(localStorage);
     const draftBinding = readSessionDraftBinding(sessionStorage);
@@ -122,6 +125,8 @@ function ProtectedCloudWorkspaceBoundary({ children, client = supabase, configur
     if (ticket !== generation.current) return;
     const active = localStorage.getItem(preferenceKey(user.id)) !== "false";
     setEnabled(active);
+    const [{ createCloudWorkspaceSync }, { applyWorkspaceSources }] = await Promise.all([loadCloudSync(), loadRecovery()]);
+    if (ticket !== generation.current) return;
     const sync = createCloudWorkspaceSync({ storage: localStorage, client, ownerId: user.id, applySources: (options) => applyWorkspaceSources({ ...options, assertCurrent: () => { assertCurrent(); options.assertCurrent?.(); } }) });
     stop(); controller.current = sync;
     unsubscribe.current = sync.subscribe(() => {
@@ -252,7 +257,7 @@ function ProtectedCloudWorkspaceBoundary({ children, client = supabase, configur
   const value = { user: screen.user, enabled, status: syncState, setEnabled: setCloudEnabled, runExclusive,
     syncNow: () => controller.current?.sync(), history: () => controller.current?.history(), readRevision: (revision) => controller.current?.readRevision(revision),
     listDeviceRecoveryCopies: () => controller.current?.listDeviceRecoveryCopies(), readDeviceRecoveryCopy: (copyId) => controller.current?.readDeviceRecoveryCopy(copyId),
-    exportCloudBackup: (signal) => exportLegacyCloudBackup({ client, userId: screen.user.id, signal }),
+    exportCloudBackup: async (signal) => (await loadLegacyCloudBackup()).exportLegacyCloudBackup({ client, userId: screen.user.id, signal }),
     reviewConflicts: () => controller.current?.previewConflicts(),
     resolveConflicts: (reviewId, choices) => runExclusive(({ sync }) => sync.resolveConflicts({ reviewId, choices, confirmed: true })),
     openRecovery: (file) => setScreen((current) => ({ ...current, phase: "restore", recoveryFile: current.user?.id === screen.user.id && file && typeof file.text === 'function' ? file : null })),
@@ -267,6 +272,7 @@ function ProtectedCloudWorkspaceBoundary({ children, client = supabase, configur
     };
     await controller.current?.waitForIdle();
     assertCurrent();
+    const [{ planWorkspaceRestore }, { applyWorkspaceSources }] = await Promise.all([loadRestorePlan(), loadRecovery()]);
     const latest = await planWorkspaceRestore(raw, { storage: localStorage });
     if (latest.plan.planHash !== plan.planHash) throw new Error("Records changed after the preview. Choose the backup again to review the updated recovery.");
     const confirmation = await confirmAccountOperation({ purpose: "BACKUP_RECOVERY", planDigest: plan.planHash, password, userId: user.id, signal });
@@ -284,6 +290,7 @@ function ProtectedCloudWorkspaceBoundary({ children, client = supabase, configur
       if (signal.aborted || ticket !== generation.current || identity.current !== user.id) throw new Error("The account changed. Cloud recovery was cancelled.");
     };
     await controller.current?.waitForIdle();
+    const { inspectLegacyCloudBackup, restoreLegacyCloudBackup } = await loadLegacyCloudBackup();
     const reviewed = await inspectLegacyCloudBackup(raw, { userId: user.id });
     assertCurrent();
     if (reviewed.planDigest !== plan.planHash) throw new Error("The backup changed after review. Choose it again.");
@@ -297,7 +304,7 @@ function ProtectedCloudWorkspaceBoundary({ children, client = supabase, configur
   if (screen.phase === "passthrough") return <CloudWorkspaceContext.Provider value={null}>{children}</CloudWorkspaceContext.Provider>;
   if (screen.phase === "recovery-signin") return <WorkspaceScreen title="Sign in to recover your records"><WorkspaceRecoverySignIn client={client} /></WorkspaceScreen>;
   if (screen.phase === "signedout") return <CloudWorkspaceContext.Provider value={null}><WorkspaceLease onError={fail}>{children}</WorkspaceLease></CloudWorkspaceContext.Provider>;
-  if (screen.phase === "restore") return <WorkspaceScreen title="Recover your saved records"><WorkspaceRestorePanel userId={screen.user.id} initialFile={screen.recoveryFile} onRestore={restore} onRestoreCloud={restoreCloud} onCancel={() => window.location.reload()} /></WorkspaceScreen>;
+  if (screen.phase === "restore") return <WorkspaceScreen title="Recover your saved records"><Suspense fallback={<p>Loading recovery…</p>}><WorkspaceRestorePanel userId={screen.user.id} initialFile={screen.recoveryFile} onRestore={restore} onRestoreCloud={restoreCloud} onCancel={() => window.location.reload()} /></Suspense></WorkspaceScreen>;
   if (screen.phase === "ready") return <CloudWorkspaceContext.Provider value={value}><WorkspaceLease onError={fail}>{children}
     <WorkspaceSyncNotice status={syncState} ownerId={screen.user.id} onLoadNewer={value.loadNewer} onReviewChanges={requestCloudSyncReview} />
   </WorkspaceLease></CloudWorkspaceContext.Provider>;

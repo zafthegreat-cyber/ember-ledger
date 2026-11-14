@@ -1,0 +1,32 @@
+.persona-checklist { display: grid; gap: 12px; }
+.persona-checklist__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.persona-checklist__head h2 { margin: 4px 0 4px; font: 600 clamp(18px, 4vw, 22px)/1.2 var(--font-display, inherit); color: var(--text-primary, #222); }
+.persona-checklist__head p { margin: 0; color: var(--text-secondary, #777); font-size: 13.5px; line-height: 1.5; }
+.persona-checklist__dismiss { flex: none; min-height: 44px; padding: 0 12px; border: 1px solid var(--border-subtle, #ddd); border-radius: 10px; background: transparent; color: var(--text-secondary, #777); font: 600 13px/1 var(--font-ui, inherit); cursor: pointer; }
+.persona-checklist__dismiss:hover { border-color: var(--accent-teal, #1F7A74); color: var(--accent-teal, #1F7A74); }
+.persona-checklist__steps { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+/* `.app` prefix: outranks the app-wide `.app.app-command-shell button:not([class])` primary fill (gold in dark mode). */
+.persona-checklist__steps button,
+.app .persona-checklist__steps button { display: grid; grid-template-columns: 32px minmax(0, 1fr) 16px; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 10px 12px; border: 1px solid var(--border-subtle, #ddd); border-radius: var(--c3-radius, 14px); background: var(--surface-primary, #fff); color: var(--text-primary, #222); text-align: left; cursor: pointer; }
+.persona-checklist__steps button:hover:not(:disabled),
+.app .persona-checklist__steps button:hover:not(:disabled) { border-color: var(--accent-teal, #1F7A74); }
+.persona-checklist__steps button:disabled,
+.app .persona-checklist__steps button:disabled { cursor: default; opacity: 1; background: color-mix(in srgb, var(--surface-secondary, #f3f3f3) 70%, transparent); }
+.persona-checklist__mark { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--accent-teal-soft, #E3F1EF); color: var(--accent-teal, #1F7A74); font: 700 14px/1 var(--font-ui, inherit); }
+.is-done .persona-checklist__mark { background: var(--status-success, #24633D); color: #fff; }
+.persona-checklist__copy { display: grid; gap: 2px; min-width: 0; }
+.persona-checklist__copy strong,
+.app .persona-checklist__copy strong { font-size: 15px; color: var(--text-primary, #222); }
+.is-done .persona-checklist__copy strong { text-decoration: line-through; color: var(--text-secondary, #777); }
+.persona-checklist__copy small { color: var(--text-secondary, #777); font-size: 12.5px; line-height: 1.4; }
+.persona-checklist__chevron { color: var(--text-secondary, #777); font-size: 20px; }
+
+/* What's new card (COULD 31) shares the checklist's shell. */
+.whats-new-card { display: grid; gap: 10px; }
+.whats-new-card__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.whats-new-card__head h2 { margin: 4px 0; font: 600 clamp(18px, 4vw, 22px)/1.2 var(--font-display, inherit); color: var(--text-primary, #222); }
+.whats-new-card__head p { margin: 0; color: var(--text-secondary, #777); font-size: 13.5px; line-height: 1.5; }
+.whats-new-card__list { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.whats-new-card__list li { padding: 6px 10px; border-radius: 999px; background: var(--accent-teal-soft, #E3F1EF); color: var(--accent-teal, #1F7A74); font-size: 12.5px; font-weight: 600; }
+.whats-new-card__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.whats-new-card__actions .secondary-button { min-height: 40px; }

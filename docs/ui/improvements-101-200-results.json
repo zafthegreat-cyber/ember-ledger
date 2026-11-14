@@ -1,7 +1,7 @@
 {
   "title": "Code 3 TCG — UI improvements 101–200",
-  "status": "implemented_and_followup_verified_local",
-  "publication": "Initial implementation exists on the feature branch at a1584c3. Current follow-up is local and has not been merged or published.",
+  "status": "release_candidate_verified",
+  "publication": "User approved push, merge, and production publication on 2026-11-14. The release combines the reviewed UI 101–200 work and follow-up with main 3155262; deployment status is tracked in the release PR.",
   "items": [
     {
       "id": 101,

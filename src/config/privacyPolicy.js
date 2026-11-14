@@ -66,6 +66,14 @@ export const PRIVACY_SECTIONS = Object.freeze([
     body: "The app saves preferences, drafts, and some records on your device. Supabase provides account authentication, cloud database storage, and uploaded-file storage; Vercel hosts the app and its APIs. Not every local tool is included in cloud saving. Check the coverage in Settings → Cloud saving & recovery and keep verified device and cloud backups before moving to another device. A native app starts with separate storage from the website or installed web app.",
   },
   {
+    key: "crash-reports", title: "Crash reports",
+    body: "When the app hits an error, it can send a crash report to Sentry, our error-monitoring provider, so we can fix it. A report holds the error, the screen it happened on, the app version, and basic browser or device details. Before it leaves your device we remove email addresses, long number runs such as card or phone numbers, web-address query strings, sign-in tokens, anything you typed, and record contents; we do not attach your name, email or IP address. Crash reports are never sent while a kid-safe profile is in use. You can turn them off in Settings → Privacy.",
+  },
+  {
+    key: "feedback", title: "Feedback you send",
+    body: "When you use the Feedback button, your message, the screen you were on, the app version, and basic device details are saved in our database. If you add an email address, we use it only to reply. A copy of the message (without your email) is posted to a private channel in our team's Discord server so we see it quickly. You can send feedback without an account; please don't include passwords or card numbers.",
+  },
+  {
     key: "permissions", title: "Photos, camera, and location",
     body: "Camera, file, photo, and location access is used when you choose a related feature, such as scanning a barcode, attaching a receipt, or finding nearby stores. You can decline or revoke device permissions and use manual entry where available. Reports identify stores; do not include your private location or another person's private details in a report. External maps, retailers, and image providers receive normal network information when their content is requested and apply their own policies.",
   },

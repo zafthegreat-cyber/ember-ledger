@@ -239,41 +239,41 @@ export default function CommunityContent({ scope }) {
               { key: "spark", icon: "spark", label: "Spark", title: "Support", detail: "Donation drives", action: () => setActiveTab("kidsProgram") },
             ]}
           >
-            <div className="tidepool-mockup-guardrail-strip" aria-label="Community guardrails">
+            {adminToolsVisible ? (<div className="tidepool-mockup-guardrail-strip" aria-label="Community guardrails">
               <span>Safe community posts</span>
               <span>Proof-based confirmations</span>
               <span>General areas only</span>
               <span>No vendor schedules</span>
               <span>No exact restock patterns</span>
               <span>No guaranteed stock</span>
-            </div>
+            </div>) : null}
           </CommandBoardV4>
 
           <EtMockupSectionCard
             title="Community pulse"
             detail="Community is for trusted collecting activity, not rush alerts. Posts stay helpful, moderated, and family-friendly."
             className="tidepool-mockup-pulse"
-            action={<EtMockupPill tone="beta">Public beta</EtMockupPill>}
+            action={adminToolsVisible ? <EtMockupPill tone="beta">Public beta</EtMockupPill> : null}
           >
-            <div className="et-mockup-stat-grid tidepool-mockup-stat-grid" aria-label="Community stats">
+            {adminToolsVisible ? (<div className="et-mockup-stat-grid tidepool-mockup-stat-grid" aria-label="Community stats">
               {tidepoolStats.map((stat) => (
                 <EtMockupStatCard key={stat.label} label={stat.label} value={stat.value} detail={stat.label === "Local" ? "General areas" : stat.label === "Replies" ? "Reviewed replies" : "Safe posts"} tone="collector" />
               ))}
-            </div>
+            </div>) : null}
             <div className="tidepool-mockup-action-row">
               <button type="button" className="et-mockup-button et-mockup-button-primary tidepool-mockup-start-post" onClick={openTidepoolCreatePostFlow} disabled={!canCreateTidepoolPost}>Start a Post</button>
               <EtMockupButton variant="secondary" onClick={() => setActiveTab("scout")}>Restocks Signals</EtMockupButton>
               <EtMockupButton variant="ghost" onClick={() => openFeedbackDialog("bug", { page: "Community" })}>Report an issue</EtMockupButton>
             </div>
-            {!canCreateTidepoolPost ? <p className="tidepool-mockup-access-note">Sign in with a verified account to post in Tidepool. Published posts remain visible when allowed.</p> : null}
-            <div className="tidepool-mockup-trust-grid" aria-label="Tidepool trust and safety">
+            {!canCreateTidepoolPost ? <p className="tidepool-mockup-access-note">Sign in to post. Kid profiles can read and react; a parent can post from their own account.</p> : null}
+            {adminToolsVisible ? (<div className="tidepool-mockup-trust-grid" aria-label="Community trust and safety">
               {tidepoolTrustCards.map((card) => (
                 <EtMockupActionCard key={card.title} title={card.title} detail={card.detail} icon="pool" tone="collector" />
               ))}
-            </div>
+            </div>) : null}
           </EtMockupSectionCard>
 
-          <EtMockupSectionCard
+          {adminToolsVisible ? (<EtMockupSectionCard
             title="Community trust dashboard"
             detail="Local trust notes, follow-ups, and safety reminders for community collecting. Planning only; no verification or invitations are connected."
             className="tidepool-trust-dashboard-card"
@@ -298,7 +298,7 @@ export default function CommunityContent({ scope }) {
                 {tidepoolCommunitySafetyChecklist.map((item) => <span key={item}>{item}</span>)}
               </div>
             </div>
-          </EtMockupSectionCard>
+          </EtMockupSectionCard>) : null}
 
           <EtMockupSectionCard
             title="Trusted Circle"
@@ -306,10 +306,10 @@ export default function CommunityContent({ scope }) {
             className="tidepool-trusted-circle-card"
             action={<EtMockupButton onClick={openTidepoolTrustedCircleFlow}>Add to Circle</EtMockupButton>}
           >
-            <div className="tidepool-circle-safety-note">
+            {adminToolsVisible ? (<div className="tidepool-circle-safety-note">
               <strong>Safety helper</strong>
               <span>Trusted Circle is your private note space. It does not verify people, run background checks, or replace your own safety judgment.</span>
-            </div>
+            </div>) : null}
             <div className="tidepool-circle-role-row" aria-label="Trusted Circle roles">
               {TIDEPOOL_TRUSTED_CIRCLE_TYPES.slice(0, 6).map((type) => (
                 <span key={type}>{type}</span>
@@ -371,7 +371,7 @@ export default function CommunityContent({ scope }) {
             ))}
           </div>
 
-          <div className="tidepool-live-section-grid" aria-label="Community safe community sections">
+          {adminToolsVisible ? (<div className="tidepool-live-section-grid" aria-label="Community safe community sections">
             {tidepoolSectionCards.map((card) => (
               <article className="tidepool-live-section-card" key={card.title}>
                 <span className="status-badge">{card.status}</span>
@@ -379,18 +379,18 @@ export default function CommunityContent({ scope }) {
                 <p>{card.detail}</p>
               </article>
             ))}
-          </div>
+          </div>) : null}
 
-          <div className="tidepool-moderation-grid" aria-label="Community moderation guardrails">
+          {adminToolsVisible ? (<div className="tidepool-moderation-grid" aria-label="Community moderation guardrails">
             {tidepoolModerationCards.map((card) => (
               <article className="tidepool-moderation-card" key={card.title}>
                 <strong>{card.title}</strong>
                 <p>{card.detail}</p>
               </article>
             ))}
-          </div>
+          </div>) : null}
 
-          <div className="tidepool-preview-feed" aria-label="Community moderated examples">
+          {adminToolsVisible ? (<div className="tidepool-preview-feed" aria-label="Community moderated examples">
             {tidepoolPreviewCards.map((card) => (
               <article className="tidepool-preview-card" key={card.title}>
                 <div className="compact-card-header">
@@ -405,9 +405,9 @@ export default function CommunityContent({ scope }) {
                 <button type="button" className="secondary-button" onClick={() => openFeedbackDialog("feedback", { page: "Community", whatHappened: `${card.type}: ` })}>Report or ask for review</button>
               </article>
             ))}
-          </div>
+          </div>) : null}
 
-          <div className="tidepool-support-strip">
+          {adminToolsVisible ? (<div className="tidepool-support-strip">
             <div>
               <strong>Safety and support</strong>
               <span>Report unsafe posts from each post&apos;s Safety menu. Use feedback for app issues or moderation questions.</span>
@@ -416,7 +416,7 @@ export default function CommunityContent({ scope }) {
               <button type="button" className="secondary-button" onClick={() => openFeedbackDialog("feedback", { page: "Community" })}>Send feedback</button>
               <button type="button" className="secondary-button" onClick={() => openFeedbackDialog("bug", { page: "Community" })}>Report an issue</button>
             </div>
-          </div>
+          </div>) : null}
 
           <div className="tidepool-feed-grid">
             {filteredTidepoolPosts.length === 0 ? (
@@ -592,7 +592,7 @@ export default function CommunityContent({ scope }) {
           </EtMockupSectionCard>
         </div>
 
-        <EtMockupRightRail
+        {adminToolsVisible ? (<EtMockupRightRail
           title="Safety stays visible"
           detail="Community is moderated, proof-based, and designed for family-safe collecting help."
           className="tidepool-mockup-rail"
@@ -633,7 +633,7 @@ export default function CommunityContent({ scope }) {
             detail="Community keeps Restocks-adjacent community discussion proof-based, moderated, and general-area only."
             action={<EtMockupButton variant="secondary" onClick={() => setActiveTab("scout")}>View Restocks Signals</EtMockupButton>}
           />
-        </EtMockupRightRail>
+        </EtMockupRightRail>) : null}
       </EtMockupPageShell>
     );
   }

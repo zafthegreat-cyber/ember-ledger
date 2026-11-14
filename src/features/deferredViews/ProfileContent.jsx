@@ -15,6 +15,11 @@ export default function ProfileContent({ scope }) {
     smartSetupRecommendation,
     vaultItems,
     workspaceWatchlist,
+    adminViewingAsAdmin = false,
+    showFamilyExperience = false,
+    renderSettingsProfileSummaryCard,
+    signOut,
+    userEmail = "",
   } = scope;
 
   function renderProfilePage() {
@@ -162,6 +167,43 @@ export default function ProfileContent({ scope }) {
       { label: "Security", title: "Account safety", body: "Re-auth, sessions, password, and future 2FA belong in protected account settings.", icon: "settings", action: () => openUtilityPage("account") },
       { label: "Support", title: "Help center", body: "Known issues, support, status, legal, and beta feedback stay one tap away.", icon: "help", action: () => openUtilityPage("help") },
     ];
+
+    // Nov 6 (Zena: "soooo cluttered"): collectors get a short page — who you
+    // are, the five places you actually go, and sign out. The full command
+    // center below stays for admins.
+    if (!adminViewingAsAdmin) {
+      const simpleLinks = [
+        { key: "account", icon: "account", title: "Account", body: "Email, password, setup, sign out.", action: () => openUtilityPage("account") },
+        { key: "settings", icon: "settings", title: "Settings", body: "Theme, alerts, privacy.", action: () => openUtilityPage("settings") },
+        { key: "records", icon: "data", title: "Backups & records", body: "Save a backup, restore, exports.", action: () => openUtilityPage("dataBackup") },
+        showFamilyExperience ? { key: "family", icon: "community", title: "Family settings", body: "Kid profiles and parent approvals.", action: () => openUtilityPage("parentCenter") } : null,
+        { key: "safety", icon: "help", title: "Safety Center", body: "Trade safety, scams, meetups.", action: () => openUtilityPage("trust") },
+        { key: "help", icon: "help", title: "Help & feedback", body: "Guides, known issues, tell us what's wrong.", action: () => openUtilityPage("help") },
+      ].filter(Boolean);
+      return renderUtilityPageShell({
+        title: "You",
+        subtitle: userEmail || "Your profile and account.",
+        className: "profile-utility-page you-simple-route",
+        children: (
+          <>
+            {typeof renderSettingsProfileSummaryCard === "function" ? renderSettingsProfileSummaryCard({ compact: true }) : null}
+            <div className="you-simple-grid" aria-label="Your pages">
+              {simpleLinks.map((link) => (
+                <button type="button" key={link.key} className="you-simple-link drawer-info-card utility-card" onClick={link.action}>
+                  <span className="you-simple-link__icon" aria-hidden="true"><AppNavIcon kind={link.icon} /></span>
+                  <strong>{link.title}</strong>
+                  <small>{link.body}</small>
+                </button>
+              ))}
+            </div>
+            <div className="you-simple-footer">
+              <span>{betaAccessAllowed() ? "Beta access: on" : "Beta access: limited"} · {TIER_LABELS[currentTier] || "Free"} plan, free during beta · {scoutGuessPoints} restock points</span>
+              {signedInWithSupabase && typeof signOut === "function" ? <button type="button" className="secondary-button you-simple-sign-out" onClick={signOut}>Sign out</button> : null}
+            </div>
+          </>
+        ),
+      });
+    }
 
     return renderUtilityPageShell({
       title: "You",

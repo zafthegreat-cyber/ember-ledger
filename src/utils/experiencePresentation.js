@@ -71,7 +71,9 @@ export function normalizePreviewTier(value) {
  */
 export function createTierPreviewProfile(tier) {
   const normalizedTier = normalizePreviewTier(tier);
-  return normalizedTier ? { tier: normalizedTier, appRole: "user", subscriptionStatus: "active" } : null;
+  // tierPreview: a preview shows what the plan will be like after beta, so the
+  // open-beta unlock does not apply to it (featureGates honours this flag).
+  return normalizedTier ? { tier: normalizedTier, appRole: "user", subscriptionStatus: "active", tierPreview: true } : null;
 }
 
 function explicitSetupPersona(setup, userType, dashboardPreset) {

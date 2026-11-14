@@ -91,13 +91,16 @@ const paymentAnswer = buildEmberAssistFallbackResponse("Can I pay through Ember 
 assert.match(paymentAnswer.answer, /does not provide checkout\/payment/i);
 assert.doesNotMatch(paymentAnswer.answer, /guaranteed|payment is available/i);
 
-const appSource = fs.readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
-assert.match(appSource, /primaryAddLabel = sellerMarketMode && activeForgeWorkspace \? "Add to Forge" : "Add to Vault"/);
+// The market add flow moved into deferred views; check those files too (audit 2026-11-14).
+const appSource = fs.readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8")
+  + fs.readFileSync(new URL("../src/features/deferredViews/MultiDestinationContent.jsx", import.meta.url), "utf8")
+  + fs.readFileSync(new URL("../src/features/deferredViews/AddAnythingContent.jsx", import.meta.url), "utf8");
+assert.match(appSource, /primaryAddLabel = sellerMarketMode && activeForgeWorkspace \? "Add to Business" : "Add to Vault"/);
 assert.match(appSource, /Review before saving\. Choose the destination now/);
 assert.match(appSource, /market-review-add-card/);
 assert.match(appSource, /market-set-mastery-context/);
 assert.match(appSource, /market-add-inline-destination-actions/);
-assert.match(appSource, /Search Again/);
+assert.match(appSource, /Search again/i);
 assert.match(appSource, /Manual Entry/);
 assert.match(appSource, /Request Missing Item/);
 assert.match(appSource, /Add to both/);

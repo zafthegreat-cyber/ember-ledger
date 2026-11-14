@@ -5,7 +5,7 @@ export default function ResultsScreen({ state }) {
   const rows = getActualVsProjectedRows(state);
   const soldRows = rows.filter((row) => row.soldQuantity > 0);
   return <section className="flip-section">
-    <SectionHeading eyebrow="Learning history" title="Actual versus projected" detail="Original assumptions are retained beside actual costs and completed-sale results. Personalized machine learning is not active in Phase 1." />
+    <SectionHeading eyebrow="Learning history" title="Actual versus projected" detail="Original assumptions are retained beside actual costs and completed-sale results." />
     {soldRows.length ? <div className="flip-comparison-list">{soldRows.map((row) => <article key={row.id}>
       <div className="flip-record-card__head"><div><span>{row.productClassification}</span><h3>{row.name}</h3></div><StatusPill tone={row.profitDifference >= 0 ? "good" : "danger"}>{row.profitDifference >= 0 ? "Beat projection" : "Below projection"}</StatusPill></div>
       <div className="flip-comparison-grid">

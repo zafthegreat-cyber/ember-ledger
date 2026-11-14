@@ -73,7 +73,7 @@ matches(server, /app\.use\("\/api\/market", marketRouter\)/, "source URLs remain
 const ebayIndex = vercelConfig.routes.findIndex((route) => route.src === "^/api/ebay(?:/.*)?$");
 equal(ebayIndex >= 0 && ebayIndex < filesystemIndex, true, "eBay routes must select Express before filesystem and SPA routing");
 for (const path of ["/api/ebay/health", "/api/ebay/search", "/api/ebay/sold/health", "/api/ebay/sold/search", "/api/ebay/deletion/sanitize", "/api/ebay/account-deletion"]) {
-  const firstRoute = vercelConfig.routes.find((route) => route.src && new RegExp(route.src).test(path));
+  const firstRoute = vercelConfig.routes.find((route) => route.src && !route.continue && new RegExp(route.src).test(path));
   equal(firstRoute?.dest, "/api/health", `${path} must reach the shared Express function`);
 }
 const ebayPattern = new RegExp(vercelConfig.routes[ebayIndex].src);

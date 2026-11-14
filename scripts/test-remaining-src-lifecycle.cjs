@@ -37,7 +37,9 @@ async function main() {
     const effect = find(ast, (node) => node.type === "CallExpression" && node.callee?.name === "useEffect" && source.slice(...node.range).includes(`${factory}(`));
     const code = source.slice(...effect.arguments[0].range); let complete, writes = 0;
     const pending = new Promise((resolve) => { complete = resolve; });
-    const context = vm.createContext({ authorized: true, EMPTY_SNAPSHOT: {}, createBotOpsService: () => ({ loadSnapshot: () => pending }), getEbayHealth: () => pending, setService: () => { writes += 1; }, setSnapshot: () => { writes += 1; }, setError: () => { writes += 1; }, setEbayHealth: () => { writes += 1; }, setHealthError: () => { writes += 1; } });
+    // The effects now also subscribe to window events; give the sandbox a no-op window (audit 2026-11-14).
+    const windowStub = { addEventListener() {}, removeEventListener() {}, setTimeout, clearTimeout, localStorage: { getItem: () => null, setItem() {}, removeItem() {} } };
+    const context = vm.createContext({ window: windowStub, setTimeout, clearTimeout, authorized: true, EMPTY_SNAPSHOT: {}, createBotOpsService: () => ({ loadSnapshot: () => pending }), getEbayHealth: () => pending, setService: () => { writes += 1; }, setSnapshot: () => { writes += 1; }, setError: () => { writes += 1; }, setEbayHealth: () => { writes += 1; }, setHealthError: () => { writes += 1; } });
     const cleanup = vm.runInContext(`(${code})()`, context); cleanup(); complete({ status: "ready" }); await pending; await Promise.resolve();
     assert.equal(writes, 0);
   });

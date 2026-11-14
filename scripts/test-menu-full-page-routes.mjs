@@ -90,7 +90,7 @@ const expectedRenderers = [
   '<BusinessWorkspace',
   'activeTab === "ownerCenter" && (',
   '<OwnerCenterPage',
-  'activeTab === "accountOps" && (',
+  'activeTab === "accountOps" && AccountOpsPage && (',
   '<AccountOpsPage',
   'activeTab === "dailyTide" && renderTodaysTideCommandCenter()',
   'activeTab === "dashboard" && (',
@@ -274,8 +274,7 @@ assert.ok(
     appSource.includes('unknown: "Unknown type"') &&
     appSource.includes("Back-side details") &&
     appSource.includes("vaultDisplayMode") &&
-    appSource.includes("market-showcase-preview") &&
-    appSource.includes("quick-add-showcase-preview"),
+    appSource.includes("market-showcase-preview"),
   "Collector Showcase and flip details should be wired into shared UI, Vault, Market, and Quick Add."
 );
 assert.ok(

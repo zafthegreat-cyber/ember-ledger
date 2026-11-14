@@ -151,6 +151,6 @@ test("A82/A83/A85/A88/A90–A95/A99/A102–A109/A113 copy and UI guards are in p
   assert.match(src("src/App.jsx"), /function blankToNull\(value\)/);
   assert.doesNotMatch(src("src/App.jsx"), /marketPrice: Number\(multiDestinationForm\.marketPrice \|\| 0\)/);
   assert.match(src("src/components/CollectionPortfolio.jsx"), /data-state=\{hidden \? "hidden"/);
-  assert.match(src("src/components/CollectionPortfolio.jsx"), /wishlist budgets and items for sale are not included/);
+  assert.match(src("src/components/CollectionPortfolio.jsx"), /Wants budgets and items for sale are not included/);
   assert.match(src("src/features/manualLifecycles/ManualLifecycles.jsx"), /Download submission sheet \(CSV\)/);
 });

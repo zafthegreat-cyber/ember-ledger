@@ -143,3 +143,6 @@ html body .app.app-command-shell[data-theme] .collection-set-detail-header h2 { 
 }
 
 .collection-sets-filter-summary{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border-block:1px solid var(--border-subtle);padding-block:10px}.collection-sets-filter-summary p{margin:0;font-size:.875rem}.collection-sets-tabs{flex-wrap:wrap}
+/* Audit 2026-11-14: no official set logos ship; the tile shows the set's code and name. */
+.app.app-command-shell[data-theme] .collection-sets-artwork-text { gap: 4px; }
+.app.app-command-shell[data-theme] .collection-sets-artwork-fallback > span.collection-sets-artwork-code { color: inherit; font: 700 clamp(1.25rem, 5vw, 1.625rem)/1.05 var(--font-display, var(--font-ui)); letter-spacing: .04em; overflow-wrap: anywhere; }

@@ -30,7 +30,9 @@ import CommunityWelcome, { MemberAccessNotice } from "./features/auth/CommunityW
 import { hasServerAppAccessDecision } from "./features/auth/memberAccess.mjs";
 import { isNativePlatform, getNativeAuthRedirect } from "./native/nativeRuntime.js";
 import { exportFile, exportFileStatus, exportFileError } from "./native/nativeFiles.js";
-import CloudSyncPanel from "./features/persistence/CloudSyncPanel.jsx";
+// Audit 2026-11-14: loaded only when the cloud-saving page opens; it pulls in the backup,
+// restore and validation code (~490 KB) that the first page does not need.
+const CloudSyncPanel = lazy(() => import("./features/persistence/CloudSyncPanel.jsx"));
 // Keep Settings and sync recovery available for already-open sessions after a deploy.
 import MenuPage from "./pages/Menu.jsx";
 import AccountDeletionPage from "./features/privacy/AccountDeletionPage.jsx";
@@ -72,8 +74,16 @@ import {
 import { observePlainLanguage } from "./config/plainLanguage";
 import { LEGACY_BACKUP_MAX_BYTES, parseLegacyBetaBackup } from "./features/backup/legacyBackupValidation.js";
 import { createLegacyAppStorageGuard } from "./features/persistence/legacyAppStorage.js";
+import { createDebouncedSaver, flushSaverOnPageHide } from "./utils/debouncedSave.js";
 import { AppShell, DesktopSidebar, MobileBottomNavigation } from "./components/operations/OperationsUI";
 import WorkspaceSwitcher from "./features/workspaces/WorkspaceSwitcher";
+import AppTour, { appTourSeen } from "./features/tour/AppTour.jsx";
+import QuickFeedback, { openQuickFeedback } from "./features/feedback/QuickFeedback.jsx";
+import AgeConfirmationGate from "./features/auth/AgeConfirmationGate.jsx";
+import { crashReportingAllowed, setCrashReportingAllowed, setCrashReportingKidSafe } from "./features/monitoring/crashReporting.js";
+import { rowsToCsvAsync } from "./features/exports/csv.js";
+import { RELEASE_NOTES } from "./features/tour/releaseNotes.js";
+import { reportHandledError } from "./features/monitoring/crashReporting.js";
 import {
   readWorkspacePreference,
   resolveWorkspaceSelection,
@@ -575,7 +585,8 @@ const SparkPage = lazy(() => import("./pages/Spark"));
 const Scout = lazy(() => import("./pages/Scout"));
 const FlipScoutPage = lazy(() => import("./features/flipScout/FlipScoutPage"));
 const OwnerCenterPage = lazy(() => import("./features/ownerCenter/OwnerCenterPage"));
-const AccountOpsPage = lazy(() => import("./features/accountOps/AccountOpsPage"));
+// Audit 2026-11-14: owner-only account tooling is left out of the native (Play/App Store) build.
+const AccountOpsPage = import.meta.env.VITE_NATIVE_BUILD === "true" ? null : lazy(() => import("./features/accountOps/AccountOpsPage"));
 const RecordSearchPanel = lazy(() => import("./features/recordSearch/RecordSearchPanel.jsx"));
 const PurchaseReceivingPage = lazy(() => import("./features/purchaseReceiving/PurchaseReceivingPage"));
 const WorkspaceHomePage = lazy(() => import("./features/workspaces/WorkspaceHomePage"));
@@ -6796,6 +6807,10 @@ export default function App() {
   const workspaceInviteClaimInFlightRef = useRef("");
   const startupPriorityAppliedRef = useRef(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  // Guided tour: opens once after the first sign-in on a device; restart from Settings.
+  const [appTourOpen, setAppTourOpen] = useState(false);
+  const [crashReportsAllowedState, setCrashReportsOn] = useState(() => crashReportingAllowed());
+  const appTourOfferedRef = useRef(false);
   const [showTopbarActions, setShowTopbarActions] = useState(true);
   const [showFullTopbar, setShowFullTopbar] = useState(true);
   const [, setShowMobileQuickAddFab] = useState(true);
@@ -7069,6 +7084,13 @@ export default function App() {
   const [showTreasure, setShowTreasure] = useState(false);
 
   const [user, setUser] = useState(BETA_LOCAL_MODE ? { id: "local-beta", email: "local beta mode" } : null);
+  // Offer the guided tour once, after the first real sign-in on this device.
+  useEffect(() => {
+    if (!user?.id || user.id === "local-beta" || appTourOfferedRef.current || appTourSeen()) return undefined;
+    appTourOfferedRef.current = true;
+    const timer = window.setTimeout(() => setAppTourOpen(true), 1800);
+    return () => window.clearTimeout(timer);
+  }, [user?.id]);
   const [accountDeletionGeneration, setAccountDeletionGeneration] = useState(0);
   const accountDeletionIdentityRef = useRef({ accountId: BETA_LOCAL_MODE ? "local-beta" : "", generation: 0 });
   const receiveAuthUser = useCallback((nextUser) => {
@@ -7448,6 +7470,9 @@ export default function App() {
   function renderTextSizeControl() {
     return <><ReadableTextPreference value={readableTextSize} onChange={value => {const choice=saveTextSize(value);setReadableTextSize(choice.value);setReadableTextError(choice.saved?'':"Text size changed for this session. This browser couldn't save your preference.");}} />{readableTextError && <p role="status">{readableTextError}</p>}</>;
   }
+  // Audit 2026-11-14: whole-store saves wait for changes to settle (400 ms) and flush when the page hides.
+  const [localStoreSaver] = useState(() => createDebouncedSaver(400));
+  useEffect(() => flushSaverOnPageHide(localStoreSaver), [localStoreSaver]);
   const localAppStorageError = useSyncExternalStore(localAppStorageGuard.subscribe, localAppStorageGuard.getError, localAppStorageGuard.getError);
   const [scoutSnapshot, setScoutSnapshot] = useState(createEmptyScoutSnapshot);
   const [scoutRestockIntelBundle, setScoutRestockIntelBundle] = useState(EMPTY_SCOUT_RESTOCK_INTEL_BUNDLE);
@@ -8401,7 +8426,7 @@ export default function App() {
   const menuAccountItems = [
     mobileMenuByKey.profile,
     mobileMenuByKey.account,
-    ownerToolsVisible ? { key: "account-ops", label: "Account Ops", helper: "Profiles, email aliases, retailer accounts, and account tasks.", icon: "account", action: () => { prepareRouteNavigation(); setAccountOpsSection("overview"); setActiveTab("accountOps"); } } : null,
+    ownerToolsVisible && AccountOpsPage ? { key: "account-ops", label: "Account Ops", helper: "Profiles, email aliases, retailer accounts, and account tasks.", icon: "account", action: () => { prepareRouteNavigation(); setAccountOpsSection("overview"); setActiveTab("accountOps"); } } : null,
     ownerToolsVisible ? { key: "owner-center", label: "Owner Center", helper: "Private sourcing, performance, and system controls.", icon: "settings", action: () => { prepareRouteNavigation(); setOwnerCenterSection("overview"); setOwnerCenterSubview(""); setActiveTab("ownerCenter"); } } : null,
     { key: "collections", label: "Workspace / Family", helper: "Collection workspace, members, and privacy.", icon: "settings", action: () => openUtilityPage("collections") },
     mobileMenuByKey.membership,
@@ -8446,8 +8471,9 @@ export default function App() {
     mobileMenuByKey.moderation,
   ].filter(Boolean);
   if (user?.id && user.id !== "local-beta") {
-    menuAccountItems.push({ key: "sign-out", label: "Sign out", helper: "Leave this device session.", icon: "settings", action: signOut });
+    menuAccountItems.unshift({ key: "sign-out", label: "Sign out", helper: "Leave this device session. Your records stay on this device.", icon: "settings", action: signOut });
   }
+  menuAccountItems.push({ key: "app-tour", label: "Take the tour", helper: "A 60-second walk through where things are.", icon: "help", action: () => { setMenuOpen(false); setAppTourOpen(true); } });
   const menuCommandSections = [
     { key: "account", title: "Account", items: menuAccountItems },
     { key: "collection", title: "Collection", items: menuCollectionItems },
@@ -10870,6 +10896,8 @@ export default function App() {
     delete safeMetadata.token;
     delete safeMetadata.receiptImage;
     delete safeMetadata.childFirstName;
+    // MUST-9: handled errors also reach Sentry (scrubbed; label + page only).
+    if (!kidSafeView && severity !== "low") reportHandledError(error, action, { page: activeTab, severity });
     const entry = {
       id: makeId("app-error"),
       userId: user?.id || null,
@@ -12533,6 +12561,12 @@ export default function App() {
     }
     if (normalized === "admin" && adminToolsVisible) {
       setActiveTab("adminReview");
+      return;
+    }
+    // Audit 2026-11-14: "Start a Post" used to fall through to Home.
+    if (normalized === "tidepool") {
+      setActiveTab("tidepool");
+      openTidepoolCreatePostFlow();
       return;
     }
     setActiveTab("dashboard");
@@ -16135,7 +16169,18 @@ export default function App() {
       }
       if (reportsResult.error && isExpectedShorelineAccessDenial(reportsResult.error) && !protectedAppDataAccessReady()) return false;
       if (reportsResult.error && !isScoutBackendOptionalError(reportsResult.error)) throw reportsResult.error;
-      const cloudReports = (reportsResult.error ? [] : reportsResult.data || []).map((row) => mapSupabaseScoutReport(row, cloudStores));
+      // Audit 2026-11-14: the table now returns only your own / your workspace's reports.
+      // Everyone else's come from public_store_reports(): moderated, public, and without
+      // user_id, photo path or free-text notes. Own rows win when both lists have a row.
+      const ownReportRows = reportsResult.error ? [] : reportsResult.data || [];
+      let publicReportRows = [];
+      try {
+        const publicResult = await supabase.rpc("public_store_reports", { p_limit: 200 });
+        if (!publicResult.error) publicReportRows = publicResult.data || [];
+      } catch { /* older backend without the function: own reports still load */ }
+      const ownReportIds = new Set(ownReportRows.map((row) => String(row.id)));
+      const cloudReports = [...ownReportRows, ...publicReportRows.filter((row) => !ownReportIds.has(String(row.id)))]
+        .map((row) => mapSupabaseScoutReport(row, cloudStores));
 
       let guessesResult = await supabase
         .from("store_guesses")
@@ -16347,9 +16392,10 @@ export default function App() {
     if (activeFlowModal?.type === "tidepoolCreatePost") {
       closeFlowModal({ force: true, reset: false });
     }
+    // Audit 2026-11-14: posts are stored on this device only (no server table yet), so don't promise a review queue.
     setVaultToast(safetyReviewReason
-      ? "Post saved. It was held for a closer safety look before it appears publicly; you will get an alert either way."
-      : "Post saved. It passed the automatic safety check and is in the quick review queue, usually within a day.");
+      ? "Post saved on this device. It was flagged by the safety check, so it stays private to you."
+      : "Post saved on this device. Sharing posts with other members is coming soon; for now only you can see it.");
     return true;
   }
 
@@ -16970,11 +17016,12 @@ export default function App() {
     if (!canUseHostedAppSupplement({ localDevelopment: BETA_LOCAL_MODE, contextOwnerId: cloudWorkspace?.user?.id,
       sessionOwnerId: user?.id, guestPreview: guestPreviewActive, profileReady: profileReadyForEffects, appAccess: betaAccessForEffects })
       || hostedSupplementOwner !== user.id) return;
-    localAppStorageGuard.save(localStorage, selectHostedAppSupplement({ purchasers, tideTradrWatchlist, tideTradrLookupId,
+    const hostedSupplement = selectHostedAppSupplement({ purchasers, tideTradrWatchlist, tideTradrLookupId,
       marketPriceCache, marketPriceMemories, itemComparisons, vaultCollectionSets, vaultDisplayCase, userSearchAliases,
-      tradeRecords, sparkGifts, sparkKidPacks, sparkEventPlans, collectorEventPlans, dealForm, locationSettings, dashboardCardStyle, appSetupPersonalization }));
+      tradeRecords, sparkGifts, sparkKidPacks, sparkEventPlans, collectorEventPlans, dealForm, locationSettings, dashboardCardStyle, appSetupPersonalization });
+    localStoreSaver.schedule(() => localAppStorageGuard.save(localStorage, hostedSupplement));
   }, [cloudWorkspace?.user?.id, user?.id, guestPreviewActive, profileReadyForEffects, betaAccessForEffects, hostedSupplementOwner,
-    localAppStorageGuard, purchasers, tideTradrWatchlist, tideTradrLookupId, marketPriceCache, marketPriceMemories, itemComparisons,
+    localAppStorageGuard, localStoreSaver, purchasers, tideTradrWatchlist, tideTradrLookupId, marketPriceCache, marketPriceMemories, itemComparisons,
     vaultCollectionSets, vaultDisplayCase, userSearchAliases, tradeRecords, sparkGifts, sparkKidPacks, sparkEventPlans, collectorEventPlans, dealForm, locationSettings, dashboardCardStyle, appSetupPersonalization]);
 
   useEffect(() => {
@@ -17224,7 +17271,7 @@ export default function App() {
       String(persistedLocationSettings?.selectedSavedLocation || "").trim() ||
       persistedLocationSettings?.trackingEnabled
     );
-    localAppStorageGuard.save(localStorage, {
+    const localStorePayload = {
         items,
         purchasers,
         catalogProducts: catalogProducts.filter(shouldPersistLocalCatalogProduct),
@@ -17276,8 +17323,9 @@ export default function App() {
           publicUsername: currentPublicUsername(),
           public_username: currentPublicUsername(),
         },
-    });
-  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, marketPriceMemories, itemComparisons, vaultCollectionSets, vaultDisplayCase, userSearchAliases, expenses, sales, tradeRecords, sparkGifts, sparkKidPacks, sparkEventPlans, collectorEventPlans, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, forgeModeSettings, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, resolvedAppTheme, appSetupPersonalization, cloudSyncPreference, locationSettings, subscriptionProfile, currentUserProfile, actualAdminUser, localDataLoaded, localAppStorageGuard, currentPublicUsername]);
+    };
+    localStoreSaver.schedule(() => localAppStorageGuard.save(localStorage, localStorePayload));
+  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, marketPriceMemories, itemComparisons, vaultCollectionSets, vaultDisplayCase, userSearchAliases, expenses, sales, tradeRecords, sparkGifts, sparkKidPacks, sparkEventPlans, collectorEventPlans, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, forgeModeSettings, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, resolvedAppTheme, appSetupPersonalization, cloudSyncPreference, locationSettings, subscriptionProfile, currentUserProfile, actualAdminUser, localDataLoaded, localAppStorageGuard, localStoreSaver, currentPublicUsername]);
 
   useEffect(() => {
     if (!BETA_LOCAL_MODE || !localDataLoaded) return;
@@ -17817,7 +17865,7 @@ export default function App() {
         return;
       }
       if (!authTermsAccepted) {
-        setAuthError("You must agree to the Terms of Use and Privacy Policy before creating an account.");
+        setAuthError("Confirm you are 13 or older and agree to the Terms of Use and Privacy Policy to create an account. Younger collectors can join through a parent's account.");
         return;
       }
     }
@@ -17842,6 +17890,8 @@ export default function App() {
               publicUsername: signupPublicUsername,
               terms_accepted_at: consentTimestamp,
               privacy_accepted_at: consentTimestamp,
+              // The required consent box includes "I am 13 or older" (audit 2026-11-14).
+              age_confirmed_at: consentTimestamp,
               beta_acknowledged_at: authBetaAcknowledged ? consentTimestamp : null,
               consent_text: {
                 terms: SIGNUP_TERMS_TEXT,
@@ -17941,6 +17991,12 @@ export default function App() {
     }
 
     receiveAuthUser(null);
+    // Audit 2026-11-14 (shared family devices): records saved on this device stay sealed to
+    // their owner (the cloud boundary archives them when another account signs in), but React
+    // state still held the last person's purchasers, watchlists, comparisons and drafts. Save
+    // anything pending for them, then reload so nothing of theirs stays in memory.
+    localStoreSaver.flush();
+    if (typeof window !== "undefined" && !BETA_LOCAL_MODE) window.location.assign("/");
   }
 
   function changeActiveWorkspace(workspaceId) {
@@ -22751,9 +22807,13 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       productName: options.productName || "",
       proofText: options.proofText || "",
       manualLocation: options.manualLocation || "",
+      // SHOULD 18: the two-tap Home launcher pre-fills the category it used
+      // last time and lands on review; the four required fields still apply.
+      productCategory: options.productCategory || "",
+      ...(options.quick && seededStore ? { storeConfirmed: true, reportTypeTouched: true } : {}),
     });
     setQuickScoutReportForm(draft);
-    setQuickScoutReportStep("where");
+    setQuickScoutReportStep(options.quick && seededStore && options.startStep ? options.startStep : "where");
     setQuickScoutReportMessage("");
     setQuickScoutReportSaved(null);
     flowModalBaselineRef.current.scoutSubmit = draft;
@@ -30139,8 +30199,8 @@ function renderForgeBusinessLedgerPanel() {
 
   async function downloadCSV(filename, rows, message = "Export complete.") {
     if (!rows.length) return showAppMessage("No data to export yet.");
-    const headers = Object.keys(rows[0]);
-    const csv = [headers.join(","), ...rows.map((row) => headers.map((h) => `"${String(row[h] ?? "").replaceAll('"', '""')}"`).join(","))].join("\n");
+    // COULD 37: big exports serialise in a worker so the phone stays responsive.
+    const csv = await rowsToCsvAsync(rows);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     return downloadRecordFile(filename, blob, message);
   }
@@ -31784,6 +31844,8 @@ function renderForgeBusinessLedgerPanel() {
   }, [catalogSearchHasRun, submittedCatalogSearch, catalogSearch, catalogSetFilter, vaultSetLibraryRows]);
   // Kid-safe view (A48–A51): derived from the profile's declared collector/account type.
   const kidSafeView = !adminViewingAsAdmin && isKidSafeProfile(currentUserProfile || {}, shorelineState.betaRequest || {});
+  // Audit 2026-11-14: crash reports start at boot, so tell them when a kid view is active (events are dropped).
+  useEffect(() => { setCrashReportingKidSafe(kidSafeView); }, [kidSafeView]);
   // A50: kid profiles see "—" instead of dollar amounts on every page that takes `money` as a prop.
   const displayMoney = kidSafeView ? () => "—" : money;
   const featureGateOptions = {
@@ -39993,7 +40055,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       },
     ];
     const activeAnnouncements = getPersistedNotificationRows().filter(canShowAnnouncement);
-    const recentAnnouncements = activeAnnouncements.length ? activeAnnouncements : staticUpdates;
+    // COULD 31: real release notes lead the list; the generic static blurbs follow.
+    const releaseUpdates = RELEASE_NOTES.map((note) => ({ title: note.title, body: note.body, type: note.type, priority: note.priority, publishedAt: note.date, ctaLabel: note.ctaLabel, ctaDestination: note.ctaDestination === "tour" || note.ctaDestination === "feedback" ? "" : note.ctaDestination }));
+    const recentAnnouncements = activeAnnouncements.length ? [...releaseUpdates, ...activeAnnouncements] : [...releaseUpdates, ...staticUpdates];
     const heroAnnouncement = recentAnnouncements[0];
     const heroType = heroAnnouncement?.type || "New feature";
     const heroPriority = heroAnnouncement?.priority || "normal";
@@ -43103,8 +43167,24 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <h4>{comparison.resultLabel}</h4>
               <p>Business compares the values you entered so you can see whether the tide moved in your favor. {comparison.guidance}</p>
             </div>
-            <strong>{comparison.differenceLabel}</strong>
+            <strong>{comparison.partialLabel ? "—" : comparison.differenceLabel}</strong>
           </div>
+          {comparison.partialLabel ? (
+            <div className="trade-fallback-row">
+              <p>{comparison.partialLabel}</p>
+              {comparison.fallbackSuggestions.length ? (
+                <div className="trade-fallback-actions">
+                  {comparison.fallbackSuggestions.map((suggestion) => suggestion.value ? (
+                    <button type="button" key={`${suggestion.side}-${suggestion.source}`} className="secondary-button" onClick={() => updateTradeDraftField(suggestion.side === "outgoing" ? "outgoingValue" : "receivedValue", String(Number(suggestion.value).toFixed(2)))}>
+                      {suggestion.label}
+                    </button>
+                  ) : (
+                    <small key={`${suggestion.side}-${suggestion.source}`}>{suggestion.label}</small>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           <div className="trade-comparison-grid">
             <div>
               <span>What You Gave</span>
@@ -47108,10 +47188,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             description={subtitle}
             primaryAction={{ label: "Back to Home", icon: "home", onClick: () => setActiveTab("dashboard") }}
             secondaryActions={[
-              { label: "Menu", icon: "settings", onClick: () => setMenuOpen(true) },
               { label: "Help", icon: "help", onClick: () => openUtilityPage("help") },
             ]}
-            statusItems={[
+            statusItems={!adminViewingAsAdmin ? [] : [
               { key: "role", icon: "account", label: "Role", value: adminViewingAsAdmin ? actualAdminRole : experiencePresentation.personaLabel, detail: experiencePresentation.isPreview ? "Preview only" : "Your setup" },
               { key: "plan", icon: "plan", label: "Plan", value: currentTierLabel, detail: "Safety basics included" },
               { key: "privacy", icon: "community", label: "Privacy", value: "Protected", detail: "Child and account data" },
@@ -47149,13 +47228,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <div className="compact-card-header">
           <div>
             <p className="section-kicker">Account setup</p>
-            <strong>Pick the right path without changing billing or permissions.</strong>
-            <p className="compact-subtitle">Setup labels guide the app experience. Admin and shop access stay protected and reviewed.</p>
+            <strong>Pick the setup that matches how you collect.</strong>
+            <p className="compact-subtitle">Setup labels only change what the app shows first. Everything is free during beta.</p>
           </div>
-          <span className="status-badge">Account options</span>
         </div>
         <div className="account-setup-tier-grid">
-          {ACCOUNT_SETUP_TIER_ROWS.map((tier) => (
+          {ACCOUNT_SETUP_TIER_ROWS.filter((tier) => adminViewingAsAdmin || !["admin", "beta"].includes(tier.key)).map((tier) => (
             <article className="account-setup-mini-card" key={tier.key}>
               <span>{tier.status}</span>
               <strong>{tier.label}</strong>
@@ -47277,7 +47355,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <div className="compact-card-header">
           <div>
             <strong>Workspace</strong>
-            <p className="compact-subtitle">Choose where Vault, Business, and shared records belong.</p>
+            <p className="compact-subtitle">Choose which space your collection, selling and shared records live in.</p>
           </div>
           <span className="status-badge">{workspaceTypeLabel(activeWorkspace?.type)}</span>
         </div>
@@ -47289,7 +47367,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <dl className="drawer-status-list settings-compact-status-list">
           <div><dt>Active Business</dt><dd>{activeForgeWorkspace?.name || "Unavailable"}</dd></div>
           <div><dt>Business mode</dt><dd>{forgeIdentityModeLabel(activeForgeIdentityMode)}</dd></div>
-          <div><dt>Workspace actions</dt><dd>{canEditActiveWorkspace ? "Edit supported" : "View only"}</dd></div>
+          <div><dt>Workspace actions</dt><dd>{canEditActiveWorkspace ? "You can edit" : "View only"}</dd></div>
         </dl>
         <div className="drawer-inline-actions settings-action-row">
           <button type="button" className="drawer-link" onClick={() => openUtilityPage("collections")}>Manage workspace</button>
@@ -47371,6 +47449,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function renderSettingsPrivacySafetyCard() {
+    const crashReportsOn = crashReportsAllowedState;
     const privacyRows = [
       { title: "Private location", body: "Exact user location is never shown publicly. Reports are shared by store, not private address.", status: locationSettings.trackingEnabled ? "Device location on" : "Manual/local" },
       { title: "Child privacy", body: "Child-sensitive details stay parent-managed. Public child profiles and private family information are not exposed.", status: "Protected" },
@@ -47390,6 +47469,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </div>
           <span className="status-badge">Private by default</span>
         </div>
+        <label className="checkbox-row settings-crash-reports-toggle">
+          <input type="checkbox" checked={crashReportsOn} onChange={(event) => { setCrashReportingAllowed(event.target.checked); setCrashReportsOn(event.target.checked); }} />
+          <span><strong>Send crash reports</strong> — when the app breaks, send a report with the error, the screen you were on and your device type. No emails, record contents or card numbers are ever included. Turned off automatically for kid profiles.</span>
+        </label>
         <div className="drawer-inline-actions">
           <button type="button" className="secondary-button" onClick={() => setActiveTab("trust")}>Privacy policy</button>
           <button type="button" className="secondary-button" onClick={() => window.location.assign("/delete-account")}>Delete account</button>
@@ -47410,28 +47493,43 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   function renderAccountPage() {
     return renderUtilityPageShell({
       title: "Account",
-      subtitle: "Sign in, account status, feedback, and security actions.",
+      subtitle: signedInWithSupabase ? "Your sign-in, setup, and security." : "Sign in or create your free account.",
       className: "account-utility-page",
       children: (
         <>
-          <div className="drawer-info-card account-status-card utility-card">
-            <div>
-              <h3>{accountStatusTitle}</h3>
-              <p className="compact-subtitle">{accountStatusDescription}</p>
+          {signedInWithSupabase ? (
+            <div className="drawer-info-card account-status-card utility-card account-essentials-card">
+              <div>
+                <h3>{accountStatusTitle}</h3>
+                <p className="compact-subtitle account-essentials-email">{user?.email || accountStatusDescription}</p>
+              </div>
+              <dl className="drawer-status-list account-essentials-list">
+                <div><dt>Plan</dt><dd>{TIER_LABELS[currentTier] || "Free"} · free during beta</dd></div>
+                <div><dt>Setup</dt><dd>{adminViewingAsAdmin ? actualAdminRole : experiencePresentation.personaLabel} <button type="button" className="auth-text-button" onClick={() => openUtilityPage("settings")}>Change</button></dd></div>
+                <div><dt>Your records</dt><dd>{cloudSyncPreference === "cloud" ? "On this device, cloud copy requested" : "On this device"}</dd></div>
+              </dl>
+              <details className="account-technical-details">
+                <summary>Technical details</summary>
+                <dl className="drawer-status-list">
+                  <div><dt>Build</dt><dd>{PUBLIC_APP_VERSION_LABEL}</dd></div>
+                  <div><dt>Sign-in provider</dt><dd>Supabase</dd></div>
+                  <div><dt>Role</dt><dd>{actualAdminUser ? actualAdminRole : "user"}</dd></div>
+                </dl>
+                {renderAppBuildDetails()}
+              </details>
+              {actualAdminUser ? <span className="status-badge">{actualAdminRole}</span> : null}
             </div>
-            <dl className="drawer-status-list">
-              <div><dt>Build</dt><dd>{PUBLIC_APP_VERSION_LABEL}</dd></div>
-              <div><dt>Account</dt><dd>{guestPreviewActive ? "Guest preview" : signedInWithSupabase ? "Signed in" : "Private beta"}</dd></div>
-              <div><dt>Role</dt><dd>{actualAdminUser ? actualAdminRole : "user"}</dd></div>
-              <div><dt>Tier</dt><dd>{TIER_LABELS[currentTier] || "Free"}</dd></div>
-              <div><dt>Data</dt><dd>{guestPreviewActive ? "Read-only preview" : cloudSyncPreference === "cloud" ? "Local now, cloud sync requested" : "Stored on this device"}</dd></div>
-            </dl>
-            {renderAppBuildDetails()}
-            {actualAdminUser ? <span className="status-badge">{actualAdminRole}</span> : null}
-          </div>
+          ) : (
+            <div className="drawer-info-card account-status-card utility-card">
+              <div>
+                <h3>{accountStatusTitle}</h3>
+                <p className="compact-subtitle">{accountStatusDescription}</p>
+              </div>
+              {renderAppBuildDetails()}
+            </div>
+          )}
 
           {!signedInWithSupabase && renderEmailConfirmationHelp()}
-          {renderAccountSetupOverviewCard()}
 
           {guestPreviewActive ? (
             <div className="drawer-info-card utility-card">
@@ -47460,7 +47558,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <form className="drawer-info-card utility-card" onSubmit={handleAuth} noValidate>
                 <SocialSignInButtons />
                 <strong>{authMode === "login" ? "Sign in" : "Create account"}</strong>
-                <p className="compact-subtitle">Create a free account and confirm your email to get started.</p>
+                <p className="compact-subtitle">Everything is free during beta. Your account works right away once you confirm your email.</p>
                 {!isSupabaseConfigured ? <p className="compact-subtitle danger-text">Account sign-in is temporarily unavailable. Please try again later.</p> : null}
                 {authMode === "signup" ? (
                   <>
@@ -47487,29 +47585,37 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </form>
             )
           ) : (
-            <div className="drawer-info-card utility-card">
-              <strong>{actualAdminUser ? "Signed in with admin role" : "Signed in"}</strong>
-              <p className="compact-subtitle">Your Code 3 TCG account is signed in. Log out only clears the account session; it does not erase private beta records on this device.</p>
-              <details><summary>Little Sparks family program (optional)</summary>{shorelineState.error && <p role="alert">{shorelineState.error}</p>}{shorelineState.message && <p role="status">{shorelineState.message}</p>}{renderLittleSparksApplicationForm()}</details>
-              {renderMemberStartGuide()}
+            <div className="drawer-info-card utility-card account-security-card">
+              <strong>Security</strong>
+              <p className="compact-subtitle">Signing out keeps the records saved on this device; it only ends the account session.</p>
               <ConnectedSignIns user={user} />
-              <CommunityWelcome onFeedback={() => openPublicBetaFeedback({ page: "Account", mainReason: "General feedback" })} />
               {passwordResetError ? <p className="auth-status-message error" role="alert">{passwordResetError}</p> : null}
               {passwordResetMessage ? <p className="auth-status-message success" role="status">{passwordResetMessage}</p> : null}
-              <button type="button" className="drawer-link" disabled={passwordResetLoading || !isSupabaseConfigured} onClick={handleSignedInPasswordReset}>{passwordResetLoading ? "Sending..." : "Send Password Reset Email"}</button>
-              <button type="button" className="drawer-link logout-link" onClick={signOut}>Sign out</button>
-              <button type="button" className="drawer-link" onClick={() => window.location.assign("/delete-account")}>Delete account</button>
+              <div className="drawer-inline-actions account-security-actions">
+                <button type="button" className="drawer-link logout-link account-sign-out-button" onClick={signOut}>Sign out</button>
+                <button type="button" className="drawer-link" disabled={passwordResetLoading || !isSupabaseConfigured} onClick={handleSignedInPasswordReset}>{passwordResetLoading ? "Sending..." : "Change password"}</button>
+                <button type="button" className="drawer-link" onClick={() => openUtilityPage("profile")}>Edit profile</button>
+              </div>
+              <details className="account-more-options">
+                <summary>More</summary>
+                <div className="drawer-inline-actions">
+                  <button type="button" className="drawer-link" onClick={() => setActiveTab("profileProgress")}>Public profile progress</button>
+                  <button type="button" className="drawer-link" onClick={() => setActiveTab("mySuggestions")}>My suggestions</button>
+                  <button type="button" className="drawer-link danger-text" onClick={() => window.location.assign("/delete-account")}>Delete account</button>
+                </div>
+              </details>
+              <details><summary>Little Sparks family program (optional)</summary>{shorelineState.error && <p role="alert">{shorelineState.error}</p>}{shorelineState.message && <p role="status">{shorelineState.message}</p>}{renderLittleSparksApplicationForm()}</details>
+              {renderMemberStartGuide()}
+              <CommunityWelcome onFeedback={() => openPublicBetaFeedback({ page: "Account", mainReason: "General feedback" })} />
             </div>
           )}
 
-          <div className="drawer-info-card utility-card">
-            <strong>Account shortcuts</strong>
-            <div className="drawer-inline-actions">
-              <button type="button" className="drawer-link" onClick={() => openUtilityPage("profile")}>Edit profile</button>
-              <button type="button" className="drawer-link" onClick={() => setActiveTab("profileProgress")}>Public profile progress</button>
-              <button type="button" className="drawer-link" onClick={() => setActiveTab("mySuggestions")}>My suggestions</button>
-            </div>
-          </div>
+          {signedInWithSupabase ? (
+            <details className="drawer-info-card utility-card account-setup-collapsed">
+              <summary><strong>Setup options</strong><span className="compact-subtitle">Collector, Family, Seller, and workspace types. Changing a setup label never changes billing or permissions.</span></summary>
+              {renderAccountSetupOverviewCard({ compact: true })}
+            </details>
+          ) : null}
         </>
       ),
     });
@@ -47723,7 +47829,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <button type="button" className={cloudSyncPreference === "cloud" ? "drawer-link active" : "drawer-link"} onClick={() => updateCloudSyncPreference("cloud")}>Request Cloud Sync Access</button>
             </div>
           </div>}
-          <CloudSyncPanel />
+          <LazyToolBoundary label="Loading cloud saving…"><CloudSyncPanel /></LazyToolBoundary>
           {renderArchiveProofHistoryPanel()}
           {!cloudWorkspace && <div className="utility-card-wide">
             <LazyToolBoundary label="Loading backup tools...">
@@ -47814,11 +47920,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { key: "market_data", label: "Bad report", detail: "Report or price looks wrong." },
       { key: "feature", label: "Feature request", detail: "Suggest a future improvement." },
     ];
-    const releaseRows = [
-      { title: "The Spark kids program UI", body: "Warmer, parent-safe Kids Program layout and request flow." },
-      { title: "Community community UI", body: "Calmer community feed, safety copy, and bottom spacing." },
-      { title: "Market, Business, and Vault polish", body: "Cleaner mobile cards, tabs, and mode-aware actions." },
-    ];
+    // Audit 2026-11-14: Help shows the real What's New entries, not hard-coded placeholder rows.
+    const releaseRows = RELEASE_NOTES.slice(0, 3).map((note) => ({ title: note.title, body: note.body }));
     return renderUtilityPageShell({
       title: "Help & Support",
       subtitle: "Known issues, release notes, feedback, support, and app version.",
@@ -47860,7 +47963,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </div>
           <div className="drawer-info-card help-release-card utility-card">
             <strong>Release notes</strong>
-            <p className="compact-subtitle">Latest UI polish checkpoint. Dynamic release notes can replace this later.</p>
+            <p className="compact-subtitle">What changed in the latest updates.</p>
             <div className="settings-stacked-list">
               {releaseRows.map((row) => (
                 <article className="settings-list-row" key={row.title}>
@@ -47874,7 +47977,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="compact-card-header">
               <div>
                 <strong>Send feedback</strong>
-                <p className="compact-subtitle">Feedback is saved for beta/admin review when supported. We do not pretend unsupported backends are live.</p>
+                <p className="compact-subtitle">Tell us what broke, what confused you, or what you wish the app did. A person on the team reads every message.</p>
               </div>
               <span className="status-badge">Beta feedback</span>
             </div>
@@ -47920,6 +48023,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         smartSetupRecommendation,
         vaultItems,
         workspaceWatchlist,
+        adminViewingAsAdmin,
+        showFamilyExperience,
+        renderSettingsProfileSummaryCard,
+        signOut,
+        userEmail: user?.email && user.id !== "local-beta" ? user.email : "",
       }} />
     </LazyToolBoundary>;
   }
@@ -48161,12 +48269,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   };
   const hearthPageProps = {
     kidSafeView,
+    marketSearchesRun: catalogSearchHasRun ? 1 : 0,
+    onOpenFeedback: openQuickFeedback,
     experiencePresentation,
     onOpenSellTrade: () => { prepareRouteNavigation(); setActiveTab("exchange"); },
     onOpenExperienceSettings: () => { prepareRouteNavigation(); setActiveTab("settings"); },
     adaptiveActivity,
     personalizationPreferences,
-    onReportRestock: () => openScoutSubmitFlow({ source: "home-restock" }),
+    onReportRestock: (options = {}) => openScoutSubmitFlow({ source: "home-restock", ...options }),
     onOpenRestockReports: openCommunityRestockReports,
     onOpenStoreReports: store => openCommunityRestockReports({ storeId: store.id }),
     onOpenFollowedReports: () => openCommunityRestockReports({ followedOnly: true }),
@@ -48534,6 +48644,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     settingsSectionRows,
     signedInWithSupabase,
     signOut,
+    userEmail: user?.email && user.id !== "local-beta" ? user.email : "",
+    startAppTour: () => setAppTourOpen(true),
     userType,
   };
 
@@ -51830,7 +51942,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             />
           </LazyToolBoundary>
         )}
-        {!activeTabLocked && activeTab === "accountOps" && (
+        {!activeTabLocked && activeTab === "accountOps" && AccountOpsPage && (
           <LazyToolBoundary label="Loading Account Ops...">
             <AccountOpsPage
               session={ownerSession}
@@ -53405,6 +53517,16 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       {shellRouteOwnership?.classification !== ROUTE_CLASSIFICATIONS.OWNER ? (
         <MobileBottomNavigation items={mobileBottomTabs} activeKey={activeMobileTabKey} onSelect={(tab) => tab.action ? tab.action() : navigateMainTab(tab)} />
       ) : null}
+    <AppTour open={appTourOpen} onClose={() => setAppTourOpen(false)} />
+    {isSupabaseConfigured && !guestPreviewActive ? (
+      <AgeConfirmationGate
+        user={user}
+        supabase={supabase}
+        onConfirmed={(updated) => setUser((current) => updated || (current ? { ...current, user_metadata: { ...(current.user_metadata || {}), age_confirmed_at: new Date().toISOString() } } : current))}
+        onSignOut={signOut}
+      />
+    ) : null}
+    <QuickFeedback supabase={isSupabaseConfigured ? supabase : null} user={user?.id && user.id !== "local-beta" ? user : null} route={String(activeTab || "")} appVersion={PUBLIC_APP_VERSION_LABEL} workspaceId={activeWorkspace?.id || null} hidden={appTourOpen || Boolean(menuOpen)} kidSafe={kidSafeView} />
     </AppShell>
     </ExperiencePresentationContext.Provider>
   );

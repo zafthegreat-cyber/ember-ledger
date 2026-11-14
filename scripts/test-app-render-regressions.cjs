@@ -85,7 +85,7 @@ async function checkRenderers() {
     money: (value) => `$${value}`, renderForgeSaleCard: (record) => { renderedSales.push(record.id); return React.createElement("article", { key: record.id }, record.itemName); },
   });
   assert.deepEqual(renderedSales, [sale.id]);
-  assert.ok(elements(sales).some((entry) => entry.props.children === "Forge Sales by Date"));
+  assert.ok(elements(sales).some((entry) => entry.props.children === "Business Sales by Date"));
   const delegate = { marker: "active Quick Add" };
   assert.equal(renderFunction("renderAddActionSheetContent", { renderAddAnythingFlowContent: () => delegate }), delegate);
   assert.equal(functions.get("renderAddActionSheetContent").body.body.length, 1, "Only the active Quick Add delegation remains");
@@ -128,7 +128,7 @@ async function checkBrowser() {
         await page.goto(new URL(`/forge/sales?betaLocalMode=true&themeInspect=${theme}`, baseUrl).href);
         await expect(page.getByRole("group", { name: "Sales view mode" })).toBeVisible({ timeout: 30000 });
         await page.getByRole("group", { name: "Sales view mode" }).getByRole("button", { name: /^By date/ }).click();
-        await expect(page.getByRole("heading", { name: "Forge Sales by Date", exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Business Sales by Date", exact: true })).toBeVisible();
         await expect(page.locator(".sales-grouped-list")).toContainText("Synthetic render card");
         const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("et-tcg-beta-data")).sales);
         assert.equal(stored.length, 1);

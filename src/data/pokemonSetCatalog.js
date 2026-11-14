@@ -1,6 +1,7 @@
 import { SET_SEARCH_METADATA } from "./pokemonCatalogCoreData";
 import importedPokemonSets from "./generated/pokemonTcgSets.json";
 import { resolveSetArtwork } from "../utils/setArtwork.mjs";
+import { englishSetNameFor, japaneseAliasesFor } from "./japaneseSetAliases.mjs";
 
 const SET_SERIES = {
   "Prismatic Evolutions": "Scarlet & Violet",
@@ -95,9 +96,13 @@ export const POKEMON_SETS = [...setByCode.values()].map((set) => {
 
 export function getSetByCodeOrAlias(value) {
   const normalized = String(value || "").trim().toLowerCase();
-  return POKEMON_SETS.find((set) =>
-    [set.name, set.code, ...(set.setAliases || [])]
+  const direct = POKEMON_SETS.find((set) =>
+    [set.name, set.code, ...(set.setAliases || []), ...japaneseAliasesFor(set.name)]
       .filter(Boolean)
       .some((entry) => String(entry).toLowerCase() === normalized)
   );
+  if (direct) return direct;
+  // SHOULD 20: "sv2a" / "ポケモンカード151" → Scarlet & Violet 151.
+  const english = englishSetNameFor(value);
+  return english ? POKEMON_SETS.find((set) => set.name.toLowerCase() === english.toLowerCase()) : undefined;
 }

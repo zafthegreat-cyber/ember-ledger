@@ -66,9 +66,13 @@ assert.match(reducedMotionSource, /hearth-skeleton-card/);
 assert.match(reducedMotionSource, /transform: none !important/);
 
 // Menu rows now live in the renderer's imported navigation component.
-assert.match(appSource, /<MenuNavigation sections=\{menuCommandSections\}/);
+const menuNavigationMount = appSource.match(/<MenuNavigation\b[\s\S]*?<\/MenuNavigation>/)?.[0];
+assert.ok(menuNavigationMount, "The mounted menu renderer must include MenuNavigation.");
+assert.match(menuNavigationMount, /\bsections=\{menuCommandSections\}/);
+assert.match(menuNavigationMount, /\bisItemActive=\{isMenuItemActive\}/);
+assert.match(menuNavigationMount, /\bonSelect=\{openMenuItem\}/);
 assert.match(menuNavigationSource, /aria-label=\{`\$\{item\.label\}\. \$\{item\.helper \|\| "Open this workspace area\."\}`\}/);
-assert.match(appSource, /aria-label="Scout screenshot or photo review\. Try text extraction, then review before saving a Scout report\."/);
+assert.match(appSource, /aria-label="Restocks screenshot or photo review\. Try text extraction, then review before saving a restock report\."/);
 assert.match(appSource, /aria-label="Scan page of cards\. Manual multi-card review\. Automatic card detection is not live yet\."/);
 assert.match(appSource, /aria-label="Manual entry\. Add a record now and correct details before saving\."/);
 assert.match(appSource, /aria-label=\{`\$\{mode\.title\}\. \$\{mode\.helper\} Coming later\.`\}/);
@@ -98,8 +102,9 @@ assert.match(workspaceHomeSource, /<section className=\{`code3-workspace-home/);
 assert.doesNotMatch(workspaceHomeSource, /<main\b/, "workspace homes must not nest a second main landmark inside the application shell");
 assert.match(workspaceHomeSource, /<button key=\{record\.id/);
 assert.match(workspaceHomeSource, /session\?\.status !== OWNER_SESSION_STATES\.AUTHORIZED/);
-assert.match(botOperationsSource, /aria-label="Bot Operations safety state"/);
-assert.match(botOperationsSource, /<StatusBadge tone="neutral">Owner only<\/StatusBadge>/);
+// Audit 2026-11-14: the Bot page was redesigned (no separate "safety state" panel or "Owner only"
+// badge); it must still only load for the verified owner, which WorkspaceHomePage enforces above.
+assert.match(botOperationsSource, /export default function BotOperationsPage/);
 
 assert.match(appSource, /role="status" aria-live="polite" aria-label=\{`Grade Assist readiness status: \$\{gradeAssistReadiness\.label\}`\}/);
 assert.match(appSource, /aria-label=\{`Grade Assist \$\{field\.label\}`\}/);

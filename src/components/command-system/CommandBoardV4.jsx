@@ -65,9 +65,15 @@ export function CommandBoardV4({
   statusItems = [],
   plan = null,
   routes = [],
+  density = "auto",
   children,
 }) {
   const experience = useContext(ExperiencePresentationContext);
+  // Nov 13 (MUST-11): collectors get a quiet board — title, one primary action,
+  // one helper action, and the page. Status chips, the plan panel and the route
+  // strip fold into "More on this page". Admins (and density="full") keep the
+  // whole command center.
+  const quiet = density === "quiet" || (density === "auto" && !(experience?.showAdminTools));
   const visibleNav = COMMAND_BOARD_NAV
     .filter((item) => item.path !== "/business" || !experience || experience.showBusinessTools || experience.showAdminTools)
     .map((item) => item.path === "/business" && experience?.isStore ? { ...item, label: "Store" } : item);
@@ -79,16 +85,17 @@ export function CommandBoardV4({
   // The board chrome is intentionally stable across routes: primary command,
   // Compass, Beacon, then Profile. Page-specific secondary commands belong in
   // the plan or body so they cannot reshape the shared hero.
-  const contextualActions = (visibleUtility.length ? visibleUtility : secondary).slice(0, 2);
+  const contextualActions = (visibleUtility.length ? visibleUtility : secondary).slice(0, quiet ? 1 : 2);
   const hasProfileAction = contextualActions.some((action) => /^(you|profile)$/i.test(String(action.label || "").trim()));
   const activeNavKey = activeNavKeyForAccent(accent);
   const hearthHref = commandBoardHref("/");
 
   return (
     <section
-      className={`command-board-v4 command-board-v4-${accent} ${className}`.trim()}
+      className={`command-board-v4 command-board-v4-${accent} ${quiet ? "command-board-v4--quiet" : ""} ${className}`.trim()}
       aria-label={ariaLabel || title}
       data-command-accent={accent}
+      data-command-density={quiet ? "quiet" : "full"}
     >
       <div className="command-board-v4-frame">
         <aside className="command-board-v4-rail" aria-label="Primary command navigation">
@@ -185,7 +192,7 @@ export function CommandBoardV4({
                       ))}
                     </span>
                   ) : null}
-                  {onOpenMenu ? (
+                  {quiet ? null : onOpenMenu ? (
                     <button type="button" className="command-board-v4-profile-action" onClick={() => onOpenMenu()} aria-label="Open profile and menu">
                       <AppNavIcon kind="account" />
                       <b>Menu</b>
@@ -200,9 +207,22 @@ export function CommandBoardV4({
               ) : null}
             </div>
 
-            {statusItems.length ? <CommandBoardStatusStrip items={statusItems} /> : null}
-            {plan ? <CommandBoardPlan {...plan} /> : null}
-            {routes.length ? <CommandBoardRouteStrip routes={routes} /> : null}
+            {quiet ? (
+              (plan || routes.length || statusItems.length) ? (
+                <details className="command-board-v4-more">
+                  <summary>More on this page</summary>
+                  {statusItems.length ? <CommandBoardStatusStrip items={statusItems.slice(0, 4)} /> : null}
+                  {plan ? <CommandBoardPlan {...plan} /> : null}
+                  {routes.length ? <CommandBoardRouteStrip routes={routes} /> : null}
+                </details>
+              ) : null
+            ) : (
+              <>
+                {statusItems.length ? <CommandBoardStatusStrip items={statusItems} /> : null}
+                {plan ? <CommandBoardPlan {...plan} /> : null}
+                {routes.length ? <CommandBoardRouteStrip routes={routes} /> : null}
+              </>
+            )}
           </header>
 
           {children ? <div className="command-board-v4-body">{children}</div> : null}

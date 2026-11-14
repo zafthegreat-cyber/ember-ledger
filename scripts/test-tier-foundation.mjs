@@ -27,7 +27,7 @@ assert.equal(TIER_PRICING.free.price, "$0");
 assert.match(TIER_PRICING.collector.price, /Free during beta/);
 assert.match(TIER_PRICING.collector.trialCopy, /told before anything costs money/i);
 assert.match(TIER_PRICING.family.price, /Free during beta/);
-assert.match(TIER_PRICING.family.features.join(" "), /2 kid profiles included/i);
+assert.match(TIER_PRICING.family.features.join(" "), /2 kid profiles — not available yet/i);
 assert.match(TIER_PRICING.seller.price, /Free during beta/);
 assert.match(TIER_PRICING.shop.price, /Free during beta for approved shops/);
 assert.match(TIER_PRICING.shop.trialCopy, /reviewed by the Code 3 team/i);
@@ -50,27 +50,35 @@ assert.ok(TIER_ADD_ONS.some((addOn) => addOn.label === "Seller/business partner 
 assert.ok(TIER_ADD_ONS.some((addOn) => addOn.label === "Shop staff seat" && addOn.price === "Free during beta"));
 assert.ok(TIER_ADD_ONS.some((addOn) => addOn.label === "Extra shop location" && addOn.price === "Free during beta"));
 
-const freeAccess = getTierAccess({ tier: "free", betaTester: true });
+// Open beta (2026-11-14): by default every member plan's limits are unlocked.
+const openBetaFree = getTierAccess({ tier: "free", betaTester: true });
+assert.equal(openBetaFree.openBeta, true);
+assert.equal(openBetaFree.scoutStoreSlots, 3, "open beta gives Free the best member slot count");
+assert.equal(openBetaFree.canViewRawScoutHistory, false, "raw history is never part of the beta unlock");
+assert.equal(openBetaFree.canViewPatternTools, false);
+assert.equal(openBetaFree.canAccessAdminModeration, false);
+// Plan-specific rules (what each plan is after beta) are checked with openBeta off.
+const freeAccess = getTierAccess({ tier: "free", betaTester: true }, { openBeta: false });
 assert.equal(freeAccess.scoutStoreSlots, 1);
 assert.equal(freeAccess.scoutStoreSwapDays, 30);
 assert.equal(freeAccess.canViewRawScoutHistory, false);
 assert.equal(freeAccess.canViewPatternTools, false);
 assert.equal(freeAccess.isBeta, true, "beta should be a status flag");
 
-const collectorAccess = getTierAccess({ tier: "collector" });
+const collectorAccess = getTierAccess({ tier: "collector" }, { openBeta: false });
 assert.equal(collectorAccess.scoutStoreSlots, 3);
 assert.equal(collectorAccess.scoutStoreSwapDays, 14);
 assert.equal(collectorAccess.canViewRawScoutHistory, false);
 assert.equal(collectorAccess.canViewPatternTools, false);
 
-const familyAccess = getTierAccess({ tier: "family" });
+const familyAccess = getTierAccess({ tier: "family" }, { openBeta: false });
 assert.equal(familyAccess.maxKidProfilesIncluded, 2);
 assert.equal(familyAccess.maxAdultMembersIncluded, 1);
 assert.equal(familyAccess.canCreateKidProfiles, true);
 assert.equal(familyAccess.canManageFamilyProfiles, true);
 assert.equal(familyAccess.canUseKidSafeVault, true);
 
-const sellerAccess = getTierAccess({ tier: "seller" });
+const sellerAccess = getTierAccess({ tier: "seller" }, { openBeta: false });
 assert.equal(sellerAccess.canUseForgeAdvancedSellerTools, true);
 assert.equal(sellerAccess.canViewRawScoutHistory, false);
 assert.equal(sellerAccess.canViewPatternTools, false);
@@ -92,12 +100,22 @@ assert.equal(normalizeTier("shop_plus"), "shop");
 
 assert.equal(canUseFeature("free", "scout_submit_reports"), true, "free users can still submit Scout reports");
 assert.equal(canUseFeature("free", "scout_view_reports"), true, "free users can still view basic Scout reports");
-assert.equal(canUseFeature({ tier: "free", betaTester: true }, "seller_tools", { betaTester: true }), false, "beta flag alone should not unlock paid seller tools");
+// Open beta: member-plan features are on for everyone; staff and protected Restocks features are not.
+assert.equal(canUseFeature({ tier: "free", betaTester: true }, "seller_tools"), true, "open beta unlocks member-plan features for every member");
+assert.equal(canUseFeature({ tier: "free", betaTester: true }, "seller_tools", { openBeta: false }), false, "after beta the plan rule applies again");
+assert.equal(canUseFeature({ tier: "free" }, "admin_review"), false, "open beta never unlocks staff features");
+assert.equal(canUseFeature({ tier: "free" }, "scout_pattern_tools"), false, "open beta never unlocks protected Restocks patterns");
+assert.equal(canUseFeature({ tier: "free", tierPreview: true }, "seller_tools"), false, "tier previews show the post-beta plan");
 assert.equal(canUseFeature("free", "seller_tools", { localBeta: true }), true, "local beta mode remains usable for browser regression");
 assert.equal(canUseFeature("free", "scout_pattern_tools", { localBeta: true }), false, "local beta should not expose protected Scout patterns");
 assert.equal(canUseFeature("collector", "scout_pattern_tools"), false);
 assert.equal(canUseFeature("family", "scout_raw_history"), false);
 assert.equal(canUseFeature("seller", "restock_predictions"), false);
+assert.equal(canUseFeature("free", "set_completion", { openBeta: false }), true, "Rule A: set completion is free after beta too");
+assert.equal(canUseFeature("free", "portfolio_value", { openBeta: false }), true);
+assert.equal(canUseFeature("free", "wishlist_alerts", { openBeta: false }), true);
+assert.equal(canUseFeature("free", "forge_inventory", { openBeta: false }), false, "Rule A: the Business ledger is paid after beta");
+assert.equal(canUseFeature("free", "price_history", { openBeta: false }), false);
 assert.equal(canUseFeature({ tier: "admin" }, "scout_pattern_tools"), true);
 
 const protectedScoutLock = getLockedFeatureDetails("restock_predictions");
@@ -170,3 +188,12 @@ for (const file of publicCopyFiles) {
 }
 
 console.log("Tier foundation checks passed.");
+
+// Audit 2026-11-14: plan cards never show placeholder copy, and unbuilt features say so.
+{
+  const all = Object.values(TIER_PRICING).flatMap((plan) => [plan.summary, ...plan.features]).join("\n");
+  if (/add-on copy/i.test(all)) throw new Error("placeholder 'add-on copy' text is back on a plan card");
+  for (const phrase of [/kid profiles — not available yet/, /Text \(SMS\) alerts — not available yet/, /Community posts shared with other members — not available yet/]) {
+    if (!phrase.test(all)) throw new Error(`plan cards must say ${phrase} until it ships`);
+  }
+}

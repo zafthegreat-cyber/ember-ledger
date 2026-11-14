@@ -11,7 +11,7 @@ const vault = getEmptyStateGuidance("vault");
 assert.equal(vault.title, "Your Vault is ready.");
 assert.match(vault.body, /Manual entry/i);
 assert.equal(vault.actionTarget, "vault");
-assert.deepEqual(vault.actions.map((action) => action.label), ["Scan Card", "Add Sealed Product", "Manual Add"]);
+assert.deepEqual(vault.actions.map((action) => action.label), ["Add to Vault", "Scan Card", "Add Sealed Product", "Manual Add"]);
 
 const forge = getEmptyStateGuidance("forge");
 assert.equal(forge.title, "Your workshop is ready.");
@@ -24,8 +24,9 @@ assert.match(dropRadar.body, /confirmed restock history/i);
 assert.doesNotMatch(dropRadar.body, /guaranteed/i);
 
 const market = getEmptyStateGuidance("market");
-assert.equal(market.title, "Search products, compare prices, and find fair deals.");
-assert.deepEqual(market.actions.map((action) => action.label), ["Create Alert", "Browse Market", "Add Listing"]);
+assert.equal(market.title, "Market research is ready.");
+assert.deepEqual(market.actions.map((action) => action.label), ["Search Market"]);
+assert.match(market.body, /research only/i);
 assert.doesNotMatch(market.body, /guaranteed|checkout is active|automatic payment/i);
 
 const notifications = getEmptyStateGuidance("notifications");
@@ -33,9 +34,10 @@ assert.match(notifications.body, /Confirmed restocks/i);
 assert.equal(notifications.actionTarget, "alerts");
 
 const tidepool = getEmptyStateGuidance("tidepool");
-assert.equal(tidepool.title, "The Tidepool is quiet right now.");
-assert.deepEqual(tidepool.actions.map((action) => action.label), ["Start a Post", "Follow Local Collectors"]);
+assert.equal(tidepool.title, "The Community is quiet right now.");
+assert.deepEqual(tidepool.actions.map((action) => action.label), ["Start a Post"], "no Follow Local Collectors until it exists");
 assert.match(tidepool.body, /reviewed before they appear publicly/i);
+assert.match(tidepool.body, /save on your device/i);
 
 const kids = getEmptyStateGuidance("kids");
 assert.equal(kids.title, "No open requests yet.");
@@ -44,11 +46,11 @@ assert.match(kids.body, /does not guarantee/i);
 assert.deepEqual(kids.actions.map((action) => action.label), ["Request Kid Access", "View Rules"]);
 
 const scout = getEmptyStateGuidance("scout");
-assert.equal(scout.title, "No local signals yet.");
-assert.match(scout.body, /shared by store/i);
+assert.equal(scout.title, "Restocks is ready for your first store.");
+assert.match(scout.body, /does not guarantee stock/i);
 
 const hearth = getEmptyStateGuidance("hearth");
-assert.match(hearth.body, /one Scout report/i);
+assert.match(hearth.body, /one Vault item first/i);
 
 const quickAdd = getEmptyStateGuidance("quick add");
 assert.match(quickAdd.body, /Choose Vault/i);
@@ -61,7 +63,7 @@ assert.equal(getEmptyStateGuidance("unknown").title, EMPTY_STATE_GUIDANCE.vault.
 const vaultForgeHelp = getContextualHelpCard("vault forge");
 assert.equal(vaultForgeHelp.title, CONTEXTUAL_HELP_CARDS.vault_forge.title);
 assert.match(vaultForgeHelp.body, /Vault is for collection/i);
-assert.match(vaultForgeHelp.body, /Forge is for sellable/i);
+assert.match(vaultForgeHelp.body, /Business is for sellable/i);
 
 const businessHelp = getContextualHelpCard("business_records");
 assert.match(businessHelp.body, /review with your tax professional/i);

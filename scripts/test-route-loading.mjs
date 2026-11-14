@@ -21,6 +21,7 @@ const storeSeed = read("src/data/virginiaStoresSeed.js");
 const smartSearch = read("src/components/SmartCatalogSearchBox.jsx");
 const smartInventory = read("src/components/SmartAddInventory.jsx");
 const smartCatalog = read("src/components/SmartAddCatalog.jsx");
+const barcodeScanner = read("src/components/BarcodeScanner.jsx");
 const routePages = {
   hearth: read("src/pages/Hearth.jsx"),
   operationsHome: read("src/pages/OperationsHome.jsx"),
@@ -61,8 +62,8 @@ check(
 );
 
 check(
-  "Account Ops is independently lazy-loaded",
-  app.includes('const AccountOpsPage = lazy(() => import("./features/accountOps/AccountOpsPage"))') &&
+  "Account Ops is independently lazy-loaded (and left out of native builds)",
+  app.includes('const AccountOpsPage = import.meta.env.VITE_NATIVE_BUILD === "true" ? null : lazy(() => import("./features/accountOps/AccountOpsPage"))') &&
     app.includes('<AccountOpsPage')
 );
 
@@ -76,7 +77,7 @@ check(
 
 check(
   "Bot Operations is independently lazy-loaded behind the workspace owner gate",
-  workspaceHomePage.includes('lazy(() => import("../botOps/BotOperationsPage.jsx"))') &&
+  workspaceHomePage.includes('import.meta.env.VITE_NATIVE_BUILD === "true" ? null : lazy(() => import("../botOps/BotOperationsPage.jsx"))') &&
     workspaceHomePage.includes("session?.status !== OWNER_SESSION_STATES.AUTHORIZED") &&
     botOperationsPage.includes("export default function BotOperationsPage")
 );
@@ -194,8 +195,13 @@ check(
 
 check(
   "Scanner library is dynamically imported only when activated",
-  !/from\s+["']@zxing\/browser["']/.test(app) &&
-    app.includes('await import("@zxing/browser")')
+  !/from\s+["']@zxing\/browser["']/.test(`${app}\n${barcodeScanner}`) &&
+    app.includes('import BarcodeScanner from "./components/BarcodeScanner.jsx"') &&
+    /scanMode === "upc"[\s\S]*?<BarcodeScanner\b/.test(app) &&
+    barcodeScanner.includes('const loadReader = () => import("@zxing/browser")') &&
+    barcodeScanner.includes("readerLoader = loadReader") &&
+    /useEffect\(\(\) => \{[\s\S]*?async function start\(\)[\s\S]*?await readerLoader\(\)/.test(barcodeScanner) &&
+    barcodeScanner.includes("void start();")
 );
 
 check(

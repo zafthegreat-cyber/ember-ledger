@@ -41,10 +41,11 @@ const device = await load("src/utils/deviceNotifications.js", "device");
 test("#1-2 more states review instead of waitlist, and the copy explains the human review", () => {
   assert.ok(onboarding.isOpenAccessState("NC"));
   assert.ok(onboarding.isOpenAccessState("va"));
-  assert.ok(onboarding.isOpenAccessState("CA"));
-  assert.match(onboarding.betaAccessWaitlistMessage("CA"), /supports California/);
-  assert.match(onboarding.betaAccessWaitlistMessage("CA"), /sign in and start/i);
-  assert.match(onboarding.betaAccessPendingMessage(), /real person reviews/i);
+  assert.ok(onboarding.isOpenAccessState("CA"), "beta is open everywhere since Nov 6");
+  assert.ok(!onboarding.isOpenAccessState("ZZ"));
+  assert.match(onboarding.betaAccessWaitlistMessage("CA"), /open in California and everywhere else/);
+  assert.match(onboarding.betaAccessPendingMessage(), /You're in/);
+  assert.match(onboarding.BETA_REVIEW_EXPLANATION, /free while we are in beta/);
   assert.match(onboarding.openAccessStatesLabel(), /all 50 US states.*Washington, DC/);
 });
 
@@ -64,9 +65,15 @@ test("#3-4 checklist is scoped to chosen goals", () => {
   assert.ok(built.some((item) => item.key === "forge" && item.completed));
 });
 
-test("#5-7 Free pricing copy no longer promises gated features", () => {
+test("#5-7 Free pricing copy only promises what the Free gates unlock", () => {
+  // Rule A (2026-11-14): collection value, set progress and missing cards ARE
+  // free now, so the copy may promise them — but only because the gates agree.
   const free = gates.TIER_PRICING[gates.PLAN_IDS.FREE].features.filter((line) => !/^not included/i.test(line)).join(" ").toLowerCase();
-  for (const phrase of ["collection value", "set progress", "forge ledger", "business ledger", "missing cards"]) assert.ok(!free.includes(phrase), `Free copy still promises "${phrase}"`);
+  const promises = { "collection value": "portfolio_value", "set progress": "set_completion", "missing-card": "set_completion", "wishlist alerts": "wishlist_alerts", "collection export": "collection_export" };
+  for (const [phrase, gate] of Object.entries(promises)) {
+    if (free.includes(phrase)) assert.ok(gates.canUseFeature("free", gate, { openBeta: false }), `Free copy promises "${phrase}" but ${gate} is not free after beta`);
+  }
+  for (const phrase of ["forge ledger", "business ledger", "deal finder", "receipt scan"]) assert.ok(!free.includes(phrase), `Free copy still promises paid "${phrase}"`);
   assert.ok(gates.TIER_PRICING[gates.PLAN_IDS.FREE].features.some((line) => /^not included/i.test(line)));
 });
 
@@ -97,8 +104,10 @@ test("#12 device notification helpers are safe without a Notification API", asyn
 });
 
 test("#13-15 scout-earned unlock and points explainer", () => {
-  assert.ok(!gates.canUseFeature({ tier: "free", scoutPoints: 10 }, "scout_current_details"));
-  assert.ok(gates.canUseFeature({ tier: "free", scoutPoints: gates.SCOUT_EARNED_UNLOCK_POINTS }, "scout_current_details"));
+  // The earned unlock is the post-beta rule; during the open beta scout_current_details is on for everyone.
+  assert.ok(!gates.canUseFeature({ tier: "free", scoutPoints: 10 }, "scout_current_details", { openBeta: false }));
+  assert.ok(gates.canUseFeature({ tier: "free", scoutPoints: gates.SCOUT_EARNED_UNLOCK_POINTS }, "scout_current_details", { openBeta: false }));
+  assert.ok(gates.canUseFeature({ tier: "free", scoutPoints: 0 }, "scout_current_details"), "open beta");
   assert.ok(gates.canUseFeature({ tier: "free", role: "trusted_scout" }, "scout_alerts"));
   assert.ok(!gates.canUseFeature({ tier: "free", scoutPoints: 9999 }, "scout_raw_history"), "raw history stays protected");
   assert.match(gates.getLockedFeatureDetails("scout_current_details").action, /Scout points|restock points/i);
@@ -150,7 +159,8 @@ test("#24 typed age ranges are accepted", () => {
 });
 
 test("#27-28 pending review copy sets expectations", () => {
-  assert.match(tidepool.tidepoolPendingReviewCopy({}), /quick queue/);
+  assert.match(tidepool.tidepoolPendingReviewCopy({}), /passed the automatic safety check/);
+  assert.match(tidepool.TIDEPOOL_REVIEW_EXPECTATION, /saved on this device/);
   assert.match(tidepool.tidepoolPendingReviewCopy({ safetyReviewReason: "Possible private contact information." }), /closer look/);
 });
 

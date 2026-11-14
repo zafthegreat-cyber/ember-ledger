@@ -75,7 +75,8 @@ assertions += 2;
 
 matches(app, /lazy\(\(\) => import\("\.\/features\/accountOps\/AccountOpsPage"\)\)/, "Account Ops should remain route-split");
 matches(app, /<AccountOpsPage[\s\S]*session=\{ownerSession\}/, "Account Ops should receive the verified owner session");
-matches(app, /ownerToolsVisible \? \{ key: "account-ops", label: "Account Ops"/, "Account Ops navigation should use the owner-tools visibility gate");
+matches(app, /ownerToolsVisible && AccountOpsPage \? \{ key: "account-ops", label: "Account Ops"/, "Account Ops navigation should use the owner-tools visibility gate (and is absent from native builds)");
+matches(app, /import\.meta\.env\.VITE_NATIVE_BUILD === "true" \? null : lazy\(\(\) => import\("\.\/features\/accountOps\/AccountOpsPage"\)\)/, "Account Ops is left out of the native build");
 matches(routes, /\["overview", "accounts", "identity", "payment", "network", "verification", "automation", "orders", "infrastructure", "activity", "profiles", "emails", "tasks", "connections", "inbox"\]/, "Account Ops should expose the unified operating areas and legacy direct routes");
 matches(routes, /return \{ activeTab: "accountOps", accountOpsSection \}/, "direct Account Ops routes should restore section state");
 

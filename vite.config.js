@@ -112,6 +112,10 @@ function emberManualChunks(id) {
 
   if (normalizedId.includes("/src/data/generated/virginiaStores")) return "store-directory";
 
+  // Keep reviewed identifier evidence independently cacheable as the catalog
+  // grows; UI-only releases should not rebundle it into the app shell.
+  if (normalizedId.includes("/src/data/catalogBarcodeEvidence.mjs")) return "catalog-barcode-evidence";
+
   if (normalizedId.includes("/src/data/generated/releaseCalendar") ||
       normalizedId.includes("/src/data/generated/dropCalendarSeed") ||
       normalizedId.includes("/src/data/generated/calendarSyncStatus")) {

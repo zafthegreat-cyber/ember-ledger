@@ -1,0 +1,253 @@
+/* SHOULD 12–14 polish (2026-11-14). Loaded last, after 15-warm-palette-polish.
+   12. Loading skeletons + one consistent empty-state shape.
+   13. Palette finish: light/dark parity, quiet kickers everywhere, consistent radii.
+   14. Small phones (320–360 px) and Android gesture-bar safe areas.
+   Tokens and targeted selectors only; no layout rewrites. */
+
+/* ---------- 12. Skeletons ---------- */
+html body .app[data-theme] { --c3-skeleton-base: color-mix(in srgb, var(--text-primary) 8%, var(--surface-primary)); --c3-skeleton-shine: color-mix(in srgb, var(--text-primary) 14%, var(--surface-primary)); }
+html body .app[data-theme] .c3-skeleton {
+  display: block;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--c3-skeleton-base) 0%, var(--c3-skeleton-shine) 45%, var(--c3-skeleton-base) 90%);
+  background-size: 220% 100%;
+  animation: c3-skeleton-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes c3-skeleton-shimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+@media (prefers-reduced-motion: reduce) { html body .app[data-theme] .c3-skeleton { animation: none; } }
+html body .app[data-theme] .c3-skeleton-list { display: grid; gap: 10px; }
+html body .app[data-theme] .c3-skeleton-list--metric { grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); }
+html body .app[data-theme] .c3-skeleton-item { display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; gap: 12px; min-height: 48px; padding: 12px 14px; border: 1px solid var(--border-subtle); border-radius: var(--c3-radius, 14px); background: var(--surface-primary); }
+html body .app[data-theme] .c3-skeleton-item--card { grid-template-columns: 52px minmax(0, 1fr); min-height: 76px; }
+html body .app[data-theme] .c3-skeleton-item--metric { min-height: 72px; align-content: center; }
+html body .app[data-theme] .c3-skeleton-thumb { width: 52px; height: 52px; border-radius: 10px; }
+html body .app[data-theme] .c3-skeleton-lines { display: grid; gap: 8px; min-width: 0; }
+html body .app[data-theme] .c3-skeleton-line { height: 12px; }
+html body .app[data-theme] .c3-skeleton-line--small { height: 9px; opacity: .8; }
+
+/* Route chunk loading: skeleton page instead of a lone spinner card. */
+html body .app[data-theme] .route-loading-card[role="status"] {
+  position: relative;
+  min-height: 220px;
+  padding-bottom: 96px;
+  border-radius: var(--c3-radius, 14px);
+}
+html body .app[data-theme] .route-loading-card[role="status"]::after {
+  content: "";
+  position: absolute;
+  left: 24px; right: 24px; bottom: 24px;
+  height: 56px;
+  border-radius: 10px;
+  background:
+    linear-gradient(var(--c3-skeleton-base), var(--c3-skeleton-base)) 0 0 / 100% 12px no-repeat,
+    linear-gradient(var(--c3-skeleton-base), var(--c3-skeleton-base)) 0 22px / 72% 12px no-repeat,
+    linear-gradient(var(--c3-skeleton-base), var(--c3-skeleton-base)) 0 44px / 48% 12px no-repeat;
+}
+
+/* One empty-state shape everywhere: icon, short title, one line, one action. */
+html body .app[data-theme] :is(.et-mockup-empty-state, .empty-state, .small-empty-state, .collector-trade-empty) {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 22px 16px;
+  text-align: center;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--c3-radius, 14px);
+  background: color-mix(in srgb, var(--surface-secondary) 70%, transparent);
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+html body .app[data-theme] :is(.et-mockup-empty-state, .empty-state) strong { color: var(--text-primary); font: 600 16px/1.3 var(--font-display); }
+html body .app[data-theme] :is(.et-mockup-empty-state, .empty-state) p { margin: 0; max-width: 42ch; }
+html body .app[data-theme] :is(.et-mockup-empty-state, .empty-state) > button,
+html body .app[data-theme] :is(.et-mockup-empty-state, .empty-state) > .et-mockup-button { margin-top: 8px; min-height: 44px; }
+html body .app[data-theme] .et-mockup-empty-state .et-mockup-icon { color: var(--accent-teal); background: var(--accent-teal-soft); }
+html body .app[data-theme] .small-empty-state { padding: 14px; font-size: 13px; }
+
+/* ---------- 13. Palette finish ---------- */
+/* Radii: cards 14, controls 10, chips stay round. The spread of 4–18 px values
+   made neighbouring panels look like different apps. */
+html body .app[data-theme] { --radius-sm: 10px; --radius-md: 14px; --et-radius-xs: 8px; --et-radius-sm: 10px; --et-radius-md: 14px; --et-radius-lg: 22px; }
+html body .app[data-theme] :is(
+  .utility-card, .drawer-info-card, .ops-record-card, .ops-metric-card, .ops-home-section, .account-setup-mini-card,
+  .command-board-v4-status-strip > *, .command-board-v4-route-strip > *, .command-metric-card, .exchange-v4-hub-card,
+  .hearth-v4-panel, .scout-command-side-rail article, .spark-v4-panel, .you-v4-panel, .et-mockup-panel, .et-mockup-card,
+  .market-v4-result-row, .vault-v4-panel, .collector-trade-saved, .panel
+) { border-radius: var(--c3-radius, 14px) !important; }
+html body .app[data-theme] :is(
+  .ops-button, .primary-button, .secondary-button, .danger-button, .et-mockup-button,
+  .command-board-v4-primary-action, .command-board-v4-secondary-action, .command-board-v4-utility-action, .command-board-v4-profile-action,
+  .auth-form button[type="submit"], .quick-feedback-primary, .quick-feedback-secondary
+) { border-radius: 10px !important; }
+html body .app[data-theme] :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea) { border-radius: 10px !important; }
+html body .app[data-theme] :is(.status-badge, .ops-status-badge, .trust-badge, .quick-feedback-kinds button) { border-radius: 999px !important; }
+
+/* Quiet kickers across every v4 panel heading (the 15-file covered the shell;
+   these are the per-route panels that still shouted in gold caps). */
+html body .app.app-command-shell[data-theme] :is(
+  .command-board-section-heading span, .command-board-v4-plan-heading > span, .command-board-section-heading > div > span,
+  .command-metric-card > span, .exchange-v4-hub-card > span, .forge-v4-matrix-heading span, .forge-v4-operations-strip span,
+  .forge-v4-decision-meter-list span, .hearth-v4-panel > header > span, .hearth-v4-map-title b,
+  .scout-command-heading span, .scout-command-map-caption > span, .scout-command-side-rail article > header span, .scout-command-side-stack span,
+  .scout-command-metrics span, .spark-v4-panel-heading span, .spark-v4-side-rail article > span, .spark-v4-impact-grid article > span,
+  .spark-v4-stepper article em, .you-profile-command-label, .you-v4-profile-metrics span, .you-v4-panel-heading > div > span,
+  .you-v4-usage-grid article span, .you-v4-quick-links button > span, .vault-health-checklist :where(span, small),
+  .vault-portfolio-donut small, .vault-command-health-ring small, .market-v4-result-row > span:first-child,
+  .command-board-v4-plan-grid button span, .command-board-v4-brand small, .command-board-v4-mobile-brand small, .hearth-v4-nav-brand small
+) {
+  color: var(--text-kicker) !important;
+  font-family: var(--c3-font-body) !important;
+  font-weight: 600 !important;
+  font-size: 12px !important;
+  letter-spacing: 0.02em !important;
+  text-transform: none !important;
+}
+/* Badges may stay small-caps but not gold-on-dark. */
+html body .app.app-command-shell[data-theme] .command-board-v4-body :where(.trust-badge, .status-badge) { letter-spacing: 0.04em; font-weight: 600; }
+
+/* Light theme parity with the dark polish: same layering, same accents. */
+html body .app[data-theme="light"], html body .app:not([data-theme="dark"])[data-theme] {
+  --c3-shadow: 0 4px 18px rgb(69 27 43 / 7%);
+  --c3-kicker: #6F5F5A;
+}
+html body .app.app-command-shell:not([data-theme="dark"])[data-theme] :is(.command-board-v4-hero, .command-board-v4-frame) {
+  background: linear-gradient(180deg, var(--surface-elevated), var(--surface-primary)) !important;
+}
+/* Links and focus rings read the same in both themes. */
+html body .app[data-theme] :is(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent-teal) 70%, var(--text-primary));
+  outline-offset: 2px;
+}
+/* Text on gold (dark primary action) must be dark; text on maroon (light) must be light. The token already does this; make sure nested spans follow. */
+html body .app[data-theme] :is(.ops-button--primary, .primary-button, .command-board-v4-primary-action, .quick-feedback-primary, .app-tour__next) { color: var(--on-primary) !important; }
+
+/* ---------- 14. Small phones + gesture bar ---------- */
+/* Content always clears the floating bottom nav and the feedback button. */
+@media (max-width: 899px) {
+  html body .app.ops-app-shell[data-theme] .main,
+  html body .app.app-command-shell[data-theme] .main { padding-bottom: calc(118px + env(safe-area-inset-bottom, 0px)) !important; }
+  html body .app[data-theme] :is(.command-board-v4-rail, .et-mockup-right-rail) { padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
+  html body .app[data-theme] .ops-mobile-nav { padding-bottom: calc(5px + env(safe-area-inset-bottom, 0px) * 0.5); }
+  html body .app[data-theme] .quick-feedback-fab { bottom: calc(max(8px, env(safe-area-inset-bottom)) + 88px); }
+  /* Phone pass 2026-11-14: the labelled pill covered card text and buttons; a 44px icon covers far less. */
+  html body .app[data-theme] .quick-feedback-fab { width: 44px; justify-content: center; padding: 0; border-radius: 50%; }
+  html body .app[data-theme] .quick-feedback-fab span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  html body .app[data-theme] .back-to-top-button { bottom: calc(max(8px, env(safe-area-inset-bottom)) + 140px) !important; }
+  /* Sheets and modals never slide under the gesture bar. */
+  html body .app[data-theme] :is(.ops-bottom-sheet, .flow-modal, .quick-feedback-sheet, .app-tour__card) { padding-bottom: max(14px, env(safe-area-inset-bottom)); }
+}
+@media (max-width: 360px) {
+  html body .app[data-theme] { --et-gap: 10px; }
+  html body .app[data-theme] .main, html body .app[data-theme] .ops-page { padding-left: 12px !important; padding-right: 12px !important; }
+  html body .app[data-theme] .command-board-v4-hero { padding: 14px 12px 12px !important; }
+  html body .app[data-theme] .command-board-v4-hero-copy h1 { font-size: clamp(21px, 7vw, 26px) !important; line-height: 1.15; }
+  html body .app[data-theme] .command-board-v4-hero-copy p { font-size: 13.5px; }
+  html body .app[data-theme] .ops-page-header h1 { font-size: clamp(22px, 7.5vw, 28px) !important; }
+  html body .app[data-theme] .command-board-v4-status-strip,
+  html body .app[data-theme] .command-board-v4-route-strip { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 6px !important; }
+  html body .app[data-theme] .command-board-v4-status-strip > *,
+  html body .app[data-theme] .command-board-v4-route-strip > * { min-width: 0; padding: 8px !important; }
+  html body .app[data-theme] .command-board-v4-status-strip > * > strong { font-size: 15px !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  html body .app[data-theme] :is(.ops-metric-grid, .everyday-metrics, .you-simple-grid, .command-metric-grid, .you-v4-profile-metrics, .vault-v4-metric-grid) { grid-template-columns: minmax(0, 1fr) !important; }
+  html body .app[data-theme] :is(.ops-page-actions, .ops-section-actions, .command-board-v4-actions, .account-security-actions, .et-mockup-actions) { display: grid !important; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  html body .app[data-theme] :is(.ops-page-actions, .ops-section-actions, .command-board-v4-actions, .account-security-actions) > * { width: 100%; justify-content: center; }
+  html body .app[data-theme] .ops-mobile-nav { min-height: 58px; padding: 4px; border-radius: 16px; }
+  html body .app[data-theme] .ops-mobile-nav button { min-height: 48px; gap: 2px; }
+  html body .app[data-theme] .ops-mobile-nav button span { font-size: 10px; }
+  html body .app[data-theme] .ops-mobile-nav__action-icon { width: 46px; height: 46px; margin-top: -22px; }
+  html body .app[data-theme] .quick-feedback-fab span { display: none; }
+  html body .app[data-theme] .quick-feedback-fab { width: 44px; justify-content: center; padding: 0; border-radius: 50%; }
+  html body .app[data-theme] .quick-feedback-sheet, html body .app[data-theme] .app-tour__card { width: calc(100vw - 16px); }
+  html body .app[data-theme] .app-tour__card h2 { font-size: 16px; }
+  html body .app[data-theme] :is(table, .ops-data-table) { display: block; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  html body .app[data-theme] :is(h1, h2, h3, p, li, dt, dd, strong, small, span) { overflow-wrap: anywhere; }
+  html body .app[data-theme] img, html body .app[data-theme] svg:not(.ops-mobile-nav svg) { max-width: 100%; height: auto; }
+}
+@media (max-width: 330px) {
+  html body .app[data-theme] .command-board-v4-status-strip,
+  html body .app[data-theme] .command-board-v4-route-strip { grid-template-columns: minmax(0, 1fr) !important; }
+  html body .app[data-theme] .ops-mobile-nav button span { display: none; }
+  html body .app[data-theme] .ops-mobile-nav button { min-height: 44px; }
+}
+/* Landscape phones: the bottom nav eats the screen; shrink it. */
+@media (max-height: 420px) and (orientation: landscape) and (max-width: 899px) {
+  html body .app[data-theme] .ops-mobile-nav { min-height: 48px; padding: 3px; }
+  html body .app[data-theme] .ops-mobile-nav button { min-height: 40px; }
+  html body .app[data-theme] .ops-mobile-nav button span { display: none; }
+  html body .app[data-theme] .ops-mobile-nav__action-icon { width: 40px; height: 40px; margin-top: -16px; }
+  html body .app.app-command-shell[data-theme] .main { padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important; }
+}
+
+/* SHOULD 21: trade analyzer fallbacks when a side has no value. */
+html body .app[data-theme] .trade-fallback-row { display: grid; gap: 8px; margin: 4px 0 12px; padding: 12px 14px; border: 1px dashed var(--border-strong); border-radius: var(--c3-radius, 14px); background: color-mix(in srgb, var(--surface-secondary) 70%, transparent); }
+html body .app[data-theme] .trade-fallback-row p { margin: 0; font-size: 14px; color: var(--text-primary); }
+html body .app[data-theme] .trade-fallback-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+html body .app[data-theme] .trade-fallback-actions small { color: var(--text-secondary); font-size: 12.5px; }
+html body .app[data-theme] .trade-fallback-actions .secondary-button { min-height: 40px; }
+
+/* ---------- Guest preview bar (phone pass 2026-11-14) ---------- */
+/* Had no styles: plain bold text and a bare button above the page. */
+html body .app[data-theme] .guest-preview-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 12px 0;
+  padding: 8px 8px 8px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background: var(--surface-elevated, var(--surface-primary));
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.4;
+}
+html body .app[data-theme] .guest-preview-banner strong { color: var(--text-primary); font-size: 13px; }
+html body .app[data-theme] .guest-preview-banner span { color: var(--text-secondary); }
+html body .app[data-theme] .guest-preview-banner .auth-text-button {
+  flex: none;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-primary);
+  font: 600 13px/1 var(--font-ui, inherit);
+}
+@media (min-width: 900px) {
+  html body .app[data-theme] .guest-preview-banner { margin: 12px 24px 0; }
+}
+
+/* ---------- Quick-add search results (audit 2026-11-14) ---------- */
+/* Each result was a 470px showcase card plus a duplicate row; now one compact row. */
+html body .app[data-theme] .quick-add-result-list { display: grid; gap: 8px; }
+html body .app[data-theme] .quick-add-result-card {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 72px;
+  padding: 8px 12px 8px 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+html body .app[data-theme] .quick-add-result-card:hover { border-color: var(--accent-teal); }
+html body .app[data-theme] .quick-add-result-thumb {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--surface-secondary);
+}
+html body .app[data-theme] .quick-add-result-thumb img { width: 100%; height: 100%; object-fit: contain; }
+html body .app[data-theme] .quick-add-result-copy { display: grid; gap: 2px; min-width: 0; }
+html body .app[data-theme] .quick-add-result-copy strong { color: var(--text-primary); font-size: 14.5px; line-height: 1.3; overflow-wrap: anywhere; }
+html body .app[data-theme] .quick-add-result-copy small { color: var(--text-secondary); font-size: 12.5px; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html body .app[data-theme] .quick-add-result-action { color: var(--accent-teal); font-size: 12.5px; font-weight: 600; white-space: nowrap; }

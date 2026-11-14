@@ -1,0 +1,140 @@
+/* Warm palette polish (Zena, 2026-11-06: "fix the colors too").
+   Loaded last. Two problems it fixes:
+   1. Dark mode read as flat near-black with yellow labels shouting from every
+      card. Surfaces are now warm plum-charcoal with a little depth, and gold
+      is reserved for primary actions, values and the brand line; small labels
+      and kickers use a quiet warm grey.
+   2. The brand's second accent (tide teal) was missing, so everything was
+      gold-on-black. Teal now carries informational and secondary accents.
+   Tokens only; no layout changes. */
+
+:root, .app[data-theme] {
+  --c3-teal: #1F7A74;
+  --c3-teal-soft: #E3F1EF;
+  --c3-kicker: #7A6A64;
+}
+
+:root[data-theme="dark"], .app[data-theme="dark"], :root:has(.app[data-theme="dark"]) {
+  /* Warmer, lighter dark surfaces with visible layering. */
+  --c3-page: #1A1518;
+  --c3-surface: #26202A;
+  --c3-surface-secondary: #2F272F;
+  --c3-surface-inset: #211B22;
+  --c3-surface-elevated: #38303A;
+  --c3-border: #4A3E48;
+  --c3-control-border: #8E7C88;
+  --c3-text: #F6EEE2;
+  --c3-muted: #C2B2B6;
+  --c3-kicker: #A79399;
+  --c3-teal: #5CC3BA;
+  --c3-teal-soft: #1F3A3B;
+  --c3-info: #8FD3CC;
+  --c3-shadow: 0 6px 24px rgb(0 0 0 / 28%);
+}
+
+html body .app[data-theme] {
+  --accent-teal: var(--c3-teal);
+  --accent-teal-soft: var(--c3-teal-soft);
+  --text-kicker: var(--c3-kicker);
+}
+
+/* Small labels, eyebrows and kickers: quiet, not gold, not shouting. */
+html body .app.app-command-shell[data-theme] :is(
+  .command-board-v4-status-strip > * > span,
+  .command-board-v4-route-strip > * > span,
+  .section-kicker,
+  .ops-eyebrow,
+  .settings-layout__eyebrow,
+  .settings-layout__account-meta dt,
+  .drawer-status-list dt,
+  .ops-metric-card > span,
+  .everyday-metrics dt,
+  .account-setup-mini-card > span,
+  .compact-card-header .section-kicker
+) {
+  color: var(--text-kicker) !important;
+  font-family: var(--c3-font-body) !important;
+  font-weight: 600 !important;
+  font-size: 12px !important;
+  letter-spacing: 0.02em !important;
+  text-transform: none !important;
+}
+
+/* Values keep the strong colour; details stay muted. */
+html body .app.app-command-shell[data-theme] :is(.command-board-v4-status-strip, .command-board-v4-route-strip) > * > strong { color: var(--text-primary) !important; }
+html body .app.app-command-shell[data-theme] :is(.command-board-v4-status-strip, .command-board-v4-route-strip) > * > small { color: var(--text-secondary) !important; }
+html body .app.app-command-shell[data-theme] :is(.command-board-v4-status-strip, .command-board-v4-route-strip) > * svg { color: var(--accent-teal) !important; }
+
+/* Cards: visible layering instead of black-on-black boxes. */
+html body .app.app-command-shell[data-theme] :is(
+  .utility-card, .drawer-info-card, .ops-record-card, .ops-metric-card, .ops-home-section,
+  .command-board-v4-status-strip > *, .command-board-v4-route-strip > *, .account-setup-mini-card
+) {
+  background: var(--surface-primary) !important;
+  border: 1px solid var(--border-subtle) !important;
+  box-shadow: var(--c3-shadow) !important;
+}
+html body .app.app-command-shell[data-theme="dark"] :is(.command-board-v4-hero, .command-board-v4-frame) {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-elevated) 70%, var(--surface-primary)), var(--surface-primary)) !important;
+}
+
+/* Gold is for the one primary action on a screen; secondary actions are outlined. */
+html body .app.app-command-shell[data-theme] :is(.command-board-v4-utility-action, .command-board-v4-profile-action, .command-board-v4-route-strip > button) {
+  background: transparent !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-subtle) !important;
+}
+html body .app.app-command-shell[data-theme] :is(.command-board-v4-utility-action, .command-board-v4-profile-action, .command-board-v4-route-strip > button):hover {
+  border-color: var(--accent-teal) !important;
+  color: var(--accent-teal) !important;
+}
+html body .app.app-command-shell[data-theme] .command-board-v4-route-strip > button.is-active {
+  border-color: var(--action-primary) !important;
+  box-shadow: inset 0 -3px 0 var(--action-primary) !important;
+}
+
+/* Informational badges and links lean teal instead of gold. */
+html body .app[data-theme] :is(.status-badge, .ops-status-badge):not(.is-warning):not(.is-danger):not(.is-success) {
+  background: var(--accent-teal-soft) !important;
+  color: var(--accent-teal) !important;
+  border-color: color-mix(in srgb, var(--accent-teal) 40%, transparent) !important;
+}
+html body .app[data-theme] :is(a, .auth-text-button, .drawer-auth-link):not(.ops-button):not(.drawer-link) { color: var(--accent-teal); }
+
+/* Less uppercase everywhere: titles are set in the heading face already. */
+html body .app.app-command-shell[data-theme] :is(.command-board-v4-hero-copy .command-board-v4-label, .command-board-v4-hero-copy > span:first-child) {
+  text-transform: none !important;
+  letter-spacing: 0.02em !important;
+  color: var(--text-kicker) !important;
+}
+
+/* Simple "You" page for collectors. */
+html body .app[data-theme] .you-simple-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; margin-top: 16px; }
+html body .app[data-theme] .you-simple-link { display: grid; grid-template-columns: 40px 1fr; grid-template-rows: auto auto; column-gap: 12px; align-items: center; text-align: left; min-height: 72px; padding: 14px 16px !important; cursor: pointer; }
+html body .app[data-theme] .you-simple-link__icon { grid-row: 1 / span 2; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: var(--accent-teal-soft); color: var(--accent-teal); }
+html body .app[data-theme] .you-simple-link strong { font-size: 15px; }
+html body .app[data-theme] .you-simple-link small { color: var(--text-secondary); font-size: 12.5px; }
+html body .app[data-theme] .you-simple-link:hover { border-color: var(--accent-teal) !important; }
+html body .app[data-theme] .you-simple-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; color: var(--text-secondary); font-size: 12.5px; }
+html body .app[data-theme] .you-simple-sign-out { min-height: 44px; }
+/* Account page: the essentials card and the folded sections. */
+html body .app[data-theme] .account-essentials-email { font-size: 14px; color: var(--text-primary); }
+html body .app[data-theme] .account-security-actions > * { min-height: 44px; }
+html body .app[data-theme] .account-sign-out-button { border-color: var(--action-primary) !important; color: var(--action-primary) !important; font-weight: 700; }
+html body .app[data-theme] :is(.account-technical-details, .account-more-options, .account-setup-collapsed) > summary { cursor: pointer; color: var(--text-secondary); font-size: 13px; padding: 6px 0; }
+html body .app[data-theme] .account-setup-collapsed > summary { display: flex; flex-direction: column; gap: 4px; }
+html body .app[data-theme] .account-setup-collapsed > summary strong { color: var(--text-primary); font-size: 15px; }
+html body .app[data-theme] .account-setup-collapsed[open] > summary { margin-bottom: 12px; }
+
+/* MUST-11: quiet command boards for collectors. */
+html body .app[data-theme] .command-board-v4--quiet .command-board-v4-hero { padding-bottom: 14px; }
+html body .app[data-theme] .command-board-v4--quiet .command-board-v4-hero-copy h1 { font-size: clamp(24px, 4vw, 32px); }
+html body .app[data-theme] .command-board-v4--quiet .command-board-v4-hero-copy p { max-width: 60ch; color: var(--text-secondary); }
+html body .app[data-theme] .command-board-v4-more { margin-top: 10px; }
+html body .app[data-theme] .command-board-v4-more > summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; color: var(--text-secondary); font: 600 13px/1 var(--font-ui); list-style: none; }
+html body .app[data-theme] .command-board-v4-more > summary::-webkit-details-marker { display: none; }
+html body .app[data-theme] .command-board-v4-more > summary::before { content: "▸"; margin-right: 8px; color: var(--accent-teal); }
+html body .app[data-theme] .command-board-v4-more[open] > summary::before { content: "▾"; }
+html body .app[data-theme] .command-board-v4-more[open] > summary { margin-bottom: 10px; }
+/* MUST-11: pages whose right rail is admin-only use the full width when it is absent. */
+html body .app[data-theme] .et-mockup-page:not(:has(> .et-mockup-right-rail)) { grid-template-columns: minmax(0, 1fr); }

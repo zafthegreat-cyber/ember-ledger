@@ -1,9 +1,12 @@
 import { PrivateStorageImage } from "../components/PrivateReceipt.jsx";
+import { safeExternalWebUrl } from "../utils/externalLink.mjs";
+import ListSkeleton from "../components/ListSkeleton";
 import ExternalWebLink from "../components/ExternalWebLink.jsx";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import NationwideLocationPicker from '../components/NationwideLocationPicker.jsx';
 import { useNearbyPreference } from '../utils/nearbyPreference.mjs';
 import { locationScopeMatch } from '../utils/nationwideLocation.mjs';
+import { ExperiencePresentationContext } from "../utils/experiencePresentationContext";
 import {
   getStores,
   createStore,
@@ -318,7 +321,8 @@ function getAutoOpenDropWebsitePreference() {
 }
 
 function getDropWebsiteUrl(drop = {}) {
-  const url = drop.url || drop.productUrl || drop.product_url || drop.sourceUrl || drop.source_url || drop.link || "";
+  // Audit 2026-11-14: only plain http(s) links may leave the app (no javascript:, data:, credentials).
+  const url = safeExternalWebUrl(String(drop.url || drop.productUrl || drop.product_url || drop.sourceUrl || drop.source_url || drop.link || ""));
   if (url) return url;
   const sku = drop.bestBuySku || drop.best_buy_sku || drop.sku || "";
   if (sku) return `https://www.bestbuy.com/site/searchpage.jsp?st=${encodeURIComponent(sku)}`;
@@ -1415,6 +1419,9 @@ export default function Scout({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [confirmNotice, setConfirmNotice] = useState("");
+  // MUST-11 (Nov 13): collectors see the map, the report feed and their watched
+  // stores; the signal/safety side rail and the metric grid are admin-only.
+  const fullBoard = Boolean(useContext(ExperiencePresentationContext)?.showAdminTools);
 
   const [reportPhoto, setReportPhoto] = useState(null);
   const [isEditingStore, setIsEditingStore] = useState(false);
@@ -1450,7 +1457,6 @@ export default function Scout({
   const [intelImportPreview, setIntelImportPreview] = useState([]);
   const [restockIntel, setRestockIntel] = useState([]);
   const [, setRestockPatterns] = useState([]);
-  const hasAutoOpenedDropRef = useRef(false);
 
   const [storeForm, setStoreForm] = useState(createBlankStoreForm);
   const targetSubTabKey = typeof targetSubTab === "string" ? targetSubTab : targetSubTab?.tab;
@@ -2414,13 +2420,9 @@ function updateAlertSetting(field, value) {
   saveLocalScout({ alertSettings: next });
 }
 
-function openWebsiteWhenDropDetected(drop) {
-  if (!drop || !alertSettings.autoOpenDropWebsite) return;
-  if (hasAutoOpenedDropRef.current) return;
-  hasAutoOpenedDropRef.current = true;
-  const url = getDropWebsiteUrl(drop);
-  window.location.assign(url);
-}
+// Audit 2026-11-14: no automatic redirect to a retailer when a drop is detected (too close to
+// auto-checkout, and it navigated away without a tap). Opening the site is always a tap.
+function openWebsiteWhenDropDetected() {}
 
 function openDropWebsiteFromUserAction(drop) {
   const url = getDropWebsiteUrl(drop);
@@ -4410,7 +4412,6 @@ async function handleUpdateStore(e) {
     { key: "favoriteStoresOnly", label: "Favorite store alerts", description: "Prioritize reports from stores you care about." },
     { key: "watchlistAlerts", label: "Watchlist product alerts", description: "Notify when watched products appear in reports." },
     { key: "onlineDropAlerts", label: "Online drop alerts", description: "Include online drop and Best Buy source updates." },
-    { key: "autoOpenDropWebsite", label: "Auto-open website on drop", description: "When a detected drop has a product URL, redirect this tab once. Off by default." },
     { key: "verifiedOnly", label: "Verified-only alerts", description: "Only surface higher-confidence reports." },
     { key: "quietHours", label: "Quiet hours", description: "Pause non-urgent alerts during quiet time later." },
   ];
@@ -4771,7 +4772,7 @@ async function handleUpdateStore(e) {
                   <div>
                     <span>Local Restock Radar</span>
                     <h2>{scoutOverviewRegionLabel} Restock Radar</h2>
-                    <p>Nearby stores, trusted reports, watched locations, and privacy-safe restock signals.</p>
+                    <p>Recent reports near you. Confirm the ones you see in person.</p>
                   </div>
                   <strong>{scoutOverviewMappedStoreCount} mapped</strong>
                 </div>
@@ -4836,22 +4837,19 @@ async function handleUpdateStore(e) {
                   </div>
                 ) : (
                   <div className="scout-command-map-footer">
-                    <span>{scoutOverviewRegionLabel}</span>
-                    <span>{scoutOverviewMappedStoreCount} mapped stores</span>
-                    <span>{topTrustedShopProfiles.length} trusted shops</span>
-                    <span>No inventory guarantee</span>
+                    <span>{scoutOverviewRegionLabel} · {scoutOverviewMappedStoreCount} stores on the map</span>
                   </div>
                 )}
               </section>
 
               <aside className="scout-command-side-rail" aria-label="Restocks intelligence rail">
-                <article className="scout-command-signal-card">
+                {fullBoard ? (<article className="scout-command-signal-card">
                   <header><AppNavIcon kind="scout" /><span>Current Signal</span><b>{scoutOverviewLeadReport?.confidenceLabel || "Waiting"}</b></header>
                   <strong>{scoutOverviewLeadReport ? scoutOverviewLeadReport.storeName : "No current report"}</strong>
                   <p>{scoutOverviewLeadReport ? `${scoutOverviewLeadReport.summary} | ${scoutOverviewLeadReport.confidenceLabel} confidence` : "Submit a restock report to start local confidence."}</p>
                   <div className="scout-command-confidence" aria-label={`${scoutOverviewLeadReport?.confidenceScore || 0}% confidence`}><i style={{ width: `${scoutOverviewLeadReport?.confidenceScore || 0}%` }} /></div>
                   <button type="button" onClick={() => setScoutSubTab("reports")}>Submit Report</button>
-                </article>
+                </article>) : null}
                 <article className="scout-command-watch-card">
                   <header><AppNavIcon kind="bell" /><span>Watched Stores</span><b>{watchedStoreOverviewRows.length}/{watchedStoreSlotLimit}</b></header>
                   <strong>{watchedStoreOverviewRows.length}/{watchedStoreSlotLimit}</strong>
@@ -4859,7 +4857,7 @@ async function handleUpdateStore(e) {
                   <p>{watchedStoreOverviewRows.length ? "Selected stores are prioritized for alerts." : "Choose stores to turn on local signals."}</p>
                   <button type="button" onClick={() => setScoutSubTab("stores")}>Manage Stores</button>
                 </article>
-                <article className="scout-command-safety-card">
+                {fullBoard ? (<article className="scout-command-safety-card">
                   <header><AppNavIcon kind="admin" /><span>Family Safety</span><b>Protected</b></header>
                   <strong>Area-only location</strong>
                   <div className="scout-command-safety-list">
@@ -4868,10 +4866,10 @@ async function handleUpdateStore(e) {
                   </div>
                   <p>Directions and precise location remain behind a safety gate.</p>
                   <button type="button" onClick={() => setScoutSubTab("stores")}>Review Safe Stores</button>
-                </article>
+                </article>) : null}
               </aside>
 
-              <CommandMetricGrid
+              {fullBoard ? (<CommandMetricGrid
                 className="scout-command-metrics"
                 ariaLabel="Restocks intelligence metrics"
                 items={[
@@ -4880,7 +4878,7 @@ async function handleUpdateStore(e) {
                   { key: "trusted", label: "Trusted shops", value: topTrustedShopProfiles.length, detail: "reviewed store profiles" },
                   { key: "alerts", label: "Active alerts", value: visibleScoutAlerts.length, detail: "stores and releases" },
                 ]}
-              />
+              />) : null}
 
               <section className="scout-command-lower" aria-label="Restocks supporting content">
                 <article className="scout-command-feed-card">
@@ -6714,7 +6712,7 @@ async function handleUpdateStore(e) {
                 <div style={styles.card}>
                   <h2 style={styles.sectionTitle}>Store List</h2>
                   {loading ? (
-                    <p style={styles.empty}>Loading stores...</p>
+                    <ListSkeleton rows={4} variant="card" label="Loading stores" />
                   ) : filteredStores.length === 0 ? (
                     <p style={styles.empty}>No stores match those filters.</p>
                   ) : (

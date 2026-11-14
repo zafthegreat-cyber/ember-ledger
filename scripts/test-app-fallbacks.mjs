@@ -55,6 +55,9 @@ assert.match(errorCopy.body, /trouble opening this part/i);
 
 const chunkError = new Error("Failed to fetch dynamically imported module");
 assert.equal(isLikelyChunkLoadError(chunkError), true);
+// A stylesheet removed by a newer deploy is the same stale-build case (seen live 2026-11-14).
+assert.equal(isLikelyChunkLoadError(new Error("Unable to preload CSS for /assets/OperationsHome-GwIefRQc.css")), true);
+assert.equal(isLikelyChunkLoadError(new Error("error loading dynamically imported module: https://code3tcg.app/assets/x.js")), true);
 assert.equal(isLikelyChunkLoadError(new Error("regular form validation error")), false);
 
 assert.equal(shouldExposeFallbackErrorDetails("production"), false);

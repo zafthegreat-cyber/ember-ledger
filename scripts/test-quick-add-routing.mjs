@@ -137,9 +137,10 @@ assert.match(addFlowSource, /key: "add-collection-item", title: "Add Collection 
 assert.match(addFlowSource, /overflowEntryOptions\.map\(\(option\) =>/);
 assert.match(appSource, /title: "Scan Anything", description: "Search, enter UPC\/SKU, or add manually\."/);
 assert.match(appSource, /openQuickAddReviewForProduct\(product, source = "quick-add-search"\)/);
-assert.match(addFlowSource, /quick-add-showcase-preview/);
-assert.match(addFlowSource, /Review destination and details before anything is saved\./);
-assert.match(addFlowSource, /<CollectorShowcaseCard/);
+// Audit 2026-11-14: results are one compact row each (picture, name, set, price); no showcase card or internal ids.
+assert.match(addFlowSource, /className="quick-add-result-copy"/);
+assert.match(addFlowSource, /Tap a result to choose destination and save\./);
+assert.doesNotMatch(addFlowSource, /TCGPLAYER_PRODUCT_ID/);
 assert.match(appSource, /quickAddDestinationSeed\(sellerDestinationDefault\)/);
 assert.match(addFlowSource, /suppressSuggestions\s+emptyMessage="No matches yet\. Try fewer words, UPC, SKU, or set name\."/);
 assert.match(addFlowSource, /Scan Card/);

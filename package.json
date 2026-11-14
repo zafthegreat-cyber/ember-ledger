@@ -41,6 +41,12 @@
     "test:export-disclosure": "node --no-warnings --test scripts/test-export-disclosure.mjs",
     "test:beta-corrections": "node --no-warnings --test scripts/test-beta-corrections-batch1.mjs scripts/test-beta-corrections-batch2.mjs scripts/test-beta-corrections-batch3.mjs",
     "test:feedback-20-findings": "node --no-warnings --test scripts/test-feedback-20-findings.mjs",
+    "test:ux-declutter": "node --no-warnings --test scripts/test-ux-declutter.mjs",
+    "test:large-backup": "node --no-warnings --test scripts/test-large-backup-verification.mjs",
+    "test:must-week1": "node --no-warnings --test scripts/test-must-week1.mjs",
+    "test:should-polish": "node --no-warnings --test scripts/test-should-polish.mjs",
+    "test:should-batch2": "node --no-warnings --test scripts/test-should-batch2.mjs",
+    "report:chunks": "node scripts/report-chunk-sizes.mjs dist",
     "test:legacy-backup-validation": "node scripts/test-legacy-backup-validation.mjs",
     "test:account-ops-restore": "node --no-warnings scripts/test-account-ops-restore.mjs",
     "test:account-ops-storage-safety": "node --no-warnings scripts/test-account-ops-storage-safety.mjs",
@@ -312,21 +318,18 @@
     "@supabase/supabase-js": "^2.105.4",
     "@tesseract.js-data/eng": "1.0.0",
     "@upstash/redis": "^1.35.7",
-    "@vercel/analytics": "^2.0.1",
-    "@vitejs/plugin-react": "^5.0.4",
     "@zxing/browser": "^0.2.0",
     "cheerio": "^1.2.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "imapflow": "2.5.2",
-    "mailparser": "3.9.40",
+    "mailparser": "3.14.3",
     "pg": "^8.20.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "stripe": "23.0.1",
-    "tesseract.js": "7.0.0",
-    "vite": "8.0.16"
+    "tesseract.js": "7.0.0"
   },
   "devDependencies": {
     "@capacitor/cli": "8.5.3",
@@ -335,6 +338,7 @@
     "@types/express": "^5.0.6",
     "@types/node": "^25.6.2",
     "@types/pg": "^8.20.0",
+    "@vitejs/plugin-react": "^5.0.4",
     "esbuild": "0.28.2",
     "eslint": "^9.39.1",
     "eslint-plugin-react": "7.37.5",
@@ -342,7 +346,8 @@
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
     "jsdom": "30.1.3",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vite": "8.1.7"
   },
   "overrides": {
     "xcode": {

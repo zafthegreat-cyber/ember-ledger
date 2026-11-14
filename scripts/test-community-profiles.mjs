@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 
 import {
-  DILLON_ADMIN_EMAIL,
   OFFICIAL_ADMIN_USERNAMES,
   RESERVED_USERNAME_MESSAGE,
   validatePublicUsername,
@@ -32,18 +31,19 @@ for (const blocked of [
 }
 
 assert.equal(validatePublicUsername("official admin tide", regularProfile, []), RESERVED_USERNAME_MESSAGE);
-assert.equal(validatePublicUsername("official admin tide", { ...regularProfile, email: DILLON_ADMIN_EMAIL, isAdmin: true }, []), "");
+assert.equal(validatePublicUsername("official admin tide", { ...regularProfile, email: "owner@example.test", firstName: "Dillon", isAdmin: true }, []), "");
 
 const officialProfile = buildPublicCommunityProfile({
   userId: "dillon",
-  email: DILLON_ADMIN_EMAIL,
+  firstName: "Dillon",
+  email: "owner@example.test",
   isAdmin: true,
   publicUsername: OFFICIAL_ADMIN_USERNAMES.tide,
 });
 assert.equal(officialProfile.publicUsernameLabel, "@official admin tide");
 assert.equal(officialProfile.isOfficialAdminIdentity, true);
 assert.ok(officialProfile.badges.some((badge) => badge.label === "Official Admin"));
-assert.ok(JSON.stringify(officialProfile).includes(DILLON_ADMIN_EMAIL) === false, "public profile must not include private email");
+assert.ok(JSON.stringify(officialProfile).includes("owner@example.test") === false, "public profile must not include private email");
 
 const trustedProfile = buildPublicCommunityProfile({
   userId: "trusted-1",

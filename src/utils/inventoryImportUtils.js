@@ -1,5 +1,6 @@
 import { normalizeBarcodeValue, isLikelyBarcodeValue, identifierEquivalents } from "./barcodeIdentity.mjs";
 import { verifiedBarcodeEntriesForProduct, isRejectedImportedBarcode } from "./catalogBarcodeLookup.mjs";
+import { canonicalGtin, gtinVariants, gtinsMatch, isValidGtin } from "./gtin.mjs";
 export { normalizeBarcodeValue, isLikelyBarcodeValue };
 
 export const RECEIPT_LINE_ENTRY_TYPES = {
@@ -26,6 +27,21 @@ function normalizeIdentifierValue(value = "") {
 function addIdentifier(set, value) {
   const normalized = normalizeIdentifierValue(value);
   if (normalized) identifierEquivalents(normalized).forEach(value => set.add(value));
+  // Preserve reviewed aliases, and expand valid UPC-E/GTIN spellings without
+  // stripping SKU letters or promoting a mistyped code to another product.
+  if (isComparableGtin(value)) gtinVariants(normalized).forEach((variant) => set.add(variant));
+}
+
+function isComparableGtin(value) {
+  return isLikelyBarcodeValue(value) && !/^0+$/.test(normalizeBarcodeValue(value)) && isValidGtin(canonicalGtin(value));
+}
+
+/** True when two barcodes/SKUs identify the same product in any GTIN padding. */
+export function identifiersMatch(a, b) {
+  const left = normalizeIdentifierValue(a);
+  const right = normalizeIdentifierValue(b);
+  if (!left || !right) return false;
+  return left === right || (isComparableGtin(a) && isComparableGtin(b) && gtinsMatch(left, right));
 }
 
 export function catalogIdentifiersForProduct(product = {}) {
@@ -69,7 +85,9 @@ export function catalogIdentifiersForProduct(product = {}) {
 export function findCatalogProductsByBarcode(catalogProducts = [], code = "") {
   const normalized = normalizeIdentifierValue(code);
   if (!normalized) return [];
-  return catalogProducts.filter(product => catalogIdentifiersForProduct(product).includes(normalized));
+  const candidates = new Set();
+  addIdentifier(candidates, code);
+  return catalogProducts.filter(product => catalogIdentifiersForProduct(product).some(value => candidates.has(value)));
 }
 
 export function findCatalogProductByBarcode(catalogProducts = [], code = "") {

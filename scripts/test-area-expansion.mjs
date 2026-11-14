@@ -46,9 +46,15 @@ assert.equal(normalized.region, "Hampton Roads / 757");
 assert.equal(normalized.areaLabel, "Virginia Beach / Hampton Roads / 757");
 assert.equal(normalized.displayLabel, "RM T - Target Redmill");
 
-const ncNormalized = normalizeStoreAreaFields({ city: "Raleigh", state: "VA" });
+// Nationwide rule (Nov 2026): a region can fill a MISSING state but never
+// overrides one the source stated. Raleigh with no state → North Carolina;
+// Raleigh stored as VA stays Virginia and falls into "Other Virginia".
+const ncNormalized = normalizeStoreAreaFields({ city: "Raleigh", state: "" });
 assert.equal(ncNormalized.region, "Triangle (Raleigh / Durham)");
-assert.equal(ncNormalized.state, "North Carolina", "state-level regions should not display as the wrong state when source data is inconsistent");
+assert.equal(ncNormalized.state, "North Carolina", "a region fills a missing state");
+const conflicting = normalizeStoreAreaFields({ city: "Raleigh", state: "VA" });
+assert.equal(conflicting.state, "Virginia", "an explicitly stored state is never replaced");
+assert.equal(conflicting.region, "Other Virginia");
 
 assert.equal(matchesRegionalAreaFilters(redmill, { state: "Virginia", region: "Hampton Roads / 757", city: "Virginia Beach" }), true);
 assert.equal(matchesRegionalAreaFilters(redmill, { state: "Maryland" }), false);

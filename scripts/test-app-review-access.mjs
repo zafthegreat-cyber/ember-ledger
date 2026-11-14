@@ -17,9 +17,10 @@ test("complimentary reviewer can inspect every customer-plan feature without bec
   for (const feature of ["canCreateKidProfiles","canManageFamilyProfiles","canUseKidSafeVault","canUseForgeAdvancedSellerTools","canUseShopProfileTools"]) assert.equal(access[feature],true,feature);
   for (const feature of ["isAdmin","canAccessAdminModeration","canViewRawScoutHistory","canViewPatternTools"]) assert.equal(access[feature],false,feature);
   assert.equal(access.scoutStoreSlots,3);
-  assert.equal(getTierAccess(profile).canUseShopProfileTools,false);
-  assert.equal(canUseFeature({...profile,appReviewAccess:true},"shop_profile_tools",{qaUnlock:false}),false,"untrusted profile flag alone grants nothing");
-  assert.equal(canUseFeature(profile,"shop_profile_tools",{reviewAccess:"true",qaUnlock:false}),false);
+  // Open beta turns member features on for everyone; these checks are about review access, so open beta is off.
+  assert.equal(getTierAccess(profile,{openBeta:false}).canUseShopProfileTools,false);
+  assert.equal(canUseFeature({...profile,appReviewAccess:true},"shop_profile_tools",{qaUnlock:false,openBeta:false}),false,"untrusted profile flag alone grants nothing");
+  assert.equal(canUseFeature(profile,"shop_profile_tools",{reviewAccess:"true",qaUnlock:false,openBeta:false}),false);
 });
 
 test("the actual membership screen does not tell an enabled reviewer to request the same access again", async () => {
@@ -38,11 +39,11 @@ test("the actual membership screen does not tell an enabled reviewer to request 
   const section=({children})=>React.createElement("section",null,children);
   const render=(reviewAccess)=>{
     const profile={tier:"seller",appRole:"user"};
-    const tierAccess=getTierAccess(profile,{reviewAccess});
+    const tierAccess=getTierAccess(profile,{reviewAccess,openBeta:false});
     return renderToStaticMarkup(React.createElement(Membership,{scope:{...gates,
       AppNavIcon:()=>null,CommandBoardSection:section,CommandBoardV4:section,CommandMetricGrid:()=>null,
       currentUserProfile:profile,currentTier:"seller",currentTierLabel:tierAccess.tierLabel,tierAccess,
-      experiencePresentation:{},featureAllowed:feature=>canUseFeature(profile,feature,{reviewAccess,qaUnlock:false}),
+      experiencePresentation:{},featureAllowed:feature=>canUseFeature(profile,feature,{reviewAccess,qaUnlock:false,openBeta:false}),
       isTrialActive:()=>false,openUtilityPage:()=>{},requestLockedFeatureAccess:()=>{},setActiveTab:()=>{},
     }}));
   };

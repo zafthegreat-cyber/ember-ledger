@@ -98,7 +98,7 @@ test("every export control in the app is described before the file is generated"
     ["src/App.jsx", ['downloadSalesRecords("csv")', 'downloadSalesRecords("json")', 'downloadMileageRecords("csv")', 'downloadMileageRecords("json")']],
     ["src/features/deferredViews/LegacyReportsContent.jsx", ['downloadYearEndTaxSummary("csv")', 'downloadYearEndTaxSummary("json")', 'downloadSalesRecords("csv")', 'downloadMileageRecords("csv")']],
     ["src/features/deferredViews/MarketplaceContent.jsx", ['exportCrossListingCSV("all")']],
-    ["src/components/CollectionPortfolio.jsx", ["onClick={exportPortfolio}"]],
+    ["src/components/CollectionRecordTools.jsx", ["onClick={()=>onExport({fields,privateDetails})}"]],
     ["src/components/WhatDidISee.jsx", ["onClick={exportJson}"]],
     ["src/components/BackupExportImport.jsx", ["onClick={onExport}"]],
     ["src/features/flipScout/screens/SourcesDataScreen.jsx", ["onExportJson();", "exportCsv(collection, label)"]],

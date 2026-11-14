@@ -907,7 +907,7 @@ async function main() {
     await assertVisibleText("Today's Focus");
     await assertVisibleText("Manual local-beta prompts; no real-time alerts or live pricing.");
     await assertVisibleText("Forge Reminder");
-    await assertVisibleText("Wishlist / ISO");
+    await assertVisibleText("Wants / ISO");
     await assertVisibleText("Event Planner");
     await assertVisibleText("Spark Moment");
     await assertVisibleText("Open secondary paths when you need them.");
@@ -945,7 +945,7 @@ async function main() {
       { button: "Open Scout", expected: "Scout", label: "Scout Watch" },
       { button: "Open Forge", expected: "Forge", label: "Forge Reminder" },
       { button: "Open Market", expected: "Market", label: "Market Reminder" },
-      { button: "Open Wishlist", expected: "Wishlist / ISO", label: "Wishlist / ISO" },
+      { button: "Open Wants", expected: "Wants / ISO", label: "Wants / ISO" },
       { button: "Open The Spark", expected: "The Spark", label: "Spark Moment" },
     ];
     for (const route of hearthCommandRoutes) {
@@ -1168,7 +1168,7 @@ async function main() {
     await page.setViewportSize({ width: 1366, height: 1600 });
     return;
     await assertVisibleText("Total items");
-    await assertVisibleText("Wishlist count");
+    await assertVisibleText("Wants count");
     await assertVisibleText("Items with notes");
     await assertVisibleText("Items without value");
     await assertVisibleText("Sets created");
@@ -1209,29 +1209,29 @@ async function main() {
     await assertVisibleText("0 items assigned");
     await assertVisibleText("Add items later. Vault items are not assigned automatically in this local beta.");
     await assertVisibleText("Add to Set");
-    await page.getByRole("button", { name: /^Wishlist$/ }).first().click();
+    await page.getByRole("button", { name: /^Wants$/ }).first().click();
     const wishlistPanel = page.locator("#wishlist-items-section").first();
-    await expectVisible(wishlistPanel, "Vault Wishlist / ISO panel");
-    await expectVisible(wishlistPanel.getByText("Your Wishlist / ISO planner is quiet.").first(), "Wishlist / ISO empty state");
+    await expectVisible(wishlistPanel, "Vault Wants / ISO panel");
+    await expectVisible(wishlistPanel.getByText("Your Wants / ISO planner is quiet.").first(), "Wants / ISO empty state");
     await assertVisibleText("No automatic matching. No live seller offers.");
     await wishlistPanel.getByRole("button", { name: /^Add Wishlist \/ ISO$/ }).first().click();
     const wishlistModal = page.locator('.flow-modal[data-flow="wishlistIso"]').first();
-    await expectVisible(wishlistModal, "Wishlist / ISO modal");
+    await expectVisible(wishlistModal, "Wants / ISO modal");
     await fillByLabel(wishlistModal, "Wanted item name", "Focused ISO Chase Card");
     await wishlistModal.getByLabel("Category").selectOption("card");
     await wishlistModal.getByLabel("Priority").selectOption("high");
     await fillByLabel(wishlistModal, "Target price text", "under $30");
     await wishlistModal.getByLabel("Status").selectOption("looking");
-    await fillByLabel(wishlistModal, "Notes", "Smoke coverage for local Wishlist / ISO planning.");
+    await fillByLabel(wishlistModal, "Notes", "Smoke coverage for local Wants / ISO planning.");
     await wishlistModal.getByRole("button", { name: /^Save Wishlist \/ ISO$/ }).click();
-    await expectVisible(wishlistModal.getByText("Wishlist / ISO item saved locally.").first(), "Wishlist / ISO saved message");
+    await expectVisible(wishlistModal.getByText("Wants / ISO item saved locally.").first(), "Wants / ISO saved message");
     await page.waitForFunction(() => {
       const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
       return (data.items || []).some((item) => item.name === "Focused ISO Chase Card" && item.wishlistIso === true && item.planningMode === "local_only" && item.matchingMode === "none" && item.sellerOfferMode === "none");
     }, null, { timeout: 5000 });
     await wishlistModal.getByRole("button", { name: /^Close$/ }).first().click();
     await wishlistModal.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
-    await expectVisible(wishlistPanel.locator(".wishlist-iso-row").filter({ hasText: "Focused ISO Chase Card" }).first(), "Saved Wishlist / ISO row");
+    await expectVisible(wishlistPanel.locator(".wishlist-iso-row").filter({ hasText: "Focused ISO Chase Card" }).first(), "Saved Wants / ISO row");
     await page.getByRole("button", { name: /^Collection$/ }).first().click();
     await page.getByRole("button", { name: /^Showcase$/ }).first().click();
     await assertVisibleText("3D Collector Showcase");
@@ -1439,7 +1439,7 @@ async function main() {
     await assertVisibleText("Compare Table");
     await assertVisibleText("Comparison uses saved/local data.");
     await assertVisibleText("Market upgrade preview");
-    await assertVisibleText("Wishlist / ISO");
+    await assertVisibleText("Wants / ISO");
     await assertVisibleText("No automatic matching. No live seller offers.");
     const marketText = await page.locator("body").innerText();
     assert.doesNotMatch(marketText, /price accuracy guaranteed|automated market sync|live market average|matched with sellers|seller offers are live|automatic matching is live|grading verified|authentication verified|investment advice is provided/i);
@@ -1528,16 +1528,16 @@ async function main() {
     assert.match(await resultCompareModal.getByLabel("Item name").inputValue(), /Prismatic Evolutions Booster Bundle/i, "Market result Compare should seed item name");
     await resultCompareModal.getByRole("button", { name: /^Close$/ }).first().click();
     await resultCompareModal.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
-    await expectVisible(focusedMarketCard.getByRole("button", { name: /^Add to Wishlist \/ ISO$/ }).first(), "Market result Add to Wishlist / ISO action");
-    await focusedMarketCard.getByRole("button", { name: /^Add to Wishlist \/ ISO$/ }).first().click();
+    await expectVisible(focusedMarketCard.getByRole("button", { name: /^Add to Wants \/ ISO$/ }).first(), "Market result Add to Wants / ISO action");
+    await focusedMarketCard.getByRole("button", { name: /^Add to Wants \/ ISO$/ }).first().click();
     const marketWishlistModal = page.locator('.flow-modal[data-flow="wishlistIso"]').first();
-    await expectVisible(marketWishlistModal, "Market seeded Wishlist / ISO modal");
+    await expectVisible(marketWishlistModal, "Market seeded Wants / ISO modal");
     assert.match(
       await marketWishlistModal.getByLabel("Wanted item name").inputValue(),
       /Prismatic Evolutions Booster Bundle/i,
-      "Market result should seed Wishlist / ISO item name"
+      "Market result should seed Wants / ISO item name"
     );
-    await expectVisible(marketWishlistModal.getByText("No automatic matching").first(), "Wishlist / ISO safety copy from Market");
+    await expectVisible(marketWishlistModal.getByText("No automatic matching").first(), "Wants / ISO safety copy from Market");
     await marketWishlistModal.getByRole("button", { name: /^Close$/ }).first().click();
     await marketWishlistModal.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
   }

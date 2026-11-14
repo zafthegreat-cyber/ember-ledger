@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 
-import {
-  DILLON_ADMIN_EMAIL,
+import {
   OFFICIAL_ADMIN_USERNAMES,
   RESERVED_USERNAME_MESSAGE,
   formatPublicUsername,
@@ -49,7 +48,7 @@ for (const blocked of [
 
 const dillonProfile = {
   userId: "dillon-admin",
-  email: DILLON_ADMIN_EMAIL,
+  email: "owner@example.test",
   firstName: "Dillon",
   displayName: "Dillon",
   userRole: "admin",
@@ -89,3 +88,11 @@ assert.equal(identity.publicUsernameLabel.includes("collector@example.com"), fal
 assert.equal(identity.publicUsernameLabel.includes("Private Real Name"), false);
 
 console.log("Public identity tests passed.");
+
+// Audit 2026-11-14: the owner keeps the official name by user id; no email ships in the source.
+{
+  const { OFFICIAL_TIDE_ADMIN_USER_ID } = await import("../src/utils/publicIdentity.js");
+  assert.equal(publicUsernameFromProfile({ userId: OFFICIAL_TIDE_ADMIN_USER_ID, firstName: "Someone", userRole: "user" }), OFFICIAL_ADMIN_USERNAMES.tide);
+  const source = (await import("node:fs")).readFileSync(new URL("../src/utils/publicIdentity.js", import.meta.url), "utf8");
+  assert.doesNotMatch(source, /@[a-z0-9-]+\.(?:com|net|org)/i, "no email address in publicIdentity.js");
+}

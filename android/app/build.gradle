@@ -15,7 +15,8 @@ android {
     namespace = "app.code3tcg.mobile"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        // Match the existing Play Console app. The Java namespace and iOS ID stay unchanged.
+        // Play Console package (Play App Signing key created 2026-11-06). The
+        // Java namespace stays app.code3tcg.mobile; only the store id changed.
         applicationId "com.code3tcg.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion

@@ -674,3 +674,205 @@ only; no routes, DB names or code symbols changed.
   identity (test updated for the new number clause), export disclosure,
   portfolio, feedback-20 and inspected-returns suites pass; all `src/` files
   parse. Build and ESLint still need the development machine.
+
+### November 6: declutter, colors, sign out, guided tour
+
+Zena's own review of the Account and You pages ("soooo cluttered", "Nest?
+Lantern?", "fix the colors too", "log out is hard to find", "a guided tour
+would be useful"). Additive; no routes or records changed.
+
+- **Sign out.** On the Settings account card as a real button (next to Open
+  Profile and Take the tour), first in the menu's Account list, and the
+  primary action of the Account page's Security card. Copy says records stay
+  on the device.
+- **Guided tour.** New `features/tour/AppTour.jsx` (+ css): six steps
+  (welcome, workspace switcher, tabs, + add, search, You/Settings/sign out)
+  that spotlight the real controls, fall back to a centered card when a
+  control is off-screen, keyboard-navigable, opens once per device after the
+  first sign-in (`code3-app-tour-v1`), restartable from Settings and the menu.
+- **Account page.** For signed-in people: one essentials card (email, plan
+  "free during beta", setup with Change, where records live) with Build /
+  provider / role folded under "Technical details"; a Security card (Sign
+  out, Change password, Edit profile, More → progress, suggestions, delete);
+  the 11-option setup matrix is collapsed under "Setup options" and no longer
+  shows Admin / internal rows to non-admins. Utility-page header status chips
+  and the Menu button are admin-only now.
+- **You page.** Collectors get a short page: profile summary, six link cards
+  (Account, Settings, Backups & records, Family when relevant, Safety Center,
+  Help), one status line and Sign out. The "You Command Center" dashboard
+  stays for admins.
+- **Names.** Nest → Family / Family Settings, Lantern → Safety Center added to
+  `renameLegacyProductNames`.
+- **Colors.** New `styles/app/15-warm-palette-polish.css` loaded last: warmer
+  plum-charcoal dark surfaces with visible layering (#1A1518 page, #26202A
+  cards, #38303A raised), small labels/kickers in a quiet warm grey instead of
+  gold uppercase, gold reserved for the one primary action and the brand
+  line, a teal second accent (`--c3-teal`) for icons, links and info badges,
+  outlined secondary buttons, fewer uppercase labels.
+- Verification: `npm run test:ux-declutter` (5), beta-corrections (33),
+  feedback-20 (17) pass; all `src/` files parse. Build/ESLint still on the PC;
+  please eyeball the dark theme on the phone — colors are a first pass.
+
+### November 13: MUST list, week 1 (items 1, 4, 6, 9, 10)
+
+From `claude/code3-app-priorities-moscow.md`. Items 2, 3, 5, 7, 8 need the PC
+and are in `docs/MUST_WEEK1_PC_CHECKLIST.md`.
+
+- **1 Package name.** `android/app/build.gradle` `applicationId` →
+  `com.code3tcg.app` (Play App Signing key); namespace unchanged.
+- **4 Open beta in the client.** `BETA_OPEN_EVERYWHERE = true`:
+  `isOpenAccessState` accepts every US state + DC, labels read "all 50 states
+  and Washington, DC", review/waitlist/pending copy says the account works
+  right away; signup button is "Create your free account"; "may need approval"
+  removed. Database side went live Nov 6.
+- **6 Large backups.** Already fixed Oct 30 (64 MB parse limit); new
+  `scripts/test-large-backup-verification.mjs` proves a 12 MB seller backup
+  self-verifies and that the over-limit message names size and limit.
+- **9 Crash reporting.** Sentry project `anchor-wing-llc/code3-tcg-app`
+  (javascript-react). `features/monitoring/crashReporting.js`: errors only
+  (no replay, no tracing), `sendDefaultPii` off, every event/breadcrumb/URL
+  scrubbed (emails, 10–19 digit runs, JWT/API tokens, query strings,
+  record-like keys), input and console breadcrumbs dropped, off in DEV, off
+  for kid-safe profiles, off when the person unticks "Send crash reports" in
+  Settings → Privacy (`code3-crash-reports-off`). `main.jsx` initialises it
+  and the error boundary + `logAppError` (non-low severity) report through it.
+  `@sentry/react` added to package.json (run `npm install` on the PC).
+  `VITE_SENTRY_DSN` overrides the built-in DSN; set it to "" to disable.
+- **10 Quick feedback.** `features/feedback/QuickFeedback.jsx`: floating
+  "Feedback" button on every screen (hidden for kid profiles and while the
+  tour/menu is open) → sheet with four kinds, a sentence, optional email for
+  guests; inserts into `beta_feedback` with route, version and device
+  summary, scrubs card/SSN/password patterns, queues on the device when
+  offline and retries on next open. Edge function `feedback-discord`
+  (deployed Nov 13, JWT-verified) posts a card to Discord when the secret
+  `DISCORD_FEEDBACK_WEBHOOK` is set.
+- Verification: `npm run test:must-week1` (4), `test:large-backup` (2),
+  beta-corrections (33, batch-1 expectations updated for the open beta),
+  feedback-20 (17), ux-declutter (5); all `src/` files parse. Build/ESLint on
+  the PC.
+
+### November 13 (later): MUST 11 — quiet pages for collectors
+
+- **CommandBoardV4** gains `density` ("auto" by default): anyone without
+  admin tools gets a quiet board — title, description, one primary action,
+  one helper action; status chips, the Plan panel and the route strip fold
+  into a "More on this page" disclosure; the duplicate Menu/Profile button is
+  gone (bottom nav has it). Admins keep the full command center.
+- **Market**: title "Market", one-line description, honest empty state
+  ("Try a name, a set, or a card number like 4/102"); the Unknown/Unknown
+  value ribbon, decision rail, metric grid and feature-system cards are
+  admin-only.
+- **Vault**: heading pills, zero-count chip row, storage and recommendation
+  cards, Collection-intelligence grid, next-action card, display-case safety
+  note, "one card identity" explainer, duplicate health rail, set-summary
+  grid, "Add to Set — soon" card and the beta upgrade preview are admin-only;
+  Condition Center disclaimer shortened.
+- **Restocks**: radar paragraph and map footer shortened; Current Signal and
+  Family Safety cards and the metric grid admin-only (Watched Stores stays).
+- **Community**: guardrail strip, stat grid, trust grid, trust dashboard,
+  circle safety note, section/moderation grids, hardcoded example posts,
+  support strip and the whole right rail admin-only; page uses full width
+  when the rail is absent; stale "posting opens after approval" copy fixed.
+- **Home**: duplicate description and helper sentences removed.
+- Verification: `test:ux-declutter` (6) + all suites; all `src/` files parse.
+
+### November 14: SHOULD 12–14 — skeletons, palette finish, small phones
+
+- **Loading skeletons** (`src/components/ListSkeleton.jsx`, rows / card /
+  metric variants, `role="status"` + `aria-busy`, shimmer honours
+  reduced-motion). Replaces "Loading stores..." in Restocks and "Loading
+  reviewed reports…" in the Community feed; the route-chunk card now shows a
+  skeleton page under its spinner instead of a lone box.
+- **Empty states**: one shape for `.et-mockup-empty-state`, `.empty-state`,
+  `.small-empty-state` and `.collector-trade-empty` (dashed card, icon in
+  teal, 44 px action). The three Spark lists adopt it.
+- **Palette finish**: radii normalised (cards 14 px, controls 10 px, badges
+  round) across the v4 panels, ops cards, buttons and inputs; every remaining
+  gold/uppercase route-panel kicker (Hearth, Restocks, Market, Vault,
+  Exchange, Spark, You) is now a quiet 12 px label; light theme gets the same
+  hero layering, softer shadow and the shared teal focus ring; text on the
+  primary action always uses `--on-primary`.
+- **Small phones + gesture bar**: content clears the floating nav
+  (`118px + safe-area`), sheets/modals/tour/feedback pad for the gesture bar,
+  back-to-top sits above the feedback button. `≤360px`: tighter hero and
+  page padding, 2-column status/route strips, single-column metric grids,
+  full-width stacked action rows, 10 px nav labels, icon-only feedback button,
+  tables scroll horizontally, long words wrap. `≤330px`: single-column strips,
+  icon-only nav. Landscape phones get a shorter nav.
+- `scripts/test-empty-states.mjs` had drifted from the copy (Tidepool →
+  Community, Forge → Business, Market research); expectations updated.
+- Verification: `npm run test:should-polish` (9, includes a real
+  `renderToStaticMarkup` of ListSkeleton), ux-declutter (updated for the new
+  import order), must-week1, empty-states, route-loading, plain-language; all
+  touched files parse. Visual check on a 360 px phone is still a PC step.
+
+### November 14 (later): SHOULD 15, 18–22, 29, 30, 40 and COULD 31, 35, 36, 37
+
+- **CI (22)**: `.github/workflows/ci.yml` runs lint, the beta node suites, the
+  domain suites, `vite build` and `scripts/report-chunk-sizes.mjs` (gzip sizes,
+  step summary, JSON artifact, 2,304 KB largest-chunk budget) on every push and
+  PR. `test-code3-client-security.mjs` updated for the render-time Owner Center
+  route sync.
+- **Onboarding checklist (15)**: `features/onboarding/personaChecklist.js` +
+  `PersonaChecklist.jsx` on Home — three steps per persona (collector, seller,
+  store; kid-safe variant), each marked done from real counts (Vault items,
+  followed stores, Market search, inventory, receipts, sales, reports, tour),
+  dismissable per persona, hidden when complete.
+- **Two-tap restock report (18)**: `features/restocks/quickReport.js` +
+  `QuickRestockLauncher.jsx` in the Home hero. Tap a followed/last store, tap
+  Stock seen / Low / No stock → the full report opens on its review step with
+  time = now and the last-used category. The four required fields (A86/A87) are
+  unchanged; `openScoutSubmitFlow` accepts `productCategory`, `startStep`, `quick`.
+- **Search ranking + GTIN (19, t107)**: `utils/gtin.mjs` (check digit, UPC-A ↔
+  EAN-13 ↔ GTIN-14 equivalence, UPC-E expansion, `describeGtinProblem`).
+  Identifier sets include every padding; `identifiersMatch`; catalog search
+  matches a scanned barcode in any padding and ranks the card whose number is
+  in the query ("charizard 4/102") first with reason "Card number match".
+  Stored barcode strings are unchanged (existing records depend on them).
+- **Japanese ↔ English sets (20, t106)**: `data/japaneseSetAliases.mjs` — 34
+  English sets mapped to their Japanese sets (name, romaji, code). `getSetByCodeOrAlias`
+  resolves "sv2a" / "ポケモンカード151"; catalog search expands Japanese names and
+  codes to the English set; `setProgressByLanguage` keeps EN and JA printings apart.
+- **Trade analyzer fallbacks (21)**: `buildTradeComparison` returns `partialLabel`
+  ("You're giving about $120. Add what you got to compare."), `fallbackSuggestions`
+  (what you paid, catalog estimate, MSRP floor, asking price) and a stale-price
+  warning (`priceAgeDays` > 30). The Business trade card shows them as one-tap buttons.
+- **Docs (29)**: `docs/COMMUNITY_GUIDELINES.md` and `docs/MODERATION_PLAYBOOK.md`
+  (decision ladder, canned notes, appeals, child-safety protocol) — drafts for Zena.
+- **Plans (30)**: `docs/PLANS_AND_SERVICES.md` is canonical. Rule A applied to
+  `featureGates.js`: set completion, collection value, wishlist alerts, exports,
+  variants, slabs, saved searches, unlimited Vault are Free; Business ledger,
+  Deal Finder, receipt scan, price history and Restocks tooling are paid after
+  beta. **Open beta unlock** (`OPEN_BETA_GATES_OPEN`): every member-plan feature
+  and the best member limits (3 watched stores) are on for everyone until beta
+  closes; staff features, raw history and pattern tools stay closed; tier
+  previews (`tierPreview`) show the post-beta plan. Free/Collector copy and CTAs
+  rewritten.
+- **Cleanup (40)**: AGENTS.md names and design/checks sections updated;
+  `docs/CURRENT_PUBLIC_BETA_STATUS.md` marked retired; package.json scripts
+  all point at existing files (verified).
+- **What's new (31)**: `features/tour/releaseNotes.js` + `WhatsNewCard.jsx` on Home
+  (once per release, not for brand-new accounts; "Take the tour again",
+  "All updates"); Announcements lists the release notes first. Feedback sheet can
+  be opened by event (`openQuickFeedback`).
+- **Saved Market searches (35)**: `features/market/savedSearches.js` +
+  `SavedSearches.jsx` under the Market search form (star to save, chips to
+  re-run, 20 max, device-local).
+- **Purchase returns (36)**: new `purchaseReturn` lifecycle (Requested → Returned
+  → Refunded → Closed, or Cancelled; reason enum; refunds capped at the purchase
+  cost, never reduced, append-only; inventory untouched) on the purchase detail
+  in Business.
+- **CSV in a worker (37)**: `features/exports/csv.js` + `csv.worker.js`; exports
+  over 2,000 rows serialise off the main thread with timeout and error fallback;
+  output byte-identical to before.
+- Verification: `npm run test:should-batch2` (18, incl. static renders of the
+  checklist and launcher), tier-foundation and experience-presentation updated
+  for the open-beta unlock, lifecycles 34/34, return corrections 26/26, inspected
+  returns 29/29, trade flow, catalog shorthand/recovery, inventory imports,
+  barcode lookup, search performance, plain-language; all touched files parse.
+- Not done (reasons): 16 main store off localStorage (large data-migration
+  change; needs a design pass and a PC build), 17 end-to-end alerts (needs a
+  push provider decision + FCM keys), 25 help center on code3tcg.com (separate
+  repo), 27 route-level code splitting (needs the PC build to measure), 28/42
+  tester voices (content batches, next session), 32/33/34 (binder page,
+  verified-shop badge, map tile cache), 39 analytics (account), 41 ledger #16/#29/#100.

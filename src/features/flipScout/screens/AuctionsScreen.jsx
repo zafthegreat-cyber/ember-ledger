@@ -226,7 +226,7 @@ export default function AuctionsScreen({ auctions, initialMode = "", onSave, onD
             <PrimaryButton disabled={saving} onClick={() => setSelectedAuction(auction)}>View Details</PrimaryButton>
             <RecordActions onEdit={() => { if (saveInFlightRef.current) return; setForm(toForm(auction)); setFormOpen(true); window.scrollTo?.({ top: 0, behavior: "smooth" }); }} onDelete={() => { if (!saveInFlightRef.current) return onDelete("auctions", auction.id, auction.title); return false; }} />
           </article>;
-        })}</div> : <EmptyState title="No auctions tracked">Add a real auction manually. No auction source is connected in Phase 1.</EmptyState>}
+        })}</div> : <EmptyState title="No auctions tracked">Add an auction you are watching and we will keep the details in one place.</EmptyState>}
       </section>
       <ManualLifecycles types={["event", "auctionLink", "visit"]} title="Events, pickup & sourcing visits" />
     </div>

@@ -7,18 +7,16 @@ import { createWorkspacePayloadStore } from "../persistence/workspacePayloadStor
 import { projectPrivateImageReferences } from "../../services/privateStorageReferences.js";
 import { projectSourceData, retainDeviceOnlySourceFields } from "./sourceProjection.js";
 
-export const WORKSPACE_STORAGE_LOCK = "code3.workspace-storage.v1";
-export const WORKSPACE_RECOVERY_KEY = "code3.workspace-recovery.v1";
-export const WORKSPACE_CHECKPOINT_KEY = "code3.workspace-checkpoint.v1";
+// The key, lock name, error class, pending check and read lease live in workspaceRecoveryState.js so the
+// app shell can use them at startup without loading this file (audit 2026-11-14).
+import { WORKSPACE_CHECKPOINT_KEY, WORKSPACE_RECOVERY_KEY, WORKSPACE_STORAGE_LOCK, WorkspaceRecoveryError, acquireWorkspaceReadLease, hasPendingWorkspaceRecovery, withWorkspaceStorageLock } from "./workspaceRecoveryState.js";
+export { WORKSPACE_CHECKPOINT_KEY, WORKSPACE_RECOVERY_KEY, WORKSPACE_STORAGE_LOCK, WorkspaceRecoveryError, acquireWorkspaceReadLease, hasPendingWorkspaceRecovery, withWorkspaceStorageLock };
 export const WORKSPACE_INLINE_JOURNAL_LIMIT = 128 * 1024;
 // A journal holds both validated versions of a source. Its bounded parse budget
 // must allow twice the source budget plus the transaction envelope.
 const WORKSPACE_JOURNAL_PARSE_LIMITS = Object.freeze({ maxBytes: 24 * 1024 * 1024, maxStringLength: 10 * 1024 * 1024, maxTotalRecords: 250_000 });
 export const WORKSPACE_LOCAL_SOURCES = Object.freeze(BACKUP_SOURCE_REGISTRY.filter((source) => source.includedInPhase1AExport && source.storageType === BACKUP_STORAGE_TYPES.LOCAL_STORAGE));
 
-export class WorkspaceRecoveryError extends Error {
-  constructor(code, message) { super(message); this.name = "WorkspaceRecoveryError"; this.code = code; }
-}
 function fail(code, message) { throw new WorkspaceRecoveryError(code, message); }
 function equal(a, b) { return canonicalStringify(a) === canonicalStringify(b); }
 function sourceFor(id) {
@@ -48,30 +46,8 @@ function sourceIsAbsent(storage, source) {
 
 // These leases must be held while the app is mounted. Recovery is performed
 // before mounting, or after unmounting all writers; a mutex alone is insufficient.
-export async function acquireWorkspaceReadLease(locks = globalThis.navigator?.locks) {
-  if (!locks?.request) fail("LOCK_UNAVAILABLE", "This browser cannot coordinate safe recovery. Use a browser with Web Locks support.");
-  let release;
-  let accepted;
-  let rejected;
-  const ready = new Promise((resolve, reject) => { accepted = resolve; rejected = reject; });
-  const held = new Promise((resolve) => { release = resolve; });
-  const request = locks.request(WORKSPACE_STORAGE_LOCK, { mode: "shared", ifAvailable: true }, (lock) => {
-    if (!lock) { rejected(new WorkspaceRecoveryError("WORKSPACE_BUSY", "Recovery is running in another tab. Wait for it to finish before opening records.")); return; }
-    accepted();
-    return held;
-  });
-  void request.catch(rejected);
-  await ready;
-  return () => release();
-}
+// (acquireWorkspaceReadLease lives in workspaceRecoveryState.js and is re-exported above.)
 
-export function withWorkspaceStorageLock(locks, operation) {
-  if (!locks?.request) return Promise.reject(new WorkspaceRecoveryError("LOCK_UNAVAILABLE", "This browser cannot coordinate safe recovery. Use a browser with Web Locks support."));
-  return locks.request(WORKSPACE_STORAGE_LOCK, { mode: "exclusive", ifAvailable: true }, (lock) => {
-    if (!lock) fail("WORKSPACE_BUSY", "Close other Code 3 TCG tabs before saving recovered records. No records were changed.");
-    return operation();
-  });
-}
 
 export function captureRecoverySources(storage, { projectUrl } = {}) {
   const result = readCurrentBackupSources({ localStorage: storage, sourceRegistry: WORKSPACE_LOCAL_SOURCES, projectUrl });
@@ -244,7 +220,7 @@ function rollbackEntries(storage, entries, projectUrl) {
   }
 }
 
-export function hasPendingWorkspaceRecovery(storage) { return read(storage, WORKSPACE_RECOVERY_KEY) !== null; }
+
 
 export async function recoverWorkspaceSources({ storage, ownerId, locks = globalThis.navigator?.locks, assertCurrent = () => {}, payloadStore, projectUrl } = {}) {
   assertOwner(ownerId);

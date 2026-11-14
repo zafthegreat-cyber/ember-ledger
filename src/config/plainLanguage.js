@@ -8,6 +8,9 @@ const EXACT_VISIBLE_LABELS = new Map([
   ["Scout", "Restocks"],
   ["Flip Scout", "Deal Finder"],
   ["Vault", "Collection"],
+  // Nov 14: one set of names — Collect (Collection, Sets, Wants), Find, Sell. "Watchlist" stays its own thing.
+  ["Wishlist", "Wants"],
+  ["Wishlists", "Wants"],
   ["Forge", "Business"],
   ["Ledger", "Money"],
   ["Tide Chart", "Business Snapshot"],
@@ -75,6 +78,11 @@ const VISIBLE_PHRASE_REPLACEMENTS = [
   [/Market Watch/gi, "Product Research"],
   [/Open Spark/gi, "Open Kids & Community"],
   [/Spark status/gi, "Kids & Community status"],
+  [/Add to Wishlist/gi, "Add to Wants"],
+  [/Wishlist (target|item|alert|alerts|page|tab|records?)\b/g, "Wants $1"],
+  [/\bWishlists?\b/g, "Wants"],
+  [/\bwishlists\b/g, "wants lists"],
+  [/\bwishlist\b/g, "wants list"],
 ];
 
 // 2026-10-30: the names "Forge" and "Scout" are retired from everything a
@@ -132,6 +140,12 @@ export const LEGACY_NAME_REPLACEMENTS = [
   [/\bTidepool Community\b/g, "Community"],
   [/\bTidepool\b/g, "Community"],
   [/\bHearth\b/g, "Home"],
+  // Nov 6: two more leftovers Zena spotted on the account pages.
+  [/\bLantern Safety Center\b/g, "Safety Center"],
+  [/\bOpen Lantern\b/g, "Open Safety Center"],
+  [/\bLantern\b/g, "Safety Center"],
+  [/\bOpen Nest\b/g, "Open Family Settings"],
+  [/\bNest\b/g, "Family"],
 ];
 
 export function renameLegacyProductNames(value = "") {
