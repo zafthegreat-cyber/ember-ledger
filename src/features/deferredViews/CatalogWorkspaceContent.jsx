@@ -1,3 +1,4 @@
+import ItemPhoto from "../../components/ItemPhoto.jsx";
 import { PrivateStorageImage } from "../../components/PrivateReceipt.jsx";
 // App owns state, authority and handlers; only this existing renderer is deferred.
 export default function CatalogWorkspaceContent({ scope }) {
@@ -62,7 +63,6 @@ export default function CatalogWorkspaceContent({ scope }) {
     openCatalogDetails,
     previewBulkCatalogImport,
     renderCatalogMeta,
-    renderProductImageFallback,
     sealedCatalogCount,
     setBulkImportText,
     setCatalogConditionFilter,
@@ -463,21 +463,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   <div className="catalog-result-card" key={p.id}>
                     <button type="button" className="catalog-result-main" onClick={() => openCatalogDetails(p.id)}>
                       <div className="catalog-thumb">
-                        {catalogImage(p) ? (
-                          <>
-                            <PrivateStorageImage
-                              src={catalogImage(p)}
-                              alt=""
-                              onError={(event) => {
-                                event.currentTarget.style.display = "none";
-                                event.currentTarget.nextElementSibling?.removeAttribute("hidden");
-                              }}
-                            />
-                            {renderProductImageFallback(p, { hidden: true, badge: getCatalogKindLabel(p) })}
-                          </>
-                        ) : (
-                          renderProductImageFallback(p, { badge: getCatalogKindLabel(p) })
-                        )}
+                        <ItemPhoto product={p} src={catalogImage(p)} sizes="(max-width: 600px) 44vw, 240px" alt="" fallbackClassName="catalog-image-fallback" />
                       </div>
                       <div>
                         <span className="catalog-pill">{getCatalogKindLabel(p)}</span>

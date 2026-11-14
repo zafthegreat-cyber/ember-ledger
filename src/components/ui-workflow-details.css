@@ -1,0 +1,41 @@
+.scanner-device-controls{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin-top:16px}
+.scanner-device-controls label{display:grid;gap:6px;flex:1;min-width:180px}
+.scanner-device-controls :is(button,select){min-height:44px}
+.notification-inbox-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0}
+.notification-inbox-tools label{display:grid;gap:5px;flex:1;min-width:130px}
+.notification-inbox-tools select,.notification-inbox-tools button{min-height:44px}
+.notification-inbox-group h4{padding:12px 0 7px;margin:8px 0;border-bottom:1px solid var(--border-subtle);font-size:14px}
+.notification-read-state{font-size:12px;font-weight:650;color:var(--text-primary)}
+.notification-undo{padding:12px;border:1px solid var(--border-subtle);border-radius:8px;margin-block:12px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.notification-undo button{min-height:44px}
+.notification-inbox-help{margin:12px 0}
+.notification-inbox-help summary{cursor:pointer;min-height:44px;display:flex;align-items:center}
+.notification-inbox-empty{padding:24px 4px;color:var(--text-secondary)}
+.notification-center-panel .notification-list{max-height:none;overflow:visible}
+@media(max-width:520px){.notification-center-panel{max-width:calc(100vw - 24px)}.notification-inbox-tools{align-items:stretch}.notification-inbox-tools label{min-width:0}.notification-inbox-tools select{max-width:100%;width:100%}}
+.notification-delivery { display:grid; gap:4px; border-left:2px solid var(--border-subtle,#6c6266); padding-left:12px; color:var(--text-secondary); font-size:.875rem; }
+.notification-inbox-tools { align-items:end; }
+.notification-inbox-tools label { min-width:0; flex:1 1 170px; display:grid; gap:6px; }
+.notification-inbox-tools input, .notification-inbox-tools select { width:100%; min-height:44px; min-width:0; }
+.notification-bulk { display:flex; align-items:center; flex-wrap:wrap; gap:8px; padding:12px 0; }
+.notification-select { display:flex; align-items:center; min-height:44px; gap:10px; overflow-wrap:anywhere; }
+.notification-select input { width:22px; height:22px; }
+.notification-reason { color:var(--text-secondary); font-size:.875rem; }
+.notification-undo-stack { position:sticky; bottom:0; z-index:3; max-height:160px; overflow-y:auto; padding:8px; background:var(--surface-primary,#202329); border:1px solid var(--border-strong,#6c6266); border-radius:12px; box-shadow:0 -4px 18px #0002; }
+.notification-undo { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.notification-undo span { min-width:0; overflow-wrap:anywhere; }
+.notification-pause-review { display:grid; gap:12px; padding:16px; border:1px solid var(--border-strong,#6c6266); border-radius:12px; }
+.notification-pause-review select { min-height:44px; }
+.notification-center-panel .notification-filter-actions,
+.notification-center-panel .notification-card .drawer-inline-actions,
+.notification-center-panel .notification-pause-review .drawer-inline-actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.notification-center-panel .notification-card .drawer-inline-actions > button { min-height:44px; margin:0; }
+.notification-center-panel .notification-protected { display:block; margin:10px 0; color:var(--text-secondary); }
+.notification-center-panel .notification-inbox-tools .notification-search { flex-basis:100%; }
+.notification-filter-options { flex-basis:100%; min-width:0; }
+.notification-filter-options > summary,
+.notification-selected-review > summary { min-height:44px; cursor:pointer; padding-block:12px; box-sizing:border-box; overflow-wrap:anywhere; }
+.notification-filter-options > div { display:flex; flex-wrap:wrap; gap:12px; }
+.notification-selected-review,.notification-selection-note { flex-basis:100%; min-width:0; }
+.notification-selected-review ul { margin:0; padding-left:22px; }
+.notification-selected-review li { margin-block:8px; overflow-wrap:anywhere; }

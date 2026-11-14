@@ -114,13 +114,22 @@ export function createCloudWorkspaceSync({ storage, client, ownerId, applySource
   let closed = false;
   let running = null;
   const reviews = new Map();
-  let state = { status: "IDLE", revision: 0, conflicts: [], changedSources: [], message: "Cloud saving is ready." };
+  let state = { status: "IDLE", revision: 0, conflicts: [], changedSources: [], pendingSourceIds: null, message: "Cloud saving is ready." };
   const listeners = new Set();
   const capture = () => captureWorkspaceSources(storage, { projectUrl });
   function report(next) { state = { ...state, ...next }; for (const listener of listeners) listener(); return cloneWorkspaceJson(state); }
   function assertActive() {
     if (closed) workspaceFail("SESSION_CHANGED", "This cloud saving session has ended.");
     if (readWorkspaceBinding(storage)?.ownerId !== ownerId) workspaceFail("OWNER_BINDING_REQUIRED", "Confirm which account owns these device records before cloud saving.");
+  }
+  async function pendingSinceAcknowledgement() {
+    for (let attempt=0;attempt<3;attempt++) {
+      assertActive(); const baseline=readState(storage,ownerId); const snapshot=capture();
+      const hashes=await workspaceSourceHashes(snapshot); assertActive();
+      if(canonicalStringify(capture())!==canonicalStringify(snapshot)) continue;
+      return [...new Set([...Object.keys(hashes),...Object.keys(baseline.hashes)])].filter(id=>hashes[id]!==baseline.hashes[id]);
+    }
+    return null;
   }
   async function acknowledge(snapshot) {
     const hashes = await workspaceSourceHashes(snapshot.sources);
@@ -135,9 +144,10 @@ export function createCloudWorkspaceSync({ storage, client, ownerId, applySource
     report({ status: "SYNCING", message: "Checking saved changes…" });
     const baseline = readState(storage, ownerId);
     const local = capture();
+    report({pendingSourceIds: await pendingSinceAcknowledgement()});
     const remote = await transport.read();
     assertActive();
-    if (canonicalStringify(capture()) !== canonicalStringify(local)) return report({ status: "PENDING", message: "New changes are saved on this device and will sync next.", conflicts: [] });
+    if (canonicalStringify(capture()) !== canonicalStringify(local)) return report({ status: "PENDING", pendingSourceIds: await pendingSinceAcknowledgement(), message: "New changes are saved on this device and will sync next.", conflicts: [] });
     if (remote.revision < baseline.revision) workspaceFail("CLOUD_HISTORY_CHANGED", "The cloud history changed unexpectedly. Your local records have not been replaced.");
     const merge = await reconcileWorkspaceSources({ baselineHashes: baseline.hashes, localSources: local, remoteSources: remote.sources, projectUrl });
     assertActive();
@@ -158,9 +168,10 @@ export function createCloudWorkspaceSync({ storage, client, ownerId, applySource
       assertActive();
     }
     await acknowledge(saved);
-    const pending = canonicalStringify(capture()) !== canonicalStringify(saved.sources);
+    const pendingSourceIds = await pendingSinceAcknowledgement();
+    const pending = pendingSourceIds === null || pendingSourceIds.length > 0;
     return report({ status: pending ? "PENDING" : "SYNCED", revision: saved.revision, updatedAt: saved.updatedAt,
-      conflicts: [], changedSources: merge.changedLocal, message: pending ? "New changes are saved on this device and waiting to sync." : "Saved to your account. Other devices can load this version." });
+      conflicts: [], pendingSourceIds, changedSources: merge.changedLocal, message: pending ? "New changes are saved on this device and waiting to sync." : "Saved to your account. Other devices can load this version." });
   }
   async function previewConflicts() {
     if (running) await running;
@@ -213,7 +224,9 @@ export function createCloudWorkspaceSync({ storage, client, ownerId, applySource
     assertActive();
     await acknowledge(saved);
     reviews.clear();
-    return report({ status: "SYNCED", revision: saved.revision, updatedAt: saved.updatedAt, conflicts: [], changedSources: Object.keys(choices), message: "Your reviewed version is saved. Original versions remain in device recovery and cloud history." });
+    const pendingSourceIds = await pendingSinceAcknowledgement();
+    const pending = pendingSourceIds === null || pendingSourceIds.length > 0;
+    return report({ status: pending ? "PENDING" : "SYNCED", pendingSourceIds, revision: saved.revision, updatedAt: saved.updatedAt, conflicts: [], changedSources: Object.keys(choices), message: pending ? "Your reviewed version is saved. New device changes still need to sync." : "Your reviewed version is saved. Original versions remain in device recovery and cloud history." });
   }
   function sync(options = {}) {
     if (running) return options.allowApply === true ? running.then(() => sync(options)) : running;

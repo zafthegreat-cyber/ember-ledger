@@ -1,8 +1,14 @@
 import "./multi-destination.css";
+import { useId, useRef, useState } from "react";
+import { cardVersionLabel } from "../../utils/cardVersions.mjs";
 import { PrivateStorageImage } from "../../components/PrivateReceipt.jsx";
 import { knownStorageLocations } from "../../utils/storageLocations.mjs";
 // App owns state, authority and handlers; only this existing renderer is deferred.
 export default function MultiDestinationContent({ scope }) {
+  const barcodeId = useId();
+  const barcodeRef = useRef(null);
+  const [barcodeOpen, setBarcodeOpen] = useState(false);
+  const [barcodeInput, setBarcodeInput] = useState("");
   const {
     ADD_ITEM_NO_RESULT_HINTS,
     ADD_ITEM_QUICK_SEARCH_CHIPS,
@@ -99,6 +105,11 @@ export default function MultiDestinationContent({ scope }) {
 
   function renderMultiDestinationAddFlowContent() {
     const selectedCatalog = catalogProducts.find((product) => String(product.id) === String(multiDestinationForm.catalogProductId));
+    const catalogFinishChoices = [...new Set([
+      ...(Array.isArray(selectedCatalog?.versions) ? selectedCatalog.versions : []),
+      ...(Array.isArray(selectedCatalog?.variants) ? selectedCatalog.variants : []),
+    ].map(version => version.variant || version.variantName || version.finish || version.label).filter(Boolean))];
+    const finishChoices = catalogFinishChoices.length ? catalogFinishChoices : selectedCatalog ? [selectedCatalog.variant || selectedCatalog.finish || selectedCatalog.priceSubtype].filter(Boolean) : ["Normal", "Holofoil", "Reverse Holofoil"];
     const marketAddFlowActive = isMarketAddFlowSource(activeFlowModal?.source);
     const itemTypeText = [
       multiDestinationForm.productType,
@@ -276,12 +287,8 @@ export default function MultiDestinationContent({ scope }) {
     return (
       <form id="multi-destination-add-form" className="form multi-destination-flow" onSubmit={submitMultiDestinationAdd} noValidate>
         <div className="universal-review-banner">
-          <strong>{MULTI_DESTINATION_STEP_LABELS[multiDestinationStep] || "Review and Add"}</strong>
-          <span>Step {currentStepIndex + 1} of {MULTI_DESTINATION_STEPS.length}: select the item, choose where it belongs, add only the needed details, then review.</span>
-        </div>
-        <div className="vault-add-review-note add-item-master-note">
-          <strong>Master-card grouping.</strong>
-          <span>Already have this card? Add it as a variant or duplicate under the same master card instead of creating a scattered separate identity.</span>
+          <strong>{MULTI_DESTINATION_STEP_LABELS[multiDestinationStep] || "Review and add"}</strong>
+          <span>Step {currentStepIndex + 1} of {MULTI_DESTINATION_STEPS.length}{multiDestinationStep === "item" ? " · Search, scan, or use a photo." : ""}</span>
         </div>
         {scanFoundationSourceActive ? (
           <div className="scan-anything-review-note">
@@ -289,7 +296,7 @@ export default function MultiDestinationContent({ scope }) {
             <p>Please confirm this item before saving. Not sure? Search again or request a missing item.</p>
           </div>
         ) : null}
-        <div className="quick-add-flow-summary" aria-live="polite">
+        {selectedCatalog || String(multiDestinationForm.itemName || "").trim() ? <div className="quick-add-flow-summary" aria-live="polite">
           <div>
             <span>Item</span>
             <strong>{selectedItemSummary}</strong>
@@ -298,7 +305,7 @@ export default function MultiDestinationContent({ scope }) {
             <span>Destination</span>
             <strong>{selectedDestinationOptions.length ? selectedDestinationOptions.map((option) => option.title).join(", ") : "Choose Vault or Business next"}</strong>
           </div>
-        </div>
+        </div> : null}
         {marketAddFlowActive && selectedCatalog && multiDestinationStep !== "item" ? (
           <div className="selected-product-card selected-match-card market-add-prefilled-card">
             <div className="catalog-thumb selected-match-thumb">
@@ -371,10 +378,6 @@ export default function MultiDestinationContent({ scope }) {
         ) : null}
         {multiDestinationStep === "item" ? (
         <section className="flow-form-section">
-          <div className="add-item-step-heading">
-            <h3>Select the item first</h3>
-            <p>Search Market Watch, pick a recent item, or use manual add when the product is not in the catalog yet. You will choose Vault, Business, Wishlist, or Market Watch on the next step.</p>
-          </div>
           <div className="flow-form-grid">
             <div className="catalog-selector-panel add-item-search-panel">
               {selectedCatalog && !multiDestinationMatchSearchOpen ? (
@@ -464,7 +467,7 @@ export default function MultiDestinationContent({ scope }) {
                               Can't find it? Add manually
                             </button>
                             <button type="button" onClick={markMultiDestinationMissingCatalog}>
-                              Suggest Missing Product
+                              Suggest missing product
                             </button>
                           </div>
                         )}
@@ -473,6 +476,12 @@ export default function MultiDestinationContent({ scope }) {
                     </Field>
                     <p className="compact-subtitle">Partial names, set names, UPCs, SKUs, and sealed-product terms work here. {AI_REVIEW_DISCLAIMER}</p>
                   </div>
+                  <div className="catalog-selector-actions add-item-primary-tools">
+                    <button type="button" className="secondary-button" onClick={() => { closeFlowModal({ force: true, reset: false }); openVaultScanFlow(); }}>Scan product/card</button>
+                    <button type="button" className="secondary-button" onClick={() => { const destination = multiDestinationForm.destinations.forge ? "forge" : multiDestinationForm.destinations.wishlist ? "wishlist" : multiDestinationForm.destinations.vault ? "vault" : "none"; closeFlowModal({ force: true, reset: false }); openPictureLookupFlow(destination); }}>Photo lookup</button>
+                    <button type="button" className="secondary-button" aria-expanded={barcodeOpen} aria-controls={barcodeId} onClick={() => { setBarcodeOpen(true); requestAnimationFrame(() => barcodeRef.current?.focus()); }}>Enter UPC/SKU</button>
+                  </div>
+                  {barcodeOpen ? <div className="add-item-barcode-entry" id={barcodeId}><label>UPC, SKU or barcode<input ref={barcodeRef} value={barcodeInput} onChange={event => setBarcodeInput(event.target.value)} placeholder="Enter the number printed below the barcode" autoComplete="off" enterKeyHint="search" onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); if (barcodeInput.trim()) runMultiDestinationCatalogSearch(barcodeInput.trim(), { mode: "barcode", barcode: barcodeInput.trim() }); } }} /></label><button type="button" className="primary-button" disabled={!barcodeInput.trim()} onClick={() => runMultiDestinationCatalogSearch(barcodeInput.trim(), { mode: "barcode", barcode: barcodeInput.trim() })}>Look up barcode</button></div> : null}
                   {!itemSearchQuery ? (
                     <div className="add-item-picker-start">
                       <div className="add-item-quick-section">
@@ -504,8 +513,9 @@ export default function MultiDestinationContent({ scope }) {
                     <div className="add-item-results-block">
                       <div className="add-item-results-heading">
                         <strong>Best matches</strong>
-                        <span>{itemSearchResults.length} result{itemSearchResults.length === 1 ? "" : "s"}</span>
+                        <span>{itemSearchResults.length === 10 ? "Top 10 matches" : `${itemSearchResults.length} match${itemSearchResults.length === 1 ? "" : "es"}`}</span>
                       </div>
+                      {itemSearchResults.length === 10 ? <p className="add-item-search-guidance">Add a set name, card number or barcode to narrow these matches. Shorten your search to explore more products.</p> : null}
                       <div className="catalog-selector-results">
                         {itemSearchResults.map((product) => renderCatalogPickerCard(product, selectMultiDestinationCatalogProduct))}
                       </div>
@@ -536,14 +546,14 @@ export default function MultiDestinationContent({ scope }) {
                           Can't find it? Add manually
                         </button>
                         <button type="button" onClick={markMultiDestinationMissingCatalog}>
-                          Suggest Missing Product
+                          Suggest missing product
                         </button>
                       </div>
                     </div>
                   ) : null}
-                  <div className="catalog-selector-actions match-tools">
+                  <details className="add-item-more-tools"><summary>More ways to add</summary><p>Adding another copy? Choose the same catalog product, then set its finish and quantity. Each copy keeps its purchase details.</p><div className="catalog-selector-actions match-tools">
                     <button type="button" className="secondary-button manual-add-fallback-card" onClick={() => startMultiDestinationManualEntry()}>
-                      Manual Add
+                      Add manually
                     </button>
                     <button type="button" className="secondary-button" onClick={() => {
                       setMultiDestinationForm((current) => ({
@@ -556,7 +566,7 @@ export default function MultiDestinationContent({ scope }) {
                       }));
                       setMultiDestinationMatchSearchOpen(false);
                     }}>
-                      Add Wishlist Item
+                      Add wishlist item
                     </button>
                     <button type="button" className="secondary-button" onClick={() => {
                       const query = String(multiDestinationCatalogQuery || multiDestinationForm.itemName || multiDestinationForm.upcSku || "").trim();
@@ -576,37 +586,18 @@ export default function MultiDestinationContent({ scope }) {
                     <button type="button" className="secondary-button" onClick={() => void runVariantAssist(multiDestinationForm.variant || multiDestinationForm.itemName)}>
                       Explain variants
                     </button>
-                    <button type="button" className="secondary-button" onClick={() => {
-                      const lookup = String(multiDestinationForm.upcSku || multiDestinationCatalogQuery || "").trim();
-                      if (lookup) {
-                        runMultiDestinationCatalogSearch(lookup, { mode: "barcode", barcode: lookup });
-                      }
-                    }}>
-                      Enter UPC/SKU
-                    </button>
-                    <button type="button" className="secondary-button" onClick={() => {
-                      closeFlowModal({ force: true, reset: false });
-                      openVaultScanFlow();
-                    }}>
-                      Scan Product/Card
-                    </button>
-                    <button type="button" className="secondary-button" onClick={() => {
-                      const destination = multiDestinationForm.destinations.forge ? "forge" : multiDestinationForm.destinations.wishlist ? "wishlist" : multiDestinationForm.destinations.vault ? "vault" : "none";
-                      closeFlowModal({ force: true, reset: false });
-                      openPictureLookupFlow(destination);
-                    }}>
-                      Photo Lookup
-                    </button>
                     {selectedCatalog ? (
                       <button type="button" className="secondary-button" onClick={() => setMultiDestinationMatchSearchOpen(false)}>
                         Done
                       </button>
                     ) : null}
-                  </div>
+                  </div></details>
                 </>
               )}
             </div>
-            <Field label="Item Name" fieldId="item-name" error={fieldError("item-name")}>
+            <details className="add-item-identification" key={selectedCatalog?.id || "manual"} open={!selectedCatalog || Boolean(fieldError("item-name"))}>
+              <summary>{selectedCatalog ? "Edit item details" : "Item details"}</summary><div className="flow-form-grid">
+            <Field label="Item name" fieldId="item-name" error={fieldError("item-name")}>
               <input
                 value={multiDestinationForm.itemName}
                 onChange={(event) => updateMultiDestinationField("itemName", event.target.value)}
@@ -629,12 +620,15 @@ export default function MultiDestinationContent({ scope }) {
               />
             </Field>
             {addFlowIsCard ? (
-              <Field label="Variant">
+              <Field label="Variant / finish">
                 <input
+                  list={`${barcodeId}-variants`}
                   value={multiDestinationForm.variant}
                   onChange={(event) => updateMultiDestinationField("variant", event.target.value)}
                   placeholder="Normal, Holofoil, Reverse Holofoil, promo..."
                 />
+                <datalist id={`${barcodeId}-variants`}>{finishChoices.map(value => <option key={value} value={value}>{cardVersionLabel(value)}</option>)}</datalist>
+                <small>{selectedCatalog ? "Choose a recorded catalog finish, or enter the finish printed on your copy." : "Common finishes are suggested. Confirm your card's actual finish; custom entries are welcome."}</small>
               </Field>
             ) : null}
             <Field label="UPC / SKU if known">
@@ -656,7 +650,7 @@ export default function MultiDestinationContent({ scope }) {
                 />
               </Field>
             ) : null}
-            <Field label="Market Price">
+            <Field label="Saved market estimate">
               <input
                 type="number"
                 min="0"
@@ -665,7 +659,9 @@ export default function MultiDestinationContent({ scope }) {
                 onChange={(event) => updateMultiDestinationField("marketPrice", event.target.value)}
                 placeholder="0.00"
               />
+              <small>Changes apply to this item's saved estimate. The catalog's market quote is kept.</small>
             </Field>
+              </div></details>
           </div>
           <Field label="Notes">
             <textarea
@@ -935,7 +931,7 @@ export default function MultiDestinationContent({ scope }) {
 
         {multiDestinationStep === "review" ? (
           <section className="flow-form-section wizard-review-section">
-            <h3>Review and Add</h3>
+            <h3>Review and add</h3>
             {marketAddFlowActive ? (
               <div className="market-review-add-card">
                 <div className="catalog-thumb market-review-add-thumb">

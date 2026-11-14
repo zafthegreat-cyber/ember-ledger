@@ -1,0 +1,282 @@
+/* Collector identity inspired by the supplied burgundy / gold campaign.
+   Semantic roles keep saved data, status colors, and theme preferences intact. */
+html body .app.app-command-shell[data-theme] {
+  --lounge-display: Georgia, "Times New Roman", serif;
+  --ui-control-radius: 8px;
+  --lounge-gold: #765316;
+  --lounge-metal: #ddc18a;
+  --lounge-line: #c7b38b;
+  --lounge-panel: #fffaf0;
+  --lounge-ink: #351722;
+  --lounge-muted: #6b5951;
+  --lounge-deep: #310d1a;
+  --lounge-wash: #ece0c7;
+  --c3-page: #f7efdf;
+  --c3-surface: var(--lounge-panel);
+  --c3-surface-secondary: #eee3cf;
+  --c3-surface-inset: #e8dcc5;
+  --c3-surface-elevated: #fffaf0;
+  --c3-maroon: #641329;
+  --c3-purple: #5b2942;
+  --c3-cream: #fff3d9;
+  --c3-gold: var(--lounge-metal);
+  --c3-gold-ink: var(--lounge-gold);
+  --c3-text: var(--lounge-ink);
+  --c3-muted: var(--lounge-muted);
+  --c3-action: #641329;
+  --c3-action-hover: #481022;
+  --c3-on-action: #fff3d9;
+  --c3-border: #d8c7a7;
+  --c3-control-border: #99805c;
+  --c3-focus: #641329;
+  --c3-font-heading: var(--lounge-display);
+  --c3-selection: #eee0be;
+  --c3-radius: 10px;
+  --c3-radius-lg: 14px;
+  --app-background: var(--c3-page);
+  --surface-primary: var(--c3-surface);
+  --surface-secondary: var(--c3-surface-secondary);
+  --surface-inset: var(--c3-surface-inset);
+  --surface-elevated: var(--c3-surface-elevated);
+  --text-primary: var(--lounge-ink);
+  --text-secondary: var(--lounge-muted);
+  --text-muted: var(--lounge-muted);
+  --border-subtle: var(--c3-border);
+  --border-strong: var(--c3-control-border);
+  --action-primary: var(--c3-action);
+  --action-hover: var(--c3-action-hover);
+  --on-primary: var(--c3-on-action);
+  --app-brand-rail: #300e1a;
+  --app-brand-header: #300e1a;
+  --app-brand-on-chrome: #fff3d9;
+  --app-brand-chrome-muted: #d4bca1;
+  --app-brand-chrome-line: #75513b;
+  --app-brand-hero: #4b0f21;
+  --app-brand-hero-muted: #e7d0b4;
+  --app-brand-maroon-ink: #641329;
+  --app-brand-purple-ink: #641329;
+  --app-brand-purple-wash: #eee0cf;
+  --app-brand-maroon-wash: #f0e2d4;
+  --app-brand-selected: #ead4a5;
+  --app-brand-selected-ink: #351722;
+  --app-brand-selected-border: #a37c38;
+  --app-brand-photo: #f8f3e9;
+  --app-brand-on-gold: #2f1720;
+  --overlay-backdrop: rgb(22 6 13 / 70%);
+  --cmd-surface: var(--surface-primary);
+  --cmd-text: var(--text-primary);
+  --cmd-muted: var(--text-secondary);
+  --cmd-border: var(--border-strong);
+  --font-display: var(--lounge-display);
+  --shadow-1: 0 1px 2px rgb(42 11 24 / 4%);
+  --shadow-2: 0 5px 18px rgb(42 11 24 / 8%);
+  --shadow-3: 0 14px 40px rgb(16 3 9 / 22%);
+  background: var(--app-background);
+  color: var(--text-primary);
+}
+html body .app.app-command-shell[data-theme="dark"] {
+  --lounge-gold: #dfbf7f;
+  --lounge-line: #6b4b37;
+  --lounge-panel: #281018;
+  --lounge-ink: #fbefd5;
+  --lounge-muted: #c7b49f;
+  --lounge-deep: #200911;
+  --lounge-wash: #40202a;
+  --c3-page: #19090f;
+  --c3-surface-secondary: #321620;
+  --c3-surface-inset: #210c14;
+  --c3-surface-elevated: #351722;
+  --c3-action: #ddc18a;
+  --c3-action-hover: #eddbb4;
+  --c3-on-action: #2f1720;
+  --c3-border: #5c3b37;
+  --c3-control-border: #a28b6c;
+  --c3-focus: #dfbf7f;
+  --c3-selection: #44232c;
+  --app-brand-rail: #250b15;
+  --app-brand-header: #250b15;
+  --app-brand-hero: #451022;
+  --app-brand-maroon-ink: #dfbf7f;
+  --app-brand-purple-ink: #dfbf7f;
+  --app-brand-purple-wash: #3b1c29;
+  --app-brand-maroon-wash: #3b1c29;
+  --app-brand-selected: #43202a;
+  --app-brand-selected-ink: #f1d59d;
+  --app-brand-selected-border: #bd9554;
+  --app-brand-chrome-line: #6b4b37;
+  --shadow-1: 0 2px 5px rgb(12 1 6 / 12%);
+  --shadow-2: 0 6px 20px rgb(12 1 6 / 18%);
+}
+:root:has(.app.app-command-shell[data-theme="dark"]),
+body:has(.app.app-command-shell[data-theme="dark"]) { --app-background: #19090f; background: #19090f; }
+:root:has(.app.app-command-shell[data-theme="light"]),
+body:has(.app.app-command-shell[data-theme="light"]) { --app-background: #f7efdf; background: #f7efdf; }
+
+/* A display face belongs to page headings. Controls and saved numbers stay sans serif. */
+html body .app.app-command-shell[data-theme] .ops-page-header h1 {
+  font: 700 clamp(32px, 3.2vw, 40px)/1.12 var(--lounge-display) !important;
+  letter-spacing: -.04em;
+  color: var(--lounge-ink);
+}
+html body .app.app-command-shell[data-theme] .ops-section-header h2 {
+  font: 600 clamp(22px, 2.2vw, 26px)/1.2 var(--lounge-display) !important;
+  color: var(--lounge-ink);
+  letter-spacing: -.02em;
+}
+html body .app.app-command-shell[data-theme] .ops-page-header .ops-eyebrow {
+  color: var(--lounge-gold);
+  font: 600 11px/1.5 var(--c3-font-body);
+  text-transform: uppercase;
+  letter-spacing: .16em;
+}
+html body .app.app-command-shell[data-theme] :is(.ops-input-wrap,.ops-sort select) { border-radius: var(--ui-control-radius); }
+html body .app.app-command-shell[data-theme] .ops-button {
+  border-radius: var(--ui-control-radius);
+  letter-spacing: .005em;
+}
+html body .app.app-command-shell[data-theme] .ops-button--secondary {
+  border-color: var(--border-strong) !important;
+  background: transparent !important;
+  color: var(--text-primary) !important;
+}
+html body .app.app-command-shell[data-theme] :is(.home-layout,.everyday-workspace) .ops-button--primary {
+  background: var(--lounge-metal) !important;
+  border: 1px solid #e8d3a5 !important;
+  color: #2f1720 !important;
+  box-shadow: inset 0 1px rgb(255 248 225 / 35%);
+}
+html body .app.app-command-shell[data-theme] :is(.home-layout,.everyday-workspace) .ops-button--primary:hover { background: #eddbb4 !important; }
+html body .app.app-command-shell[data-theme] :is(button,a,input,select,textarea,summary):focus-visible {
+  outline: 2px solid var(--c3-focus) !important;
+  outline-offset: 3px;
+}
+
+/* The burgundy rail and gold keyline carry the visual identity without occupying the content. */
+html body .app.app-command-shell[data-theme] .ops-desktop-sidebar {
+  border-right: 1px solid var(--app-brand-chrome-line) !important;
+  padding: 14px;
+  gap: 8px;
+}
+html body .app.app-command-shell[data-theme] .ops-desktop-sidebar .ops-brand {
+  min-height: 68px;
+  width: 100%;
+  padding: 8px 2px 14px;
+  margin: 0 0 4px;
+  border-bottom: 1px solid var(--app-brand-chrome-line);
+  border-radius: 0;
+}
+html body .app.app-command-shell[data-theme] .ops-desktop-sidebar .ops-navigation-label { padding-top: 12px; font-size: 11px; letter-spacing: .12em; }
+html body .app.app-command-shell[data-theme] .ops-desktop-sidebar nav button.is-active {
+  border: 1px solid var(--app-brand-selected-border);
+  box-shadow: none;
+}
+html body .app.app-command-shell[data-theme] .ops-desktop-sidebar nav button { border: 1px solid transparent; font-size: 14px; min-height: 44px; }
+html body .app.app-command-shell[data-theme] .ops-mobile-nav {
+  min-height: 66px;
+  border-radius: 13px;
+  padding: 5px;
+  box-shadow: 0 6px 24px rgb(15 2 8 / 28%);
+}
+html body .app.app-command-shell[data-theme] .ops-mobile-nav button { border-radius: 8px; font-weight: 500; }
+html body .app.app-command-shell[data-theme] .ops-mobile-nav button.is-active {
+  border: 1px solid var(--app-brand-selected-border);
+  box-shadow: none;
+}
+html body .app.app-command-shell[data-theme] .ops-mobile-nav__action-icon {
+  border-radius: 9px;
+  margin-top: -14px;
+  width: 44px;
+  height: 44px;
+  border-width: 2px;
+}
+html body .app.app-command-shell[data-theme] .topbar { border-top-width: 1px !important; }
+
+/* Utility screens inherit the same warm palette and restrained line work. */
+html body .app.app-command-shell[data-theme] :is(.everyday-record-card,.collection-product-copy,.scout-report-title-row) h3 { font-family: var(--c3-font-body) !important; }
+html body .app.app-command-shell[data-theme] .business-inventory-filter[aria-pressed="true"] {
+  border-color: var(--app-brand-selected-border);
+  color: var(--app-brand-selected-ink);
+  background: var(--app-brand-selected);
+}
+html body .app.app-command-shell[data-theme] .business-inventory-view .everyday-record-card { border-bottom-color: var(--lounge-line) !important; }
+html body .app.app-command-shell[data-theme] .business-inventory-attention { border-bottom: 0; padding-bottom: 0; }
+html body .app.app-command-shell[data-theme] .scout-reports-landing__header h2 {
+  font: 700 clamp(28px, 3vw, 36px)/1.15 var(--lounge-display) !important;
+  color: var(--lounge-ink);
+  letter-spacing: -.025em;
+}
+html body .app.app-command-shell[data-theme] :is(.ops-bottom-sheet,.ops-dialog) {
+  border: 1px solid var(--lounge-line);
+  border-top: 2px solid var(--lounge-gold);
+  border-radius: 12px;
+}
+html body .app.app-command-shell[data-theme] :is(.ops-bottom-sheet,.ops-dialog) > header h2 { font-family: var(--lounge-display) !important; }
+@media(max-width:600px) {
+  html body .app.app-command-shell[data-theme] .ops-page-header h1 { font-size: 32px !important; }
+  html body .app.app-command-shell[data-theme] .ops-page-header .ops-page-actions button { padding-inline: 12px; }
+  html body .app.app-command-shell[data-theme] .everyday-workspace[data-testid="collection-workspace"] > .ops-page-header:not(:has(.ops-eyebrow,p)) {
+    grid-template-areas: "title action";
+    gap: 8px;
+    padding-bottom: 0;
+  }
+}
+@media(prefers-reduced-motion:reduce) {
+  html body .app.app-command-shell[data-theme] :is(.ops-button,.ops-mobile-nav,.ops-desktop-sidebar button) { transition: none; }
+}
+
+
+/* Utility typography and spacing: a single control rhythm, clear numeric columns. */
+html body .app.app-command-shell[data-theme] .ops-field { font-weight: 550; }
+html body .app.app-command-shell[data-theme] :is(.ops-input-wrap input,.ops-sort select,.nationwide-location input,.scout-report-search input) {
+  font: 400 16px/1.45 var(--c3-font-body);
+  font-variant-numeric: tabular-nums;
+}
+html body .app.app-command-shell[data-theme] :is(.ops-input-wrap input,.nationwide-location input,.scout-report-search input)::placeholder { color: var(--text-secondary); opacity: .85; }
+html body .app.app-command-shell[data-theme] .ops-input-wrap:focus-within { outline: 2px solid var(--c3-focus); outline-offset: 3px; box-shadow: none; }
+html body .app.app-command-shell[data-theme] .ops-input-wrap input:focus-visible { outline: none !important; }
+html body .app.app-command-shell[data-theme] :is(.ops-page-header p,.ops-section-header p) { line-height: 1.5; }
+html body .app.app-command-shell[data-theme] .everyday-workspace.business-inventory-view { gap: 12px; }
+html body .app.app-command-shell[data-theme] .business-inventory-section { gap: 10px; }
+html body .app.app-command-shell[data-theme] .business-inventory-results { margin-block: 0; line-height: 1.5; }
+html body .app.app-command-shell[data-theme] .business-inventory-filters { gap: 4px; }
+html body .app.app-command-shell[data-theme] .business-inventory-filter { border-color: var(--border-subtle); border-radius: var(--ui-control-radius); font-size: 13px; min-height: 44px; padding-inline: 12px; box-shadow: none; }
+html body .app.app-command-shell[data-theme] .business-inventory-view .everyday-record-card__heading > div > span { color: var(--text-secondary); font-weight: 450; font-size: 12px; }
+html body .app.app-command-shell[data-theme] .business-inventory-view .everyday-record-card h3 { font-size: 16px; font-weight: 600; line-height: 1.4; }
+html body .app.app-command-shell[data-theme] .business-inventory-view .everyday-record-card dl { gap: 12px; }
+html body .app.app-command-shell[data-theme] .business-inventory-view .everyday-record-card dd { font-weight: 600; }
+html body .app.app-command-shell[data-theme] .business-inventory-view .everyday-record-card > img { background: var(--app-brand-photo); padding: 4px; border-radius: 6px; }
+html body .app.app-command-shell[data-theme] :is(.nationwide-location input,.nationwide-location button,.scout-report-search,.scout-report-filters select) { border-radius: var(--ui-control-radius); }
+html body .app.app-command-shell[data-theme] .nationwide-location > label { font: 550 13px/1.5 var(--c3-font-body); }
+html body .app.app-command-shell[data-theme] .nationwide-location__summary { font: 400 13px/1.5 var(--c3-font-body); color: var(--text-secondary); }
+html body .app.app-command-shell[data-theme] .scout-reports-landing { gap: 12px; }
+html body .app.app-command-shell[data-theme] .restock-browser-location { min-width: 0; border-block: 1px solid var(--border-subtle); }
+html body .app.app-command-shell[data-theme] .restock-browser-location > summary { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; min-height: 48px; padding-block: 8px; color: var(--text-primary); font: 550 14px/1.5 var(--c3-font-body); cursor: pointer; list-style: none; }
+html body .app.app-command-shell[data-theme] .restock-browser-location > summary::-webkit-details-marker { display: none; }
+html body .app.app-command-shell[data-theme] .restock-browser-location > summary > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+html body .app.app-command-shell[data-theme] .restock-browser-location > summary > span:last-child { color: var(--lounge-gold); font-size: 13px; white-space: nowrap; }
+html body .app.app-command-shell[data-theme] .restock-browser-location > summary > span:last-child::after { content: "+"; display: inline-block; width: 20px; text-align: right; }
+html body .app.app-command-shell[data-theme] .restock-browser-location[open] > summary > span:last-child::after { content: "−"; }
+html body .app.app-command-shell[data-theme] .restock-browser-location > .nationwide-location { padding: 4px 0 12px; }
+html body .app.app-command-shell[data-theme] .scout-reports-landing__header h2 { margin-top: 0; }
+html body .app.app-command-shell[data-theme] .scout-reports-landing .scout-report-filter-options { gap: 6px; }
+html body .app.app-command-shell[data-theme] .scout-reports-landing .scout-report-filter-options button { border-radius: var(--ui-control-radius); font-weight: 550; box-shadow: none; }
+html body .app.app-command-shell[data-theme] .scout-reports-landing .scout-report-filters :is(input,select) { font-weight: 400; }
+html body .app.app-command-shell[data-theme] .scout-reports-landing .scout-report-title-row h3 { font: 600 16px/1.4 var(--c3-font-body); }
+html body .app.app-command-shell[data-theme] .scout-reports-landing :is(time,.restock-browser-count) { font-variant-numeric: tabular-nums; }
+html body .app.app-command-shell[data-theme] .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-panel { border-radius: 10px; }
+html body .app.app-command-shell[data-theme] .flow-modal[data-flow="scoutSubmit"] :is(.stock-report-start-options > button,.stock-screenshot-panel button,.stock-screenshot-panel input,.stock-screenshot-panel select,.stock-screenshot-panel textarea) { border-radius: var(--ui-control-radius); }
+html body .app.app-command-shell[data-theme] .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-panel .stock-screenshot-error { color: var(--status-danger); border-inline-start: 3px solid currentColor; padding: 8px 12px; background: var(--surface-secondary); border-radius: 4px; font-weight: 500; }
+@media(min-width:900px) {
+  html body .app.app-command-shell[data-theme] .restock-browser-location > .nationwide-location { grid-template-columns: auto minmax(220px,1fr); column-gap: 20px; align-items: end; }
+  html body .app.app-command-shell[data-theme] .restock-browser-location > .nationwide-location > .nationwide-location__modes { grid-column: 1; grid-row: 2; }
+  html body .app.app-command-shell[data-theme] .restock-browser-location > .nationwide-location > label { grid-column: 2; grid-row: 1; }
+  html body .app.app-command-shell[data-theme] .restock-browser-location > .nationwide-location > .nationwide-location__search { grid-column: 2; grid-row: 2; }
+  html body .app.app-command-shell[data-theme] .restock-browser-location > .nationwide-location > :is(.nationwide-location__summary,ul,p,small,details) { grid-column: 1 / -1; }
+}
+@media(max-width:600px) {
+  html body .app.app-command-shell[data-theme] .business-inventory-view .everyday-record-card { padding-block: 14px; }
+  html body .app.app-command-shell[data-theme] .scout-reports-landing__header { gap: 12px; }
+  html body .app.app-command-shell[data-theme] .scout-reports-landing__header h2 { font-size: 28px !important; }
+  html body .app.app-command-shell[data-theme] .scout-reports-landing__header p { font-size: 13px; line-height: 1.5; }
+  html body .app.app-command-shell[data-theme] .scout-reports-landing__header > .ops-button { width: auto; min-height: 44px; }
+}

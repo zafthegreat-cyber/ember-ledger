@@ -1,0 +1,279 @@
+{
+  "assets": {
+    "worlds2025-yuya-raging-bolt-ex-front": {
+      "src": "/assets/inspection/pokemon-worlds2025-yuya-raging-bolt-ex-front20261114h.webp",
+      "reference": true,
+      "label": "Raging Bolt ex — 2025 Yuya Okita regular signature front",
+      "sourcePage": "https://www.ebay.co.uk/itm/287450243156",
+      "sourceImage": "https://i.ebayimg.com/images/g/KvgAAeSwnxdqT9kI/s-l1600.webp",
+      "sha256": "62138506319fa6da1e0775779acb97e30b31cfb0429b9cb1bd35dcce36408d6c",
+      "sourcePixelDimensions": [
+        1200,
+        1600
+      ],
+      "sourceContentType": "image/webp",
+      "quad": [
+        [
+          0.295,
+          0.38875
+        ],
+        [
+          0.6525,
+          0.386875
+        ],
+        [
+          0.6508333333333334,
+          0.78375
+        ],
+        [
+          0.27666666666666667,
+          0.77
+        ]
+      ],
+      "checkedAt": "2026-11-14",
+      "notes": "Exact English regular gray printed-signature card, source gallery picture 2. Picture 1 is the distinct gold-stamped printing and is deliberately excluded. Display stand lies outside the card-edge projection. Effective photographed card detail about 450 by 630 pixels; this is a truthful missing-image fallback, not a high-resolution scan. Original photographic bytes preserved."
+    },
+    "worlds-front-485008": {
+      "src": "/assets/inspection/pokemon-worlds-front-485008-20261114h.webp",
+      "reference": true,
+      "label": "Origin Forme Palkia VSTAR 2022 Rikuto Ohashi photographed front",
+      "sourcePage": "https://www.ebay.com/p/26059217676",
+      "sourceImage": "https://i.ebayimg.com/images/g/11YAAeSw-oVqH53U/s-l1600.webp",
+      "sha256": "00aee1c8f9286c619870be8fde70fd58ff27504dd4983e832c9cb471c7a36284",
+      "sourcePixelDimensions": [
+        827,
+        1117
+      ],
+      "sourceContentType": "image/webp",
+      "quad": [
+        [
+          0.08222490931076179,
+          0.06087735004476276
+        ],
+        [
+          0.9129383313180169,
+          0.051029543419874666
+        ],
+        [
+          0.9588875453446191,
+          0.8961504028648165
+        ],
+        [
+          0.13905683192261184,
+          0.9471799462846912
+        ]
+      ],
+      "checkedAt": "2026-11-14",
+      "notes": "Exact040/189 Rikuto Ohashi gray signature. Paired blue2022 reverse independently verifies deck. White display tray outside card crop. Original bytes preserved; card-edge projection only. Reference photograph is a fallback after existing catalog/owner images fail, not the condition of an owned copy."
+    },
+    "worlds-front-542043": {
+      "src": "/assets/inspection/pokemon-worlds-front-542043-20261114h.webp",
+      "reference": true,
+      "label": "Gardevoir ex 2023 Tord Reklev photographed front",
+      "sourcePage": "https://www.ebay.com/itm/366681271882",
+      "sourceImage": "https://i.ebayimg.com/images/g/hhoAAeSwnBtqv1FL/s-l1600.webp",
+      "sha256": "84ac739e7900ff95c52d4162f49927b8f043c78c1e07818ca9d656fff37dd1cf",
+      "sourcePixelDimensions": [
+        814,
+        1109
+      ],
+      "sourceContentType": "image/webp",
+      "quad": [
+        [
+          0.06265356265356266,
+          0.030658250676284943
+        ],
+        [
+          0.9778869778869779,
+          0.030658250676284943
+        ],
+        [
+          0.9778869778869779,
+          0.9684400360685302
+        ],
+        [
+          0.06265356265356266,
+          0.9684400360685302
+        ]
+      ],
+      "checkedAt": "2026-11-14",
+      "notes": "Exact086/198 Tord Reklev gray signature, paired yellow2023 reverse. Clear sleeve boundary excluded. Original bytes preserved; card-edge projection only. Reference photograph is a fallback after existing catalog/owner images fail, not the condition of an owned copy."
+    },
+    "worlds-front-541809": {
+      "src": "/assets/inspection/pokemon-worlds-front-541809-20261114h.webp",
+      "reference": true,
+      "label": "Mew VMAX 2023 Vance Kelley photographed front",
+      "sourcePage": "https://www.ebay.com/itm/227182296968",
+      "sourceImage": "https://i.ebayimg.com/images/g/XXkAAeSwR~Vpb-Ek/s-l1600.webp",
+      "sha256": "9c0ff017c752fe6bc7d3453518a974148688087692485ec359a2b7fad93137c4",
+      "sourcePixelDimensions": [
+        766,
+        1061
+      ],
+      "sourceContentType": "image/webp",
+      "quad": [
+        [
+          0.015665796344647518,
+          0.012252591894439209
+        ],
+        [
+          0.9830287206266318,
+          0.012252591894439209
+        ],
+        [
+          0.9843342036553525,
+          0.9905749293119699
+        ],
+        [
+          0.015665796344647518,
+          0.9896324222431668
+        ]
+      ],
+      "checkedAt": "2026-11-14",
+      "notes": "Exact114/264 Vance Kelley gray signature. Distinct from2022 Andre Chiasson printing. Original bytes preserved; card-edge projection only. Reference photograph is a fallback after existing catalog/owner images fail, not the condition of an owned copy."
+    },
+    "worlds-front-541766": {
+      "src": "/assets/inspection/pokemon-worlds-front-541766-20261114h.webp",
+      "reference": true,
+      "label": "Lugia VSTAR 2023 Gabriel Fernandez photographed front",
+      "sourcePage": "https://www.ebay.com/p/17071605428",
+      "sourceImage": "https://i.ebayimg.com/images/g/BxQAAeSwI11o1m3U/s-l1600.webp",
+      "sha256": "31887015625b0ebe702a336800caea4379aa1ce82dff4c04101f46ad6f5fdd74",
+      "sourcePixelDimensions": [
+        938,
+        1600
+      ],
+      "sourceContentType": "image/webp",
+      "quad": [
+        [
+          0.1044776119402985,
+          0.275625
+        ],
+        [
+          0.8976545842217484,
+          0.27625
+        ],
+        [
+          0.8955223880597015,
+          0.921875
+        ],
+        [
+          0.10554371002132196,
+          0.9225
+        ]
+      ],
+      "checkedAt": "2026-11-14",
+      "notes": "Exact139/195 Gabriel Fernandez Colorless Lugia card; paired graded slab cert110017906 verifies identity. Slab and label excluded. Original bytes preserved; card-edge projection only. Reference photograph is a fallback after existing catalog/owner images fail, not the condition of an owned copy."
+    },
+    "worlds-front-637519": {
+      "src": "/assets/inspection/pokemon-worlds-front-637519-20261114h.webp",
+      "reference": true,
+      "label": "Prime Catcher 2024 Evan Pavelski photographed front",
+      "sourcePage": "https://www.ebay.com/itm/226929953649",
+      "sourceImage": "https://i.ebayimg.com/images/g/Zs8AAeSwmMpopUhZ/s-l1600.webp",
+      "sha256": "c0f504dddf9df660a18b1f3774e67cbd0ebb5eb6708500a5ecbe68f009918703",
+      "sourcePixelDimensions": [
+        601,
+        807
+      ],
+      "sourceContentType": "image/webp",
+      "quad": [
+        [
+          0.10149750415973377,
+          0.09417596034696406
+        ],
+        [
+          0.930116472545757,
+          0.09665427509293681
+        ],
+        [
+          0.930116472545757,
+          0.9578686493184635
+        ],
+        [
+          0.10149750415973377,
+          0.9566294919454771
+        ]
+      ],
+      "checkedAt": "2026-11-14",
+      "notes": "Exact Prime Catcher157/162 Evan Pavelski signature. Effective source detail about498x696; sleeve excluded. Original bytes preserved; card-edge projection only. Reference photograph is a fallback after existing catalog/owner images fail, not the condition of an owned copy."
+    },
+    "worlds-front-690480": {
+      "src": "/assets/inspection/pokemon-worlds-front-690480-20261114h.webp",
+      "reference": true,
+      "label": "Dragapult ex 2025 Jose Cruz Galindo Resendiz photographed front",
+      "sourcePage": "https://www.ebay.com/itm/127973151912",
+      "sourceImage": "https://i.ebayimg.com/images/g/f3UAAeSwtD9qVWxV/s-l1600.webp",
+      "sha256": "0ec8342774da91a9376bef61a0195cb24328b2333aeb6446535a9c1d9dfd62ed",
+      "sourcePixelDimensions": [
+        746,
+        1029
+      ],
+      "sourceContentType": "image/webp",
+      "quad": [
+        [
+          0,
+          0
+        ],
+        [
+          0.9986595174262735,
+          0
+        ],
+        [
+          0.9986595174262735,
+          0.9990281827016521
+        ],
+        [
+          0,
+          0.9990281827016521
+        ]
+      ],
+      "checkedAt": "2026-11-14",
+      "notes": "Exact regular gray Jose Cruz signature, distinct from gold-stamped696842. Existing seller card-edge photograph; natural photographic texture retained. Original bytes preserved; card-edge projection only. Reference photograph is a fallback after existing catalog/owner images fail, not the condition of an owned copy."
+    }
+  },
+  "products": {
+    "485008": {
+      "name": "Origin Forme Palkia VSTAR 2022 Rikuto Ohashi",
+      "setName": "World Championship Decks",
+      "cardNumber": "040/189",
+      "asset": "worlds-front-485008"
+    },
+    "541766": {
+      "name": "Lugia VSTAR 2023 Gabriel Fernandez",
+      "setName": "World Championship Decks",
+      "cardNumber": "139/195",
+      "asset": "worlds-front-541766"
+    },
+    "541809": {
+      "name": "Mew VMAX 2023 Vance Kelley",
+      "setName": "World Championship Decks",
+      "cardNumber": "114/264",
+      "asset": "worlds-front-541809"
+    },
+    "542043": {
+      "name": "Gardevoir ex 2023 Tord Reklev",
+      "setName": "World Championship Decks",
+      "cardNumber": "086/198",
+      "asset": "worlds-front-542043"
+    },
+    "637519": {
+      "name": "Prime Catcher 2024 Evan Pavelski",
+      "setName": "World Championship Decks",
+      "cardNumber": "157/162",
+      "asset": "worlds-front-637519"
+    },
+    "690281": {
+      "name": "Raging Bolt ex 2025 Yuya Okita",
+      "setName": "World Championship Decks",
+      "cardNumber": "",
+      "asset": "worlds2025-yuya-raging-bolt-ex-front"
+    },
+    "690480": {
+      "name": "Dragapult ex 2025 Jose Cruz Galindo Resendiz",
+      "setName": "World Championship Decks",
+      "cardNumber": "",
+      "asset": "worlds-front-690480"
+    }
+  }
+}

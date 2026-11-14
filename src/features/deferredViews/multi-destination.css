@@ -208,3 +208,8 @@ html body .app[data-theme] .multi-destination-flow input[type="checkbox"] {
 @media (max-width: 420px) {
   .multi-destination-flow .wizard-step-pill { font-size: 11px; }
 }
+
+/* Clear primary routes; specialist tools stay available on demand. */
+.add-item-identification{grid-column:1/-1;min-width:0;border-top:1px solid var(--border-subtle);padding-top:12px}
+.add-item-identification>summary,.add-item-more-tools>summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:600}
+.add-item-barcode-entry{display:grid;gap:12px;padding:14px 0}.add-item-barcode-entry label{display:grid;gap:8px}.add-item-barcode-entry input{min-height:44px;width:100%;font-size:16px}.add-item-identification small,.add-item-search-guidance{color:var(--text-secondary);font-size:.8125rem;line-height:1.5}.add-item-primary-tools{display:flex;gap:8px;flex-wrap:wrap}

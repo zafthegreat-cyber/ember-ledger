@@ -66,7 +66,11 @@ assert.match(reducedMotionSource, /hearth-skeleton-card/);
 assert.match(reducedMotionSource, /transform: none !important/);
 
 // Menu rows now live in the renderer's imported navigation component.
-assert.match(appSource, /<MenuNavigation sections=\{menuCommandSections\}/);
+const menuNavigationMount = appSource.match(/<MenuNavigation\b[\s\S]*?<\/MenuNavigation>/)?.[0];
+assert.ok(menuNavigationMount, "The mounted menu renderer must include MenuNavigation.");
+assert.match(menuNavigationMount, /\bsections=\{menuCommandSections\}/);
+assert.match(menuNavigationMount, /\bisItemActive=\{isMenuItemActive\}/);
+assert.match(menuNavigationMount, /\bonSelect=\{openMenuItem\}/);
 assert.match(menuNavigationSource, /aria-label=\{`\$\{item\.label\}\. \$\{item\.helper \|\| "Open this workspace area\."\}`\}/);
 assert.match(appSource, /aria-label="Restocks screenshot or photo review\. Try text extraction, then review before saving a restock report\."/);
 assert.match(appSource, /aria-label="Scan page of cards\. Manual multi-card review\. Automatic card detection is not live yet\."/);

@@ -1,7 +1,10 @@
+import { createCollectionLifecycleActions } from './collectionActions.js';
 import { buildLifecycleRecord, validateLifecycleTransition } from "./contracts.js";
 
 export function createManualLifecycleService(repository, { now = () => new Date().toISOString(), makeId = () => `operation-${globalThis.crypto.randomUUID()}`, isOwnerAuthorized = () => false } = {}) {
+  const collectionActions=createCollectionLifecycleActions(repository,{isOwnerAuthorized,now,makeId});
   return Object.freeze({
+    moveAssignment: collectionActions.moveAssignment,
     previewReturn(returnId) { return repository.previewSaleReturn(returnId, { isOwnerAuthorized }); },
     applyReturn(command) { return repository.applySaleReturn(command, { isOwnerAuthorized, now }); },
     previewReturnCorrection(returnId, proposal) { return repository.previewReturnCorrection(returnId, proposal, { isOwnerAuthorized }); },

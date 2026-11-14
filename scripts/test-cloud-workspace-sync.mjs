@@ -240,9 +240,28 @@ await check("explicit safe reload waits for an in-flight background check and ap
   const detachedSync = local.sync.sync;
   const load = detachedSync({ allowApply: true });
   assert.equal(local.storage.getItem(core), null);
+  while (!release) await new Promise(resolve => setTimeout(resolve, 0));
   release();
   assert.equal((await background).status, "REMOTE_AVAILABLE");
   assert.equal((await load).status, "SYNCED");
   assert.equal(JSON.parse(local.storage.getItem(core)).items[0].id, "remote-id");
+});
+await check("pending groups remain distinct from remote changes and clear only after acknowledgement", async () => {
+  const remote=server(),local=await device(remote,{[core]:JSON.stringify(sources('kept','Original')['legacy-core-business'].data)});
+  const pendingStates=[];local.sync.subscribe(()=>pendingStates.push(structuredClone(local.sync.getStatus())));
+  await local.sync.sync();assert.ok(pendingStates.some(state=>state.status==='SYNCING'&&state.pendingSourceIds?.includes('legacy-core-business')));assert.deepEqual(local.sync.getStatus().pendingSourceIds,[]);
+  const originalWrite=remote.transport.write;let release,started;const reached=new Promise(resolve=>started=resolve);
+  remote.transport.write=async function(payload){started();await new Promise(resolve=>release=resolve);return originalWrite.call(this,payload);};
+  local.storage.setItem(core,JSON.stringify({items:[{id:'kept',title:'Edited',quantity:2,marketPrice:81.05}]}));
+  const saving=local.sync.sync();await reached;
+  const newest=JSON.stringify({items:[{id:'kept',title:'Later edit',quantity:3,marketPrice:89.12}]});local.storage.setItem(core,newest);release();
+  const status=await saving;assert.equal(status.status,'PENDING');assert.deepEqual(status.pendingSourceIds,['legacy-core-business']);assert.deepEqual(status.changedSources,[]);assert.equal(local.storage.getItem(core),newest);
+  remote.transport.write=originalWrite;assert.equal((await local.sync.sync()).status,'SYNCED');assert.deepEqual(local.sync.getStatus().pendingSourceIds,[]);assert.equal(remote.state.sources['legacy-core-business'].data.items[0].marketPrice,89.12);
+});
+await check("edits during the initial read identify pending groups without writing a stale snapshot",async()=>{
+  const remote=server(),local=await device(remote,{[core]:JSON.stringify(sources('kept','Original')['legacy-core-business'].data)});const originalRead=remote.transport.read;let release,started;const reached=new Promise(resolve=>started=resolve);
+  remote.transport.read=async function(){started();await new Promise(resolve=>release=resolve);return originalRead.call(this);};
+  const saving=local.sync.sync();await reached;const newest=JSON.stringify({items:[{id:'kept',title:'During read',quantity:4}]});local.storage.setItem(core,newest);release();const status=await saving;
+  assert.equal(status.status,'PENDING');assert.deepEqual(status.pendingSourceIds,['legacy-core-business']);assert.equal(remote.state.writes,0);assert.equal(local.storage.getItem(core),newest);
 });
 process.stdout.write(`${checks} cloud workspace checks passed.\n`);

@@ -11,6 +11,8 @@ const STOCK_STATUSES = new Set([
   "shelf_tag_only", "line_queue_seen", "online_stock_changed", "confirmed_purchase", "other_intel", "employee_restock_coming",
 ]);
 const PLATFORM_LABELS = { facebook: "Facebook screenshot", discord: "Discord screenshot", other: "Community screenshot" };
+function validTimezone(value) {try {return typeof value === 'string' && value.length <= 80 && Boolean(new Intl.DateTimeFormat('en',{timeZone:value}));}catch{return false;}}
+function validSourceUrl(value) {try {const url=new URL(value);return typeof value==='string' && value.length<=2000 && ['https:','http:'].includes(url.protocol) && !url.username && !url.password;}catch{return false;}}
 
 export function decodeScoutReportCloudNotes(value) {
   const notes = typeof value === "string" ? value : "";
@@ -18,11 +20,13 @@ export function decodeScoutReportCloudNotes(value) {
   const empty = { notes, sourceType: "", sourceLabel: "", reportStatus: "" };
   if (start < 0 || !notes.endsWith("]")) return empty;
   const encoded = notes.slice(start + PREFIX.length, -1);
-  if (encoded.length > 600) return empty;
+    if (encoded.length > 3000) return empty;
   try {
     const context = JSON.parse(encoded);
     if (!context || typeof context !== "object" || Array.isArray(context)
-      || Object.keys(context).some((key) => !["source", "platform", "stockStatus", "city", "state", "region"].includes(key))
+      || Object.keys(context).some((key) => !["source", "platform", "stockStatus", "city", "state", "region", "timezone", "sourceUrl"].includes(key))
+      || (context.timezone !== undefined && !validTimezone(context.timezone))
+      || (context.sourceUrl !== undefined && !validSourceUrl(context.sourceUrl))
       || (context.source !== undefined && context.source !== "text_screenshot")
       || (context.platform !== undefined && !Object.hasOwn(PLATFORM_LABELS, context.platform))
       || (context.stockStatus !== undefined && !STOCK_STATUSES.has(context.stockStatus))
@@ -34,6 +38,8 @@ export function decodeScoutReportCloudNotes(value) {
       sourceType: context.source === "text_screenshot" ? "text_screenshot" : "",
       sourceLabel: context.source === "text_screenshot" ? PLATFORM_LABELS[context.platform] || PLATFORM_LABELS.other : "",
       reportStatus: context.stockStatus || "",
+      ...(context.timezone ? {timezone:context.timezone} : {}),
+      ...(context.sourceUrl ? {sourceUrl:context.sourceUrl} : {}),
       ...(context.state ? { storeLocation: { city: context.city || "", state: context.state, region: context.region || "" } } : {}),
     };
   } catch {
@@ -47,6 +53,8 @@ export function encodeScoutReportCloudNotes(report = {}) {
     || report.screenshotImportReviewed === true || report.proofType === "text_screenshot";
   const context = {};
   if (screenshot) {
+    if (validTimezone(report.timezone)) context.timezone=report.timezone;
+    if (validSourceUrl(report.sourceUrl)) context.sourceUrl=report.sourceUrl;
     const label = report.sourceLabel || report.source_label;
     const platform = report.screenshotSourcePlatform || (label === PLATFORM_LABELS.facebook ? "facebook" : label === PLATFORM_LABELS.discord ? "discord" : "other");
     context.source = "text_screenshot";
@@ -70,7 +78,7 @@ export function encodeScoutReportCloudNotes(report = {}) {
 export function mergeScoutReportCloudSave(local = {}, cloud = {}) {
   const details = {};
   for (const key of [
-    "itemsSeen", "photoUrls", "catalogProductId", "catalog_product_id", "catalogProductName",
+    "itemsSeen", "photoUrls", "catalogProductId", "catalog_product_id", "catalogProductName", "timezone", "sourceUrl",
     "productImageUrl", "product_image_url", "productCategory", "product_category",
     "manualLocation", "state", "zip", "stockLeft", "storeFollowPreference", "store_follow_preference",
     "needsStoreReview", "needsReview", "needs_review", "quickReportType", "quickReportLabel",

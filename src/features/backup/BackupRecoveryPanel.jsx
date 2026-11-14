@@ -24,6 +24,7 @@ import { createBackupReviewReport, displayReviewValue, downloadBackupReviewRepor
 import { exportFile, exportFileStatus, exportFileError } from "../../native/nativeFiles.js";
 import { useCloudWorkspace } from "../persistence/CloudWorkspaceContext.js";
 
+import { RecoveryNextActions, BackupCompleteness } from './BackupNextTools.jsx';
 const CURRENT_APP_VERSION = typeof __EMBER_TIDE_APP_VERSION__ === "undefined" ? "unknown" : __EMBER_TIDE_APP_VERSION__;
 
 function statusTone(status) {
@@ -51,6 +52,7 @@ function BackupRecoveryContent({ localDevelopment }) {
   useEffect(() => () => { lifetime.current++; }, []);
   const [busy, setBusy] = useState("");
   const [exportResult, setExportResult] = useState(null);
+  const [lastExportFile,setLastExportFile]=useState(null);
   const [preview, setPreview] = useState(null);
   const [previewInfo, setPreviewInfo] = useState(null);
   const [message, setMessage] = useState("");
@@ -76,6 +78,7 @@ function BackupRecoveryContent({ localDevelopment }) {
       if (request !== lifetime.current) return;
       const saved = await downloadJson("code-3-private-files.json", JSON.stringify(backup, null, 2), () => assertExportCurrent(request));
       if (request !== lifetime.current) return;
+      setLastExportFile({name:"code-3-private-files.json",status:exportFileStatus(saved)});
       setMessage(`${exportFileStatus(saved)} Keep this separate private file backup with the record backup; this file does not include the rest of the app.`);
     } catch (error) { if (request === lifetime.current) setMessage(exportFileError(error)); }
     finally { pending.current = false; if (request === lifetime.current) setBusy(""); }
@@ -109,6 +112,7 @@ function BackupRecoveryContent({ localDevelopment }) {
       }
       const saved = await downloadJson(result.fileName, result.json, () => assertExportCurrent(request));
       if (request !== lifetime.current) return;
+      setLastExportFile({name:result.fileName,status:exportFileStatus(saved)});
       setMessage(`${exportFileStatus(saved)} ${result.coverageStatus === BACKUP_COVERAGE.COMPLETE
         ? "Backup verified."
         : "Partial backup verified with the listed exclusions."}`);
@@ -190,7 +194,7 @@ function BackupRecoveryContent({ localDevelopment }) {
   return (
     <section className="backup-recovery" aria-labelledby="backup-recovery-title">
       <header className="backup-recovery__header">
-        <div><h2 id="backup-recovery-title">Data &amp; Backup</h2><p>Create an integrity-checked JSON backup or inspect a backup without writing any records.</p><p className="compact-subtitle">A complete backup is two files: the record backup (this button) and the private files export further down (photos, receipts). Do both and keep them together.</p></div>
+        <div><h2 id="backup-recovery-title">Data &amp; Backup</h2><p>Create an integrity-checked JSON backup or inspect a backup without writing any records.</p><p className="compact-subtitle">Keep a record backup and the separate private files export (photos, receipts) together. Review coverage for exclusions or unavailable files before relying on them.</p></div>
         <StatusBadge tone="warning">Owner Only</StatusBadge>
       </header>
       <div className="backup-actions">
@@ -202,7 +206,9 @@ function BackupRecoveryContent({ localDevelopment }) {
       <p className="backup-no-write"><strong>No data will be changed during restore preview.</strong> JSON files stay in this browser and are not uploaded.</p>
       {message ? <p className="backup-message" role="status">{message}</p> : null}
 
+      {lastExportFile?<p><strong>{lastExportFile.name}</strong> · {lastExportFile.status} Check the destination to confirm you kept the file.</p>:null}
       {exportResult ? <div className="backup-result" aria-label="Backup export result">
+        {exportResult.verified?<BackupCompleteness records={exportResult.backup.coverageSummary.recordCount} embedded={exportResult.backup.coverageSummary.fileReferences.embedded} references={Math.max(0,exportResult.backup.coverageSummary.fileReferences.total-exportResult.backup.coverageSummary.fileReferences.embedded)} unavailable={exportResult.backup.coverageSummary.fileReferences.unresolved} excluded={exportResult.backup.manifest.excludedSources.filter(source=>source.affectsCoverage).length}/>:null}
         <StatusRow label="Created" value={new Date(exportResult.backup.createdAt).toLocaleString()} />
         <StatusRow label="Coverage" value=""><StatusBadge tone={statusTone(exportResult.coverageStatus)}>{exportResult.coverageStatus}</StatusBadge></StatusRow>
         <StatusRow label="Included sources" value={exportResult.backup.manifest.includedSources.length} />
@@ -229,6 +235,7 @@ function BackupRecoveryContent({ localDevelopment }) {
         <StatusRow label="Matching records" value={preview.matchingRecords ?? 0} />
         <StatusRow label="Potential updates" value={preview.potentialUpdates ?? 0} />
         <StatusRow label="Writes performed" value={preview.writesPerformed ?? 0} />
+        <RecoveryNextActions preview={preview} />
         {preview.compatibility ? <details open={preview.compatibility.status !== "COMPATIBLE"} className="backup-review-findings"><summary>Compatibility and dry-run summary</summary><div className="backup-details">
           <RestoreReviewSummary compatibility={preview.compatibility} dryRun={preview.dryRun || null} headingLevel="h4" idPrefix="preview-review" />
         </div></details> : null}

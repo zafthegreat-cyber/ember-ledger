@@ -43,9 +43,10 @@ export function buildCloudConflictDifferences(device, cloud, { maxRows = 50, max
       }
     }
   };
+  const full = (value,path) => sensitive(path) || typeof value !== 'string' || value.length <= 280 ? null : value.slice(0,12000) + (value.length > 12000 ? '… [preview limit reached; download both versions for full value]' : '');
   const add = (path, a, b) => {
     total++;
-    if (rows.length < maxRows) rows.push({ path, device: shown(a, path), cloud: shown(b, path) });
+    if (rows.length < maxRows) rows.push({ path, device: shown(a, path), cloud: shown(b, path), deviceFull:full(a,path), cloudFull:full(b,path) });
   };
   const keyed = array => Array.isArray(array) && array.every(value => object(value) && (typeof value.id === "string" || typeof value.id === "number")) && new Set(array.map(value => String(value.id))).size === array.length;
   const compare = (a, b, path, depth = 0) => {

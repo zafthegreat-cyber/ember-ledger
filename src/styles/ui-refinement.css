@@ -1,0 +1,270 @@
+/* Shared UI refinement. Presentation only; account and record state stay in their owners. */
+html body .app.app-command-shell[data-theme] {
+  --ui-control-radius: 9px;
+  --ui-section-gap: 24px;
+}
+html body .app.app-command-shell[data-theme] :is(.ops-page-header, .ops-section-header) {
+  box-shadow: none;
+  background: transparent;
+}
+html body .app.app-command-shell[data-theme] .ops-page-header h1 {
+  color: var(--text-primary);
+  line-height: 1.12;
+  letter-spacing: -.035em;
+}
+html body .app.app-command-shell[data-theme] :is(.ops-section-header h2,.everyday-record-card h3) {
+  font-family: var(--c3-font-body) !important;
+  font-weight: 650;
+  letter-spacing: -.02em;
+}
+html body .app.app-command-shell[data-theme] .ops-eyebrow {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 550;
+  letter-spacing: .025em;
+  text-transform: none;
+}
+html body .app.app-command-shell[data-theme] :is(.ops-button,.ops-input-wrap,.ops-sort select) {
+  border-radius: var(--ui-control-radius);
+  box-shadow: none;
+}
+html body .app.app-command-shell[data-theme] .ops-button {
+  min-height: 44px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+html body .app.app-command-shell[data-theme] .ops-button--quiet {
+  background: transparent !important;
+  border-color: transparent;
+}
+html body .app.app-command-shell[data-theme] .ops-button--quiet:hover {
+  background: var(--surface-secondary) !important;
+}
+html body .app.app-command-shell[data-theme] .ops-badge {
+  min-height: 24px;
+  padding: 4px 7px;
+  border-radius: 6px;
+  font-weight: 550;
+}
+html body .app.app-command-shell[data-theme] .ops-mobile-nav {
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgb(0 0 0 / 12%);
+}
+html body .app.app-command-shell[data-theme] .ops-mobile-nav button {
+  border-radius: 10px;
+  gap: 5px;
+}
+html body .app.app-command-shell[data-theme] .ops-mobile-nav button span {
+  font-weight: 550;
+  font-size: 12px;
+}
+html body .app.app-command-shell[data-theme] .ops-mobile-nav button.is-active {
+  box-shadow: none;
+}
+html body .app.app-command-shell[data-theme] .ops-mobile-nav__action-icon {
+  width: 46px;
+  height: 46px;
+  margin-top: -18px;
+  border-width: 3px;
+  border-radius: 13px;
+  box-shadow: none;
+}
+html body .app.app-command-shell[data-theme] .ops-desktop-sidebar {
+  border-top: 0;
+  padding-top: 16px;
+}
+html body .app.app-command-shell[data-theme] .ops-desktop-sidebar :is(nav > button,summary,.ops-desktop-subnav button) {
+  border-radius: 8px;
+  font-weight: 500;
+}
+html body .app.app-command-shell[data-theme] .ops-desktop-sidebar nav button.is-active {
+  box-shadow: inset 3px 0 var(--c3-gold);
+  font-weight: 650;
+}
+html body .app.app-command-shell[data-theme] .ops-desktop-sidebar .ops-navigation-label {
+  padding-top: 22px;
+  padding-bottom: 8px;
+  font-size: 11px;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+html body .app.app-command-shell[data-theme] .business-inventory-section {
+  gap: 12px;
+}
+html body .app.app-command-shell[data-theme] .business-inventory-toolbar {
+  grid-template-columns: minmax(0,1fr) auto;
+  gap: 8px;
+}
+html body .app.app-command-shell[data-theme] .business-inventory-toolbar .ops-field > span {
+  font-size: 13px;
+}
+html body .app.app-command-shell[data-theme] .business-inventory-filters {
+  gap: 6px;
+}
+html body .app.app-command-shell[data-theme] .business-inventory-filter {
+  flex: 0 1 auto;
+  border-radius: 8px;
+  padding-inline: 14px;
+  font-size: 14px;
+  font-weight: 500;
+}
+html body .app.app-command-shell[data-theme] .business-inventory-results {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 450;
+}
+html body .app.app-command-shell[data-theme] .business-inventory-meta {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  align-items: center;
+  gap: 4px 12px;
+}
+html body .app.app-command-shell[data-theme] .business-inventory-meta:has(details[open]) { grid-template-columns: minmax(0,1fr); }
+html body .app.app-command-shell[data-theme] .business-inventory-meta .business-inventory-totals { border: 0; font-size: 12px; }
+html body .app.app-command-shell[data-theme] .business-inventory-meta .business-inventory-totals > summary { gap: 8px; font-size: 13px; }
+html body .app.app-command-shell[data-theme] .business-inventory-meta .business-inventory-totals > summary > span:nth-child(2) { display: none; }
+html body .app.app-command-shell[data-theme] .business-inventory-toolbar:has(>button:disabled) { grid-template-columns: minmax(0,1fr); }
+html body .app.app-command-shell[data-theme] .business-inventory-toolbar > button:disabled { display: none; }
+html body .app.app-command-shell[data-theme] .business-inventory-totals {
+  border: 0;
+  border-bottom: 1px solid var(--border-subtle);
+  border-radius: 0;
+  background: transparent;
+}
+html body .app.app-command-shell[data-theme] .business-inventory-totals > summary {
+  padding-inline: 0;
+}
+html body .app.app-command-shell[data-theme] .business-inventory-totals > div {
+  padding-inline: 0;
+}
+html body .app.app-command-shell[data-theme] .business-inventory-attention {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 0 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+html body .app.app-command-shell[data-theme] .business-inventory-attention > span::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--status-warning);
+}
+html body .app.app-command-shell[data-theme] .business-inventory-view .everyday-record-list {
+  gap: 0;
+  border-top: 1px solid var(--border-subtle);
+}
+html body .app.app-command-shell[data-theme] .business-inventory-view .everyday-record-card {
+  grid-template-columns: 76px minmax(0,1fr) 16px;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 0;
+  border: 0 !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+  text-align: left;
+}
+html body .app.app-command-shell[data-theme] .business-inventory-view .everyday-record-card:hover {
+  background: color-mix(in srgb,var(--surface-secondary) 60%,transparent) !important;
+}
+html body .app.app-command-shell[data-theme] .business-inventory-view .everyday-record-card > img {
+  width: 76px;
+  height: 92px;
+  border: 0;
+  border-radius: 6px;
+  object-fit: contain;
+}
+html body .app.app-command-shell[data-theme] .business-inventory-view .everyday-record-card h3 {
+  font-size: 17px;
+  line-height: 1.35;
+}
+html body .app.app-command-shell[data-theme] .business-inventory-view .everyday-record-card__heading {
+  align-items: center;
+}
+html body .app.app-command-shell[data-theme] .business-inventory-view .everyday-record-card__body { display: block; }
+html body .app.app-command-shell[data-theme] .business-inventory-view .everyday-record-card dl {
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 10px;
+  margin: 12px 0 0;
+  padding: 0;
+  border: 0;
+}
+html body .app.app-command-shell[data-theme] .business-inventory-view .everyday-record-card dt {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+html body .app.app-command-shell[data-theme] .business-inventory-view .everyday-record-card dd {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.6;
+}
+@media(max-width:600px) {
+  html body .app.app-command-shell[data-theme] .business-inventory-view .everyday-record-card {
+    grid-template-columns: 62px minmax(0,1fr) 10px;
+    gap: 12px;
+    padding-block: 16px;
+    align-items: start;
+  }
+  html body .app.app-command-shell[data-theme] .business-inventory-view .everyday-record-card > img {
+    width: 62px;
+    height: 78px;
+    margin-top: 4px;
+  }
+  html body .app.app-command-shell[data-theme] .business-inventory-view .everyday-record-card__heading {
+    display: grid;
+    gap: 6px;
+    justify-items: start;
+  }
+  html body .app.app-command-shell[data-theme] .business-inventory-view .everyday-record-card h3 { font-size: 16px; }
+  html body .app.app-command-shell[data-theme] .business-inventory-view .everyday-record-card dl { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+  html body .app.app-command-shell[data-theme] .business-inventory-attention { align-items: center; }
+  html body .app.app-command-shell[data-theme] .business-inventory-attention .ops-button { padding-inline: 4px; white-space: nowrap; font-size: 13px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  html body .app.app-command-shell[data-theme] :is(.ops-button,.everyday-record-card,.ops-mobile-nav) { transition: none; }
+}
+/* Report controls share the same quiet surfaces; only the selected area is accented. */
+html body .app.app-command-shell[data-theme] .nationwide-location__modes button {
+  min-height: 44px;
+  border: 1px solid var(--border-strong) !important;
+  border-radius: 8px;
+  background: var(--surface-primary) !important;
+  color: var(--text-primary) !important;
+  box-shadow: none;
+  font-size: 14px;
+  font-weight: 500;
+}
+html body .app.app-command-shell[data-theme] .nationwide-location__modes button[aria-pressed="true"] {
+  border-color: var(--app-brand-selected-border) !important;
+  background: var(--app-brand-selected) !important;
+  color: var(--app-brand-selected-ink) !important;
+}
+html body .app.app-command-shell[data-theme] .scout-reports-landing {
+  gap: 16px;
+}
+html body .app.app-command-shell[data-theme] .scout-reports-landing .scout-report-filters {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+html body .app.app-command-shell[data-theme] .scout-reports-landing .nationwide-location { margin-block: 0; }
+html body .app.app-command-shell[data-theme] .scout-reports-landing .scout-report-filter-options button {
+  padding: 9px;
+  font-size: 13px;
+  font-weight: 550;
+}
+@media(max-width:360px) {
+  html body .app.app-command-shell[data-theme] .collection-portfolio-toolbar .collection-game-filter summary > span { display: none; }
+}

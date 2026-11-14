@@ -33,17 +33,17 @@ test("GTIN: check digits, UPC-A/EAN-13/GTIN-14 equivalence, UPC-E expansion", ()
   assert.ok(gtin.isValidGtin("036000291452"));
   assert.ok(!gtin.isValidGtin("036000291453"));
   assert.ok(gtin.isValidGtin("4006381333931")); // EAN-13
-  assert.equal(gtin.canonicalGtin("0 820650 85302 4"), "820650853024");
-  assert.equal(gtin.canonicalGtin("00820650853024"), "820650853024");
-  assert.ok(gtin.gtinsMatch("820650853024", "0820650853024"));
-  assert.ok(gtin.gtinsMatch("820650853024", "00820650853024"));
-  assert.ok(!gtin.gtinsMatch("820650853024", "820650853025"));
+  assert.equal(gtin.canonicalGtin("0 036000 29145 2"), "036000291452");
+  assert.equal(gtin.canonicalGtin("00036000291452"), "036000291452");
+  assert.ok(gtin.gtinsMatch("036000291452", "0036000291452"));
+  assert.ok(gtin.gtinsMatch("036000291452", "00036000291452"));
+  assert.ok(!gtin.gtinsMatch("036000291452", "036000291453"));
   // UPC-E 01234565 → UPC-A 012345000065
   assert.equal(gtin.expandUpcE("01234565"), "012345000065");
   assert.equal(gtin.canonicalGtin("01234565"), "012345000065");
   // EAN-8 is its own thing.
   assert.equal(gtin.canonicalGtin("96385074"), "96385074");
-  assert.deepEqual(gtin.gtinVariants("820650853024"), ["820650853024", "0820650853024", "00820650853024"]);
+  assert.deepEqual(gtin.gtinVariants("036000291452"), ["036000291452", "0036000291452", "00036000291452"]);
   assert.equal(gtin.canonicalGtin("abc"), "");
   assert.equal(gtin.canonicalGtin("12345"), "");
   assert.match(gtin.describeGtinProblem("12345"), /not a UPC\/EAN length/);
@@ -51,18 +51,26 @@ test("GTIN: check digits, UPC-A/EAN-13/GTIN-14 equivalence, UPC-E expansion", ()
   assert.equal(gtin.describeGtinProblem("036000291452"), "");
 });
 
-test("GTIN: stored codes keep their digits, but identifier sets and matching accept any padding", async () => {
+test("GTIN: stored codes keep their digits, but valid identifiers accept padding without accepting invalid checksums or numeric SKU suffixes", async () => {
   const mod = await load("src/utils/inventoryImportUtils.js", "import-utils");
   // Stored values stay as entered (existing records depend on it) …
-  assert.equal(mod.normalizeBarcodeValue("0820650853024"), "0820650853024");
+  assert.equal(mod.normalizeBarcodeValue("0036000291452"), "0036000291452");
   assert.equal(mod.normalizeBarcodeValue("abc-123"), "ABC123");
   // … while comparisons treat UPC-A and its EAN-13/GTIN-14 forms as one product.
-  assert.ok(mod.identifiersMatch("0820650853024", "820650853024"));
-  assert.ok(mod.identifiersMatch("00820650853024", "0 820650 85302 4"));
-  assert.ok(!mod.identifiersMatch("820650853024", "820650853025"));
+  assert.ok(mod.identifiersMatch("0036000291452", "036000291452"));
+  assert.ok(mod.identifiersMatch("00036000291452", "0 036000 29145 2"));
+  assert.ok(!mod.identifiersMatch("036000291452", "036000291453"));
   assert.ok(mod.identifiersMatch("ABC-123", "abc123"));
-  const ids = mod.catalogIdentifiersForProduct({ upc: "820650853024" });
-  assert.ok(ids.includes("820650853024") && ids.includes("0820650853024") && ids.includes("00820650853024"));
+  assert.ok(gtin.isValidGtin("036000291452"), "positive fixture is a valid GTIN");
+  assert.ok(!gtin.isValidGtin("820650853024"), "previous fixture had an invalid check digit");
+  assert.ok(!mod.identifiersMatch("0820650853024", "820650853024"), "invalid check digits do not gain padded aliases");
+  assert.ok(!mod.identifiersMatch("SKU-036000291452", "036000291452"), "SKU digits are not a GTIN");
+  assert.ok(mod.identifiersMatch("01234565", "012345000065"), "valid UPC-E expands for matching");
+  for (const [stored, scanned] of [["01234565", "012345000065"], ["012345000065", "01234565"]]) {
+    assert.equal(mod.findCatalogProductsByBarcode([{ id: "upce", upc: stored }], scanned).length, 1);
+  }
+  const ids = mod.catalogIdentifiersForProduct({ upc: "036000291452" });
+  assert.ok(ids.includes("036000291452") && ids.includes("0036000291452") && ids.includes("00036000291452"));
 });
 
 // ---------- 19. Ranking ----------
@@ -73,7 +81,7 @@ test("search ranking: the card with the queried number comes first; barcodes mat
     { id: "b", name: "Charizard ex", setName: "Obsidian Flames", cardNumber: "125/197", upc: "" },
     { id: "c", name: "Charizard", setName: "Base Set 2", cardNumber: "4", upc: "" },
     { id: "d", name: "Charmander", setName: "Base Set", cardNumber: "46/102", upc: "" },
-    { id: "e", name: "Scarlet & Violet Booster Bundle", productType: "Booster Bundle", upc: "820650853024" },
+    { id: "e", name: "Scarlet & Violet Booster Bundle", productType: "Booster Bundle", upc: "036000291452" },
   ];
   const results = searchCatalog("charizard 4/102", catalog);
   assert.ok(results.length >= 1);
@@ -86,10 +94,10 @@ test("search ranking: the card with the queried number comes first; barcodes mat
   assert.ok(!ids.includes("b"), "a different number is excluded");
   assert.ok(!ids.includes("d"), "a different card is excluded");
   // Barcode in EAN-13 padding finds the UPC-A row.
-  const byBarcode = searchCatalog("0820650853024", catalog);
+  const byBarcode = searchCatalog("0036000291452", catalog);
   assert.equal(byBarcode[0]?.item.id, "e");
   assert.equal(byBarcode[0]?.reason, "Exact UPC/SKU/barcode match");
-  const spaced = searchCatalog("0 820650 85302 4", catalog);
+  const spaced = searchCatalog("0 036000 29145 2", catalog);
   assert.equal(spaced[0]?.item.id, "e");
 });
 
@@ -133,7 +141,7 @@ test("checklist: dismissal is remembered per persona; complete lists never show"
   assert.ok(!checklist.shouldShowChecklist(list, storage));
   assert.ok(checklist.shouldShowChecklist(checklist.buildPersonaChecklist({ persona: "seller" }), storage), "seller list not affected");
   const done = checklist.buildPersonaChecklist({ persona: "seller", counts: { inventory: 1, receipts: 1, sales: 1 } });
-  assert.ok(!checklist.shouldShowChecklist(done, new Map() && storage));
+  assert.ok(!checklist.shouldShowChecklist(done, storage));
   // A throwing storage never breaks rendering.
   const broken = { getItem() { throw new Error("blocked"); }, setItem() { throw new Error("blocked"); } };
   assert.ok(checklist.shouldShowChecklist(list, broken));

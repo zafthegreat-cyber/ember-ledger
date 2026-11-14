@@ -146,3 +146,5 @@
     flex-direction: column;
   }
 }
+
+.compliance-metric-action{padding:0;border:0;background:none;text-align:left;cursor:pointer;min-width:0}.compliance-metric-action:hover{outline:2px solid var(--accent,#d6b74b);border-radius:12px}.compliance-browse-controls{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin-block:18px}.compliance-browse-controls>label{flex:1 1 180px}.compliance-calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin-block:14px}.compliance-calendar>span{text-align:center;font-size:.8rem}.compliance-calendar button{min-height:64px;display:grid;gap:3px;align-content:start;padding:8px 3px;text-align:center;background:var(--surface,#242026);color:inherit;border:1px solid var(--border-color,#6a5d61);border-radius:8px}.compliance-calendar button[aria-pressed=true]{outline:2px solid var(--accent,#d6b74b)}.compliance-calendar button span{font-size:.72rem}
