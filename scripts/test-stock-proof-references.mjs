@@ -16,7 +16,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 const require = createRequire(import.meta.url);
 const espree = require("espree");
-const { transformSync } = require("esbuild");
+const { buildSync, transformSync } = require("esbuild");
 const origin = "https://synthetic-project.supabase.co";
 const owner = "a1111b11-c1d1-4a11-8f11-ab11cd111e11";
 const path = `users/${owner}/scout-reports/1792512000002-proof with spaces.png`;
@@ -171,8 +171,12 @@ function actualFunction(source, name) {
 }
 const app = fs.readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
 await check("actual feed detail component retains a category after context/proof edits and readback", () => {
-  const source = fs.readFileSync(new URL("../src/components/RestockReportDetails.jsx", import.meta.url), "utf8");
-  const code = transformSync(source, { loader: "jsx", format: "cjs", jsx: "automatic" }).code;
+  const code = buildSync({
+    entryPoints: ["src/components/RestockReportDetails.jsx"],
+    bundle: true, platform: "node", format: "cjs", jsx: "automatic", write: false,
+    packages: "external", external: ["*PrivateReceipt.jsx", "*restockDetailItems.mjs"],
+    loader: { ".css": "empty" }, define: { "import.meta.env": "{}" },
+  }).outputFiles[0].text;
   const module = { exports: {} };
   const viewRequire = (id) => id === "react" ? React
     : id.endsWith(".css") ? {}

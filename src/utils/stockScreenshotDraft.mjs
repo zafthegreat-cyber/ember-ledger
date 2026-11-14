@@ -1,3 +1,4 @@
+import { resolveScreenshotTime, screenshotTimeOccurrence, normalizeScreenshotRows, safeScreenshotSourceUrl } from "./screenshotReviewExtras.mjs";
 import { COLLECTIBLE_GAMES } from "./collectibleGames.mjs";
 import { normalizeStoreStateCode, storeStateName } from "../data/storeStates.js";
 
@@ -294,29 +295,40 @@ function blank(value) {
 export function createStockScreenshotPatch(draft = {}, choices = {}, { stores = [], now = Date.now() } = {}) {
   if (!draft || typeof draft !== "object" || Array.isArray(draft)) return failure("Open a stock-report draft before applying screenshot details.");
   if (!choices || typeof choices !== "object") return failure("Review the screenshot details before applying them.");
+  const decisions = choices.fieldDecisions || {};
+  if (decisions.time === "keep" && draft.reportDate && draft.reportTime) {
+    const local = `${draft.reportDate}T${draft.reportTime}`;
+    const timezone = draft.screenshotTimezone || draft.timezone || choices.timezone;
+    const retainedChoice = draft.screenshotLocalTime === local ? screenshotTimeOccurrence(local, timezone, draft.screenshotObservedAt, {now:Number(now)}) : '';
+    choices = { ...choices, reportDate: draft.reportDate, reportTime: draft.reportTime, observedTimeConfirmed: true, timezone, timeChoice: retainedChoice || choices.timeChoice };
+  }
   if (choices.observedTimeConfirmed !== true) return failure("Confirm when the stock was actually observed. A post time or screenshot clock is not the observed time.");
   const reportDate = text(choices.reportDate, 40);
   const reportTime = text(choices.reportTime, 40);
-  if (!validateLocalTime(reportDate, reportTime, Number(now))) return failure("Enter a valid observed date and time, no more than 15 minutes in the future.");
+  const zoned = choices.timezone ? resolveScreenshotTime(`${reportDate}T${reportTime}`, choices.timezone, { choice: choices.timeChoice, now: Number(now) }) : null;
+  if (zoned && !zoned.ok) return failure(zoned.error);
+  if (!zoned && !validateLocalTime(reportDate, reportTime, Number(now))) return failure("Enter a valid observed date and time, no more than 15 minutes in the future.");
   const platform = text(choices.platform, 20).toLowerCase();
   if (!PLATFORMS.has(platform)) return failure("Choose Facebook, Discord, or another screenshot source.");
-  const replace = choices.replaceEnteredFields === true;
+  const replace = decisions.products ? decisions.products === "reviewed" : choices.replaceEnteredFields === true;
+  const replaceStore = decisions.store ? decisions.store === "reviewed" : choices.replaceEnteredFields === true;
+  const replaceStatus = decisions.status ? decisions.status === "reviewed" : choices.replaceEnteredFields === true;
   const existingStoreId = text(draft.storeId, 120);
   const requestedManual = choices.manualStore && typeof choices.manualStore === "object" && !Array.isArray(choices.manualStore) ? choices.manualStore : null;
-  const keepManualStore = !replace && blank(existingStoreId) && draft.storeConfirmed === true && Boolean(text(draft.manualLocation, 200));
-  const selectedStoreId = keepManualStore || (requestedManual && (replace || !existingStoreId)) ? "" : !replace && existingStoreId ? existingStoreId : text(choices.storeId, 120) || existingStoreId;
+  const keepManualStore = !replaceStore && blank(existingStoreId) && draft.storeConfirmed === true && Boolean(text(draft.manualLocation, 200));
+  const selectedStoreId = keepManualStore || (requestedManual && (replaceStore || !existingStoreId)) ? "" : !replaceStore && existingStoreId ? existingStoreId : text(choices.storeId, 120) || existingStoreId;
   const knownStore = (Array.isArray(stores) ? stores : []).map(canonicalStore).find((store) => store?.id === selectedStoreId);
-  const manual = !knownStore && !keepManualStore && (!existingStoreId || replace) && requestedManual;
+  const manual = !knownStore && !keepManualStore && (!existingStoreId || replaceStore) && requestedManual;
   if (manual && (!text(manual.name, 200) || !text(manual.city, 80) || !normalizeStoreStateCode(manual.state))) return failure("Enter the store name, city, and US state before using these details.");
   if (!knownStore && !keepManualStore && !manual) return failure("Choose and confirm the exact store, or keep your confirmed manual location.");
   const patch = {};
   const preservedFields = [];
-  if (knownStore && (replace || blank(draft.storeId))) patch.storeId = knownStore.id;
-  if (!replace && existingStoreId && text(choices.storeId, 120) && text(choices.storeId, 120) !== existingStoreId) preservedFields.push("storeId");
+  if (knownStore && (replaceStore || blank(draft.storeId))) patch.storeId = knownStore.id;
+  if (!replaceStore && existingStoreId && text(choices.storeId, 120) && text(choices.storeId, 120) !== existingStoreId) preservedFields.push("storeId");
   if (keepManualStore && text(choices.storeId, 120)) preservedFields.push("storeId");
   if (requestedManual && (knownStore || keepManualStore)) preservedFields.push("storeId");
   if (manual) {
-    const value = (field, proposed) => !replace && !blank(draft[field]) ? draft[field] : proposed;
+    const value = (field, proposed) => !replaceStore && !blank(draft[field]) ? draft[field] : proposed;
     const state = normalizeStoreStateCode(value("state", manual.state));
     Object.assign(patch, { storeId: "", storeName: value("storeName", text(manual.name, 200)),
       manualLocation: value("manualLocation", text(manual.name, 200)), city: value("city", text(manual.city, 80)), state,
@@ -328,16 +340,17 @@ export function createStockScreenshotPatch(draft = {}, choices = {}, { stores = 
   const productName = text(choices.productName, MAX_PRODUCT_NAME_LENGTH + 1);
   if (productName.length > MAX_PRODUCT_NAME_LENGTH) return failure("Keep Products mentioned to 1,200 characters or fewer. Review and shorten the names before applying; your entered text has been kept.");
   const productCategory = text(choices.productCategory, 60);
-  const reportType = text(choices.reportType, 40);
+  const reportType = text(decisions.status === "keep" && draft.reportType && draft.reportTypeTouched !== false ? draft.reportType : choices.reportType, 40);
   if (productName && unsafeLine(productName)) return failure("Keep the product field to product names. Remove links, contact details, or instructions.");
   if (productCategory && !CATEGORIES.has(productCategory)) return failure("Choose a supported product category or Other.");
   if (!REPORT_TYPES.has(reportType)) return failure("Choose a stock status after reviewing the screenshot.");
   for (const [field, value] of Object.entries({ productName, productCategory, reportType })) {
     const untouchedStatusDefault = field === "reportType" && draft.reportTypeTouched === false;
-    if (value && (replace || blank(draft[field]) || untouchedStatusDefault)) patch[field] = value;
+    if (value && ((field === "reportType" ? replaceStatus : replace) || blank(draft[field]) || untouchedStatusDefault)) patch[field] = value;
     else if (value && !blank(draft[field]) && value !== draft[field]) preservedFields.push(field);
   }
   const categoryChanged = replace && productCategory && !blank(draft.productCategory) && productCategory !== draft.productCategory;
+  if (decisions.status === "keep" && draft.reportTypeTouched !== false && draft.reportType && choices.reportType && choices.reportType !== draft.reportType && !preservedFields.includes("reportType")) preservedFields.push("reportType");
   if ((replace && productName && normalize(productName) !== normalize(draft.productName)) || categoryChanged) {
     // Changing a reviewed name or game must never retain another item's catalog
     // identity, set or artwork (F04). User-supplied shelf/proof photos remain untouched.
@@ -363,5 +376,13 @@ export function createStockScreenshotPatch(draft = {}, choices = {}, { stores = 
     verified: false,
     needsReview: true,
   });
+  if (choices.productRows && (patch.productName || (replace && productName))) {
+    const checked = normalizeScreenshotRows(choices.productRows);
+    if (!checked.ok) return failure(checked.error);
+    patch.screenshotProductRows = checked.rows;
+  }
+  if (zoned) Object.assign(patch, { screenshotObservedAt: zoned.observedAt, screenshotTimezone: zoned.timezone, screenshotLocalTime: `${reportDate}T${reportTime}` });
+  if (choices.includeSourceUrl) { const url = safeScreenshotSourceUrl(choices.sourceUrl); if (!url) return failure("Enter a valid http or https source link, or leave the source reference off."); Object.assign(patch, { screenshotSourceUrl: url, screenshotIncludeSourceUrl: true }); }
+  if (choices.includeSourceUrl === false) patch.screenshotIncludeSourceUrl = false;
   return { ok: true, patch, error: "", preservedFields, appliedFields: Object.keys(patch).filter((field) => ["storeId", "productName", "productCategory", "reportType"].includes(field)) };
 }

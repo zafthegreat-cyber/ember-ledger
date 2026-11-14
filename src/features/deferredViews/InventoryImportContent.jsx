@@ -1,3 +1,6 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { IMPORT_REVIEW_FILTERS, importReviewCategory, filterImportReview, importBulkPreview, importColumnSamples, mappingPreset, mappingPresetKey } from '../../utils/importReviewPresentation.mjs';
+import './import-review.css';
 import { PrivateStorageImage } from "../../components/PrivateReceipt.jsx";
 import { ImportCopyReview, ImportRowIssues } from "../../components/ImportCopyReview.jsx";
 import { buildRejectedImportCsv, importCopyContext, importRowIssues, importFieldId, sameImportCopy } from "../../utils/importReviewSafety.mjs";
@@ -62,12 +65,34 @@ export default function InventoryImportContent({ scope }) {
     updateImportRow,
   } = scope;
 
+  const [reviewQuery,setReviewQuery]=useState(''), [reviewStatus,setReviewStatus]=useState('all'), [expanded,setExpanded]=useState({}), [bulkReview,setBulkReview]=useState(null), [reviewNotice,setReviewNotice]=useState('');
+  const [presetName,setPresetName]=useState(''), [presetState,setPresetState]=useState({key:null,rows:[]}), [presetChoice,setPresetChoice]=useState('');
+  const [focusTarget,setFocusTarget]=useState(null);
+  const focusedIssue=useRef(null);
+  const presetKey=mappingPresetKey(scope.preferenceScope);
+  if(presetState.key!==presetKey){let rows=[];try{const saved=JSON.parse(localStorage.getItem(presetKey)||'[]');if(Array.isArray(saved))rows=saved.filter(row=>row&&typeof row.name==='string'&&Array.isArray(row.headers)&&row.mapping);}catch{/* Keep current import independent of saved preferences. */}setPresetState({key:presetKey,rows});}
+  const presets=presetState.rows;const setPresets=rows=>setPresetState({key:presetKey,rows});
+  useEffect(()=>{
+    if(!focusTarget||focusedIssue.current===focusTarget)return;
+    const target=document.getElementById(focusTarget.id);
+    if(target){focusedIssue.current=focusTarget;target.focus();target.scrollIntoView?.({block:'center'});}
+  },[expanded,focusTarget,reviewQuery,reviewStatus]);
+  const samples=useMemo(()=>importColumnSamples(importText),[importText]);
+  const reviewBulk=(overrides={})=>{const source={...importBulkApply,...overrides};setBulkReview({...importBulkPreview(importRows,source),source,snapshot:JSON.stringify(importRows)});setReviewNotice('');};
+  const applyReviewedBulk=()=>{if(bulkReview.snapshot!==JSON.stringify(importRows)){setReviewNotice('Rows changed. Review the bulk update again.');setBulkReview(null);return;}applyImportBulkUpdates(bulkReview.source);setBulkReview(null);setReviewNotice('Changes applied to review rows. Confirm import separately when ready.');};
+  const focusIssue=(row,field)=>{setReviewQuery('');setReviewStatus('all');setExpanded(current=>({...current,[row.importedItemId]:true}));setFocusTarget({id:importFieldId(row,field)});};
+  const savePreset=()=>{if(!presetKey||!presetName.trim())return;const preset=mappingPreset(presetName,importColumnHeaders,importColumnMapping,IMPORT_FIELD_OPTIONS.map(field=>field.value));const next=[...presets.filter(row=>row.name!==preset.name),preset].slice(-20);try{localStorage.setItem(presetKey,JSON.stringify(next));setPresets(next);setPresetChoice(preset.name);setReviewNotice('Mapping saved on this device. No source rows are stored in the preset.');}catch{setReviewNotice('Mapping could not be saved on this device. Current mapping remains available.');}};
+  const restorePreset=()=>{const preset=presets.find(row=>row.name===presetChoice);if(!preset)return;if(JSON.stringify(preset.headers)!==JSON.stringify(importColumnHeaders)){setReviewNotice('The columns differ from this preset. Keep the current mapping and review each column.');return;}setImportColumnMapping(mappingPreset(preset.name,importColumnHeaders,preset.mapping,IMPORT_FIELD_OPTIONS.map(field=>field.value)).mapping);setReviewNotice('Mapping applied. Check the sample cells, then parse again.');};
+
   function renderInventoryImportAssistant() {
     if (!importAssistantOpen) return null;
     const currentGuide = getImportSourceGuide();
     const sourceOptions = IMPORT_SOURCE_GUIDES.filter((guide) => guide.mode === batchIntakeMode || guide.value === importSourceType);
     const reviewableRows = importRows.filter((row) => !["skipped", "imported"].includes(row.importStatus) && row.destination !== "Skip");
     const invalidRows = reviewableRows.filter(row => importRowIssues(row).length);
+    const isDuplicate=row=>(row.destination==='Both'?['Forge','Vault']:[row.destination||defaultImportDestination()]).some(destination=>findImportDuplicate(row,destination));
+    const displayedRows=filterImportReview(importRows,{query:reviewQuery,status:reviewStatus,isDuplicate});
+    const reviewCounts=Object.fromEntries(IMPORT_REVIEW_FILTERS.map(([key])=>[key,key==='all'?importRows.length:importRows.filter(row=>importReviewCategory(row,isDuplicate(row)).includes(key)).length]));
     const rejectedCount = buildRejectedImportCsv(importRows, importLastBatchResult?.failures || []).count;
     const unresolvedRows = reviewableRows.filter((row) => row.needsReview && row.importStatus !== "reviewed");
     const duplicateCount = reviewableRows.reduce((count, row) => {
@@ -141,11 +166,11 @@ export default function InventoryImportContent({ scope }) {
           {importFileName ? <p className="compact-subtitle">Selected file: {importFileName}</p> : null}
           {importColumnHeaders.length ? (
             <details className="forge-import-mapping" open>
-              <summary>Column mapping</summary>
+              <summary>Column mapping</summary><div className="import-preset-controls"><label>Mapping name<input value={presetName} maxLength={80} onChange={event=>setPresetName(event.target.value)}/></label><button type="button" disabled={!presetKey||!presetName.trim()} onClick={savePreset}>Save mapping preset</button><label>Saved mapping<select value={presetChoice} onChange={event=>setPresetChoice(event.target.value)}><option value="">Choose a mapping</option>{presets.map(preset=><option key={preset.name}>{preset.name}</option>)}</select></label><button type="button" disabled={!presetChoice} onClick={restorePreset}>Apply mapping</button><small>Device-only column settings. Source data and item values are never stored in a preset.</small></div>
               <div className="forge-import-columns">
                 {importColumnHeaders.map((header, index) => (
                   <label key={`${header}-${index}`} className="mapping-column-row">
-                    <span>{header || `Column ${index + 1}`}</span>
+                    <span>{header || `Column ${index + 1}`}</span><small>Samples: {samples.map(cells=>cells[index]||"(blank)").join(" · ") || "No sample rows"}</small>
                     <select
                       value={importColumnMapping[index] || ""}
                       onChange={(event) => setImportColumnMapping((current) => ({ ...current, [index]: event.target.value }))}
@@ -284,7 +309,7 @@ export default function InventoryImportContent({ scope }) {
             </Field>
           </div>
           <div className="quick-actions">
-            <button type="button" className="secondary-button" onClick={() => applyImportBulkUpdates()}>Apply to Review Rows</button>
+            <button type="button" className="secondary-button" onClick={() => reviewBulk()}>Review bulk changes</button>
           </div>
           <div className="toggle-list">
             <label className="toggle-row">
@@ -308,16 +333,18 @@ export default function InventoryImportContent({ scope }) {
           </div>
         </div>
 
+        {reviewNotice?<p role="status">{reviewNotice}</p>:null}
+        {bulkReview?<section className="import-bulk-review" aria-label="Review bulk changes"><h3>Review changes to {bulkReview.rows.length} rows</h3><p>This updates temporary review rows. It does not import or change saved items.</p><ul>{bulkReview.rows.map(row=><li key={row.id}><strong>{row.name||'Unnamed row'}</strong>{row.changes.map(change=><p key={change.field}>{change.field}: {String(change.before)||'Blank'} → {String(change.after)}</p>)}</li>)}</ul><button type="button" onClick={()=>setBulkReview(null)}>Cancel bulk changes</button><button type="button" disabled={!bulkReview.rows.length} onClick={applyReviewedBulk}>Apply reviewed changes</button></section>:null}
         {importBatchMessage ? <p className="compact-subtitle" role="status">{importBatchMessage}</p> : null}
         {invalidRows.length ? (
           <div className="drawer-info-card" role="status">
             <p><strong>{invalidRows.length} row{invalidRows.length === 1 ? "" : "s"} need{invalidRows.length === 1 ? "s" : ""} a fix before you confirm.</strong></p>
-            <ul className="compact-subtitle" style={{ margin: "4px 0 0 18px" }}>
-              {invalidRows.slice(0, 8).map((row) => {
+            <ul className="compact-subtitle import-issue-list" style={{ margin: "4px 0 0 18px" }}>
+              {invalidRows.map((row) => {
                 const issue = importRowIssues(row)[0];
-                return <li key={`issue-${row.importedItemId}`}>Row {row.sourceLine || "?"}{row.itemName ? ` (${row.itemName})` : ""}: {issue?.message || "needs review"}{issue?.field === "quantity" && row.quantity ? ` You typed "${row.quantity}"; use a number like 2.` : ""}</li>;
+                return <li key={`issue-${row.importedItemId}`}><button type="button" className="import-issue-link" onClick={()=>focusIssue(row,issue?.field||"itemName")}>Row {row.sourceLine || "?"}{row.itemName ? ` (${row.itemName})` : ""}: {issue?.message || "needs review"}{issue?.field === "quantity" && row.quantity ? ` You typed "${row.quantity}"; use a number like 2.` : ""}</button></li>;
               })}
-              {invalidRows.length > 8 ? <li>…and {invalidRows.length - 8} more; they are highlighted below.</li> : null}
+
             </ul>
           </div>
         ) : null}
@@ -329,7 +356,7 @@ export default function InventoryImportContent({ scope }) {
                 key={`all-${option.value}`}
                 type="button"
                 className="secondary-button"
-                onClick={() => { setImportBulkApply((current) => ({ ...current, destination: option.value })); applyImportBulkUpdates({ destination: option.value }); }}
+                onClick={() => reviewBulk({destination: option.value})}
               >
                 {option.label}
               </button>
@@ -346,15 +373,15 @@ export default function InventoryImportContent({ scope }) {
         ) : null}
 
         {importRows.length ? (
-          <div className="inventory-list compact-inventory-list">
-            {importRows.map((row) => {
+          <div className="inventory-list compact-inventory-list"><div className="import-review-tools"><label>Find a review row<input type="search" value={reviewQuery} onChange={event=>setReviewQuery(event.target.value)} placeholder="Item name or source line"/></label><label>Review status<select value={reviewStatus} onChange={event=>setReviewStatus(event.target.value)}>{IMPORT_REVIEW_FILTERS.map(([key,label])=><option key={key} value={key}>{label} ({reviewCounts[key]})</option>)}</select></label><span role="status">{displayedRows.length} of {importRows.length} rows shown</span><button type="button" onClick={()=>setExpanded(Object.fromEntries(importRows.map(row=>[row.importedItemId,false])))}>Collapse all rows</button></div>{!displayedRows.length?<p>No rows match. <button type="button" onClick={()=>{setReviewQuery('');setReviewStatus('all');}}>Clear review filters</button></p>:null}
+            {displayedRows.map((row) => {
               const rowDestinations = row.destination === "Both" ? ["Forge", "Vault"] : [row.destination || defaultImportDestination()];
               const duplicate = rowDestinations.map((destination) => findImportDuplicate(row, destination)).find(Boolean);
               const candidates = [...new Map(rowDestinations.flatMap(destination => findImportDuplicateCandidates(row, destination)).map(item => [item.id, item])).values()];
               const issues = importRowIssues(row);
               const fieldProps = field => ({ id: importFieldId(row, field), "aria-invalid": issues.some(issue => issue.field === field) || undefined });
-              return (
-              <fieldset aria-label={`Review ${row.itemName || "unnamed row"}`} disabled={row.importStatus === "imported"} className={`inventory-card compact-card ${row.importStatus === "skipped" ? "is-muted" : ""}`} key={row.importedItemId}>
+              const rowOpen=expanded[row.importedItemId]??importRows.length<=5;
+              return (<details className="import-row-disclosure" key={row.importedItemId} open={rowOpen} onToggle={event=>{const open=event.currentTarget.open;if(open!==rowOpen)setExpanded(current=>({...current,[row.importedItemId]:open}));}}><summary><strong>{row.itemName||'Unnamed row'}</strong><small>Line {row.sourceLine||'—'} · Qty {row.quantity||'—'} · {row.importStatus} · {issues.length ? issues.length+' fixes' : duplicate ? 'Possible duplicate' : row.destination}</small></summary>{rowOpen?<fieldset aria-label={`Review ${row.itemName || "unnamed row"}`} disabled={row.importStatus === "imported"} className={`inventory-card compact-card ${row.importStatus === "skipped" ? "is-muted" : ""}`} key={row.importedItemId}>
                 <div className="compact-card-header">
                   <div>
                     <h3>{row.itemName}</h3>
@@ -443,7 +470,7 @@ export default function InventoryImportContent({ scope }) {
                   <button type="button" className="secondary-button" onClick={() => removeImportRow(row.importedItemId)}>Remove</button>
                   <button type="button" className="secondary-button" onClick={() => createManualCatalogItemFromImport(row)}>Create Manual Catalog Item</button>
                 </div>
-              </fieldset>
+              </fieldset>:null}</details>
             );})}
           </div>
         ) : (

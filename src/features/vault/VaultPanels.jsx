@@ -8,7 +8,9 @@ import { buildPriceReviewFields, priceConfidenceTone, formatPriceDisplay } from 
 import { FlowNextActionCard } from "../../components/command-system";
 import OverflowMenu from "../../components/OverflowMenu";
 import ExternalWebLink from "../../components/ExternalWebLink.jsx";
-import { MASTER_CARD_VARIANT_LABELS, MASTER_CARD_CONDITION_LABELS, INFO_TOOLTIP_COPY, PURCHASER_NAME_MAX_LENGTH, PERSON_TYPE_OPTIONS, normalizeCollectorShowcaseKind, COLLECTOR_SHOWCASE_KIND_LABELS, sealedProductFrameMeta, collectorShowcaseRarityLabel, collectorShowcaseRarityTone, collectorShowcaseInitials, COLLECTOR_SHOWCASE_RARITY_HELPER, inventoryGroupEntries, summarizeBreakdownRows, itemPurchaserName, hasValue, money, inventoryEntryLabel, shortDate, vaultItemDisplayImage, forgePhysicalLocationLabel, getCatalogImage, statusClass, gradeAssistRecordKey, loadGradeAssistDraft, isWishlistLikeVaultItem, vaultItemSetLabel, vaultItemTypeLabel, vaultItemLocationLabel, friendlyInventoryLabel, vaultCardNumberLabel, vaultVariantLabel, collectorVisualTypeLabel, detectCollectorItemVisualType, vaultStatusLabel, normalizeVaultStatus, vaultItemLastUpdatedLabel, gradeAssistValueComparison, saveGradeAssistDraft, isInventorySealedProduct, inferMasterCardVariantType, renderGenericProductImageFallback, getImageSourceLabel, VAULT_STATUS_OPTIONS, CATEGORIES, VAULT_CONDITIONS, VAULT_STORAGE_LOCATIONS, STATUSES, FORGE_PHYSICAL_LOCATION_OPTIONS } from "./vaultItemHelpers.jsx";
+import { gradingDetails } from "../../utils/gradedCopies.mjs";
+import GradingFields from "../../components/GradingFields.jsx";
+import { MASTER_CARD_VARIANT_LABELS, MASTER_CARD_CONDITION_LABELS, INFO_TOOLTIP_COPY, PURCHASER_NAME_MAX_LENGTH, PERSON_TYPE_OPTIONS, normalizeCollectorShowcaseKind, COLLECTOR_SHOWCASE_KIND_LABELS, sealedProductFrameMeta, collectorShowcaseRarityLabel, collectorShowcaseRarityTone, collectorShowcaseInitials, COLLECTOR_SHOWCASE_RARITY_HELPER, inventoryGroupEntries, summarizeBreakdownRows, itemPurchaserName, hasValue, money, inventoryEntryLabel, shortDate, vaultItemDisplayImage, forgePhysicalLocationLabel, getCatalogImage, statusClass, gradeAssistRecordKey, loadGradeAssistDraft, isWishlistLikeVaultItem, vaultItemSetLabel, vaultItemTypeLabel, vaultItemLocationLabel, friendlyInventoryLabel, vaultCardNumberLabel, vaultVariantLabel, collectorVisualTypeLabel, detectCollectorItemVisualType, vaultStatusLabel, normalizeVaultStatus, vaultItemLastUpdatedLabel, gradeAssistValueComparison, saveGradeAssistDraft, isInventorySealedProduct, inferMasterCardVariantType, renderGenericProductImageFallback, getImageSourceLabel, VAULT_STATUS_OPTIONS, CATEGORIES, VAULT_CONDITIONS, VAULT_STORAGE_LOCATIONS, STATUSES, FORGE_PHYSICAL_LOCATION_OPTIONS, isCatalogCardProduct } from "./vaultItemHelpers.jsx";
 
 const MarketPriceHistoryPanel = lazy(() => import("../../components/MarketPriceHistoryPanel"));
 
@@ -1560,7 +1562,7 @@ function VaultItemDetailContent({ item, marketItem, masterCard, setSummary, link
           <p>Bring this item into Business when you want to compare, trade, or think through its value. Set assignment is still local-preview planning and will not change this item automatically.</p>
         </div>
         <div className="vault-detail-primary-actions">
-          <button type="button" onClick={() => onEdit(item)}>Edit Profile</button>
+          <button type="button" onClick={() => onEdit(item)}>Edit profile</button>
           <button type="button" className="secondary-button" onClick={() => onAddToDisplayCase?.(item)}>Add to Display Case</button>
           <button type="button" className="secondary-button" onClick={() => onEdit(item)}>Add note</button>
           {!itemIsWishlist ? <button type="button" className="secondary-button" onClick={() => onStartTrade?.(item)}>Add to trade</button> : null}
@@ -2397,7 +2399,7 @@ function VaultEditForm({
         ))}
 
         <div className="vault-form-actions">
-          <button type="submit">Save Changes</button>
+          <button type="submit">Save changes</button>
           <button type="button" className="secondary-button" onClick={onCancel}>Cancel</button>
         </div>
       </form>
@@ -2417,6 +2419,7 @@ function InventoryForm({
   onSubmit,
   submitLabel,
   statusOptions = STATUSES,
+  allowGrading = false,
 }) {
   const quantity = Number(form.quantity || 0);
   const unitCost = Number(form.unitCost || 0);
@@ -2668,6 +2671,7 @@ function InventoryForm({
       <Field label="Shelf / bin label"><input value={form.storageLocation || ""} onChange={(e) => setForm("storageLocation", e.target.value)} placeholder="Shelf, tote, case, storage bin..." /></Field>
       <Field label="Notes"><input value={form.notes || ""} onChange={(e) => setForm("notes", e.target.value)} /></Field>
       <Field label="Condition"><input value={form.condition || ""} onChange={(e) => setForm("condition", e.target.value)} placeholder="Sealed, damaged box, NM, LP..." /></Field>
+      {allowGrading && (isCatalogCardProduct(form) || form.graded || Object.values(gradingDetails(form)).some(Boolean)) ? <GradingFields record={form} onChange={patch => Object.entries(patch).forEach(([key,value]) => setForm(key,value))} /> : null}
       <Field label="Tags"><input value={form.tags || ""} onChange={(e) => setForm("tags", e.target.value)} placeholder="restock, promo, hold, bundle..." /></Field>
       <Field label="Market Watch Product ID"><input value={form.externalProductId} onChange={(e) => setForm("externalProductId", e.target.value)} /></Field>
       <Field label="Market Source URL"><input value={form.tideTradrUrl} onChange={(e) => setForm("tideTradrUrl", e.target.value)} /></Field>

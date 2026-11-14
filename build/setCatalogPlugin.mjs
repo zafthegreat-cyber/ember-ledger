@@ -1,15 +1,17 @@
-import { readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import { buildCollectionSetRows } from "../src/utils/collectionSets.mjs";
 import { setCatalogKind } from "../src/utils/setCatalog.mjs";
+import { buildCardVersionIndex } from "../src/utils/cardVersions.mjs";
 
 const virtualId = "virtual:code3-set-catalog";
 const resolvedId = `\0${virtualId}`;
 const fields = ["id", "name", "tcgplayerProductId", "catalogType", "setName", "setCode", "language", "cardNumber", "rarity", "productType", "variant", "edition", "finish", "printing", "packCount", "imageUrl", "marketPrice", "marketSource", "marketLastUpdated", "priceCheckedAt", "marketStatus"];
 
-export function createSetCatalogSnapshot(cards, sealed) {
-  const products = [...cards, ...sealed].filter(row => setCatalogKind(row) !== "other").map(row => ({ ...Object.fromEntries(fields.filter(field => row[field] !== undefined).map(field => [field, row[field]])), tcgGame: "pokemon" }));
+export function createSetCatalogSnapshot(cards, sealed, quotes = []) {
+  const versions = buildCardVersionIndex(quotes);
+  const products = [...cards, ...sealed].filter(row => setCatalogKind(row) !== "other").map(row => ({ ...Object.fromEntries(fields.filter(field => row[field] !== undefined).map(field => [field, row[field]])), tcgGame: "pokemon", ...(setCatalogKind(row) === "card" && versions.has(String(row.tcgplayerProductId)) ? { versions: versions.get(String(row.tcgplayerProductId)) } : {}) }));
   return buildCollectionSetRows({ catalogProducts: products }).map(row => {
     const records = row.catalogRecords;
     const counts = { cards: records.filter(product => setCatalogKind(product) === "card").length, sealed: records.filter(product => setCatalogKind(product) === "sealed").length };
@@ -21,12 +23,12 @@ export function createSetCatalogSnapshot(cards, sealed) {
 // 57MB source card snapshot is never parsed or downloaded by the app at startup.
 export function setCatalogPlugin() {
   let root = process.cwd(), command, cached;
-  const files = () => ["pokemonTcgCards.json", "sealedProducts.json"].map(name => resolve(root, "src/data/generated", name));
+  const files = () => ["pokemonTcgCards.json", "sealedProducts.json", "marketPrices.json", "cardVersionQuotes.json"].map(name => resolve(root, "src/data/generated", name));
   function snapshot() {
-    const inputs = files(), signature = inputs.map(file => { const stat = statSync(file); return `${stat.mtimeMs}:${stat.size}`; }).join("|");
+    const inputs = files(), signature = inputs.map(file => { if (!existsSync(file)) return "missing"; const stat = statSync(file); return `${stat.mtimeMs}:${stat.size}`; }).join("|");
     if (cached?.signature === signature) return cached.rows;
-    const [cards, sealed] = inputs.map(file => JSON.parse(readFileSync(file,"utf8")));
-    const rows = createSetCatalogSnapshot(cards, sealed);
+    const [cards, sealed, currentQuotes, bootstrap] = inputs.map(file => existsSync(file) ? JSON.parse(readFileSync(file,"utf8")) : []);
+    const rows = createSetCatalogSnapshot(cards, sealed, [...(bootstrap.quotes || []), ...currentQuotes]);
     cached = { signature, rows }; return rows;
   }
   return {

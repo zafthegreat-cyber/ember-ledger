@@ -13,5 +13,9 @@
 @import "./styles/app/admin-display-controls.css";
 
 @import "./styles/brand-refresh.css";
+
+@import "./styles/ui-refinement.css";
+
+@import "./styles/collector-lounge.css";
 @import "./styles/app/15-warm-palette-polish.css";
 @import "./styles/app/16-should-polish.css";

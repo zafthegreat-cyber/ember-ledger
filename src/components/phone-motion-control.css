@@ -1,0 +1,8 @@
+.phone-motion-control { display: grid; gap: .35rem; margin-block: .5rem; }
+.phone-motion-control__actions { display: flex; flex-wrap: wrap; gap: .45rem; align-items: center; }
+.phone-motion-control .phone-motion-control__actions button { min-height: 44px; padding: .45rem .75rem; border: 1px solid var(--line, #9e8c75); border-radius: .5rem; background: transparent; color: inherit; font: inherit; font-size: .85rem; cursor: pointer; }
+.phone-motion-control .phone-motion-control__actions button[aria-pressed="true"] { border-color: var(--accent, #c8ad65); }
+.phone-motion-control .phone-motion-control__actions button:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.phone-motion-control .phone-motion-control__actions button:disabled { opacity: .65; cursor: wait; }
+.phone-motion-control__note { margin: 0; color: inherit; opacity: .8; font-size: .8rem; line-height: 1.45; }
+.phone-motion-control[data-compact="true"] { margin-block: .25rem; }

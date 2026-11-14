@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
-import { rowsToCsvAsync } from "../src/features/exports/csv.js";
+import { CSV_WORKER_THRESHOLD, rowsToCsv, rowsToCsvAsync, setCsvWorkerFactory } from "../src/features/exports/csv.js";
 
 const app = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
 const start = app.indexOf("  async function downloadRecordFile(");
@@ -14,7 +14,8 @@ const downloads = [], notices = [];
 let native = false, reject = false, abortDuringExport = false;
 const scope = { current: new AbortController() };
 const context = vm.createContext({
-  Blob, Date, JSON, String, Object, Error, rowsToCsvAsync,
+  Blob, Date, JSON, String, Object, Error,
+  rowsToCsvAsync,
   fileExportScopeRef: scope,
   isNativePlatform: () => native,
   exportFile: async (request) => {
@@ -46,6 +47,44 @@ assert.deepEqual(JSON.parse(downloads.at(-1).body), savedRecords);
 assert.match(downloads.at(-1).name, /^code3tcg-beta-backup-.*\.json$/);
 await context.downloadCSV("test.csv", [{ name: 'A "quoted" item', count: 2 }]);
 assert.equal(downloads.at(-1).body, 'name,count\n"A ""quoted"" item","2"');
+// Exercise the real async serializer through App's callback, including its
+// worker handoff. No replacement serializer can hide changes to CSV contents.
+const workerDescriptor = Object.getOwnPropertyDescriptor(globalThis, "Worker");
+const largeRows = Array.from({ length: CSV_WORKER_THRESHOLD }, (_, index) => ({ name: `Item ${index}`, quantity: index + 1 }));
+const largeOriginal = JSON.stringify(largeRows);
+let workerMessage, completeWorker, workerTerminations = 0;
+Object.defineProperty(globalThis, "Worker", { configurable: true, writable: true, value: function TestWorker() {} });
+setCsvWorkerFactory(() => ({
+  postMessage(message) {
+    workerMessage = message;
+    completeWorker = () => this.onmessage({ data: { csv: rowsToCsv(message.rows) } });
+  },
+  terminate() { workerTerminations++; },
+}));
+try {
+  const beforeWorker = downloads.length;
+  const pending = context.downloadCSV("large.csv", largeRows);
+  assert.equal(downloads.length, beforeWorker, "the file is not exported before CSV serialization finishes");
+  assert.equal(workerMessage.type, "csv");
+  assert.equal(workerMessage.rows, largeRows);
+  completeWorker();
+  await pending;
+  assert.equal(downloads.length, beforeWorker + 1);
+  assert.equal(downloads.at(-1).name, "large.csv");
+  assert.equal(downloads.at(-1).body, rowsToCsv(largeRows));
+  assert.equal(workerTerminations, 1);
+  const beforeSwitch = downloads.length;
+  const pendingSwitch = context.downloadCSV("old-account.csv", largeRows);
+  scope.current.abort();
+  scope.current = new AbortController();
+  completeWorker();
+  await pendingSwitch;
+  assert.equal(downloads.length, beforeSwitch, "CSV serialization from the old account cannot export under a new account scope");
+  assert.equal(JSON.stringify(largeRows), largeOriginal, "serialization preserves the original rows");
+} finally {
+  if (workerDescriptor) Object.defineProperty(globalThis, "Worker", workerDescriptor);
+  else delete globalThis.Worker;
+}
 for (const method of ["downloadYearEndTaxSummary", "downloadMileageRecords", "downloadSalesRecords"]) {
   for (const format of ["json", "csv"]) {
     const before = downloads.length;

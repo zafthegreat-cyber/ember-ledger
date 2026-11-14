@@ -41,7 +41,7 @@ export function SetArtwork({ row = {} }) {
   const logo = [artworkUrl(row.logoUrl), artworkUrl(row.symbolUrl)].find((source) => source && !failedSources.includes(source));
   const date = releaseDate(row.releaseDate);
   return <span className="collection-sets-artwork" data-artwork={logo ? "logo" : "fallback"} data-has-release={Boolean(date)}>
-    {logo ? <img className="collection-sets-artwork-logo" src={logo} alt={`${setTitle(row)} set artwork`} loading="lazy" decoding="async" onError={() => setFailedSources((previous) => previous.includes(logo) ? previous : [...previous, logo])} /> : <span className="collection-sets-artwork-fallback collection-sets-artwork-text" aria-hidden="true">{/* Audit 2026-11-14: no official logos ship; show the set's own code and name. */}<span className="collection-sets-artwork-code">{String(row.code || row.setCode || "").toUpperCase() || setInitials(setTitle(row))}</span></span>}
+    <span className="collection-sets-artwork-frame">{logo ? <img className="collection-sets-artwork-logo" src={logo} alt={`${setTitle(row)} set artwork`} loading="lazy" decoding="async" onError={() => setFailedSources((previous) => previous.includes(logo) ? previous : [...previous, logo])} /> : <span className="collection-sets-artwork-fallback collection-sets-artwork-text" aria-hidden="true">{/* The catalog's rights-safe fallback uses the set's own code. */}<span className="collection-sets-artwork-code">{String(row.code || row.setCode || "").toUpperCase() || setInitials(setTitle(row))}</span></span>}</span>
     {date ? <time className="collection-sets-release" dateTime={date.date}>{date.label}</time> : null}
   </span>;
 }

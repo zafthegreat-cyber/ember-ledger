@@ -1,5 +1,7 @@
-import { gtinVariants, gtinsMatch } from "./gtin.mjs";
-const BARCODE_LENGTHS = new Set([8, 12, 13, 14]);
+import { normalizeBarcodeValue, isLikelyBarcodeValue, identifierEquivalents } from "./barcodeIdentity.mjs";
+import { verifiedBarcodeEntriesForProduct, isRejectedImportedBarcode } from "./catalogBarcodeLookup.mjs";
+import { canonicalGtin, gtinVariants, gtinsMatch, isValidGtin } from "./gtin.mjs";
+export { normalizeBarcodeValue, isLikelyBarcodeValue };
 
 export const RECEIPT_LINE_ENTRY_TYPES = {
   INVENTORY: "inventory",
@@ -17,19 +19,6 @@ export const RECEIPT_LINE_ENTRY_LABELS = {
   [RECEIPT_LINE_ENTRY_TYPES.IGNORED]: "Ignore line",
 };
 
-export function normalizeBarcodeValue(value = "") {
-  const raw = String(value || "").trim();
-  if (!raw) return "";
-  const digits = raw.replace(/\D/g, "");
-  if (digits.length >= 8) return digits;
-  return raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
-}
-
-export function isLikelyBarcodeValue(value = "") {
-  const digits = String(value || "").replace(/\D/g, "");
-  return BARCODE_LENGTHS.has(digits.length) || (digits.length >= 8 && digits.length <= 14);
-}
-
 function normalizeIdentifierValue(value = "") {
   const normalized = normalizeBarcodeValue(value);
   return normalized || String(value || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -37,10 +26,14 @@ function normalizeIdentifierValue(value = "") {
 
 function addIdentifier(set, value) {
   const normalized = normalizeIdentifierValue(value);
-  if (normalized) set.add(normalized);
-  // SHOULD 19 (2026-11-14): a UPC-A, its EAN-13/GTIN-14 zero-padded forms and
-  // a UPC-E all identify the same product, so every spelling joins the set.
-  gtinVariants(value).forEach((variant) => set.add(variant));
+  if (normalized) identifierEquivalents(normalized).forEach(value => set.add(value));
+  // Preserve reviewed aliases, and expand valid UPC-E/GTIN spellings without
+  // stripping SKU letters or promoting a mistyped code to another product.
+  if (isComparableGtin(value)) gtinVariants(normalized).forEach((variant) => set.add(variant));
+}
+
+function isComparableGtin(value) {
+  return isLikelyBarcodeValue(value) && !/^0+$/.test(normalizeBarcodeValue(value)) && isValidGtin(canonicalGtin(value));
 }
 
 /** True when two barcodes/SKUs identify the same product in any GTIN padding. */
@@ -48,7 +41,7 @@ export function identifiersMatch(a, b) {
   const left = normalizeIdentifierValue(a);
   const right = normalizeIdentifierValue(b);
   if (!left || !right) return false;
-  return left === right || gtinsMatch(left, right);
+  return left === right || (isComparableGtin(a) && isComparableGtin(b) && gtinsMatch(left, right));
 }
 
 export function catalogIdentifiersForProduct(product = {}) {
@@ -62,10 +55,10 @@ export function catalogIdentifiersForProduct(product = {}) {
     product.externalProductId,
     product.tcgplayerProductId,
     product.pokemonTcgApiId,
-    product.identifierSearch,
+    ...String(product.identifierSearch || "").split(/[,|\s]+/),
   ].forEach((value) => addIdentifier(identifiers, value));
 
-  [product.upcs, product.barcodes, product.skus, product.identifiers].forEach((collection) => {
+  [product.upcs, product.barcodes, product.skus, product.identifiers, verifiedBarcodeEntriesForProduct(product)].forEach((collection) => {
     if (!Array.isArray(collection)) return;
     collection.forEach((entry) => {
       if (entry && typeof entry === "object") {
@@ -86,13 +79,21 @@ export function catalogIdentifiersForProduct(product = {}) {
     });
   });
 
-  return [...identifiers];
+  return [...identifiers].filter(value => !isRejectedImportedBarcode(product, value));
+}
+
+export function findCatalogProductsByBarcode(catalogProducts = [], code = "") {
+  const normalized = normalizeIdentifierValue(code);
+  if (!normalized) return [];
+  const candidates = new Set();
+  addIdentifier(candidates, code);
+  return catalogProducts.filter(product => catalogIdentifiersForProduct(product).some(value => candidates.has(value)));
 }
 
 export function findCatalogProductByBarcode(catalogProducts = [], code = "") {
-  const normalized = normalizeIdentifierValue(code);
-  if (!normalized) return null;
-  return catalogProducts.find((product) => catalogIdentifiersForProduct(product).includes(normalized)) || null;
+  const matches = findCatalogProductsByBarcode(catalogProducts, code);
+  // Shared assortment barcodes require a choice, not an arbitrary first result.
+  return matches.length === 1 ? matches[0] : null;
 }
 
 export function buildManualFallbackItemSeed({

@@ -1,0 +1,6 @@
+.cloud-conflict-full-value{white-space:pre-wrap;overflow-wrap:anywhere;max-width:36rem;max-height:20rem;overflow:auto;font:inherit;}
+.cloud-final-review,.cloud-pending-groups,.backup-completeness,.recovery-next-actions{border:1px solid var(--line,#8d8174);border-radius:10px;padding:1rem;margin-block:1rem;}
+.cloud-final-review li{margin-block:.75rem;}
+.backup-last-file{overflow-wrap:anywhere;}
+.device-move-checklist pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;max-height:24rem;overflow:auto;}
+.cloud-workspace-panel input[type=date]{display:block;max-width:100%;}
