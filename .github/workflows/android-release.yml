@@ -57,6 +57,12 @@ jobs:
           VITE_AUTH_VERIFIED_PROVIDERS: ${{ vars.VITE_AUTH_VERIFIED_PROVIDERS }}
           VITE_AUTH_ACCOUNT_LINKING_VERIFIED: ${{ vars.VITE_AUTH_ACCOUNT_LINKING_VERIFIED }}
       - run: npx cap sync android
+      - name: Add Firebase config for push notifications (optional)
+        env:
+          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+        run: |
+          if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ]; then echo "::warning::GOOGLE_SERVICES_JSON_BASE64 is not set; this build has no push notifications."; exit 0; fi
+          printf '%s' "$GOOGLE_SERVICES_JSON_BASE64" | base64 -d > android/app/google-services.json
       - name: Restore upload keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.CODE3_ANDROID_KEYSTORE_BASE64 }}
