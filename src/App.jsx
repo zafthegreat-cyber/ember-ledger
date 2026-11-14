@@ -16226,7 +16226,18 @@ export default function App() {
       }
       if (reportsResult.error && isExpectedShorelineAccessDenial(reportsResult.error) && !protectedAppDataAccessReady()) return false;
       if (reportsResult.error && !isScoutBackendOptionalError(reportsResult.error)) throw reportsResult.error;
-      const cloudReports = (reportsResult.error ? [] : reportsResult.data || []).map((row) => mapSupabaseScoutReport(row, cloudStores));
+      // Audit 2026-11-14: the table now returns only your own / your workspace's reports.
+      // Everyone else's come from public_store_reports(): moderated, public, and without
+      // user_id, photo path or free-text notes. Own rows win when both lists have a row.
+      const ownReportRows = reportsResult.error ? [] : reportsResult.data || [];
+      let publicReportRows = [];
+      try {
+        const publicResult = await supabase.rpc("public_store_reports", { p_limit: 200 });
+        if (!publicResult.error) publicReportRows = publicResult.data || [];
+      } catch { /* older backend without the function: own reports still load */ }
+      const ownReportIds = new Set(ownReportRows.map((row) => String(row.id)));
+      const cloudReports = [...ownReportRows, ...publicReportRows.filter((row) => !ownReportIds.has(String(row.id)))]
+        .map((row) => mapSupabaseScoutReport(row, cloudStores));
 
       let guessesResult = await supabase
         .from("store_guesses")
