@@ -28,12 +28,20 @@ function releaseDate(value) {
 
 function setTitle(row) { return row.name || row.setName || "Unnamed set"; }
 
+// Text mark for sets without a code: initials of up to three words, or the first two letters of a single word.
+function setInitials(title = "") {
+  const words = String(title).split(/[\s:–—-]+/).filter((word) => /[a-z0-9]/i.test(word));
+  if (!words.length) return "SET";
+  if (words.length === 1) return words[0].replace(/[^a-z0-9]/gi, "").slice(0, 2).toUpperCase();
+  return words.slice(0, 3).map((word) => word.replace(/[^a-z0-9]/gi, "")[0] || "").join("").toUpperCase();
+}
+
 export function SetArtwork({ row = {} }) {
   const [failedSources, setFailedSources] = useState([]);
   const logo = [artworkUrl(row.logoUrl), artworkUrl(row.symbolUrl)].find((source) => source && !failedSources.includes(source));
   const date = releaseDate(row.releaseDate);
   return <span className="collection-sets-artwork" data-artwork={logo ? "logo" : "fallback"} data-has-release={Boolean(date)}>
-    {logo ? <img className="collection-sets-artwork-logo" src={logo} alt={`${setTitle(row)} set artwork`} loading="lazy" decoding="async" onError={() => setFailedSources((previous) => previous.includes(logo) ? previous : [...previous, logo])} /> : <span className="collection-sets-artwork-fallback" role="img" aria-label={`Set artwork unavailable for ${setTitle(row)}`}><svg viewBox="0 0 48 40" fill="none" aria-hidden="true" focusable="false"><rect x="7" y="7" width="22" height="28" rx="3" transform="rotate(-12 7 7)" /><rect x="20" y="5" width="22" height="28" rx="3" /><path d="M25 12h12M25 17h8" /></svg><span>Logo unavailable</span></span>}
+    {logo ? <img className="collection-sets-artwork-logo" src={logo} alt={`${setTitle(row)} set artwork`} loading="lazy" decoding="async" onError={() => setFailedSources((previous) => previous.includes(logo) ? previous : [...previous, logo])} /> : <span className="collection-sets-artwork-fallback collection-sets-artwork-text" aria-hidden="true">{/* Audit 2026-11-14: no official logos ship; show the set's own code and name. */}<span className="collection-sets-artwork-code">{String(row.code || row.setCode || "").toUpperCase() || setInitials(setTitle(row))}</span></span>}
     {date ? <time className="collection-sets-release" dateTime={date.date}>{date.label}</time> : null}
   </span>;
 }

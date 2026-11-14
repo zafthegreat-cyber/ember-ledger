@@ -70,7 +70,9 @@ test("artwork failures try the explicit symbol then a named accessible fallback"
   assert.equal(document.querySelector("img").getAttribute("src"), "/symbol.png");
   await act(async () => document.querySelector("img").dispatchEvent(new window.Event("error")));
   assert.equal(document.querySelector("img"), null);
-  assert.equal(document.querySelector('[role="img"]').getAttribute("aria-label"), "Set artwork unavailable for Battle Academy 2022");
+  // Audit 2026-11-14: the fallback is a text tile with the set's code (or initials), hidden from screen
+  // readers because the card title already names the set.
+  assert.ok(document.querySelector(".collection-sets-artwork-text .collection-sets-artwork-code").textContent.trim().length > 0);
   await render(root, SetArtwork, { row: row({ logoUrl: "/new-matching-logo.png" }) });
   assert.equal(document.querySelector("img").getAttribute("src"), "/new-matching-logo.png");
 }));

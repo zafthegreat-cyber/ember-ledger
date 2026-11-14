@@ -50,6 +50,8 @@ jobs:
           node --no-warnings scripts/test-inventory-valuation.mjs
           node --no-warnings scripts/test-profit-dashboard.mjs
           node --no-warnings scripts/test-trade-value-flow.mjs
+          node --no-warnings scripts/test-set-artwork.mjs
+          node --no-warnings scripts/test-collection-sets.mjs
           node --no-warnings scripts/test-code3-branding.mjs
           node --no-warnings scripts/test-code3-client-security.mjs
           node scripts/test-scout-lint-regressions.cjs
