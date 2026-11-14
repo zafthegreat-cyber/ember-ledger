@@ -12,6 +12,10 @@ import { rankAdaptivePageItems } from "../utils/adaptivePageItems.js";
 import { resolveExperiencePresentation } from "../utils/experiencePresentation.js";
 import "./home-layout.css";
 import RegionalCommunityBanner from "../components/RegionalCommunityBanner.jsx";
+import PersonaChecklist from "../features/onboarding/PersonaChecklist.jsx";
+import QuickRestockLauncher from "../features/restocks/QuickRestockLauncher.jsx";
+import WhatsNewCard from "../features/tour/WhatsNewCard.jsx";
+import { appTourSeen } from "../features/tour/AppTour.jsx";
 
 const FIND_DESTINATION_KEY = "private-business-hub.flip-scout.destination";
 
@@ -48,6 +52,7 @@ export default function OperationsHome({
   adaptiveActivity = {}, personalizationPreferences = {}, experiencePresentation,
   onOpenSellTrade, onOpenExperienceSettings, activeVaultItems = [], workspaceWatchlist = [],
   scoutSnapshot = {}, isWatchedEmberStore = () => false,
+  kidSafeView = false, marketSearchesRun = 0, startAppTour, onOpenFeedback,
 }) {
   const repository = useMemo(() => createFlipScoutRepository(), []);
   const state = useMemo(() => repository.load(), [repository]);
@@ -96,6 +101,29 @@ export default function OperationsHome({
   const homePreference = personalizationPreferences.pagePreferences?.hearth;
   const isVisible = (key) => !homePreference?.visibleKeys || homePreference.visibleKeys.includes(key);
   const followedStores = (scoutSnapshot.stores || []).filter(isWatchedEmberStore);
+  // SHOULD 15: three-step checklist driven by what the person has actually done.
+  const checklistCounts = useMemo(() => ({
+    vaultItems: activeVaultItems.length,
+    followedStores: followedStores.length,
+    marketSearches: marketSearchesRun,
+    watchlist: workspaceWatchlist.length,
+    inventory: state.inventory.length,
+    receipts: state.expenses.filter((row) => row.receiptReference).length + (adaptiveActivity.expenses || []).length,
+    sales: state.sales.length + (adaptiveActivity.sales || []).length,
+    reports: (adaptiveActivity.reports || []).length,
+    publicProfile: Boolean(presentation.publicProfileReady),
+    tourSeen: appTourSeen(),
+  }), [activeVaultItems.length, followedStores.length, marketSearchesRun, workspaceWatchlist.length, state, adaptiveActivity, presentation.publicProfileReady]);
+  const openChecklistTarget = (target) => {
+    if (target === "collectionWorkspace" || target === "collectionWorkspace:sets") return setActiveTab("collectionWorkspace");
+    if (target === "restocks") return onOpenRestockReports?.();
+    if (target === "market") return setActiveTab("market");
+    if (target === "report-restock") return onReportRestock?.();
+    if (target === "publicProfile") return setActiveTab("account");
+    if (target === "tour") return startAppTour?.();
+    if (target.startsWith("business:")) return onOpenBusiness?.(target.split(":")[1]);
+    return setActiveTab("dashboard");
+  };
   const adaptiveEnabled = personalizationPreferences.smartRecommendationsEnabled !== false;
   const manualHome = Boolean(homePreference?.updatedAt);
   const pageCards = rankAdaptivePageItems([
@@ -120,11 +148,13 @@ export default function OperationsHome({
         <span className="home-group-label">Community restocks</span>
         <h2 id="home-restock-title">Spotted stock? Share an update.</h2>
         <p>Pick a store and tell us what you saw. Review, then share. Photos are optional.</p>
-        <div className="home-restock-actions"><PrimaryButton onClick={onReportRestock}>Report a restock</PrimaryButton><SecondaryButton onClick={onOpenRestockReports}>Browse restocks</SecondaryButton></div>
-        
+        <div className="home-restock-actions"><PrimaryButton onClick={() => onReportRestock()}>Report a restock</PrimaryButton><SecondaryButton onClick={onOpenRestockReports}>Browse restocks</SecondaryButton></div>
+        <QuickRestockLauncher followedStores={followedStores} nearbyStores={(scoutSnapshot.nearbyStores || []).slice(0, 3)} kidSafe={kidSafeView} onLaunch={(options) => onReportRestock(options)} />
       </div>
       <div className="home-restock-art"><CollectibleMotif /></div>
     </section>
+    <PersonaChecklist persona={presentation.persona} kidSafe={kidSafeView} counts={checklistCounts} onOpen={openChecklistTarget} />
+    {!kidSafeView ? <WhatsNewCard isNewAccount={checklistCounts.vaultItems === 0 && checklistCounts.inventory === 0 && checklistCounts.reports === 0} onOpenAll={() => setActiveTab("whatsNew")} onTour={() => startAppTour?.()} onFeedback={() => onOpenFeedback?.()} onHome={() => window.scrollTo?.({ top: 0, behavior: "smooth" })} /> : null}
     <RegionalCommunityBanner primaryLabel="Browse restocks" onPrimary={onOpenRestockReports} />
     {sellerVisible && (isVisible("forgeSummary") || !manualHome) && attentionRows.length ? <section className="ops-home-section ops-attention-panel home-attention-pending">
       <SectionHeader title="Needs Attention" />

@@ -1,4 +1,5 @@
 import { PrivateStorageImage } from "../components/PrivateReceipt.jsx";
+import ListSkeleton from "../components/ListSkeleton";
 import ExternalWebLink from "../components/ExternalWebLink.jsx";
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import NationwideLocationPicker from '../components/NationwideLocationPicker.jsx';
@@ -6714,7 +6715,7 @@ async function handleUpdateStore(e) {
                 <div style={styles.card}>
                   <h2 style={styles.sectionTitle}>Store List</h2>
                   {loading ? (
-                    <p style={styles.empty}>Loading stores...</p>
+                    <ListSkeleton rows={4} variant="card" label="Loading stores" />
                   ) : filteredStores.length === 0 ? (
                     <p style={styles.empty}>No stores match those filters.</p>
                   ) : (

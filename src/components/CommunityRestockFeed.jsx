@@ -1,4 +1,5 @@
 import {useEffect,useId,useMemo,useState} from 'react';
+import ListSkeleton from "./ListSkeleton";
 import {AppNavIcon} from './command-system/AppNavIcon.jsx';
 import CommunityReleaseCalendar from './CommunityReleaseCalendar.jsx';
 import {COMMUNITY_PRODUCTS,COMMUNITY_STATUS,DISCORD_COMMUNITY,filterCommunityReports,loadCommunityReports} from '../services/communityReports.mjs';
@@ -46,7 +47,7 @@ export default function CommunityRestockFeed({compact=false,onOpenMap}) {
       <label htmlFor={`${id}-product`}><span id={`${id}-product-label`}>Collecting</span><select id={`${id}-product`} aria-labelledby={`${id}-product-label`} value={category} onChange={event=>setCategory(event.target.value)}><option value="all">All products</option>{Object.entries(COMMUNITY_PRODUCTS).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
       <label htmlFor={`${id}-status`}><span id={`${id}-status-label`}>Observed status</span><select id={`${id}-status`} aria-labelledby={`${id}-status-label`} value={status} onChange={event=>setStatus(event.target.value)}><option value="all">All observations</option>{Object.entries(COMMUNITY_STATUS).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
     </div>
-    {state==='loading'?<p className="community-scout__notice" role="status">Loading reviewed reports…</p>:null}
+    {state==='loading'?<ListSkeleton rows={3} variant="card" label="Loading reviewed reports" />:null}
     {state==='error'?<div className="community-scout__notice" role="alert"><strong>Community reports could not load.</strong><p>Try Refresh, or check the reviewed reports in Discord. Your saved app reports are still available below.</p><OutsideLink href={DISCORD_COMMUNITY.reports}>Open community reporting</OutsideLink></div>:null}
     {state==='ready'&&reports.length===0?<div className="community-scout__notice" role="status"><strong>{data.reports.length?'No reports match these filters.':'No recent reviewed reports yet.'}</strong><p>{data.reports.length?'Try a different product, status, or search.':'New observations appear here after staff approve them in Discord. This is not a live inventory check.'}</p></div>:null}
     {state==='ready'&&visible.length?<div className="community-scout__list">{visible.map(report=><article key={report.id} className="community-scout__report">

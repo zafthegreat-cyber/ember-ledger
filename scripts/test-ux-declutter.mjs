@@ -45,7 +45,10 @@ test("collectors get the simple You page and a quiet Account page", () => {
 
 test("warm palette polish is loaded last and defines the teal accent", () => {
   const appCss = src("src/App.css");
-  assert.ok(appCss.trim().endsWith('@import "./styles/app/15-warm-palette-polish.css";'));
+  // 16-should-polish (SHOULD 12-14) now loads after it; 15 must still come after everything else.
+  const imports = appCss.split(/\r?\n/).filter((line) => line.startsWith("@import"));
+  assert.equal(imports.at(-2), '@import "./styles/app/15-warm-palette-polish.css";');
+  assert.equal(imports.at(-1), '@import "./styles/app/16-should-polish.css";');
   const polish = src("src/styles/app/15-warm-palette-polish.css");
   assert.match(polish, /--c3-teal:/);
   assert.match(polish, /--c3-page: #1A1518/);

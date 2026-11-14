@@ -1,4 +1,5 @@
 import { PrivateStorageImage } from "../components/PrivateReceipt.jsx";
+import SavedSearches from "../features/market/SavedSearches.jsx";
 import { useContext, useId, useRef, useState } from "react";
 import { ExperiencePresentationContext } from "../utils/experiencePresentationContext";
 import "./market-search-results.css";
@@ -229,6 +230,7 @@ export default function MarketPage(props) {
               </label>
               <button type="submit" disabled={Boolean(supabaseCatalogStatus.loading) || !String(catalogSearch || "").trim()}>{supabaseCatalogStatus.loading ? "Searching…" : "Search Market"}</button>
             </form>
+            <SavedSearches currentQuery={submittedQuery} hasRun={Boolean(catalogSearchHasRun)} onRun={(query) => { setCatalogSearch(query); submitCatalogSearch(query); }} />
             <p id={searchStatusId} role="status" aria-live="polite" aria-atomic="true">
               {supabaseCatalogStatus.loading ? "Searching the catalog…" : catalogSearchHasRun ? `${marketResultCount} catalog result${marketResultCount === 1 ? "" : "s"}${submittedQuery ? ` for “${submittedQuery}”` : ""}.` : "Search by card name and number, set, UPC or SKU."}
             </p>

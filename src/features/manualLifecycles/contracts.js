@@ -15,6 +15,10 @@ export const LIFECYCLE_TYPES = Object.freeze({
   listing: ["itemId", "title", "channel", "quantity", "priceMinor", "status", "saleId"],
   shipment: ["saleId", "quantity", "carrier", "tracking", "status", "shippedAt", "notes"],
   saleReturn: ["saleId", "quantity", "status", "disposition", "inspection", "refundMinor", "refundReference", "notes"],
+  // COULD 36 (2026-11-14): returning something YOU bought (to a store, a seller,
+  // an auction house). Linked to the recorded purchase; never edits inventory
+  // by itself — the person decides what happens to the items in Inventory.
+  purchaseReturn: ["purchaseId", "quantity", "status", "reason", "refundMinor", "refundReference", "notes"],
 });
 
 const ENUMS = {
@@ -27,17 +31,19 @@ const ENUMS = {
   listing: { status: ["Draft", "Active", "Reserved", "Sold", "Withdrawn"] },
   shipment: { status: ["Packed", "Shipped", "Delivered", "Cancelled"] },
   saleReturn: { status: ["Requested", "Received", "Inspected", "Closed"], disposition: ["Quarantine", "Restock review", "Dispose", "No physical return"] },
+  purchaseReturn: { status: ["Requested", "Returned", "Refunded", "Closed", "Cancelled"], reason: ["Damaged", "Not as described", "Wrong item", "Changed mind", "Price adjustment", "Other"] },
 };
 export const lifecycleOptions = (type, field) => ENUMS[type]?.[field] || [];
-const FIXED_LINKS = { assignment: ["itemId", "unit"], grading: ["itemId", "unit"], auctionLink: ["auctionId", "eventId", "lotNumber"], processing: ["itemId"], listing: ["itemId"], shipment: ["saleId"], saleReturn: ["saleId", "quantity"] };
+const FIXED_LINKS = { assignment: ["itemId", "unit"], grading: ["itemId", "unit"], auctionLink: ["auctionId", "eventId", "lotNumber"], processing: ["itemId"], listing: ["itemId"], shipment: ["saleId"], saleReturn: ["saleId", "quantity"], purchaseReturn: ["purchaseId"] };
 const TRANSITIONS = {
   grading: { Draft: ["Draft", "Submitted", "Cancelled"], Submitted: ["Submitted", "Received", "Cancelled"], Received: ["Received", "Completed", "Cancelled"], Completed: ["Completed"], Cancelled: ["Cancelled"] },
   shipment: { Packed: ["Packed", "Shipped", "Cancelled"], Shipped: ["Shipped", "Delivered"], Delivered: ["Delivered"], Cancelled: ["Cancelled"] },
   saleReturn: { Requested: ["Requested", "Received"], Received: ["Received", "Inspected"], Inspected: ["Inspected", "Closed"], Closed: ["Closed"] },
+  purchaseReturn: { Requested: ["Requested", "Returned", "Cancelled"], Returned: ["Returned", "Refunded", "Cancelled"], Refunded: ["Refunded", "Closed"], Closed: ["Closed"], Cancelled: ["Cancelled"] },
 };
-export const TERMINAL_STATUS = { grading: ["Completed", "Cancelled"], shipment: ["Delivered", "Cancelled"], saleReturn: ["Closed"], processing: ["Done"], listing: ["Sold", "Withdrawn"], wish: ["Archived"], visit: ["Visited", "Purchased", "No purchase", "Cancelled"] };
+export const TERMINAL_STATUS = { grading: ["Completed", "Cancelled"], shipment: ["Delivered", "Cancelled"], saleReturn: ["Closed"], purchaseReturn: ["Closed", "Cancelled"], processing: ["Done"], listing: ["Sold", "Withdrawn"], wish: ["Archived"], visit: ["Visited", "Purchased", "No purchase", "Cancelled"] };
 export const isTerminalLifecycleStatus = (type, status) => (TERMINAL_STATUS[type] || []).includes(status);
-const INITIAL_STATUS = { grading: "Draft", shipment: "Packed", saleReturn: "Requested" };
+const INITIAL_STATUS = { grading: "Draft", shipment: "Packed", saleReturn: "Requested", purchaseReturn: "Requested" };
 const BASE_KEYS = ["id", "type", "recordVersion", "createdAt", "updatedAt", "history"];
 const fail = (message) => { throw new Error(message); };
 const json = (value) => JSON.stringify(value);
@@ -161,6 +167,16 @@ export function validateLifecycleRecord(record, state) {
       if (totalRefund > paid) fail("Return refunds exceed the sale's remaining recorded payment.");
     }
   }
+  if (record.type === "purchaseReturn") {
+    const purchase = requireRecord(state.purchases, record.purchaseId, "Purchase");
+    integer(record.quantity, "Quantity", 1, 100000);
+    integer(record.refundMinor, "Refund amount");
+    if (["Refunded", "Closed"].includes(record.status)) { if (!record.refundMinor) fail("Record the refund amount before marking this return refunded."); text(record.refundReference, "Refund reference"); }
+    else if (record.refundMinor) fail("Record the refund only once the seller has refunded you.");
+    const paid = Math.max(0, Math.round(Number(purchase.totalPurchaseCost || purchase.totalCost || 0) * 100));
+    const siblings = lifecycleRows(state, "purchaseReturn").filter((other) => other.id !== record.id && other.purchaseId === record.purchaseId && other.status !== "Cancelled");
+    if (paid && record.status !== "Cancelled" && siblings.reduce((sum, other) => sum + other.refundMinor, record.refundMinor) > paid) fail("Refunds exceed what this purchase cost.");
+  }
   return record;
 }
 
@@ -183,6 +199,7 @@ export function validateLifecycleTransition(current, next) {
     for (const field of FIXED_LINKS[row.type] || []) if (row[field] !== previous[field]) fail("A saved physical identity or source link cannot be reassigned.");
     if (TRANSITIONS[row.type] && !TRANSITIONS[row.type][previous.status]?.includes(row.status)) fail("Complete each lifecycle stage in order.");
     if (row.type === "saleReturn" && (row.refundMinor < previous.refundMinor || (previous.status === "Closed" && json(row.history.at(-1).values) !== json(previous.history.at(-1).values)))) fail("Recorded refunds cannot be reduced and closed returns cannot be rewritten.");
+    if (row.type === "purchaseReturn" && (row.refundMinor < previous.refundMinor || (["Closed", "Cancelled"].includes(previous.status) && json(row.history.at(-1).values) !== json(previous.history.at(-1).values)))) fail("Recorded refunds cannot be reduced and closed returns cannot be rewritten.");
   }
   // This runs inside the existing repository commit for every sale entry point.
   for (const item of next.inventory) {

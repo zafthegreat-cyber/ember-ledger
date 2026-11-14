@@ -25,7 +25,7 @@ assert.match(ownerSession, /response\.ok && payload\.authenticated === true && p
 assert.match(ebayClient, /getOwnerRequestHeaders/);
 assert.match(ownerPage, /Sign In Required/);
 assert.match(ownerPage, /Owner Access Required/);
-assert.match(ownerPage, /\[initialSection, initialSubsection\]/, "mounted Owner Center routes must follow Back\/Forward state");
+assert.match(ownerPage, /\[initialSection, initialSubsection\]|previousDestination\.initialSection !== initialSection \|\| previousDestination\.initialSubsection !== initialSubsection/, "mounted Owner Center routes must follow Back/Forward state");
 assert.match(ownerPage, /onSectionChange\?\.\(nextSection, nextSubsection\)/, "Owner Center tab changes must update canonical route state");
 assert.doesNotMatch(app, /useState\(\(\) => createOwnerCenterRepository\(\)\.load\(\)/, "Owner Center data must not be parsed before verified authorization");
 assert.doesNotMatch(clientSource, /EBAY_CLIENT_SECRET\s*=|process\.env\.EBAY_CLIENT_SECRET/);

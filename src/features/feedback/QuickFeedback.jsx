@@ -10,6 +10,8 @@ import { useEffect, useRef, useState } from "react";
 import "./quick-feedback.css";
 
 const QUEUE_KEY = "code3-quick-feedback-queue-v1";
+export const OPEN_FEEDBACK_EVENT = "code3:open-feedback";
+export function openQuickFeedback() { try { window.dispatchEvent(new CustomEvent(OPEN_FEEDBACK_EVENT)); } catch { /* no window */ } }
 const KINDS = [
   { key: "bug", label: "Something's broken", type: "Bug", severity: "normal" },
   { key: "confusing", label: "This is confusing", type: "Other", severity: "low" },
@@ -77,6 +79,12 @@ export default function QuickFeedback({ supabase, user, route = "", appVersion =
   const textareaRef = useRef(null);
 
   useEffect(() => { if (supabase) flushQuickFeedbackQueue(supabase).catch(() => {}); }, [supabase]);
+  // Other surfaces (Home's What's-new card, Settings) can open the sheet.
+  useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener(OPEN_FEEDBACK_EVENT, onOpen);
+    return () => window.removeEventListener(OPEN_FEEDBACK_EVENT, onOpen);
+  }, []);
   useEffect(() => { if (open) window.setTimeout(() => textareaRef.current?.focus(), 50); }, [open]);
   useEffect(() => {
     if (!open) return undefined;

@@ -1,3 +1,4 @@
+import { gtinVariants, gtinsMatch } from "./gtin.mjs";
 const BARCODE_LENGTHS = new Set([8, 12, 13, 14]);
 
 export const RECEIPT_LINE_ENTRY_TYPES = {
@@ -37,6 +38,17 @@ function normalizeIdentifierValue(value = "") {
 function addIdentifier(set, value) {
   const normalized = normalizeIdentifierValue(value);
   if (normalized) set.add(normalized);
+  // SHOULD 19 (2026-11-14): a UPC-A, its EAN-13/GTIN-14 zero-padded forms and
+  // a UPC-E all identify the same product, so every spelling joins the set.
+  gtinVariants(value).forEach((variant) => set.add(variant));
+}
+
+/** True when two barcodes/SKUs identify the same product in any GTIN padding. */
+export function identifiersMatch(a, b) {
+  const left = normalizeIdentifierValue(a);
+  const right = normalizeIdentifierValue(b);
+  if (!left || !right) return false;
+  return left === right || gtinsMatch(left, right);
 }
 
 export function catalogIdentifiersForProduct(product = {}) {

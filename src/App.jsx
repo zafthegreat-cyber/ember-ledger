@@ -60,8 +60,10 @@ import { createLegacyAppStorageGuard } from "./features/persistence/legacyAppSto
 import { AppShell, DesktopSidebar, MobileBottomNavigation } from "./components/operations/OperationsUI";
 import WorkspaceSwitcher from "./features/workspaces/WorkspaceSwitcher";
 import AppTour, { appTourSeen } from "./features/tour/AppTour.jsx";
-import QuickFeedback from "./features/feedback/QuickFeedback.jsx";
+import QuickFeedback, { openQuickFeedback } from "./features/feedback/QuickFeedback.jsx";
 import { crashReportingAllowed, setCrashReportingAllowed } from "./features/monitoring/crashReporting.js";
+import { rowsToCsvAsync } from "./features/exports/csv.js";
+import { RELEASE_NOTES } from "./features/tour/releaseNotes.js";
 import { reportHandledError } from "./features/monitoring/crashReporting.js";
 import {
   readWorkspacePreference,
@@ -22867,9 +22869,13 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       productName: options.productName || "",
       proofText: options.proofText || "",
       manualLocation: options.manualLocation || "",
+      // SHOULD 18: the two-tap Home launcher pre-fills the category it used
+      // last time and lands on review; the four required fields still apply.
+      productCategory: options.productCategory || "",
+      ...(options.quick && seededStore ? { storeConfirmed: true, reportTypeTouched: true } : {}),
     });
     setQuickScoutReportForm(draft);
-    setQuickScoutReportStep("where");
+    setQuickScoutReportStep(options.quick && seededStore && options.startStep ? options.startStep : "where");
     setQuickScoutReportMessage("");
     setQuickScoutReportSaved(null);
     flowModalBaselineRef.current.scoutSubmit = draft;
@@ -30182,8 +30188,8 @@ function renderForgeBusinessLedgerPanel() {
 
   async function downloadCSV(filename, rows, message = "Export complete.") {
     if (!rows.length) return showAppMessage("No data to export yet.");
-    const headers = Object.keys(rows[0]);
-    const csv = [headers.join(","), ...rows.map((row) => headers.map((h) => `"${String(row[h] ?? "").replaceAll('"', '""')}"`).join(","))].join("\n");
+    // COULD 37: big exports serialise in a worker so the phone stays responsive.
+    const csv = await rowsToCsvAsync(rows);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     return downloadRecordFile(filename, blob, message);
   }
@@ -40111,7 +40117,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       },
     ];
     const activeAnnouncements = getPersistedNotificationRows().filter(canShowAnnouncement);
-    const recentAnnouncements = activeAnnouncements.length ? activeAnnouncements : staticUpdates;
+    // COULD 31: real release notes lead the list; the generic static blurbs follow.
+    const releaseUpdates = RELEASE_NOTES.map((note) => ({ title: note.title, body: note.body, type: note.type, priority: note.priority, publishedAt: note.date, ctaLabel: note.ctaLabel, ctaDestination: note.ctaDestination === "tour" || note.ctaDestination === "feedback" ? "" : note.ctaDestination }));
+    const recentAnnouncements = activeAnnouncements.length ? [...releaseUpdates, ...activeAnnouncements] : [...releaseUpdates, ...staticUpdates];
     const heroAnnouncement = recentAnnouncements[0];
     const heroType = heroAnnouncement?.type || "New feature";
     const heroPriority = heroAnnouncement?.priority || "normal";
@@ -43221,8 +43229,24 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <h4>{comparison.resultLabel}</h4>
               <p>Business compares the values you entered so you can see whether the tide moved in your favor. {comparison.guidance}</p>
             </div>
-            <strong>{comparison.differenceLabel}</strong>
+            <strong>{comparison.partialLabel ? "—" : comparison.differenceLabel}</strong>
           </div>
+          {comparison.partialLabel ? (
+            <div className="trade-fallback-row">
+              <p>{comparison.partialLabel}</p>
+              {comparison.fallbackSuggestions.length ? (
+                <div className="trade-fallback-actions">
+                  {comparison.fallbackSuggestions.map((suggestion) => suggestion.value ? (
+                    <button type="button" key={`${suggestion.side}-${suggestion.source}`} className="secondary-button" onClick={() => updateTradeDraftField(suggestion.side === "outgoing" ? "outgoingValue" : "receivedValue", String(Number(suggestion.value).toFixed(2)))}>
+                      {suggestion.label}
+                    </button>
+                  ) : (
+                    <small key={`${suggestion.side}-${suggestion.source}`}>{suggestion.label}</small>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           <div className="trade-comparison-grid">
             <div>
               <span>What You Gave</span>
@@ -48316,12 +48340,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   };
   const hearthPageProps = {
     kidSafeView,
+    marketSearchesRun: catalogSearchHasRun ? 1 : 0,
+    onOpenFeedback: openQuickFeedback,
     experiencePresentation,
     onOpenSellTrade: () => { prepareRouteNavigation(); setActiveTab("exchange"); },
     onOpenExperienceSettings: () => { prepareRouteNavigation(); setActiveTab("settings"); },
     adaptiveActivity,
     personalizationPreferences,
-    onReportRestock: () => openScoutSubmitFlow({ source: "home-restock" }),
+    onReportRestock: (options = {}) => openScoutSubmitFlow({ source: "home-restock", ...options }),
     onOpenRestockReports: openCommunityRestockReports,
     onOpenFind: openFlipScoutView,
     BETA_LOCAL_MODE,

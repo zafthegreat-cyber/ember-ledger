@@ -86,43 +86,40 @@ export const TIER_PRICING = {
     id: PLAN_IDS.FREE,
     label: "Free",
     price: "$0",
-    summary: "Complete core collector tools for building a collection, checking fair value, and helping Restocks safely.",
+    summary: "Everything an ordinary collector needs: your whole collection, what it is worth, set progress, wishlists and exports. Free stays free after beta.",
     trialCopy: "No trial needed.",
     futurePrice: "",
-    cta: "Included for everyone during beta",
+    cta: "Included for everyone",
     features: [
-      "Manual card, sealed, and graded item tracking (Vault item limit applies)",
-      "Folders, tags, wishlist, and favorites",
-      "Basic fair range per item, card search, and product search",
-      "Basic trade analyzer and deck/list builder",
-      "Follow 1 watched store",
-      "Change watched store once every 30 days",
-      "Submit and confirm restock reports",
-      "Screenshot scan flow UI and proof review UI",
-      "Add proof or context where supported",
-      "Limited current restock details",
-      "Community read/report, The Spark view, and Business Assistant prompts",
-      "Not included: total collection value, set progress and missing-card lists, exports, and the Business ledger (Collector or Seller)",
-      "No raw restock history or restock pattern tools",
+      "Unlimited cards, sealed and graded items; scan, search or type them in",
+      "Folders, tags, variants, wishlist and favorites",
+      "Total collection value and a fair range per item",
+      "Set progress, missing-card lists and binder view",
+      "Wishlist alerts and saved Market searches",
+      "Collection export (CSV)",
+      "Basic trade analyzer",
+      "Follow 1 watched store; change it once every 30 days",
+      "Submit and confirm restock reports; limited current restock details",
+      "Community, The Spark and the guided tour",
+      "Not included: the Business ledger (sales, expenses, receipts, profit), Deal Finder, receipt scan, price history, and Restocks tooling (more watched stores, deeper store details, alerts)",
+      "No raw restock history or restock pattern tools on any plan",
     ],
   },
   [PLAN_IDS.COLLECTOR]: {
     id: PLAN_IDS.COLLECTOR,
     label: "Collector",
     price: "Free during beta",
-    summary: "More selected-store restock context plus collection, wishlist, and set-progress tools.",
+    summary: "Restocks tooling for people who hunt: more watched stores, deeper store details, alerts and price history.",
     trialCopy: "Pricing is set when beta closes; you will be told before anything costs money.",
     futurePrice: "",
-    cta: "Ask the Code 3 team to turn this on (free during beta)",
+    cta: "On for everyone during beta",
     features: [
       "Everything in Free",
-      "Follow 3 watched stores",
-      "Swap 1 watched store every 14 days",
+      "Follow 3 watched stores; swap 1 every 14 days",
       "Deeper current restock details for selected stores",
-      "Total collection value and price history",
-      "Set progress, missing-card lists, and binder view",
-      "Unlimited Vault items and collection export",
-      "Saved Market searches/watchlists where supported",
+      "Restock and text alerts where supported",
+      "Price history on your cards",
+      "Unlimited scans",
       "No all-store exact restock access, raw history, or pattern tools",
     ],
   },
@@ -133,7 +130,7 @@ export const TIER_PRICING = {
     summary: "Collector tools plus parent-managed kid profiles and family collection views.",
     trialCopy: "Pricing is set when beta closes; you will be told before anything costs money.",
     futurePrice: "",
-    cta: "Ask the Code 3 team to turn this on (free during beta)",
+    cta: "On for everyone during beta",
     features: [
       "Everything in Collector",
       "1 primary adult included",
@@ -151,7 +148,7 @@ export const TIER_PRICING = {
     summary: "Collector tools plus Business tracking for sellers.",
     trialCopy: "Pricing is set when beta closes; you will be told before anything costs money.",
     futurePrice: "",
-    cta: "Ask the Code 3 team to turn this on (free during beta)",
+    cta: "On for everyone during beta",
     features: [
       "Collector features plus Business tools",
       "Business sales and expense tracking",
@@ -349,16 +346,20 @@ export const FEATURE_GATES = {
   marketplace_draft_basic: ALL_PUBLIC_PLANS,
   scanner_search_limited: ALL_PUBLIC_PLANS,
 
-  unlimited_vault: COLLECTOR_PLANS,
+  // Rule A (decided 2026-10-31, applied 2026-11-14): Free is a complete
+  // collector app. Set completion, collection value, wishlist alerts, exports,
+  // variants, slabs and saved searches are free; paid tiers are seller,
+  // family and Restocks tooling. See docs/PLANS_AND_SERVICES.md.
+  unlimited_vault: ALL_PUBLIC_PLANS,
   unlimited_scans: COLLECTOR_PLANS,
-  set_completion: COLLECTOR_PLANS,
-  portfolio_value: COLLECTOR_PLANS,
+  set_completion: ALL_PUBLIC_PLANS,
+  portfolio_value: ALL_PUBLIC_PLANS,
   price_history: COLLECTOR_PLANS,
-  wishlist_alerts: COLLECTOR_PLANS,
-  variants: COLLECTOR_PLANS,
-  graded_slab_tracking: COLLECTOR_PLANS,
-  collection_export: COLLECTOR_PLANS,
-  saved_market_searches: COLLECTOR_PLANS,
+  wishlist_alerts: ALL_PUBLIC_PLANS,
+  variants: ALL_PUBLIC_PLANS,
+  graded_slab_tracking: ALL_PUBLIC_PLANS,
+  collection_export: ALL_PUBLIC_PLANS,
+  saved_market_searches: ALL_PUBLIC_PLANS,
   scout_current_details: SCOUT_CURRENT_DETAIL_PLANS,
 
   family_vault: FAMILY_PLANS,
@@ -424,9 +425,9 @@ export const FEATURE_GATES = {
   forge_mileage: SELLER_PLANS,
   forge_reports: SELLER_PLANS,
   forge_import: SELLER_PLANS,
-  vault_unlimited: COLLECTOR_PLANS,
-  vault_scan_add: COLLECTOR_PLANS,
-  vault_export: COLLECTOR_PLANS,
+  vault_unlimited: ALL_PUBLIC_PLANS,
+  vault_scan_add: ALL_PUBLIC_PLANS,
+  vault_export: ALL_PUBLIC_PLANS,
   deal_calculator_limited: ALL_PUBLIC_PLANS,
   deal_calculator_unlimited: SELLER_PLANS,
   deal_checker_basic: ALL_PUBLIC_PLANS,
@@ -673,7 +674,7 @@ export function getLockedFeatureDetails(featureKey) {
     benefit: "Upgrade paths keep advanced tools clear without cluttering the core app.",
     action: "Ask the Code 3 team to adjust your beta access if this belongs in your setup.",
     guardrail: "The locked state explains the benefit without exposing hidden data.",
-    cta: "Ask the Code 3 team to turn this on (free during beta)",
+    cta: "On for everyone during beta",
   };
 }
 
@@ -850,14 +851,21 @@ export function isAdminUser(profile = {}) {
   return role === USER_ROLES.OWNER || role === USER_ROLES.ADMIN || metadataAdmin || tier === PLAN_IDS.ADMIN;
 }
 
+// Open beta (decided 2026-10-31 / 2026-11-13): every member plan's features are
+// on for everyone until beta closes. Staff-only features, raw restock history
+// and pattern tools are NOT part of this and stay closed. Flip to false when
+// prices go live; copy in TIER_PRICING already says "Free during beta".
+export const OPEN_BETA_GATES_OPEN = true;
+
 export function getTierAccess(profile = {}, options = {}) {
   const profileObject = typeof profile === "object" && profile !== null ? profile : { tier: profile };
   const admin = Boolean(options.admin) || isAdminUser(profileObject);
   const tier = admin ? PLAN_IDS.ADMIN : getUserTier(profileObject);
   const base = TIER_ACCESS_RULES[tier] || TIER_ACCESS_RULES[PLAN_IDS.FREE];
   const reviewAccess = options.reviewAccess === true && !admin;
-  const memberRules = reviewAccess ? PUBLIC_TIER_ORDER.map((id) => TIER_ACCESS_RULES[id]) : [];
-  const reviewed = reviewAccess ? Object.fromEntries(Object.entries(base).map(([key, value]) => [
+  const openBeta = OPEN_BETA_GATES_OPEN && options.openBeta !== false && !admin && !profileObject.tierPreview;
+  const memberRules = reviewAccess || openBeta ? PUBLIC_TIER_ORDER.map((id) => TIER_ACCESS_RULES[id]) : [];
+  const reviewed = reviewAccess || openBeta ? Object.fromEntries(Object.entries(base).map(([key, value]) => [
     key,
     typeof value === "boolean" ? memberRules.some((rule) => rule[key] === true)
       : key === "scoutStoreSwapDays" ? Math.min(...memberRules.map((rule) => rule[key]))
@@ -865,6 +873,7 @@ export function getTierAccess(profile = {}, options = {}) {
   ])) : base;
   return {
     ...reviewed,
+    openBeta,
     plan_tier: admin ? PLAN_IDS.ADMIN : tier,
     planTier: admin ? PLAN_IDS.ADMIN : tier,
     tierLabel: reviewAccess ? "App review · all member features" : PLAN_LABELS[admin ? PLAN_IDS.ADMIN : tier] || PLAN_LABELS[PLAN_IDS.FREE],
@@ -945,6 +954,8 @@ export function canUseFeature(userPlan = PLAN_IDS.FREE, featureKey, options = {}
   const tier = typeof userPlan === "object" ? getUserTier(profile) : normalizeTier(userPlan);
   const allowedPlans = FEATURE_GATES[featureKey];
   if (!allowedPlans) return false;
+  // Open beta: any feature some member plan can buy is on for every member.
+  if (OPEN_BETA_GATES_OPEN && options.openBeta !== false && !profile.tierPreview && !isProtectedScoutFeature(featureKey) && allowedPlans.some((plan) => PUBLIC_TIER_ORDER.includes(plan))) return true;
   // A reviewer gets the union of customer plans, never moderation, catalog
   // management, raw history or other features reserved for staff.
   if (options.reviewAccess === true && allowedPlans.some((plan) => PUBLIC_TIER_ORDER.includes(plan))) return true;

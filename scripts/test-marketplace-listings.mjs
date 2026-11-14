@@ -92,7 +92,7 @@ assert.match(paymentAnswer.answer, /does not provide checkout\/payment/i);
 assert.doesNotMatch(paymentAnswer.answer, /guaranteed|payment is available/i);
 
 const appSource = fs.readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
-assert.match(appSource, /primaryAddLabel = sellerMarketMode && activeForgeWorkspace \? "Add to Forge" : "Add to Vault"/);
+assert.match(appSource, /primaryAddLabel = sellerMarketMode && activeForgeWorkspace \? "Add to Business" : "Add to Vault"/);
 assert.match(appSource, /Review before saving\. Choose the destination now/);
 assert.match(appSource, /market-review-add-card/);
 assert.match(appSource, /market-set-mastery-context/);

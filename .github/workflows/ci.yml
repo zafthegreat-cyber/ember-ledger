@@ -1,0 +1,65 @@
+name: CI
+# SHOULD 22 (2026-11-14). Every push and PR: lint, the beta test suites, a
+# production build and a chunk-size report. This is the check Zena cannot run
+# from the cloud workspace; the nationwide-launch workflow stays as the
+# release-specific gate.
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Lint
+        run: npm run lint:src
+      - name: Beta suites (node --test)
+        run: >
+          node --no-warnings --test
+          scripts/test-must-week1.mjs
+          scripts/test-should-polish.mjs
+          scripts/test-ux-declutter.mjs
+          scripts/test-large-backup-verification.mjs
+          scripts/test-feedback-20-findings.mjs
+          scripts/test-beta-corrections-batch1.mjs
+          scripts/test-beta-corrections-batch2.mjs
+          scripts/test-beta-corrections-batch3.mjs
+          scripts/test-restore-compatibility.mjs
+          scripts/test-export-disclosure.mjs
+          scripts/test-should-batch2.mjs
+      - name: Domain suites (plain node)
+        run: |
+          node --no-warnings scripts/test-empty-states.mjs
+          node --no-warnings scripts/test-route-loading.mjs
+          node --no-warnings scripts/test-plain-language.mjs
+          node --no-warnings scripts/test-onboarding.mjs
+          node --no-warnings scripts/test-vault-set-mastery.mjs
+          node --no-warnings scripts/test-flip-scout.mjs
+          node --no-warnings scripts/test-inventory-valuation.mjs
+          node --no-warnings scripts/test-profit-dashboard.mjs
+          node --no-warnings scripts/test-trade-value-flow.mjs
+          node --no-warnings scripts/test-code3-branding.mjs
+          node --no-warnings scripts/test-code3-client-security.mjs
+          node scripts/test-scout-lint-regressions.cjs
+      - name: Build
+        run: npm run build
+      - name: Chunk size report
+        run: node scripts/report-chunk-sizes.mjs dist --budget-kb 2304 --json chunk-report.json --ignore ocr/,usLocationIndex
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: chunk-report
+          path: chunk-report.json
+          if-no-files-found: ignore

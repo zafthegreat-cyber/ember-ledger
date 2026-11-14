@@ -142,11 +142,38 @@ export function buildTradeComparison(draft = {}, sourceItem = {}, options = {}) 
     }
   }
 
+  // SHOULD 21 (2026-11-14): when a side is missing, say what IS known and
+  // offer the concrete numbers the person already has instead of "Unknown".
+  const now = options.now ? new Date(options.now) : new Date();
+  const priceDate = sourceItem.marketPriceUpdatedAt || sourceItem.market_price_updated_at || sourceItem.priceUpdatedAt || sourceItem.price_updated_at || sourceItem.marketCheckedAt || sourceItem.market_checked_at || "";
+  const priceAgeDays = priceDate && Number.isFinite(Date.parse(priceDate)) ? Math.floor((now.getTime() - Date.parse(priceDate)) / 86400000) : null;
+  const stalePrice = !hasManualOutgoingValue && outgoing.confidence === "Market estimate" && priceAgeDays !== null && priceAgeDays > (options.staleAfterDays ?? 30);
+  const fallbackSuggestions = [];
+  if (!hasOutgoingValue) {
+    const paid = firstPositiveNumber(sourceItem.purchasePrice, sourceItem.purchase_price, sourceItem.unitCost, sourceItem.unit_cost, sourceItem.allocatedItemCost);
+    if (paid) fallbackSuggestions.push({ side: "outgoing", label: `Use what you paid (${moneyFormatter(paid * normalized.outgoingQuantity)})`, value: paid * normalized.outgoingQuantity, source: "What you paid" });
+    fallbackSuggestions.push({ side: "outgoing", label: "Look up a Market price", value: null, source: "Market" });
+  }
+  if (!hasReceivedValue) {
+    if (receivedEstimate) fallbackSuggestions.push({ side: "received", label: `Use the ${receivedEstimate.source.toLowerCase()} (${moneyFormatter(receivedEstimate.value * normalized.receivedQuantity)})`, value: receivedEstimate.value * normalized.receivedQuantity, source: receivedEstimate.source });
+    else if (normalized.receivedType === "Sealed") fallbackSuggestions.push({ side: "received", label: "Use the shelf price (MSRP) as a floor", value: null, source: "MSRP" });
+    else fallbackSuggestions.push({ side: "received", label: "Ask what they'd sell it for and use that", value: null, source: "Asking price" });
+  }
+  let partialLabel = "";
+  if (hasOutgoingValue && !hasReceivedValue) partialLabel = `You're giving about ${moneyFormatter(outgoing.totalValue)}. Add what you got to compare.`;
+  else if (!hasOutgoingValue && hasReceivedValue) partialLabel = `You're getting about ${moneyFormatter(receivedTotalValue)}. Add what you gave to compare.`;
+  else if (!hasOutgoingValue && !hasReceivedValue) partialLabel = "No values yet. Either side can start with what you paid or a Market price.";
+  if (stalePrice && hasOutgoingValue && hasReceivedValue) guidance = `${guidance} The Market price for what you gave is ${priceAgeDays} days old; refresh it before deciding.`;
+
   return {
     difference,
     differenceLabel: hasOutgoingValue && hasReceivedValue
       ? `${difference >= 0 ? "+" : "-"}${moneyFormatter(Math.abs(difference))}`
       : "Unknown Balance",
+    fallbackSuggestions,
+    partialLabel,
+    priceAgeDays,
+    stalePrice,
     guidance,
     hasOutgoingValue,
     hasReceivedValue,

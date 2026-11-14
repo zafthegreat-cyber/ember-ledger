@@ -1,8 +1,10 @@
 import { PRODUCT_TYPE_ALIASES, POKEMON_NAME_ALIASES, RARITY_VARIANT_ALIASES } from "../data/productAliases";
+import { canonicalGtin, gtinVariants } from "./gtin.mjs";
 import { getSetByCodeOrAlias } from "../data/pokemonSetCatalog";
+import { englishSetNameFor } from "../data/japaneseSetAliases.mjs";
 import generatedSearchAliases from "../data/generated/searchAliases.json";
 import { getProductImageUrl } from "./productDisplayUtils";
-import { catalogCardQueryMatchesRow } from "./catalogResultIdentity.mjs";
+import { catalogCardQueryMatchesRow, getCatalogCollectorQuery } from "./catalogResultIdentity.mjs";
 
 const QUERY_EXPANSION_CACHE_LIMIT = 160;
 const queryExpansionCache = new Map();
@@ -41,7 +43,7 @@ function identifierVariants(...values) {
     const normalized = normalizeCatalogName(value);
     const compact = compactIdentifier(value);
     const noLeadingZeroes = compact.replace(/^0+/, "");
-    [normalized, compact, noLeadingZeroes].forEach((variant) => {
+    [normalized, compact, noLeadingZeroes, ...gtinVariants(value)].forEach((variant) => {
       if (variant && variant.length >= 3) variants.add(variant);
     });
   });
@@ -52,7 +54,12 @@ export function getAliasExpansions(value) {
   const query = normalizeCatalogName(value);
   if (queryExpansionCache.has(query)) return queryExpansionCache.get(query);
   const expansions = new Set([query, ...catalogTokens(query)]);
-  const setMatch = getSetByCodeOrAlias(query);
+  const setMatch = getSetByCodeOrAlias(query) || getSetByCodeOrAlias(value);
+  // SHOULD 20: a Japanese set name or code expands to the English set.
+  [value, ...String(value || "").split(/\s+/)].map(englishSetNameFor).filter(Boolean).forEach((englishName) => {
+    expansions.add(normalizeCatalogName(englishName));
+    catalogTokens(englishName).forEach((token) => expansions.add(token));
+  });
   if (setMatch) {
     expansions.add(normalizeCatalogName(setMatch.name));
     expansions.add(normalizeCatalogName(setMatch.code));
@@ -157,6 +164,7 @@ function buildCatalogSearchIndex(catalog = []) {
       haystackTokens: catalogTokens(haystack),
       exactIds: identifierVariants(item.upc, item.barcode, item.sku, item.externalProductId, item.external_product_id, item.tcgplayerProductId, item.tcgplayer_product_id, item.identifierSearch, item.identifier_search, item.retailerSkus, item.retailer_skus),
       cardNumber: normalizeCatalogName(item.cardNumber || item.card_number),
+      cardNumberFirst: normalizeCatalogName(item.cardNumber || item.card_number).split("/")[0].replace(/^0+(?=\d)/, ""),
       setCode: normalizeCatalogName(item.setCode || item.set_code),
       sourceText,
       hasImage: Boolean(getProductImageUrl(item)),
@@ -177,13 +185,24 @@ function buildCatalogSearchIndex(catalog = []) {
 }
 
 function buildCatalogQueryMeta(query) {
-  const normalized = normalizeCatalogName(query);
-  const tokens = catalogTokens(query);
+  // SHOULD 20: Japanese characters fold away in normalizeCatalogName, so a
+  // query that names a Japanese set searches as its English set instead.
+  const englishSet = englishSetNameFor(query);
+  const effectiveQuery = englishSet && !normalizeCatalogName(query) ? englishSet : query;
+  const normalized = normalizeCatalogName(effectiveQuery);
+  const tokens = catalogTokens(effectiveQuery);
+  const gtin = canonicalGtin(query);
+  const collector = getCatalogCollectorQuery(query);
   return {
     normalized,
     tokens,
-    expansions: getAliasExpansions(query),
+    expansions: getAliasExpansions(effectiveQuery),
     queryWantsCodeCard: normalized.includes("code card") || tokens.includes("code"),
+    // SHOULD 19: a scanned/typed barcode compares in canonical form, and a
+    // "name 4/102" query remembers its card number so ranking can put the
+    // exact-number card first.
+    gtin,
+    collectorNumber: collector ? collector.collectorNumber.split("/")[0] : "",
   };
 }
 
@@ -238,12 +257,17 @@ function scoreIndexedCatalogItem(queryMeta, indexed) {
   const { item, haystack } = indexed;
 
   const compact = compactIdentifier(normalized);
-  if (indexed.exactIds.some((id) => id === normalized || id === compact)) {
+  if (indexed.exactIds.some((id) => id === normalized || id === compact || (queryMeta.gtin && id === queryMeta.gtin))) {
     return { item, score: 1000, reason: "Exact UPC/SKU/barcode match" };
   }
   if (indexed.cardNumber && indexed.cardNumber === normalized) {
     return { item, score: 940, reason: "Exact card number match" };
   }
+  // "charizard 4/102": the card whose own number is 4 outranks every other
+  // Charizard, and a row carrying the full fraction outranks a bare "4".
+  const cardNumberBoost = queryMeta.collectorNumber && indexed.cardNumberFirst === queryMeta.collectorNumber
+    ? (indexed.cardNumber.includes("/") ? 460 : 420)
+    : 0;
   if (indexed.setCode && tokens.includes(indexed.setCode)) {
     return { item, score: 760, reason: "Set code match" };
   }
@@ -261,6 +285,7 @@ function scoreIndexedCatalogItem(queryMeta, indexed) {
     if (haystack.includes(token)) score += token.length > 2 ? 35 : 10;
     else if (catalogTokenMatches(indexed, token)) score += token.length > 5 ? 18 : 8;
   });
+  score += cardNumberBoost;
   if (score > 0) {
     const genericPlaceholder =
       !indexed.hasImage &&
@@ -273,7 +298,7 @@ function scoreIndexedCatalogItem(queryMeta, indexed) {
     if (looksLikeCodeCard && !queryWantsCodeCard) score -= 520;
   }
 
-  return { item, score, reason: score >= 160 ? "Alias/shorthand match" : score > 0 ? "Partial catalog match" : "" };
+  return { item, score, reason: cardNumberBoost ? "Card number match" : score >= 160 ? "Alias/shorthand match" : score > 0 ? "Partial catalog match" : "" };
 }
 
 export function scoreCatalogItem(query, item) {

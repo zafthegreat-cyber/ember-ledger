@@ -68,7 +68,7 @@ assert.match(reducedMotionSource, /transform: none !important/);
 // Menu rows now live in the renderer's imported navigation component.
 assert.match(appSource, /<MenuNavigation sections=\{menuCommandSections\}/);
 assert.match(menuNavigationSource, /aria-label=\{`\$\{item\.label\}\. \$\{item\.helper \|\| "Open this workspace area\."\}`\}/);
-assert.match(appSource, /aria-label="Scout screenshot or photo review\. Try text extraction, then review before saving a Scout report\."/);
+assert.match(appSource, /aria-label="Restocks screenshot or photo review\. Try text extraction, then review before saving a restock report\."/);
 assert.match(appSource, /aria-label="Scan page of cards\. Manual multi-card review\. Automatic card detection is not live yet\."/);
 assert.match(appSource, /aria-label="Manual entry\. Add a record now and correct details before saving\."/);
 assert.match(appSource, /aria-label=\{`\$\{mode\.title\}\. \$\{mode\.helper\} Coming later\.`\}/);

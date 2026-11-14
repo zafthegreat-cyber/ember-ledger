@@ -775,3 +775,104 @@ and are in `docs/MUST_WEEK1_PC_CHECKLIST.md`.
   when the rail is absent; stale "posting opens after approval" copy fixed.
 - **Home**: duplicate description and helper sentences removed.
 - Verification: `test:ux-declutter` (6) + all suites; all `src/` files parse.
+
+### November 14: SHOULD 12–14 — skeletons, palette finish, small phones
+
+- **Loading skeletons** (`src/components/ListSkeleton.jsx`, rows / card /
+  metric variants, `role="status"` + `aria-busy`, shimmer honours
+  reduced-motion). Replaces "Loading stores..." in Restocks and "Loading
+  reviewed reports…" in the Community feed; the route-chunk card now shows a
+  skeleton page under its spinner instead of a lone box.
+- **Empty states**: one shape for `.et-mockup-empty-state`, `.empty-state`,
+  `.small-empty-state` and `.collector-trade-empty` (dashed card, icon in
+  teal, 44 px action). The three Spark lists adopt it.
+- **Palette finish**: radii normalised (cards 14 px, controls 10 px, badges
+  round) across the v4 panels, ops cards, buttons and inputs; every remaining
+  gold/uppercase route-panel kicker (Hearth, Restocks, Market, Vault,
+  Exchange, Spark, You) is now a quiet 12 px label; light theme gets the same
+  hero layering, softer shadow and the shared teal focus ring; text on the
+  primary action always uses `--on-primary`.
+- **Small phones + gesture bar**: content clears the floating nav
+  (`118px + safe-area`), sheets/modals/tour/feedback pad for the gesture bar,
+  back-to-top sits above the feedback button. `≤360px`: tighter hero and
+  page padding, 2-column status/route strips, single-column metric grids,
+  full-width stacked action rows, 10 px nav labels, icon-only feedback button,
+  tables scroll horizontally, long words wrap. `≤330px`: single-column strips,
+  icon-only nav. Landscape phones get a shorter nav.
+- `scripts/test-empty-states.mjs` had drifted from the copy (Tidepool →
+  Community, Forge → Business, Market research); expectations updated.
+- Verification: `npm run test:should-polish` (9, includes a real
+  `renderToStaticMarkup` of ListSkeleton), ux-declutter (updated for the new
+  import order), must-week1, empty-states, route-loading, plain-language; all
+  touched files parse. Visual check on a 360 px phone is still a PC step.
+
+### November 14 (later): SHOULD 15, 18–22, 29, 30, 40 and COULD 31, 35, 36, 37
+
+- **CI (22)**: `.github/workflows/ci.yml` runs lint, the beta node suites, the
+  domain suites, `vite build` and `scripts/report-chunk-sizes.mjs` (gzip sizes,
+  step summary, JSON artifact, 2,304 KB largest-chunk budget) on every push and
+  PR. `test-code3-client-security.mjs` updated for the render-time Owner Center
+  route sync.
+- **Onboarding checklist (15)**: `features/onboarding/personaChecklist.js` +
+  `PersonaChecklist.jsx` on Home — three steps per persona (collector, seller,
+  store; kid-safe variant), each marked done from real counts (Vault items,
+  followed stores, Market search, inventory, receipts, sales, reports, tour),
+  dismissable per persona, hidden when complete.
+- **Two-tap restock report (18)**: `features/restocks/quickReport.js` +
+  `QuickRestockLauncher.jsx` in the Home hero. Tap a followed/last store, tap
+  Stock seen / Low / No stock → the full report opens on its review step with
+  time = now and the last-used category. The four required fields (A86/A87) are
+  unchanged; `openScoutSubmitFlow` accepts `productCategory`, `startStep`, `quick`.
+- **Search ranking + GTIN (19, t107)**: `utils/gtin.mjs` (check digit, UPC-A ↔
+  EAN-13 ↔ GTIN-14 equivalence, UPC-E expansion, `describeGtinProblem`).
+  Identifier sets include every padding; `identifiersMatch`; catalog search
+  matches a scanned barcode in any padding and ranks the card whose number is
+  in the query ("charizard 4/102") first with reason "Card number match".
+  Stored barcode strings are unchanged (existing records depend on them).
+- **Japanese ↔ English sets (20, t106)**: `data/japaneseSetAliases.mjs` — 34
+  English sets mapped to their Japanese sets (name, romaji, code). `getSetByCodeOrAlias`
+  resolves "sv2a" / "ポケモンカード151"; catalog search expands Japanese names and
+  codes to the English set; `setProgressByLanguage` keeps EN and JA printings apart.
+- **Trade analyzer fallbacks (21)**: `buildTradeComparison` returns `partialLabel`
+  ("You're giving about $120. Add what you got to compare."), `fallbackSuggestions`
+  (what you paid, catalog estimate, MSRP floor, asking price) and a stale-price
+  warning (`priceAgeDays` > 30). The Business trade card shows them as one-tap buttons.
+- **Docs (29)**: `docs/COMMUNITY_GUIDELINES.md` and `docs/MODERATION_PLAYBOOK.md`
+  (decision ladder, canned notes, appeals, child-safety protocol) — drafts for Zena.
+- **Plans (30)**: `docs/PLANS_AND_SERVICES.md` is canonical. Rule A applied to
+  `featureGates.js`: set completion, collection value, wishlist alerts, exports,
+  variants, slabs, saved searches, unlimited Vault are Free; Business ledger,
+  Deal Finder, receipt scan, price history and Restocks tooling are paid after
+  beta. **Open beta unlock** (`OPEN_BETA_GATES_OPEN`): every member-plan feature
+  and the best member limits (3 watched stores) are on for everyone until beta
+  closes; staff features, raw history and pattern tools stay closed; tier
+  previews (`tierPreview`) show the post-beta plan. Free/Collector copy and CTAs
+  rewritten.
+- **Cleanup (40)**: AGENTS.md names and design/checks sections updated;
+  `docs/CURRENT_PUBLIC_BETA_STATUS.md` marked retired; package.json scripts
+  all point at existing files (verified).
+- **What's new (31)**: `features/tour/releaseNotes.js` + `WhatsNewCard.jsx` on Home
+  (once per release, not for brand-new accounts; "Take the tour again",
+  "All updates"); Announcements lists the release notes first. Feedback sheet can
+  be opened by event (`openQuickFeedback`).
+- **Saved Market searches (35)**: `features/market/savedSearches.js` +
+  `SavedSearches.jsx` under the Market search form (star to save, chips to
+  re-run, 20 max, device-local).
+- **Purchase returns (36)**: new `purchaseReturn` lifecycle (Requested → Returned
+  → Refunded → Closed, or Cancelled; reason enum; refunds capped at the purchase
+  cost, never reduced, append-only; inventory untouched) on the purchase detail
+  in Business.
+- **CSV in a worker (37)**: `features/exports/csv.js` + `csv.worker.js`; exports
+  over 2,000 rows serialise off the main thread with timeout and error fallback;
+  output byte-identical to before.
+- Verification: `npm run test:should-batch2` (18, incl. static renders of the
+  checklist and launcher), tier-foundation and experience-presentation updated
+  for the open-beta unlock, lifecycles 34/34, return corrections 26/26, inspected
+  returns 29/29, trade flow, catalog shorthand/recovery, inventory imports,
+  barcode lookup, search performance, plain-language; all touched files parse.
+- Not done (reasons): 16 main store off localStorage (large data-migration
+  change; needs a design pass and a PC build), 17 end-to-end alerts (needs a
+  push provider decision + FCM keys), 25 help center on code3tcg.com (separate
+  repo), 27 route-level code splitting (needs the PC build to measure), 28/42
+  tester voices (content batches, next session), 32/33/34 (binder page,
+  verified-shop badge, map tile cache), 39 analytics (account), 41 ledger #16/#29/#100.

@@ -1,3 +1,8 @@
+> **Retired (2026-11-14).** This is a June 2026 snapshot of the old emberandtide.app
+> beta and is kept for history only. Current status lives in
+> `docs/APP_IMPROVEMENTS_100_2026_10_25.md` (work log), `docs/FEATURE_STATUS_MATRIX.md`
+> and the shared tasks board. The live app is code3tcg.app, deployed from `main`.
+
 # Current Public Beta Status
 
 ## Reconciliation Time

@@ -124,7 +124,8 @@ test("preview profiles cannot inherit privileged, lifetime, or metadata flags", 
   const actual = Object.freeze({ tier: "admin", appRole: "owner", lifetimeAccess: true, app_metadata: { is_admin: true, subscription_plan: "admin" } });
   for (const tier of PUBLIC_TIER_ORDER) {
     const previewProfile = createTierPreviewProfile(tier, actual);
-    assert.deepEqual(Object.keys(previewProfile).sort(), ["appRole", "subscriptionStatus", "tier"]);
+    assert.deepEqual(Object.keys(previewProfile).sort(), ["appRole", "subscriptionStatus", "tier", "tierPreview"]);
+    assert.equal(previewProfile.tierPreview, true, "previews show the plan as it will be after beta");
     assert.equal(getUserTier(previewProfile), tier);
     assert.equal(isAdminUser(previewProfile), false);
     assert.equal(getTierAccess(previewProfile).isAdmin, false);

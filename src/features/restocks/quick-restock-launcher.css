@@ -1,0 +1,12 @@
+.quick-restock { display: grid; gap: 8px; margin-top: 12px; }
+.quick-restock__row { display: flex; flex-wrap: wrap; gap: 8px; }
+.quick-restock__store { display: grid; gap: 2px; min-height: 48px; padding: 8px 12px; text-align: left; border: 1px solid var(--border-subtle, #ddd); border-radius: 12px; background: var(--surface-primary, #fff); color: var(--text-primary, #222); cursor: pointer; max-width: 100%; }
+.quick-restock__store strong { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+.quick-restock__store small { color: var(--text-secondary, #777); font-size: 11.5px; }
+.quick-restock__store.is-selected { border-color: var(--accent-teal, #1F7A74); box-shadow: inset 0 0 0 1px var(--accent-teal, #1F7A74); }
+.quick-restock__status { min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--border-strong, #ccc); background: var(--surface-primary, #fff); color: var(--text-primary, #222); font: 600 14px/1 var(--font-ui, inherit); cursor: pointer; }
+.quick-restock__status.is-positive { border-color: var(--status-success, #24633D); color: var(--status-success, #24633D); }
+.quick-restock__status.is-caution { border-color: var(--status-warning, #80500B); color: var(--status-warning, #80500B); }
+.quick-restock__status:hover { background: var(--surface-secondary, #f3f3f3); }
+.quick-restock__hint { color: var(--text-secondary, #777); font-size: 12px; line-height: 1.4; }
+@media (max-width: 360px) { .quick-restock__store { width: 100%; } .quick-restock__status { flex: 1 1 auto; } }

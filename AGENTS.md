@@ -15,16 +15,24 @@ childish, cluttered, generic, scalper-friendly, cold, or overly technical.
 
 ## Main areas
 
-Use these product page names:
+Use these product page names in all user-facing copy (decided Oct 30 – Nov 6,
+2026). Code symbols, routes, storage keys and database names keep the older
+words in parentheses; do not rename those.
 
-- Hearth: home dashboard
-- Scout: local and online restock intelligence
+- Home (code: hearth): home dashboard
+- Restocks (code: scout): local and online restock reports, watched stores
 - Vault: personal/family collection tracker
-- Forge: trades, decks, listings, sales, inventory
+- Business (code: forge): trades, listings, sales, inventory, receipts
 - Market: discovery, search, fair price tools
-- Tidepool: trusted family-safe community
+- Community (code: tidepool): trusted family-safe community
 - The Spark: kids program, donations, giveaways, events
-- Ember Assist: warm helper / assistant layer
+- Safety Center (code: lantern) and Family (code: nest): safety and family settings
+- Watch Center (code: ember watch / tide watch), Public Profile (code: ember id),
+  Daily Points (code: ember/tide points), Trust Score (code: tide score)
+- Code 3 Assist (code: ember assist): warm helper / assistant layer
+
+`src/config/plainLanguage.js` (`renameLegacyProductNames`) is the render-time
+catch-all; `npm run test:plain-language` fails on leaked old names.
 
 ## Engineering rules
 
@@ -42,11 +50,11 @@ Use these product page names:
 ## Design rules
 
 - Mobile-first.
-- Dark premium fantasy style.
+- Warm premium style; dark and light themes follow the device until the person picks.
 - Strong contrast.
-- Rounded cards.
-- Warm ember and gold accents.
-- Tide blue/teal accents.
+- Rounded cards (14 px cards, 10 px controls, round badges).
+- Maroon primary action in light, gold in dark; gold is for the one primary action, values and the brand line.
+- Teal (`--accent-teal`) carries informational and secondary accents; small labels are quiet grey, never gold caps.
 - Large readable text.
 - 44px minimum touch targets.
 - Bottom navigation should be clear and thumb-friendly.
@@ -62,7 +70,7 @@ Use these product page names:
 - No exact inventory quantities unless shop-approved.
 - No unmoderated kid messaging.
 - Parent approval should be represented for child-sensitive actions.
-- Tidepool should never become a scalper feed.
+- Community (tidepool) should never become a scalper feed.
 - Use trust badges, proof status, confidence scores, and moderation states.
 
 ## IP / assets
@@ -75,9 +83,14 @@ Use these product page names:
 
 Run the repo's available checks, usually:
 
-- npm run lint
-- npm run typecheck
-- npm test
+- npm run lint:src
+- npm run build (record the largest chunk; `node scripts/report-chunk-sizes.mjs dist`)
+- the node suites in `.github/workflows/ci.yml` (same list CI runs on every push)
+- `npm run test:plain-language` after any copy change
+
+Status docs: `docs/APP_IMPROVEMENTS_100_2026_10_25.md` (work log) and
+`docs/FEATURE_STATUS_MATRIX.md`. `docs/CURRENT_PUBLIC_BETA_STATUS.md` is a
+June 2026 snapshot kept for history only.
 - npm run build
 - npx expo-doctor
 - npx tsc --noEmit

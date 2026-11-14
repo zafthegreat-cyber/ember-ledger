@@ -1,0 +1,11 @@
+.saved-searches { display: grid; gap: 8px; margin: 6px 0 12px; }
+.saved-searches__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.saved-searches__toggle { min-height: 40px; padding: 0 12px; border: 1px solid var(--border-subtle, #ddd); border-radius: 999px; background: transparent; color: var(--text-primary, #222); font: 600 13px/1 var(--font-ui, inherit); cursor: pointer; }
+.saved-searches__toggle[aria-pressed="true"] { border-color: var(--accent-teal, #1F7A74); color: var(--accent-teal, #1F7A74); background: var(--accent-teal-soft, #E3F1EF); }
+.saved-searches__list { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.saved-searches__list li { display: inline-flex; align-items: stretch; border: 1px solid var(--border-subtle, #ddd); border-radius: 999px; background: var(--surface-primary, #fff); overflow: hidden; }
+.saved-searches__chip { min-height: 40px; max-width: 240px; padding: 0 12px; border: 0; background: transparent; color: var(--text-primary, #222); font: 500 13.5px/1 var(--font-ui, inherit); cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.saved-searches__chip:hover { color: var(--accent-teal, #1F7A74); }
+.saved-searches__remove { width: 36px; border: 0; border-left: 1px solid var(--border-subtle, #ddd); background: transparent; color: var(--text-secondary, #777); font-size: 18px; cursor: pointer; }
+.saved-searches__remove:hover { color: var(--status-danger, #AD2434); }
+.saved-searches__hint { color: var(--text-secondary, #777); font-size: 12.5px; }
