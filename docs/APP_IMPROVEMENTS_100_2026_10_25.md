@@ -674,3 +674,104 @@ only; no routes, DB names or code symbols changed.
   identity (test updated for the new number clause), export disclosure,
   portfolio, feedback-20 and inspected-returns suites pass; all `src/` files
   parse. Build and ESLint still need the development machine.
+
+### November 6: declutter, colors, sign out, guided tour
+
+Zena's own review of the Account and You pages ("soooo cluttered", "Nest?
+Lantern?", "fix the colors too", "log out is hard to find", "a guided tour
+would be useful"). Additive; no routes or records changed.
+
+- **Sign out.** On the Settings account card as a real button (next to Open
+  Profile and Take the tour), first in the menu's Account list, and the
+  primary action of the Account page's Security card. Copy says records stay
+  on the device.
+- **Guided tour.** New `features/tour/AppTour.jsx` (+ css): six steps
+  (welcome, workspace switcher, tabs, + add, search, You/Settings/sign out)
+  that spotlight the real controls, fall back to a centered card when a
+  control is off-screen, keyboard-navigable, opens once per device after the
+  first sign-in (`code3-app-tour-v1`), restartable from Settings and the menu.
+- **Account page.** For signed-in people: one essentials card (email, plan
+  "free during beta", setup with Change, where records live) with Build /
+  provider / role folded under "Technical details"; a Security card (Sign
+  out, Change password, Edit profile, More → progress, suggestions, delete);
+  the 11-option setup matrix is collapsed under "Setup options" and no longer
+  shows Admin / internal rows to non-admins. Utility-page header status chips
+  and the Menu button are admin-only now.
+- **You page.** Collectors get a short page: profile summary, six link cards
+  (Account, Settings, Backups & records, Family when relevant, Safety Center,
+  Help), one status line and Sign out. The "You Command Center" dashboard
+  stays for admins.
+- **Names.** Nest → Family / Family Settings, Lantern → Safety Center added to
+  `renameLegacyProductNames`.
+- **Colors.** New `styles/app/15-warm-palette-polish.css` loaded last: warmer
+  plum-charcoal dark surfaces with visible layering (#1A1518 page, #26202A
+  cards, #38303A raised), small labels/kickers in a quiet warm grey instead of
+  gold uppercase, gold reserved for the one primary action and the brand
+  line, a teal second accent (`--c3-teal`) for icons, links and info badges,
+  outlined secondary buttons, fewer uppercase labels.
+- Verification: `npm run test:ux-declutter` (5), beta-corrections (33),
+  feedback-20 (17) pass; all `src/` files parse. Build/ESLint still on the PC;
+  please eyeball the dark theme on the phone — colors are a first pass.
+
+### November 13: MUST list, week 1 (items 1, 4, 6, 9, 10)
+
+From `claude/code3-app-priorities-moscow.md`. Items 2, 3, 5, 7, 8 need the PC
+and are in `docs/MUST_WEEK1_PC_CHECKLIST.md`.
+
+- **1 Package name.** `android/app/build.gradle` `applicationId` →
+  `com.code3tcg.app` (Play App Signing key); namespace unchanged.
+- **4 Open beta in the client.** `BETA_OPEN_EVERYWHERE = true`:
+  `isOpenAccessState` accepts every US state + DC, labels read "all 50 states
+  and Washington, DC", review/waitlist/pending copy says the account works
+  right away; signup button is "Create your free account"; "may need approval"
+  removed. Database side went live Nov 6.
+- **6 Large backups.** Already fixed Oct 30 (64 MB parse limit); new
+  `scripts/test-large-backup-verification.mjs` proves a 12 MB seller backup
+  self-verifies and that the over-limit message names size and limit.
+- **9 Crash reporting.** Sentry project `anchor-wing-llc/code3-tcg-app`
+  (javascript-react). `features/monitoring/crashReporting.js`: errors only
+  (no replay, no tracing), `sendDefaultPii` off, every event/breadcrumb/URL
+  scrubbed (emails, 10–19 digit runs, JWT/API tokens, query strings,
+  record-like keys), input and console breadcrumbs dropped, off in DEV, off
+  for kid-safe profiles, off when the person unticks "Send crash reports" in
+  Settings → Privacy (`code3-crash-reports-off`). `main.jsx` initialises it
+  and the error boundary + `logAppError` (non-low severity) report through it.
+  `@sentry/react` added to package.json (run `npm install` on the PC).
+  `VITE_SENTRY_DSN` overrides the built-in DSN; set it to "" to disable.
+- **10 Quick feedback.** `features/feedback/QuickFeedback.jsx`: floating
+  "Feedback" button on every screen (hidden for kid profiles and while the
+  tour/menu is open) → sheet with four kinds, a sentence, optional email for
+  guests; inserts into `beta_feedback` with route, version and device
+  summary, scrubs card/SSN/password patterns, queues on the device when
+  offline and retries on next open. Edge function `feedback-discord`
+  (deployed Nov 13, JWT-verified) posts a card to Discord when the secret
+  `DISCORD_FEEDBACK_WEBHOOK` is set.
+- Verification: `npm run test:must-week1` (4), `test:large-backup` (2),
+  beta-corrections (33, batch-1 expectations updated for the open beta),
+  feedback-20 (17), ux-declutter (5); all `src/` files parse. Build/ESLint on
+  the PC.
+
+### November 13 (later): MUST 11 — quiet pages for collectors
+
+- **CommandBoardV4** gains `density` ("auto" by default): anyone without
+  admin tools gets a quiet board — title, description, one primary action,
+  one helper action; status chips, the Plan panel and the route strip fold
+  into a "More on this page" disclosure; the duplicate Menu/Profile button is
+  gone (bottom nav has it). Admins keep the full command center.
+- **Market**: title "Market", one-line description, honest empty state
+  ("Try a name, a set, or a card number like 4/102"); the Unknown/Unknown
+  value ribbon, decision rail, metric grid and feature-system cards are
+  admin-only.
+- **Vault**: heading pills, zero-count chip row, storage and recommendation
+  cards, Collection-intelligence grid, next-action card, display-case safety
+  note, "one card identity" explainer, duplicate health rail, set-summary
+  grid, "Add to Set — soon" card and the beta upgrade preview are admin-only;
+  Condition Center disclaimer shortened.
+- **Restocks**: radar paragraph and map footer shortened; Current Signal and
+  Family Safety cards and the metric grid admin-only (Watched Stores stays).
+- **Community**: guardrail strip, stat grid, trust grid, trust dashboard,
+  circle safety note, section/moderation grids, hardcoded example posts,
+  support strip and the whole right rail admin-only; page uses full width
+  when the rail is absent; stale "posting opens after approval" copy fixed.
+- **Home**: duplicate description and helper sentences removed.
+- Verification: `test:ux-declutter` (6) + all suites; all `src/` files parse.

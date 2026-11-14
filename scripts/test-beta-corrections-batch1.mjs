@@ -41,10 +41,11 @@ const device = await load("src/utils/deviceNotifications.js", "device");
 test("#1-2 more states review instead of waitlist, and the copy explains the human review", () => {
   assert.ok(onboarding.isOpenAccessState("NC"));
   assert.ok(onboarding.isOpenAccessState("va"));
-  assert.ok(onboarding.isOpenAccessState("CA"));
-  assert.match(onboarding.betaAccessWaitlistMessage("CA"), /supports California/);
-  assert.match(onboarding.betaAccessWaitlistMessage("CA"), /sign in and start/i);
-  assert.match(onboarding.betaAccessPendingMessage(), /real person reviews/i);
+  assert.ok(onboarding.isOpenAccessState("CA"), "beta is open everywhere since Nov 6");
+  assert.ok(!onboarding.isOpenAccessState("ZZ"));
+  assert.match(onboarding.betaAccessWaitlistMessage("CA"), /open in California and everywhere else/);
+  assert.match(onboarding.betaAccessPendingMessage(), /You're in/);
+  assert.match(onboarding.BETA_REVIEW_EXPLANATION, /free while we are in beta/);
   assert.match(onboarding.openAccessStatesLabel(), /all 50 US states.*Washington, DC/);
 });
 

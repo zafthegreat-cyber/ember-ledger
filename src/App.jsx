@@ -59,6 +59,10 @@ import { LEGACY_BACKUP_MAX_BYTES, parseLegacyBetaBackup } from "./features/backu
 import { createLegacyAppStorageGuard } from "./features/persistence/legacyAppStorage.js";
 import { AppShell, DesktopSidebar, MobileBottomNavigation } from "./components/operations/OperationsUI";
 import WorkspaceSwitcher from "./features/workspaces/WorkspaceSwitcher";
+import AppTour, { appTourSeen } from "./features/tour/AppTour.jsx";
+import QuickFeedback from "./features/feedback/QuickFeedback.jsx";
+import { crashReportingAllowed, setCrashReportingAllowed } from "./features/monitoring/crashReporting.js";
+import { reportHandledError } from "./features/monitoring/crashReporting.js";
 import {
   readWorkspacePreference,
   resolveWorkspaceSelection,
@@ -6353,9 +6357,7 @@ function BarcodeScanner({
   // stayed up long enough to decode. Keep the latest callback in a ref and
   // start the camera once per mount/retry.
   const onScanRef = useRef(onScan);
-  useEffect(() => {
-    onScanRef.current = onScan;
-  }, [onScan]);
+  useEffect(() => { onScanRef.current = onScan; }, [onScan]);
 
   useEffect(() => {
     let mounted = true;
@@ -6887,6 +6889,10 @@ export default function App() {
   const workspaceInviteClaimInFlightRef = useRef("");
   const startupPriorityAppliedRef = useRef(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  // Guided tour: opens once after the first sign-in on a device; restart from Settings.
+  const [appTourOpen, setAppTourOpen] = useState(false);
+  const [crashReportsAllowedState, setCrashReportsOn] = useState(() => crashReportingAllowed());
+  const appTourOfferedRef = useRef(false);
   const [showTopbarActions, setShowTopbarActions] = useState(true);
   const [showFullTopbar, setShowFullTopbar] = useState(true);
   const [, setShowMobileQuickAddFab] = useState(true);
@@ -7160,6 +7166,13 @@ export default function App() {
   const [showTreasure, setShowTreasure] = useState(false);
 
   const [user, setUser] = useState(BETA_LOCAL_MODE ? { id: "local-beta", email: "local beta mode" } : null);
+  // Offer the guided tour once, after the first real sign-in on this device.
+  useEffect(() => {
+    if (!user?.id || user.id === "local-beta" || appTourOfferedRef.current || appTourSeen()) return undefined;
+    appTourOfferedRef.current = true;
+    const timer = window.setTimeout(() => setAppTourOpen(true), 1800);
+    return () => window.clearTimeout(timer);
+  }, [user?.id]);
   const [accountDeletionGeneration, setAccountDeletionGeneration] = useState(0);
   const accountDeletionIdentityRef = useRef({ accountId: BETA_LOCAL_MODE ? "local-beta" : "", generation: 0 });
   const receiveAuthUser = useCallback((nextUser) => {
@@ -8525,8 +8538,9 @@ export default function App() {
     mobileMenuByKey.moderation,
   ].filter(Boolean);
   if (user?.id && user.id !== "local-beta") {
-    menuAccountItems.push({ key: "sign-out", label: "Sign out", helper: "Leave this device session.", icon: "settings", action: signOut });
+    menuAccountItems.unshift({ key: "sign-out", label: "Sign out", helper: "Leave this device session. Your records stay on this device.", icon: "settings", action: signOut });
   }
+  menuAccountItems.push({ key: "app-tour", label: "Take the tour", helper: "A 60-second walk through where things are.", icon: "help", action: () => { setMenuOpen(false); setAppTourOpen(true); } });
   const menuCommandSections = [
     { key: "account", title: "Account", items: menuAccountItems },
     { key: "collection", title: "Collection", items: menuCollectionItems },
@@ -10947,6 +10961,8 @@ export default function App() {
     delete safeMetadata.token;
     delete safeMetadata.receiptImage;
     delete safeMetadata.childFirstName;
+    // MUST-9: handled errors also reach Sentry (scrubbed; label + page only).
+    if (!kidSafeView && severity !== "low") reportHandledError(error, action, { page: activeTab, severity });
     const entry = {
       id: makeId("app-error"),
       userId: user?.id || null,
@@ -47216,10 +47232,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             description={subtitle}
             primaryAction={{ label: "Back to Home", icon: "home", onClick: () => setActiveTab("dashboard") }}
             secondaryActions={[
-              { label: "Menu", icon: "settings", onClick: () => setMenuOpen(true) },
               { label: "Help", icon: "help", onClick: () => openUtilityPage("help") },
             ]}
-            statusItems={[
+            statusItems={!adminViewingAsAdmin ? [] : [
               { key: "role", icon: "account", label: "Role", value: adminViewingAsAdmin ? actualAdminRole : experiencePresentation.personaLabel, detail: experiencePresentation.isPreview ? "Preview only" : "Your setup" },
               { key: "plan", icon: "plan", label: "Plan", value: currentTierLabel, detail: "Safety basics included" },
               { key: "privacy", icon: "community", label: "Privacy", value: "Protected", detail: "Child and account data" },
@@ -47257,13 +47272,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <div className="compact-card-header">
           <div>
             <p className="section-kicker">Account setup</p>
-            <strong>Pick the right path without changing billing or permissions.</strong>
-            <p className="compact-subtitle">Setup labels guide the app experience. Admin and shop access stay protected and reviewed.</p>
+            <strong>Pick the setup that matches how you collect.</strong>
+            <p className="compact-subtitle">Setup labels only change what the app shows first. Everything is free during beta.</p>
           </div>
-          <span className="status-badge">Account options</span>
         </div>
         <div className="account-setup-tier-grid">
-          {ACCOUNT_SETUP_TIER_ROWS.map((tier) => (
+          {ACCOUNT_SETUP_TIER_ROWS.filter((tier) => adminViewingAsAdmin || !["admin", "beta"].includes(tier.key)).map((tier) => (
             <article className="account-setup-mini-card" key={tier.key}>
               <span>{tier.status}</span>
               <strong>{tier.label}</strong>
@@ -47479,6 +47493,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function renderSettingsPrivacySafetyCard() {
+    const crashReportsOn = crashReportsAllowedState;
     const privacyRows = [
       { title: "Private location", body: "Exact user location is never shown publicly. Reports are shared by store, not private address.", status: locationSettings.trackingEnabled ? "Device location on" : "Manual/local" },
       { title: "Child privacy", body: "Child-sensitive details stay parent-managed. Public child profiles and private family information are not exposed.", status: "Protected" },
@@ -47498,6 +47513,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </div>
           <span className="status-badge">Private by default</span>
         </div>
+        <label className="checkbox-row settings-crash-reports-toggle">
+          <input type="checkbox" checked={crashReportsOn} onChange={(event) => { setCrashReportingAllowed(event.target.checked); setCrashReportsOn(event.target.checked); }} />
+          <span><strong>Send crash reports</strong> — when the app breaks, send a report with the error, the screen you were on and your device type. No emails, record contents or card numbers are ever included. Turned off automatically for kid profiles.</span>
+        </label>
         <div className="drawer-inline-actions">
           <button type="button" className="secondary-button" onClick={() => setActiveTab("trust")}>Privacy policy</button>
           <button type="button" className="secondary-button" onClick={() => window.location.assign("/delete-account")}>Delete account</button>
@@ -47518,28 +47537,43 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   function renderAccountPage() {
     return renderUtilityPageShell({
       title: "Account",
-      subtitle: "Sign in, account status, feedback, and security actions.",
+      subtitle: signedInWithSupabase ? "Your sign-in, setup, and security." : "Sign in or create your free account.",
       className: "account-utility-page",
       children: (
         <>
-          <div className="drawer-info-card account-status-card utility-card">
-            <div>
-              <h3>{accountStatusTitle}</h3>
-              <p className="compact-subtitle">{accountStatusDescription}</p>
+          {signedInWithSupabase ? (
+            <div className="drawer-info-card account-status-card utility-card account-essentials-card">
+              <div>
+                <h3>{accountStatusTitle}</h3>
+                <p className="compact-subtitle account-essentials-email">{user?.email || accountStatusDescription}</p>
+              </div>
+              <dl className="drawer-status-list account-essentials-list">
+                <div><dt>Plan</dt><dd>{TIER_LABELS[currentTier] || "Free"} · free during beta</dd></div>
+                <div><dt>Setup</dt><dd>{adminViewingAsAdmin ? actualAdminRole : experiencePresentation.personaLabel} <button type="button" className="auth-text-button" onClick={() => openUtilityPage("settings")}>Change</button></dd></div>
+                <div><dt>Your records</dt><dd>{cloudSyncPreference === "cloud" ? "On this device, cloud copy requested" : "On this device"}</dd></div>
+              </dl>
+              <details className="account-technical-details">
+                <summary>Technical details</summary>
+                <dl className="drawer-status-list">
+                  <div><dt>Build</dt><dd>{PUBLIC_APP_VERSION_LABEL}</dd></div>
+                  <div><dt>Sign-in provider</dt><dd>Supabase</dd></div>
+                  <div><dt>Role</dt><dd>{actualAdminUser ? actualAdminRole : "user"}</dd></div>
+                </dl>
+                {renderAppBuildDetails()}
+              </details>
+              {actualAdminUser ? <span className="status-badge">{actualAdminRole}</span> : null}
             </div>
-            <dl className="drawer-status-list">
-              <div><dt>Build</dt><dd>{PUBLIC_APP_VERSION_LABEL}</dd></div>
-              <div><dt>Account</dt><dd>{guestPreviewActive ? "Guest preview" : signedInWithSupabase ? "Supabase" : "Private beta"}</dd></div>
-              <div><dt>Role</dt><dd>{actualAdminUser ? actualAdminRole : "user"}</dd></div>
-              <div><dt>Tier</dt><dd>{TIER_LABELS[currentTier] || "Free"}</dd></div>
-              <div><dt>Data</dt><dd>{guestPreviewActive ? "Read-only preview" : cloudSyncPreference === "cloud" ? "Local now, cloud sync requested" : "Stored on this device"}</dd></div>
-            </dl>
-            {renderAppBuildDetails()}
-            {actualAdminUser ? <span className="status-badge">{actualAdminRole}</span> : null}
-          </div>
+          ) : (
+            <div className="drawer-info-card account-status-card utility-card">
+              <div>
+                <h3>{accountStatusTitle}</h3>
+                <p className="compact-subtitle">{accountStatusDescription}</p>
+              </div>
+              {renderAppBuildDetails()}
+            </div>
+          )}
 
           {!signedInWithSupabase && renderEmailConfirmationHelp()}
-          {renderAccountSetupOverviewCard()}
 
           {guestPreviewActive ? (
             <div className="drawer-info-card utility-card">
@@ -47567,8 +47601,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             ) : (
               <form className="drawer-info-card utility-card" onSubmit={handleAuth} noValidate>
                 <SocialSignInButtons />
-                <strong>{authMode === "login" ? "Log in" : "Create Account"}</strong>
-                <p className="compact-subtitle">Create a free account and confirm your email to get started.</p>
+                <strong>{authMode === "login" ? "Log in" : "Create your free account"}</strong>
+                <p className="compact-subtitle">Everything is free during beta. Your account works right away once you confirm your email.</p>
                 {!isSupabaseConfigured ? <p className="compact-subtitle danger-text">Supabase anon auth is not configured in this frontend.</p> : null}
                 {authMode === "signup" ? (
                   <>
@@ -47589,35 +47623,43 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 {authMessage ? <p className="auth-status-message success" role="status">{authMessage}</p> : null}
                 {authMode === "login" ? <button type="button" className="auth-text-button drawer-auth-link" onClick={openPasswordResetRequest}>Forgot password?</button> : null}
                 <div className="drawer-inline-actions">
-                  <button type="submit" className="drawer-link" disabled={authLoading || !isSupabaseConfigured}>{authLoading ? "Working..." : authMode === "login" ? "Log In" : "Create Account"}</button>
+                  <button type="submit" className="drawer-link" disabled={authLoading || !isSupabaseConfigured}>{authLoading ? "Working..." : authMode === "login" ? "Log In" : "Create your free account"}</button>
                   <button type="button" className="drawer-link" onClick={() => { setAuthError(""); setAuthMessage(""); setAuthMode(authMode === "login" ? "signup" : "login"); }}>{authMode === "login" ? "Create Account" : "Use Login"}</button>
                 </div>
               </form>
             )
           ) : (
-            <div className="drawer-info-card utility-card">
-              <strong>{actualAdminUser ? "Signed in with admin role" : "Signed in"}</strong>
-              <p className="compact-subtitle">Supabase session is active. Log out only clears the account session; it does not erase private beta records on this device.</p>
-              <details><summary>Little Sparks family program (optional)</summary>{shorelineState.error && <p role="alert">{shorelineState.error}</p>}{shorelineState.message && <p role="status">{shorelineState.message}</p>}{renderLittleSparksApplicationForm()}</details>
-              {renderMemberStartGuide()}
+            <div className="drawer-info-card utility-card account-security-card">
+              <strong>Security</strong>
+              <p className="compact-subtitle">Signing out keeps the records saved on this device; it only ends the account session.</p>
               <ConnectedSignIns user={user} />
-              <CommunityWelcome onFeedback={() => openPublicBetaFeedback({ page: "Account", mainReason: "General feedback" })} />
               {passwordResetError ? <p className="auth-status-message error" role="alert">{passwordResetError}</p> : null}
               {passwordResetMessage ? <p className="auth-status-message success" role="status">{passwordResetMessage}</p> : null}
-              <button type="button" className="drawer-link" disabled={passwordResetLoading || !isSupabaseConfigured} onClick={handleSignedInPasswordReset}>{passwordResetLoading ? "Sending..." : "Send Password Reset Email"}</button>
-              <button type="button" className="drawer-link logout-link" onClick={signOut}>Log Out</button>
-              <button type="button" className="drawer-link" onClick={() => window.location.assign("/delete-account")}>Delete account</button>
+              <div className="drawer-inline-actions account-security-actions">
+                <button type="button" className="drawer-link logout-link account-sign-out-button" onClick={signOut}>Sign out</button>
+                <button type="button" className="drawer-link" disabled={passwordResetLoading || !isSupabaseConfigured} onClick={handleSignedInPasswordReset}>{passwordResetLoading ? "Sending..." : "Change password"}</button>
+                <button type="button" className="drawer-link" onClick={() => openUtilityPage("profile")}>Edit profile</button>
+              </div>
+              <details className="account-more-options">
+                <summary>More</summary>
+                <div className="drawer-inline-actions">
+                  <button type="button" className="drawer-link" onClick={() => setActiveTab("profileProgress")}>Public profile progress</button>
+                  <button type="button" className="drawer-link" onClick={() => setActiveTab("mySuggestions")}>My suggestions</button>
+                  <button type="button" className="drawer-link danger-text" onClick={() => window.location.assign("/delete-account")}>Delete account</button>
+                </div>
+              </details>
+              <details><summary>Little Sparks family program (optional)</summary>{shorelineState.error && <p role="alert">{shorelineState.error}</p>}{shorelineState.message && <p role="status">{shorelineState.message}</p>}{renderLittleSparksApplicationForm()}</details>
+              {renderMemberStartGuide()}
+              <CommunityWelcome onFeedback={() => openPublicBetaFeedback({ page: "Account", mainReason: "General feedback" })} />
             </div>
           )}
 
-          <div className="drawer-info-card utility-card">
-            <strong>Account shortcuts</strong>
-            <div className="drawer-inline-actions">
-              <button type="button" className="drawer-link" onClick={() => openUtilityPage("profile")}>Edit Profile</button>
-              <button type="button" className="drawer-link" onClick={() => setActiveTab("profileProgress")}>Public Profile Progress</button>
-              <button type="button" className="drawer-link" onClick={() => setActiveTab("mySuggestions")}>My Suggestions</button>
-            </div>
-          </div>
+          {signedInWithSupabase ? (
+            <details className="drawer-info-card utility-card account-setup-collapsed">
+              <summary><strong>Setup options</strong><span className="compact-subtitle">Collector, Family, Seller, and workspace types. Changing a setup label never changes billing or permissions.</span></summary>
+              {renderAccountSetupOverviewCard({ compact: true })}
+            </details>
+          ) : null}
         </>
       ),
     });
@@ -48028,6 +48070,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         smartSetupRecommendation,
         vaultItems,
         workspaceWatchlist,
+        adminViewingAsAdmin,
+        showFamilyExperience,
+        renderSettingsProfileSummaryCard,
+        signOut,
+        userEmail: user?.email && user.id !== "local-beta" ? user.email : "",
       }} />
     </LazyToolBoundary>;
   }
@@ -48636,6 +48683,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     settingsSectionRows,
     signedInWithSupabase,
     signOut,
+    userEmail: user?.email && user.id !== "local-beta" ? user.email : "",
+    startAppTour: () => setAppTourOpen(true),
     userType,
   };
 
@@ -53609,6 +53658,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       {shellRouteOwnership?.classification !== ROUTE_CLASSIFICATIONS.OWNER ? (
         <MobileBottomNavigation items={mobileBottomTabs} activeKey={activeMobileTabKey} onSelect={(tab) => tab.action ? tab.action() : navigateMainTab(tab)} />
       ) : null}
+    <AppTour open={appTourOpen} onClose={() => setAppTourOpen(false)} />
+    <QuickFeedback supabase={isSupabaseConfigured ? supabase : null} user={user?.id && user.id !== "local-beta" ? user : null} route={String(activeTab || "")} appVersion={PUBLIC_APP_VERSION_LABEL} workspaceId={activeWorkspace?.id || null} hidden={appTourOpen || Boolean(menuOpen)} kidSafe={kidSafeView} />
     </AppShell>
     </ExperiencePresentationContext.Provider>
   );

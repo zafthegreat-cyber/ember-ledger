@@ -132,6 +132,12 @@ export const LEGACY_NAME_REPLACEMENTS = [
   [/\bTidepool Community\b/g, "Community"],
   [/\bTidepool\b/g, "Community"],
   [/\bHearth\b/g, "Home"],
+  // Nov 6: two more leftovers Zena spotted on the account pages.
+  [/\bLantern Safety Center\b/g, "Safety Center"],
+  [/\bOpen Lantern\b/g, "Open Safety Center"],
+  [/\bLantern\b/g, "Safety Center"],
+  [/\bOpen Nest\b/g, "Open Family Settings"],
+  [/\bNest\b/g, "Family"],
 ];
 
 export function renameLegacyProductNames(value = "") {

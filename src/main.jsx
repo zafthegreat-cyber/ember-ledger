@@ -1,7 +1,5 @@
 import { Component, lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
-import { Analytics } from "@vercel/analytics/react";
-import * as Sentry from "@sentry/react";
 import "./index.css";
 import AppLoadFallback from "./components/AppLoadFallback";
 import { registerServiceWorker } from "./registerServiceWorker";
@@ -11,22 +9,9 @@ import CloudWorkspaceBoundary from "./features/persistence/CloudWorkspaceBoundar
 import NativeBridge from "./native/NativeBridge.jsx";
 import SocialAuthBoundary from "./features/auth/SocialAuthBoundary.jsx";
 import "./native/native.css";
+import { initCrashReporting, reportHandledError } from "./features/monitoring/crashReporting.js";
 
 const App = lazy(() => import("./App.jsx"));
-
-if (import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
-  Sentry.init({
-    dsn: import.meta.env.VITE_SENTRY_DSN,
-    sendDefaultPii: false,
-    integrations: [],
-    beforeSend(event) {
-      delete event.user;
-      delete event.request;
-      delete event.breadcrumbs;
-      return event;
-    },
-  });
-}
 
 class AppErrorBoundary extends Component {
   constructor(props) {
@@ -39,7 +24,7 @@ class AppErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    Sentry.captureException(error);
+    reportHandledError(error, "app_error_boundary", { componentStack: String(info?.componentStack || "").slice(0, 400) });
     if (import.meta.env.DEV) {
       console.error(`${BRAND_CONFIG.applicationDisplayName} crashed`, error, info);
     } else {
@@ -54,10 +39,11 @@ class AppErrorBoundary extends Component {
 }
 
 applyBrandDocumentMetadata();
+// Crash reports (errors only, scrubbed, off for kid profiles and when turned off in Settings → Privacy).
+initCrashReporting().catch(() => {});
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    {import.meta.env.PROD && <Analytics beforeSend={(event) => ({ ...event, url: new URL(event.url).origin + new URL(event.url).pathname })} />}
     <AppErrorBoundary>
       <NativeBridge />
       <Suspense fallback={<AppLoadFallback kind="loading" />}>

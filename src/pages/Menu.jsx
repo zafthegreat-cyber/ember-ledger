@@ -87,6 +87,9 @@ export default function MenuPage(props) {
     showFamilyExperience,
     showCommunityExperience,
     signedInWithSupabase,
+    signOut,
+    startAppTour,
+    userEmail = "",
   } = props;
   const presentation = experiencePresentation || resolveExperiencePresentation();
   const showFamily = presentation.showAdminTools || (typeof showFamilyExperience === "boolean" ? showFamilyExperience : presentation.showFamilyTools);
@@ -121,9 +124,13 @@ export default function MenuPage(props) {
           <div className="settings-layout__identity">
             <span className="settings-layout__eyebrow">Current workspace</span>
             <h2>{activeWorkspaceName || "My Personal Space"}</h2>
-            <p><span className="settings-layout__account-type">{accountLabel}</span><span>{accessLabel}</span></p>
+            <p><span className="settings-layout__account-type">{accountLabel}</span><span>{accessLabel}</span>{userEmail ? <span className="settings-layout__email">{userEmail}</span> : null}</p>
           </div>
-          <SecondaryButton onClick={() => openUtilityPage("profile")}>Open Profile<SettingsArrow /></SecondaryButton>
+          <div className="settings-layout__account-actions">
+            <SecondaryButton onClick={() => openUtilityPage("profile")}>Open Profile<SettingsArrow /></SecondaryButton>
+            {typeof startAppTour === "function" ? <SecondaryButton onClick={startAppTour}><AppNavIcon kind="search" />Take the tour</SecondaryButton> : null}
+            {typeof signOut === "function" && signedInWithSupabase ? <button type="button" className="settings-layout__sign-out" onClick={signOut}>Sign out</button> : null}
+          </div>
           <dl className="settings-layout__account-meta">
             <div><dt>Experience</dt><dd>{presentation.personaLabel}</dd></div>
             {showFamily ? <div><dt>Family protection</dt><dd>{familyProtectionLabel}</dd></div> : null}

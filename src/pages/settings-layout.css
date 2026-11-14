@@ -195,3 +195,15 @@ html body .app.app-command-shell .settings-layout__footer { display: flex; justi
 @media (prefers-reduced-motion: reduce) {
   html body .app.app-command-shell .settings-layout :is(.settings-layout__row, .settings-layout__disclosure > summary, .settings-layout__arrow) { transition: none; }
 }
+
+/* Sign out and tour live on the account card, where people look for them. */
+html body .app.app-command-shell .settings-layout__account-actions { display: flex; flex-direction: column; align-items: stretch; gap: 8px; min-width: 160px; }
+html body .app.app-command-shell .settings-layout__account-actions > * { min-height: 44px; justify-content: center; }
+html body .app.app-command-shell .settings-layout__sign-out { min-height: 44px; padding: 0 14px; border: 1px solid var(--border-strong, var(--border-subtle)); border-radius: 8px; background: transparent; color: var(--text-primary); font: 600 13px/1 var(--font-ui); cursor: pointer; }
+html body .app.app-command-shell .settings-layout__sign-out:hover { border-color: var(--action-primary); color: var(--action-primary); }
+html body .app.app-command-shell .settings-layout__email { color: var(--text-secondary); font-size: 12px; word-break: break-all; }
+@media (max-width: 720px) {
+  html body .app.app-command-shell .settings-layout__account { grid-template-columns: 56px minmax(0, 1fr); }
+  html body .app.app-command-shell .settings-layout__account-actions { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; }
+  html body .app.app-command-shell .settings-layout__account-actions > * { flex: 1 1 140px; }
+}

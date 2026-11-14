@@ -139,26 +139,34 @@ export function accessStateLabel(value = "") {
   return STATE_LABEL_BY_CODE[code] || code || "your state";
 }
 
-// Legacy reviewed programs accept requests nationwide. This does not grant
-// account roles, approve a shop, or bypass any program review.
+// The beta is open everywhere in the US with no approval queue (accounts are
+// auto-approved on signup; see docs/sql/open_beta_auto_approve.sql). Legacy
+// reviewed programs keep their own review; this does not grant account roles
+// or approve a shop.
 export const BETA_OPEN_ACCESS_STATES = US_STATES.map((state) => state.code);
+export const BETA_OPEN_EVERYWHERE = true;
 
 export function isVirginiaAccessState(value = "") {
   return normalizeAccessState(value) === "VA";
 }
 
 export function isOpenAccessState(value = "") {
-  return BETA_OPEN_ACCESS_STATES.includes(normalizeAccessState(value));
+  const code = normalizeAccessState(value);
+  if (!code) return false;
+  if (BETA_OPEN_EVERYWHERE) return Boolean(STATE_LABEL_BY_CODE[code]);
+  return BETA_OPEN_ACCESS_STATES.includes(code);
 }
 
 export function openAccessStatesLabel() {
   return "all 50 US states and Washington, DC";
 }
 
-export const BETA_REVIEW_EXPLANATION =
-  "A real person reviews every request so the community stays safe and family-friendly. Most reviews finish within a few days, and we email you either way.";
+export const BETA_REVIEW_EXPLANATION = BETA_OPEN_EVERYWHERE
+  ? "The beta is open: your account works the moment you sign up, and everything is free while we are in beta. We only step in if someone breaks the community rules."
+  : "A real person reviews every request so the community stays safe and family-friendly. Most reviews finish within a few days, and we email you either way.";
 
 export function betaAccessPendingMessage() {
+  if (BETA_OPEN_EVERYWHERE) return `You're in. ${BETA_REVIEW_EXPLANATION} If this screen is still showing, pull to refresh or sign out and back in.`;
   return `Your request is in the review queue. ${BETA_REVIEW_EXPLANATION}`;
 }
 
@@ -169,8 +177,8 @@ export function accountSetupTierLabel(value = "") {
 
 export function betaAccessWaitlistMessage(state = "") {
   const label = accessStateLabel(state);
-  if (isOpenAccessState(state)) return `Code 3 TCG supports ${label}. You can sign in and start; any request for a reviewed program keeps its own review status. Local store and report coverage varies by area.`;
-  return `Code 3 TCG supports ${openAccessStatesLabel()}. Choose a supported state for local restock browsing. You can keep your account and existing records.`;
+  if (BETA_OPEN_EVERYWHERE && isOpenAccessState(state)) return `Code 3 TCG is open in ${label} and everywhere else in the US. Your account works right away; local restock coverage grows as people in ${label} start reporting.`;
+  return `Code 3 TCG is open in ${openAccessStatesLabel()} right now. ${label} is not open yet, so we will hold your spot on the waitlist, email you the moment ${label} opens, and use waitlist demand to decide which states come next. You can keep your account and browse the public catalog while you wait.`;
 }
 
 export function formatBetaAccessAreaAnswer({ state = "", localAreaAnswer = "", tierInterest = "" } = {}) {

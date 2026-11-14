@@ -113,7 +113,7 @@ export default function OperationsHome({
   });
 
   return <div className="ops-home-page home-layout">
-    <PageHeader eyebrow={<><span className="home-desktop-context">Home</span><span className="home-mobile-identity"><BrandIdentity /></span></>} title="Welcome back." description="Find restocks. Share what you see. Help the next collector." />
+    <PageHeader eyebrow={<><span className="home-desktop-context">Home</span><span className="home-mobile-identity"><BrandIdentity /></span></>} title="Welcome back." />
     {isOffline ? <OfflineState action={<SecondaryButton onClick={() => window.location.reload()}>Try again</SecondaryButton>} /> : null}
     <section className="ops-home-section home-restock-hero" aria-labelledby="home-restock-title">
       <div className="home-restock-copy">
@@ -121,7 +121,7 @@ export default function OperationsHome({
         <h2 id="home-restock-title">Spotted stock? Share an update.</h2>
         <p>Pick a store and tell us what you saw. Review, then share. Photos are optional.</p>
         <div className="home-restock-actions"><PrimaryButton onClick={onReportRestock}>Report a restock</PrimaryButton><SecondaryButton onClick={onOpenRestockReports}>Browse restocks</SecondaryButton></div>
-        <small>Stock changes quickly. Check when a report was observed.</small>
+        
       </div>
       <div className="home-restock-art"><CollectibleMotif /></div>
     </section>
@@ -131,7 +131,7 @@ export default function OperationsHome({
       {attentionRows.length ? <div className="ops-attention-list">{attentionRows.map((row) => <button type="button" key={row.key} onClick={row.action} aria-label={`${row.label}: ${row.count}. ${row.detail}`}><span className="ops-attention-count">{row.count}</span><span><strong>{row.label}</strong><small>{row.detail}</small></span><span aria-hidden="true">›</span></button>)}</div> : <p className="ops-compact-success"><span className="home-status-check" aria-hidden="true">✓</span><span>Nothing needs attention.</span></p>}
     </section> : null}
     <section className="ops-home-section home-workspaces">
-      <div className="home-personal-heading"><SectionHeader title="For you" description={manualHome ? "Your chosen Home layout." : adaptiveEnabled ? "Shortcuts adapt to your saved activity. Your navigation stays in place." : "Your shortcuts, in a consistent order."} /><SecondaryButton onClick={onOpenExperienceSettings || (() => setActiveTab("settings"))}>Customize</SecondaryButton></div>
+      <div className="home-personal-heading"><SectionHeader title="For you" /><SecondaryButton onClick={onOpenExperienceSettings || (() => setActiveTab("settings"))}>Customize</SecondaryButton></div>
       <div className="home-personal-grid" aria-label="Personalized shortcuts">
         {pageCards.map((card) => <article className="home-personal-card" key={card.key} data-home-card={card.key}>
           <span className="home-shortcut-icon" aria-hidden="true"><AppNavIcon kind={card.icon} /></span>

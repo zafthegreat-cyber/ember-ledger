@@ -1,9 +1,14 @@
 import { PrivateStorageImage } from "../components/PrivateReceipt.jsx";
+import { useContext } from "react";
 import { CommandBoardV4 } from "../components/command-system";
+import { ExperiencePresentationContext } from "../utils/experiencePresentationContext";
 import CollectionValueCoverage from "../components/CollectionValueCoverage.jsx";
 import { collectionItemKnownValue, summarizeCollectionPortfolio } from "../utils/collectionValueCoverage.mjs";
 
 export default function VaultPage(props) {
+  // MUST-11 (Nov 13): collectors get value, folders, display case and sets;
+  // the intelligence grids, chip rows, disclaimers and beta previews are admin-only.
+  const fullBoard = Boolean(useContext(ExperiencePresentationContext)?.showAdminTools);
   const {
     children,
     showDashboard,
@@ -337,12 +342,7 @@ export default function VaultPage(props) {
             className="vault-command-overview-card vault-collection-intelligence-card"
             title="Portfolio & Collection Health"
             detail="Value, mix, condition, storage, proof, and the next action for every part of your collection."
-            action={(
-              <span className="vault-command-heading-pills">
-                <EtMockupPill tone="vault">Collection intelligence</EtMockupPill>
-                <EtMockupPill tone="vault">Condition Center</EtMockupPill>
-              </span>
-            )}
+            action={null}
           >
             <div className="vault-command-board-grid" aria-label="Vault command overview">
               <article className="vault-command-portfolio-card">
@@ -376,12 +376,12 @@ export default function VaultPage(props) {
                   ))}
                 </div>
                 <CollectionValueCoverage summary={portfolioSummary} money={formatDashboardMoney} />
-                <div className="vault-status-chip-row" aria-label="Vault status chips">
+                {fullBoard ? (<div className="vault-status-chip-row" aria-label="Vault status chips">
                   <span>{slabCount} graded/slab records within owned types</span>
                   <span>{tradeReadyCount} trade/sell ready</span>
                   <span>{kidsCollectionCount} family-labeled</span>
                   <span>{confidenceLabel} data confidence</span>
-                </div>
+                </div>) : null}
               </article>
 
               <article className="vault-command-health-card">
@@ -415,7 +415,7 @@ export default function VaultPage(props) {
                 </div>
               </article>
 
-              <article className="vault-command-storage-card">
+              {fullBoard ? (<article className="vault-command-storage-card">
                 <div className="compact-card-header">
                   <div>
                     <span className="trust-badge trust-badge--secure">Storage / Location</span>
@@ -433,9 +433,9 @@ export default function VaultPage(props) {
                     </button>
                   ))}
                 </div>
-              </article>
+              </article>) : null}
 
-              <article className="vault-command-recommendation-card">
+              {fullBoard ? (<article className="vault-command-recommendation-card">
                 <div className="compact-card-header">
                   <div>
                     <span className="trust-badge trust-badge--verified">{vaultSmartRecommendation.label}</span>
@@ -455,14 +455,14 @@ export default function VaultPage(props) {
                   <span>{itemsWithoutValueCount ? "Value gaps" : "Values saved"}</span>
                 </div>
                 <button type="button" onClick={vaultSmartRecommendation.action}>{vaultSmartRecommendation.cta}</button>
-              </article>
+              </article>) : null}
             </div>
 
             <div className="vault-condition-center-strip" aria-label="Condition Center">
               <div className="vault-condition-center-heading">
                 <span className="trust-badge trust-badge--secure">Condition Center</span>
                 <strong>Photo, condition, value, and location readiness</strong>
-                <small>Manual collector data only. Not grading, authentication, live pricing, checkout, or financial advice.</small>
+                <small>Based on what you have entered; not a grade or an appraisal.</small>
               </div>
               <div className="vault-condition-center-grid">
                 {conditionCenterRows.map((row) => (
@@ -477,7 +477,7 @@ export default function VaultPage(props) {
             </div>
           </EtMockupSectionCard>
 
-          <EtMockupSectionCard
+          {fullBoard ? (<EtMockupSectionCard
             className="vault-collection-intelligence-card"
             title="Collection intelligence"
             detail="Local collection signals for organization, notes, values, sets, storage, proof, and profile cleanup."
@@ -494,9 +494,9 @@ export default function VaultPage(props) {
                 />
               ))}
             </div>
-          </EtMockupSectionCard>
+          </EtMockupSectionCard>) : null}
 
-          <FlowNextActionCard
+          {fullBoard ? (<FlowNextActionCard
             eyebrow="Vault next action"
             title={activeVaultItems.length ? "Clean up one item profile." : "Start with one reviewed Vault item."}
             detail={activeVaultItems.length
@@ -511,23 +511,23 @@ export default function VaultPage(props) {
               { label: "Check Market", onClick: () => setActiveTab("market") },
               { label: "Trade Compass", onClick: () => openTradeCompassFlow({ source: "vault-next-action" }) },
             ]}
-          />
+          />) : null}
 
           <EtMockupSectionCard
             id="vault-display-case-section"
             className="vault-display-case-panel"
             title="Display Case"
-            detail="Feature favorite cards and sealed products in a private showcase. Local display only; not public sharing, not a listing, and not a sale."
+            detail="Your favorite cards and sealed products, on one shelf. Private to you."
             action={<EtMockupButton variant="secondary" onClick={() => {
               if (activeVaultItems[0]?.id) setSelectedVaultDetailId(activeVaultItems[0].id);
               else openVaultQuickAddFlow();
             }}>{activeVaultItems.length ? "Open Item Profile" : "Add to Vault"}</EtMockupButton>}
             ariaLabel="Vault Display Case"
           >
-            <div className="vault-display-case-safety" aria-label="Display Case safety">
+            {fullBoard ? (<div className="vault-display-case-safety" aria-label="Display Case safety">
               <strong>Local display only</strong>
               <span>Display Case is private to this browser. It does not create public sharing, listings, marketplace posts, checkout, or sales.</span>
-            </div>
+            </div>) : null}
             {visibleVaultDisplayCase.length ? (
               <div className="vault-display-case-grid" aria-label="Featured Display Case items">
                 {visibleVaultDisplayCase.slice(0, 8).map((entry) => (
@@ -616,7 +616,7 @@ export default function VaultPage(props) {
             </div>
           </EtMockupSectionCard>
 
-          <EtMockupSectionCard
+          {fullBoard ? (<EtMockupSectionCard
             className="vault-live-master-card vault-mockup-master-card"
             title="One card identity, all exact copies."
             detail="Vault groups cards by normalized name, set, and card number first. Normal, reverse holo, graded, promo, duplicates, and wishlist wants stay inside the same master card."
@@ -640,7 +640,7 @@ export default function VaultPage(props) {
                 ))}
               </div>
             ) : null}
-          </EtMockupSectionCard>
+          </EtMockupSectionCard>) : null}
 
           <div className="vault-live-main-grid">
             <EtMockupSectionCard
@@ -684,7 +684,7 @@ export default function VaultPage(props) {
               </div>
             </EtMockupSectionCard>
 
-            <EtMockupRightRail
+            {fullBoard ? (<EtMockupRightRail
               className="vault-live-health-card"
               title="Collection Health"
               detail={activeVaultItems.length ? `${knownValueCount} of ${activeVaultItems.length} grouped items have known value context.` : "Start with one reviewed item to build health signals."}
@@ -699,7 +699,7 @@ export default function VaultPage(props) {
                 <span>Sealed separate</span>
                 <span>Wishlist separate</span>
               </div>
-            </EtMockupRightRail>
+            </EtMockupRightRail>) : null}
           </div>
 
           <EtMockupSectionCard
@@ -728,12 +728,12 @@ export default function VaultPage(props) {
             detail="Set Shelf keeps favorites, household collections, sealed product, slabs, trade binders, and collection goals together without changing your Vault items yet."
             action={<EtMockupButton onClick={() => openVaultCollectionSetFlow({ source: "vault-set-shelf" })}>Create Set</EtMockupButton>}
           >
-            <div className="et-mockup-stat-grid vault-collection-set-summary-grid" aria-label="Collection Sets summary">
+            {fullBoard ? (<div className="et-mockup-stat-grid vault-collection-set-summary-grid" aria-label="Collection Sets summary">
               <EtMockupStatCard label="Set Shelf" value={vaultCollectionSetSummary.total} detail="Local collection groups" tone="vault" />
               <EtMockupStatCard label="Family Set" value={vaultCollectionSetSummary.kids} detail="Household and family labels" tone="collector" />
               <EtMockupStatCard label="Sealed Set" value={vaultCollectionSetSummary.sealed} detail="Sealed product shelves" tone="gold" />
               <EtMockupStatCard label="Trade Binder" value={vaultCollectionSetSummary.tradeBinders} detail="Trade review groups" tone="vault" />
-            </div>
+            </div>) : null}
 
             {visibleVaultCollectionSets.length ? (
               <div className="vault-collection-set-grid" aria-label="Saved Collection Sets">
@@ -777,13 +777,13 @@ export default function VaultPage(props) {
               />
             )}
 
-            <div className="vault-collection-set-coming-soon" aria-label="Collection Sets item assignment status">
+            {fullBoard ? (<div className="vault-collection-set-coming-soon" aria-label="Collection Sets item assignment status">
               <strong>Add to Set</strong>
               <span>Soon you{"\u2019"}ll be able to tuck Vault items directly into this set.</span>
-            </div>
+            </div>) : null}
           </EtMockupSectionCard>
 
-          {renderUpgradeValuePreview("vault")}
+          {fullBoard ? renderUpgradeValuePreview("vault") : null}
         </CommandBoardV4>
       );
     }
