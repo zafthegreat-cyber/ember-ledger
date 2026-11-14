@@ -3,7 +3,6 @@
   "passing": [
     "test-account-deletion-browser.cjs",
     "test-account-ops-two-tab-stress.cjs",
-    "test-account-ops-workspace-browser.cjs",
     "test-app-effect-events.cjs",
     "test-app-lazy-data-lifecycle.cjs",
     "test-app-react-lifecycle.cjs",
@@ -269,6 +268,10 @@
     {
       "file": "test-sale-return-workflow.cjs",
       "firstError": "locator.click timeout — started failing with UI improvements 101-200 (#49); fails on that commit too."
+    },
+    {
+      "file": "test-account-ops-workspace-browser.cjs",
+      "firstError": "768-dark: Back returns focus to selected row — fails on the Linux CI runner only (passes on Windows), Nov 15, 2026."
     }
   ]
 }
