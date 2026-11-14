@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { fileURLToPath } from "node:url";
+import { readAppSource } from "./helpers/read-deferred-app-source.mjs";
 import {
   buildPlannedSalePricePatch,
   deriveGradeAssistReadiness,
@@ -10,7 +12,7 @@ import {
   plannedSalePriceUpdateSummary,
 } from "../src/utils/inventoryDetailUtils.js";
 
-const appSource = fs.readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
+const appSource = readAppSource(fileURLToPath(new URL("../src/App.jsx", import.meta.url)));
 
 const groupedItem = {
   id: "group-primary",

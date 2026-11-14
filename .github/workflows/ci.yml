@@ -58,6 +58,10 @@ jobs:
           node --no-warnings scripts/test-marketplace-listings.mjs
           node --no-warnings scripts/test-native-build-readiness.mjs
           node --no-warnings scripts/test-shared-device-signout.mjs
+          node --no-warnings scripts/test-community-server.mjs
+          node --no-warnings scripts/test-native-push.mjs
+          node --no-warnings scripts/test-tier-foundation.mjs
+          npm run test:native
           node --no-warnings scripts/test-code3-branding.mjs
           node --no-warnings scripts/test-code3-client-security.mjs
           node scripts/test-scout-lint-regressions.cjs

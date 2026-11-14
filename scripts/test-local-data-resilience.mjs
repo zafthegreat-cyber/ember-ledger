@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { readAppSource } from "./helpers/read-deferred-app-source.mjs";
 
 import {
   BETA_LOCAL_STORAGE_KEY_AUDIT,
@@ -131,7 +132,7 @@ assert.deepEqual(sanitizeAppLocalData("bad input").items, []);
 assert.deepEqual(sanitizeScoutLocalData("bad input").stores, []);
 assert.deepEqual(sanitizeTidepoolLocalData("bad input").trustedCircle, []);
 
-const appSource = read("src/App.jsx");
+const appSource = readAppSource(path.join(root, "src/App.jsx"));
 const scoutSource = read("src/pages/Scout.jsx");
 const whatDidISeeSource = read("src/components/WhatDidISee.jsx");
 

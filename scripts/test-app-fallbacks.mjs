@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { readAppSource } from "./helpers/read-deferred-app-source.mjs";
 import process from "node:process";
 
 import {
@@ -18,7 +19,7 @@ const read = (filePath) => fs.readFileSync(path.join(root, filePath), "utf8");
 const indexHtml = read("index.html");
 const main = read("src/main.jsx");
 const fallbackComponent = read("src/components/AppLoadFallback.jsx");
-const app = read("src/App.jsx");
+const app = readAppSource(path.join(root, "src/App.jsx"));
 const pkg = JSON.parse(read("package.json"));
 
 const loadingCopy = getAppLoadFallbackCopy("loading");

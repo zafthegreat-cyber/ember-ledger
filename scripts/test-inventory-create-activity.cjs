@@ -30,6 +30,8 @@ function extract(source) {
   visit(espree.parse(source, { ecmaVersion: 'latest', sourceType: 'module', ecmaFeatures: { jsx: true }, range: true }));
 }
 extract(importSafety); extract(app); extract(service);
+// Pieces moved out of App.jsx unchanged (Nov 15, 2026).
+for (const rel of ['src/features/vault/vaultItemHelpers.jsx', 'src/features/vault/VaultPanels.jsx']) extract(fs.readFileSync(path.join(root, rel), 'utf8'));
 assert.ok(sessionEffect, 'Execute the actual App session lifetime effect');
 assert.deepEqual(callSites.sort(), ['addItem', 'saveInventoryRecords'], 'Only confirmed creation paths call the activity helper');
 const names = ['trackBetaActivity', 'trackCreatedInventoryActivity', 'saveInventoryRecords', 'addItem', 'submitMultiDestinationAdd', 'confirmInventoryImport', 'applyImportedQuantityIncrease', 'recordAppActivityEvent', 'mapAppActivityEvent', 'mapItem', 'inventoryRecordToSupabaseRow', 'sanitizeInventorySupabaseRow', 'uuidOrNull', 'normalizeInventoryDestination', 'itemDestinationScopes', 'normalizeDestinationScopes', 'normalizeVaultStatus', 'isBlankLike', 'withImportSavedDetails', 'readImportSavedDetails'];

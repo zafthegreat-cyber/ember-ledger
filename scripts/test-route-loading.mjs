@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
-import { readDeferredAppSource } from "./helpers/read-deferred-app-source.mjs";
+import { readAppSource, readDeferredAppSource } from "./helpers/read-deferred-app-source.mjs";
 
 const root = process.cwd();
 const read = (filePath) => fs.readFileSync(path.join(root, filePath), "utf8");
@@ -12,7 +12,7 @@ function check(label, passed, details = "") {
   checks.push({ label, passed, details });
 }
 
-const app = read("src/App.jsx");
+const app = readAppSource(path.join(root, "src/App.jsx"));
 const mountedAppSource = readDeferredAppSource(path.join(root, "src/App.jsx"));
 const main = read("src/main.jsx");
 const routeState = read("src/utils/appRouteState.js");
@@ -189,7 +189,7 @@ check(
 check(
   "Backup and price history tools are lazy-loaded",
   app.includes('const BackupExportImport = lazy(() => import("./components/BackupExportImport"))') &&
-    app.includes('const MarketPriceHistoryPanel = lazy(() => import("./components/MarketPriceHistoryPanel"))')
+    app.includes('const MarketPriceHistoryPanel = lazy(() => import("../../components/MarketPriceHistoryPanel"))')
 );
 
 check(
