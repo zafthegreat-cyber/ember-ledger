@@ -1,7 +1,10 @@
+import { nativeAllowsRemoteProductImage } from "../config/nativeLaunchScope.js";
+
 function usableImageUrl(value) {
   const next = typeof value === "string" ? value.trim() : "";
   if (!next) return "";
   if (/^(null|undefined|none|n\/a|na|unknown|image needed|image unavailable|placeholder)$/i.test(next)) return "";
+  if (!nativeAllowsRemoteProductImage(next)) return "";
   return next;
 }
 

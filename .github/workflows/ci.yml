@@ -57,6 +57,7 @@ jobs:
           node --no-warnings scripts/test-accessibility-keyboard.mjs
           node --no-warnings scripts/test-marketplace-listings.mjs
           node --no-warnings scripts/test-native-build-readiness.mjs
+          node --no-warnings --test scripts/test-native-launch-scope.mjs
           node --no-warnings scripts/test-shared-device-signout.mjs
           node --no-warnings scripts/test-code3-branding.mjs
           node --no-warnings scripts/test-code3-client-security.mjs

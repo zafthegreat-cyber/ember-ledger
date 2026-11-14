@@ -174,6 +174,8 @@ export function mapProfileRow(row = {}, user = null) {
     subscriptionStatus: row.subscription_status || row.subscriptionStatus || "none",
     subscriptionProvider: row.subscription_provider || row.subscriptionProvider || "",
     subscriptionProviderId: row.subscription_provider_id || row.subscriptionProviderId || "",
+    // Set by the server (mark_my_account_minor); only staff can clear it.
+    isMinor: row.is_minor === true,
     // Only Auth's server-managed metadata may grant reviewer feature access.
     // Email addresses, profile rows and user_metadata are not authority.
     appReviewAccess: getSupabaseAuthMetadata(user).code3_app_review_access === true,

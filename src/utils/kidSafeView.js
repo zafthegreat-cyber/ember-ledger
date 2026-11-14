@@ -17,6 +17,7 @@ export function isKidSafeProfile(profile = {}, betaRequest = {}) {
     betaRequest?.collectorType, betaRequest?.collector_type,
   ];
   if (profile?.kidMode === true || profile?.kid_mode === true || profile?.isKidProfile === true) return true;
+  if (profile?.isMinor === true || profile?.is_minor === true) return true;
   return fields.some((value) => typeof value === "string" && KID_PATTERN.test(value));
 }
 

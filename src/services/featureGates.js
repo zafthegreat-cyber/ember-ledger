@@ -86,7 +86,7 @@ export const TIER_PRICING = {
     id: PLAN_IDS.FREE,
     label: "Free",
     price: "$0",
-    summary: "Everything an ordinary collector needs: your whole collection, what it is worth, set progress, wishlists and exports. Free stays free after beta.",
+    summary: "Everything an ordinary collector needs: your whole collection, what it is worth, set progress, wishlists and exports. Free stays free.",
     trialCopy: "No trial needed.",
     futurePrice: "",
     cta: "Included for everyone",
@@ -109,11 +109,11 @@ export const TIER_PRICING = {
   [PLAN_IDS.COLLECTOR]: {
     id: PLAN_IDS.COLLECTOR,
     label: "Collector",
-    price: "Free during beta",
+    price: "Free",
     summary: "Restocks tooling for people who hunt: more watched stores, deeper store details, alerts and price history.",
-    trialCopy: "Pricing is set when beta closes; you will be told before anything costs money.",
+    trialCopy: "Free for now. You will be told before anything costs money.",
     futurePrice: "",
-    cta: "On for everyone during beta",
+    cta: "On for everyone",
     features: [
       "Everything in Free",
       "Follow 3 watched stores; swap 1 every 14 days",
@@ -128,11 +128,11 @@ export const TIER_PRICING = {
   [PLAN_IDS.FAMILY]: {
     id: PLAN_IDS.FAMILY,
     label: "Family",
-    price: "Free during beta",
+    price: "Free",
     summary: "Collector tools today. Parent-managed kid profiles and family collection views are planned and not available yet.",
-    trialCopy: "Pricing is set when beta closes; you will be told before anything costs money.",
+    trialCopy: "Free for now. You will be told before anything costs money.",
     futurePrice: "",
-    cta: "On for everyone during beta",
+    cta: "On for everyone",
     features: [
       "Everything in Collector",
       "1 primary adult included",
@@ -146,11 +146,11 @@ export const TIER_PRICING = {
   [PLAN_IDS.SELLER]: {
     id: PLAN_IDS.SELLER,
     label: "Seller",
-    price: "Free during beta",
+    price: "Free",
     summary: "Collector tools plus Sell tracking for sellers.",
-    trialCopy: "Pricing is set when beta closes; you will be told before anything costs money.",
+    trialCopy: "Free for now. You will be told before anything costs money.",
     futurePrice: "",
-    cta: "On for everyone during beta",
+    cta: "On for everyone",
     features: [
       "Collector features plus Sell tools",
       "Sales and expense tracking",
@@ -162,9 +162,9 @@ export const TIER_PRICING = {
   [PLAN_IDS.SHOP]: {
     id: PLAN_IDS.SHOP,
     label: "Shop",
-    price: "Free during beta for approved shops",
+    price: "Free for approved shops",
     summary: "Shop profile and directory foundation for family-friendly local shops.",
-    trialCopy: "Shop pricing is set when beta closes. Shop trust labels are reviewed by the Code 3 team.",
+    trialCopy: "Shop trust labels are reviewed by the Code 3 team.",
     futurePrice: "There is no checkout yet: the team enables Shop by hand after a short review, including staff seats.",
     cta: "Ask the Code 3 team about Shop access",
     features: [
@@ -178,12 +178,12 @@ export const TIER_PRICING = {
 };
 
 export const TIER_ADD_ONS = [
-  { id: "extra_kid_profile", label: "Extra kid profile", price: "Free during beta", appliesTo: "Family", status: "Ask the team during beta" },
-  { id: "extra_adult_family_member", label: "Extra adult family member", price: "Free during beta", appliesTo: "Family", status: "Ask the team during beta" },
-  { id: "extra_scout_store", label: "Extra watched store", price: "Free during beta", appliesTo: "Collector, Family, Seller", status: "Ask the team during beta" },
-  { id: "seller_business_partner", label: "Seller/business partner seat", price: "Free during beta", appliesTo: "Seller", status: "Ask the team; we add your partner to your workspace by hand" },
-  { id: "shop_staff_seat", label: "Shop staff seat", price: "Free during beta", appliesTo: "Shop", status: "Ask the team during beta" },
-  { id: "extra_shop_location", label: "Extra shop location", price: "Free during beta", appliesTo: "Shop", status: "Ask the team during beta" },
+  { id: "extra_kid_profile", label: "Extra kid profile", price: "Free", appliesTo: "Family", status: "Ask the team" },
+  { id: "extra_adult_family_member", label: "Extra adult family member", price: "Free", appliesTo: "Family", status: "Ask the team" },
+  { id: "extra_scout_store", label: "Extra watched store", price: "Free", appliesTo: "Collector, Family, Seller", status: "Ask the team" },
+  { id: "seller_business_partner", label: "Seller/business partner seat", price: "Free", appliesTo: "Seller", status: "Ask the team; we add your partner to your workspace by hand" },
+  { id: "shop_staff_seat", label: "Shop staff seat", price: "Free", appliesTo: "Shop", status: "Ask the team" },
+  { id: "extra_shop_location", label: "Extra shop location", price: "Free", appliesTo: "Shop", status: "Ask the team" },
 ];
 
 export const TIER_DISPLAY_GUIDANCE = {
@@ -197,7 +197,7 @@ export const TIER_DISPLAY_GUIDANCE = {
     status: "Beta path",
     audience: "Collectors",
     benefit: "Adds deeper collection tools and more selected-store context while keeping Restocks fair.",
-    gateCopy: "3 watched stores | 14-day store changes | free during beta.",
+    gateCopy: "3 watched stores | 14-day store changes | free.",
   },
   [PLAN_IDS.FAMILY]: {
     status: "Beta path",
@@ -613,7 +613,7 @@ export function getLockedFeatureDetails(featureKey) {
       tierLabel,
       description,
       benefit: "Helpers who report restocks should see the current details and alerts from the stores they follow.",
-      action: `Reach ${SCOUT_EARNED_UNLOCK_POINTS} Restock points by submitting restock reports (a photo or receipt earns more), or ask the Code 3 team to turn on the ${tierLabel} path (free during beta).`,
+      action: `Reach ${SCOUT_EARNED_UNLOCK_POINTS} Restock points by submitting restock reports (a photo or receipt earns more), or ask the Code 3 team to turn on the ${tierLabel} path (free).`,
       guardrail: "Raw restock history and pattern tools stay protected for everyone.",
       cta: "Submit a restock report",
     };
@@ -628,7 +628,7 @@ export function getLockedFeatureDetails(featureKey) {
       tierLabel,
       description,
       benefit: "Business keeps business records, sales, receipts, expenses, mileage, and exports organized.",
-      action: "Ask the Code 3 team to turn on the Seller path. Everything is free during beta; there is nothing to pay yet.",
+      action: "Ask the Code 3 team to turn on the Seller path. Everything is free; there is nothing to pay.",
       guardrail: "Locked business tools do not change your saved Vault or restock data.",
       cta: "Ask the Code 3 team about Seller",
     };
@@ -643,7 +643,7 @@ export function getLockedFeatureDetails(featureKey) {
       tierLabel,
       description,
       benefit: "Family tools are parent-managed and keep child/family setup private by default.",
-      action: "Ask the Code 3 team to turn on the Family path (free during beta), or keep using the core app.",
+      action: "Ask the Code 3 team to turn on the Family path (free), or keep using the core app.",
       guardrail: "No child profiles, private family details, or hidden records are exposed behind this lock.",
       cta: "Ask the Code 3 team about Family",
     };
@@ -659,7 +659,7 @@ export function getLockedFeatureDetails(featureKey) {
       description,
       benefit: "Shop tools support family-friendly profiles, partner participation, sponsorships, and local events.",
       action: "Ask the Code 3 team about shop/partner review. Shop trust labels are reviewed by the team, not bought.",
-      guardrail: "Paying is not enough to unlock a shop trust label in beta.",
+      guardrail: "Paying is not enough to unlock a shop trust label.",
       cta: "Ask the Code 3 team about Shop",
     };
   }
@@ -672,9 +672,9 @@ export function getLockedFeatureDetails(featureKey) {
     tierLabel,
     description,
     benefit: "Upgrade paths keep advanced tools clear without cluttering the core app.",
-    action: "Ask the Code 3 team to adjust your beta access if this belongs in your setup.",
+    action: "Ask the Code 3 team to adjust your access if this belongs in your setup.",
     guardrail: "The locked state explains the benefit without exposing hidden data.",
-    cta: "On for everyone during beta",
+    cta: "On for everyone",
   };
 }
 
@@ -854,7 +854,7 @@ export function isAdminUser(profile = {}) {
 // Open beta (decided 2026-10-31 / 2026-11-13): every member plan's features are
 // on for everyone until beta closes. Staff-only features, raw restock history
 // and pattern tools are NOT part of this and stay closed. Flip to false when
-// prices go live; copy in TIER_PRICING already says "Free during beta".
+// prices go live; copy in TIER_PRICING already says "Free".
 export const OPEN_BETA_GATES_OPEN = true;
 
 export function getTierAccess(profile = {}, options = {}) {
@@ -993,7 +993,7 @@ export function getLockedFeatureMessage(featureKey) {
 
 export function getUpgradePrompt(featureKey) {
   const description = FEATURE_DESCRIPTIONS[featureKey];
-  return `${getLockedFeatureMessage(featureKey)} ${description || "Ask the Code 3 team to turn this on. Everything is free during beta; prices are set when beta closes and nothing is charged before you are told."}`;
+  return `${getLockedFeatureMessage(featureKey)} ${description || "Ask the Code 3 team to turn this on. Everything is free, and nothing is charged before you are told."}`;
 }
 
 export function sanitizeUserProfileUpdates(updates = {}) {

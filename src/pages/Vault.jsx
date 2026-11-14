@@ -762,8 +762,7 @@ export default function VaultPage(props) {
                       <p>{set.setNotes || "No Set Notes yet. Add why this set matters, what belongs here, or who it helps."}</p>
                       {set.setGoal ? <small>Goal: {set.setGoal}</small> : <small>Goal: Add a collecting goal when this set is ready.</small>}
                       <div className="compact-actions vault-collection-set-actions">
-                        <button type="button" className="secondary-button" onClick={() => setVaultToast("Set Shelf details are saved locally. Add items later is still coming soon.")}>View Set</button>
-                        <button type="button" className="secondary-button" disabled title="Item assignment is coming soon.">Add to Set</button>
+                        <button type="button" className="secondary-button" onClick={() => setVaultToast("Set Shelf details are saved on this device.")}>View Set</button>
                       </div>
                     </article>
                   );

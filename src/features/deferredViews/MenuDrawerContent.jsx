@@ -1299,9 +1299,7 @@ export default function MenuDrawerContent({ scope }) {
                     <p className="compact-subtitle">Family-safe community hub for reports, guidelines, questions, events, and future community tools.</p>
                   </div>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openTidepoolCommunity("Latest"))}>Open Community</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setVaultToast("Report Guidelines are coming soon for beta."))}>Report Guidelines</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("trust"))}>Community Rules</button>
-                  <button type="button" className="drawer-link disabled-link" disabled>Discord Coming Soon</button>
                 </div>
               ), "community")}
               {renderMenuPullDown("subscription", "Plans & Features", "Free vs paid features and beta planning", (
@@ -1314,7 +1312,7 @@ export default function MenuDrawerContent({ scope }) {
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("dashboard"))}>Open Settings / Plans</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("membership"))}>Compare Plans Preview</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("membership"))}>Membership Foundation</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => requestLockedFeatureAccess("seller_tools"))}>Ask the Code 3 team to turn on seller tools (free during beta)</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => requestLockedFeatureAccess("seller_tools"))}>Ask the Code 3 team to turn on seller tools (free)</button>
                   <button type="button" className="drawer-link disabled-link" disabled>Stripe Not Connected</button>
                 </div>
               ), "plan")}

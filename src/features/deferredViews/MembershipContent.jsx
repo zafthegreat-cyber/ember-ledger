@@ -97,8 +97,8 @@ export default function MembershipContent({ scope }) {
       }] : []),
       {
         label: "Checkout",
-        value: "Not live",
-        helper: "Pricing, trials, and add-ons are beta preview copy. Admin handles access changes for now.",
+        value: "None",
+        helper: "Every plan is free for now. The Code 3 team sets your access.",
       },
     ];
     const lockPreviewKeys = ["restock_predictions", "seller_tools", "kid_profiles", "shop_profile_tools"];
@@ -202,7 +202,7 @@ export default function MembershipContent({ scope }) {
             className="membership-v4-plans"
             kicker="Plans"
             title="Plans add scale, not basic collecting"
-            detail="Plan cards are beta preview copy. Checkout is not live, and upgrades are admin-managed during beta."
+            detail="Every plan is free for now and nothing is sold in the app. The Code 3 team turns on extra plan features."
             action={<span className="status-badge">No checkout</span>}
             ariaLabel="Code 3 TCG public plans"
           >
@@ -210,7 +210,7 @@ export default function MembershipContent({ scope }) {
               {tierCards.map((tier) => (
                 <article className={`membership-v4-plan-card${tier.id === plan ? " current" : ""}`} key={tier.id} data-tier-plan={tier.id}>
                   <div>
-                    <span>{tier.id === plan ? isPreview ? "Previewing" : "Current" : tier.display.status || "Beta preview"}</span>
+                    <span>{tier.id === plan ? isPreview ? "Previewing" : "Current" : tier.display.status || "Free for now"}</span>
                     <strong>{tier.label}</strong>
                   </div>
                   <h3>{tier.price}</h3>

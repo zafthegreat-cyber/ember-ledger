@@ -10,7 +10,7 @@ export function privacyPublisherFromEnv(env = {}) {
 }
 
 export const PRIVACY_PUBLISHER = privacyPublisherFromEnv(import.meta.env || {});
-export const PRIVACY_POLICY_UPDATED = "November 8, 2026";
+export const PRIVACY_POLICY_UPDATED = "November 14, 2026";
 
 export function publicPrivacyRoute(pathname = "") {
   const path = pathname.replace(/\/$/, "") || "/";
@@ -74,6 +74,14 @@ export const PRIVACY_SECTIONS = Object.freeze([
     body: "When you use the Feedback button, your message, the screen you were on, the app version, and basic device details are saved in our database. If you add an email address, we use it only to reply. A copy of the message (without your email) is posted to a private channel in our team's Discord server so we see it quickly. You can send feedback without an account; please don't include passwords or card numbers.",
   },
   {
+    key: "notifications", title: "Phone notifications",
+    body: "If you turn on phone alerts in the Android or iPhone app, your phone asks for notification permission. With your permission, the app saves this device's push token, its platform (Android or iOS) and the app version with your account, so we can send the alerts you chose, such as a restock at a watched store, even when the app is closed. Android notifications are delivered through Google Firebase Cloud Messaging and iPhone notifications through the Apple Push Notification service; they receive the token and the notification text. We do not use push tokens for advertising or tracking. Turn notifications off at any time in your phone's settings. Tokens a phone no longer accepts are switched off automatically, and deleting your account deletes them.",
+  },
+  {
+    key: "community", title: "Community posts and comments",
+    body: "On the website, Community posts are currently saved on your device only; the Android and iPhone apps do not include Community yet. When sharing between members is turned on, posts and comments will be reviewed by Code 3 TCG staff before other members can see them. Approved posts show your public username, never your real name, email or account ID. You can report a post or restock report that breaks the rules and block a member so you no longer see their posts, replies or reports; blocks are saved on your device. Staff may remove content and suspend accounts that break the Terms. Deleting your account deletes your community posts and comments.",
+  },
+  {
     key: "permissions", title: "Photos, camera, and location",
     body: "Camera, file, photo, and location access is used when you choose a related feature, such as scanning a barcode, attaching a receipt, or finding nearby stores. You can decline or revoke device permissions and use manual entry where available. Reports identify stores; do not include your private location or another person's private details in a report. External maps, retailers, and image providers receive normal network information when their content is requested and apply their own policies.",
   },
@@ -111,8 +119,8 @@ export const PRIVACY_SECTIONS = Object.freeze([
     body: "For the plans we currently use, Supabase documents seven days of access to API, database, and authentication logs. Vercel documents one hour of runtime logs, which record requests while the app runs. Its build logs, which record how an app release was prepared, are separate and are stored indefinitely for each deployment. We have not configured continuous log exports through either provider. Provider security, support, and infrastructure records can follow separate retention rules. These viewing windows are not a complete deletion schedule; contact support about a specific record or request.",
   },
   {
-    key: "children", title: "Family information",
-    body: "Family-program features are intended to be managed by a parent or guardian. The app does not provide public child profiles or open private messaging for children. A parent or guardian can review the information they entered and use the privacy and deletion options for their account. Do not create an account for a child without the applicable parent or guardian involvement. The Discord companion is intended only for people who meet Discord's minimum age of 13 and any higher minimum age required where they live. App family features do not allow a child below that age to use Discord. Do not submit a child's personal information to the companion or community channels; contact support if it was shared in error.",
+    key: "children", title: "Age and family information",
+    body: "You must be 13 or older to create a Code 3 TCG account; younger collectors take part through a parent's or guardian's account. If a profile says it belongs to a kid or teen, the app shows a kid-safe view and marks the account as a minor on our server. A minor account can read restock reports and keep a collection, but cannot post restock reports, store guesses, marketplace listings or community posts, and only Code 3 TCG staff can remove the minor marking. The website's optional Little Sparks family program is filled in by a parent or guardian and can include a child's first name, age range, ZIP code and collecting interests; staff use it only to review and fulfil that request, and it never creates a child account or a public child profile. The Android and iPhone apps do not include this program. The app has no public child profiles and no private messaging for children. A parent or guardian can review, correct or delete what they entered using the privacy and deletion options for their account. The Discord companion is intended only for people who meet Discord's minimum age of 13 and any higher minimum age required where they live. Do not submit a child's personal information to the companion or community channels; contact support if that happens.",
   },
   {
     key: "changes", title: "Changes to this policy",

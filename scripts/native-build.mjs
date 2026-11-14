@@ -1,5 +1,5 @@
 import { loadEnv, build } from "vite";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { resolveNativeBuildNumber } from "./native-build-number.mjs";
 import { releasedProviders } from "../src/features/auth/socialAuth.mjs";
@@ -27,6 +27,8 @@ Object.assign(process.env, {
   VITE_BETA_LOCAL_MODE: "false",
   VITE_CODE3_LOCAL_AUTH_ENABLED: "false",
   VITE_NATIVE_BUILD: "true",
+  // Android push needs Firebase (google-services.json); without it the app must not register.
+  VITE_ANDROID_PUSH_CONFIGURED: !smoke && (existsSync(resolve("android/app/google-services.json")) || settings.CODE3_ANDROID_PUSH_CONFIGURED === "true") ? "true" : "false",
   VITE_SUPABASE_URL: smoke ? "" : settings.VITE_SUPABASE_URL,
   VITE_SUPABASE_ANON_KEY: smoke ? "" : settings.VITE_SUPABASE_ANON_KEY,
   VITE_AUTH_VERIFIED_PROVIDERS: smoke ? "" : releasedProviders(settings.VITE_AUTH_VERIFIED_PROVIDERS).join(","),

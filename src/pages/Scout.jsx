@@ -5405,7 +5405,7 @@ async function handleUpdateStore(e) {
 
             <div style={styles.card}>
               <h2 style={styles.sectionTitle}>Best Buy Nightly Report Settings</h2>
-              {!adminMode ? <p style={{ ...styles.empty, padding: 0 }}>Best Buy monitoring is paused during beta. These settings are saved for when it turns on; nothing runs yet.</p> : null}
+              {!adminMode ? <p style={{ ...styles.empty, padding: 0 }}>Best Buy monitoring is paused. These settings are saved for when it turns on; nothing runs yet.</p> : null}
               <div style={styles.formGrid}>
                 <label style={styles.tiny}><input type="checkbox" checked={bestBuyNightlySettings.enabled} disabled={!adminMode} onChange={(e) => updateBestBuySetting("enabled", e.target.checked)} /> {adminMode ? "Nightly reports on" : "Nightly reports (paused)"}</label>
                 <input style={styles.input} type="time" value={bestBuyNightlySettings.reportTime} onChange={(e) => updateBestBuySetting("reportTime", e.target.value)} />

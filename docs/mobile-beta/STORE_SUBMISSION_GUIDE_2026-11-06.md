@@ -1,6 +1,6 @@
 # Code 3 TCG — App Store and Google Play submission guide
 
-Updated November 8, 2026. This replaces the open-items lists in [READINESS.md](./READINESS.md) and the [store copy draft](./STORE_COPY_DRAFT.md); those files remain as history. Publisher: **Anchor & Wing LLC DBA Code 3 TCG**. Android Play application ID: `com.code3tcg.app`. iOS bundle ID: `app.code3tcg.mobile`. Support: **support@code3tcg.com**.
+Updated November 14, 2026 (store audit blockers). This replaces the open-items lists in [READINESS.md](./READINESS.md) and the [store copy draft](./STORE_COPY_DRAFT.md); those files remain as history. Publisher: **Anchor & Wing LLC DBA Code 3 TCG**. Android Play application ID: `com.code3tcg.app`. iOS bundle ID: `app.code3tcg.mobile`. Support: **support@code3tcg.com**.
 
 ## Android internal-test identity
 
@@ -20,12 +20,17 @@ Keep the PWA and any older native installation installed. A prior sideload using
 | Private receipts and photos | **Done.** All four private storage buckets are private in production. |
 | Report and block for user content (Apple 1.2) | **Done in this release.** Restock report cards and details now have **Report** and **Block reporter**; community posts have Report post and Block user. Reports used to stay on the reporter's own device; they now go to the `beta_feedback` table for staff (see "Reviewing reports" below). Blocking immediately hides that person's posts, replies and restock reports, and Settings → Privacy & safety → Blocked people lists them with Unblock. The Terms say there is no tolerance for objectionable content or abusive users, and sign-up requires accepting the Terms. |
 | Sign in with Apple rule (Apple 4.8) | **Handled.** On iPhone, Discord/Google/Facebook buttons appear only when Sign in with Apple is also turned on. Until then the iPhone app offers email and password only. Android is unaffected. |
-| No outside payment links (Apple 3.1.1) | **OK for launch.** Every plan is free during beta and the native app hides all checkout. If paid plans start later, the iPhone app must sell them through Apple in-app purchase. |
+| No outside payment links (Apple 3.1.1) | **OK for launch.** Every plan is free and the native app hides all checkout. If paid plans start later, the iPhone app must sell them through Apple in-app purchase. |
 | Android target API | API 36, meets Google's current requirement. |
 | iOS icon | 1024×1024, now saved without an alpha channel (App Store Connect rejects icons with one). |
 | Export compliance | The iPhone app declares standard encryption only, so TestFlight doesn't hold each build for the question. |
 | Devices | iPhone only for launch (no iPad screenshots or iPad review needed). Android phones and tablets. |
 | Signed builds | Two manual GitHub Actions workflows: **Android signed beta build** and **iOS TestFlight build**. Both need your secrets (below). |
+| Launch scope (Apple 2.1/2.2) | **Done Nov 14.** The phone apps leave out Community (posts aren't shared between members yet), Parent Center (mock), the Little Sparks kids program, the Coming Soon/roadmap pages and the shop/sponsor page. Dead "coming soon" buttons are gone, and the phone apps drop the word "beta" from on-screen text. The website is unchanged. List: `src/config/nativeLaunchScope.js`. |
+| Official card images (Apple 5.2, Google IP) | **Done Nov 14.** The phone apps show only their own images and members' own uploads; catalog photos from TCGplayer and similar sites show the generic placeholder. The website keeps them. |
+| Minors (Apple 1.2/5.1.4, Google Families) | **Done Nov 14.** A kid or teen profile now also marks the account as a minor on the server, so server rules stop minors posting reports, guesses and listings. |
+| Push notifications | **App side done Nov 14.** "Turn on phone alerts" asks permission and saves the device token; tapping an alert opens the right screen. Android registers only in builds that include Firebase; iPhone delivers straight through Apple. You still need Firebase (Android) and an APNs key (iPhone): see [PUSH_NOTIFICATIONS_SETUP.md](../PUSH_NOTIFICATIONS_SETUP.md). |
+| Privacy policy | **Updated Nov 14:** 13+ minimum, minor accounts, Little Sparks details, phone notifications, Community. |
 
 ## What only you can do, in order
 
@@ -67,7 +72,7 @@ November 8 verification: sign-in succeeded, email is confirmed, no verified MFA 
 
 App access instructions (under 500 characters, use only after the candidate is verified):
 
-> Sign in with playreview@code3tcg.com and the password provided in this form. All released member features are complimentary; no purchase, invitation or MFA is required. Use the workspace menu for Collect, Find and Sell. Settings includes optional tools, privacy and account deletion. ACO/AIO and other features labelled Coming soon are not released. The sample collection and private review report are synthetic.
+> Sign in with playreview@code3tcg.com and the password provided in this form. All member features are free; no purchase, invitation or MFA is required. Use the workspace menu for Collect, Find and Sell. Settings includes alerts, privacy and account deletion. The sample collection and private review report are synthetic.
 
 ### 6. Screenshots and graphics
 The historical images in [store-listing](./store-listing/) need regeneration and visual review against the nationwide candidate. Do not upload the old four-state screenshots as current release evidence.
@@ -89,7 +94,7 @@ Use the text below, then submit the iPhone build for App Review and promote the 
 
 **Description:**
 
-Code 3 TCG helps trading card collectors find restocks and keep their collection organized, with a community that puts fair collecting and families first.
+Code 3 TCG helps trading card collectors find restocks and keep their collection organized, with a community that puts fair collecting first.
 
 RESTOCKS
 • Browse recent restock reports from other collectors at stores near you.
@@ -100,14 +105,14 @@ COLLECTION
 • Track cards and sealed products, your wish list and what you've traded.
 • Search products and check price information with clear "last updated" labels.
 
-COMMUNITY
-• Post questions, local events and trade nights.
+SAFE REPORTING
 • Report anything that breaks the rules, and block anyone you don't want to hear from.
+• Turn on phone alerts for the stores you watch.
 
 BUSINESS TOOLS
 • Optional tools for occasional sellers to keep inventory, sales and expenses in one place.
 
-Every plan is free during the beta. Your collection and business records stay private to your account.
+Every plan is free. Your collection and business records stay private to your account.
 
 **Keywords (Apple, 100 max):** tcg,trading cards,card collection,restock,collector,sealed,binder,trade,card prices,tracker
 
@@ -118,9 +123,9 @@ Every plan is free during the beta. Your collection and business records stay pr
 ## Notes for App Review (paste into "Notes")
 
 > Code 3 TCG is a free app for trading card collectors. Sign in with the review account provided. Restocks lists community-submitted store observations; collectors can submit a report with a photo. Collection tracks the reviewer's own items.
-> User-generated content: every community post and restock report has Report (sends it to our moderators) and Block (immediately hides that person's posts, replies and reports; unblock under Settings → Privacy & safety → Blocked people). The Terms of Service, which users accept at sign-up, prohibit objectionable content and abusive users.
+> User-generated content: every restock report has Report (sends it to our moderators) and Block reporter (immediately hides that person's reports; unblock under Settings → Privacy & safety → Blocked people). Members under 18 cannot post reports. The Terms of Service, which users accept at sign-up, prohibit objectionable content and abusive users.
 > Account deletion: Menu → Privacy / Data Requests → Delete account, or https://code3tcg.app/delete-account.
-> There are no in-app purchases; all plans are free during the beta. Camera and photo access are used only when the user attaches a photo; location only when the user asks for nearby stores.
+> There are no in-app purchases; all plans are free. Camera and photo access are used only when the user attaches a photo; location only when the user asks for nearby stores; notifications only after the user turns on phone alerts.
 
 ## App privacy (Apple) and Data safety (Google): quick answers
 
@@ -135,12 +140,13 @@ Answer **yes, data is collected**. Nothing is used for tracking or advertising, 
 | Precise and approximate location (only when the user taps "use my location"; ZIP/city if typed) | App functionality | Yes | Optional |
 | Search history (saved searches) | App functionality | Yes | Optional |
 | Customer support messages | App functionality | Yes | Optional |
-| Diagnostics (server request logs) | App functionality, security | No | — |
+| Device or other IDs (push notification token, once phone alerts are on) | App functionality | Yes | Optional |
+| Crash logs and diagnostics (Sentry crash reports with no personal details; server request logs) | App functionality, security | No | — |
 
 ## Age rating and audience
 
-- **Apple age rating questionnaire:** answer "Yes" to user-generated content and to messaging/chat between users (community replies). No gambling, no unrestricted web browser. Apple will most likely assign 13+.
-- **Google target audience:** choose **13 and over** (do not include under-13 groups). The Little Sparks family program is applied for by parents, not used directly by children, so the app should not be listed under Families/Designed for Kids. Google's content rating questionnaire (IARC): select "users can interact" and "shares user-provided content".
+- **Apple age rating questionnaire:** answer "Yes" to user-generated content (restock reports). The phone apps have no chat or messaging between users. No gambling, no unrestricted web browser. Apple will most likely assign 13+.
+- **Google target audience:** choose **13 and over** (do not include under-13 groups). The phone apps leave out the Little Sparks kids program and Parent Center, so the app should not be listed under Families/Designed for Kids. If Play asks why the app might appeal to children, explain that it is a collecting and restock tool for teens and adults, and that profiles marked as kids or teens cannot post. Google's content rating questionnaire (IARC): select "users can interact" and "shares user-provided content".
 
 ## Reviewing reports
 
