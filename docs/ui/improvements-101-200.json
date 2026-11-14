@@ -1,0 +1,1831 @@
+{
+  "title": "Code 3 TCG — next 100 UI improvements",
+  "batch": "101–200",
+  "createdAt": "2026-11-14T03:48:12.212Z",
+  "scope": "Read-only source audit and design backlog. No implementation, deployment, user-data write or price change.",
+  "basis": "Reviewed the current local candidate after completion of UI items 1–100. Source-observed friction is verified from code, not a claim of a new live-device test. Proposals are intentionally labeled and need design/behavior review before implementation.",
+  "exclusions": [
+    "Completed improvements 1–100 are not re-listed. Adjacent ideas identify their additional acceptance target.",
+    "Current catalog-image, product-image and 3D/tilt work is excluded.",
+    "No proposal authorizes automatic merging, deletion, price replacement, private-source scraping or permission bypass."
+  ],
+  "priorities": {
+    "P1": "Reduce confusion, protect reviewed work, or unblock a common workflow.",
+    "P2": "Improve frequent navigation, comparison or editing tasks.",
+    "P3": "Useful optional customization after core friction is addressed."
+  },
+  "counts": {
+    "total": 100,
+    "sourceObserved": 25,
+    "proposals": 75
+  },
+  "priorBatch": {
+    "file": "artifacts/ui-100-20261113/tasks.json",
+    "items": 100,
+    "statuses": [
+      "complete_local_verified"
+    ]
+  },
+  "items": [
+    {
+      "id": 101,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Inventory",
+      "priority": "P1",
+      "evidenceType": "Source-observed friction",
+      "title": "Shorter phone filter area",
+      "change": "Put secondary Game, Type, Storage and Sort controls in a compact mobile disclosure while keeping search and stock scope visible.",
+      "acceptance": "At 390px, the first product begins within the initial content viewport and active filters remain discoverable.",
+      "evidence": {
+        "file": "src/components/InventoryBrowser.jsx",
+        "line": 36,
+        "anchor": "inventory-browser-controls",
+        "observation": "All four select controls are rendered together above the products."
+      },
+      "distinctFromCompletedBatch": "Completed 29 added filters; this changes their phone layout.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 102,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Inventory",
+      "priority": "P1",
+      "evidenceType": "Source-observed friction",
+      "title": "Keep Inventory context after opening a record",
+      "change": "Retain Inventory search, filters, sort, view and scroll anchor when returning from a purchase record.",
+      "acceptance": "Open a lower product in filtered Table view and return to the same row without resetting.",
+      "evidence": {
+        "file": "src/components/InventoryBrowser.jsx",
+        "line": 17,
+        "anchor": "useState('available')",
+        "observation": "Inventory browse state is held in component-local state."
+      },
+      "distinctFromCompletedBatch": "Completed 15 preserved set browsing; this covers Inventory navigation.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 103,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Inventory",
+      "priority": "P2",
+      "evidenceType": "Source-observed friction",
+      "title": "Removable Inventory filter chips",
+      "change": "Summarize each active Inventory filter above results with an individual remove action.",
+      "acceptance": "Removing Storage keeps Game, Type and search unchanged; Reset still restores Available.",
+      "evidence": {
+        "file": "src/components/InventoryBrowser.jsx",
+        "line": 26,
+        "anchor": "const hasFilters",
+        "observation": "The browser exposes global Reset and select controls, but no individual active-filter summary."
+      },
+      "distinctFromCompletedBatch": "Completed 29 introduced selectors; this reduces effort clearing one selection.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 104,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Inventory",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Inventory sort direction",
+      "change": "Provide ascending/descending direction for quantity, cost, acquisition date and name.",
+      "acceptance": "The chosen direction is announced and ties remain stable without altering records.",
+      "evidence": {
+        "file": "src/components/InventoryBrowser.jsx",
+        "line": 40,
+        "anchor": "Sort inventory",
+        "observation": "Current options choose one ordering for each sort field."
+      },
+      "distinctFromCompletedBatch": "Completed 28 added sort fields; this adds direction control.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 105,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Inventory",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Keep product identity visible in wide tables",
+      "change": "Make the product column and header remain visible while scrolling the Inventory table.",
+      "acceptance": "On phone horizontal scroll, the product name stays beside the amount being inspected.",
+      "evidence": {
+        "file": "src/components/InventoryBrowser.jsx",
+        "line": 48,
+        "anchor": "Inventory table, scroll horizontally",
+        "observation": "The table has horizontal overflow and five columns."
+      },
+      "distinctFromCompletedBatch": "Completed 30 added the table; this improves its navigation.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 106,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Inventory",
+      "priority": "P3",
+      "evidenceType": "Design proposal",
+      "title": "Choose Inventory table columns",
+      "change": "Offer a small column chooser for cost, resale, storage and acquisition context.",
+      "acceptance": "Users can hide cost for a shop-floor view and restore defaults without changing data.",
+      "evidence": {
+        "file": "src/components/InventoryBrowser.jsx",
+        "line": 48,
+        "anchor": "['Product', 'Available', 'Available cost'",
+        "observation": "Table columns are fixed."
+      },
+      "distinctFromCompletedBatch": "This is display customization, not the table added in 30.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 107,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Inventory",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Quantity breakdown by storage location",
+      "change": "Show how many available units of a grouped product are in each recorded location.",
+      "acceptance": "A group spanning Shelf A and Shelf B shows the exact per-location counts, with unknown locations labeled.",
+      "evidence": {
+        "file": "src/components/InventoryBrowser.jsx",
+        "line": 48,
+        "anchor": "group.locations.join(', ')",
+        "observation": "Grouped cards show a joined list of storage names rather than quantities per place."
+      },
+      "distinctFromCompletedBatch": "Completed 2 stacked products; this adds location context within the group.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 108,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Inventory",
+      "priority": "P2",
+      "evidenceType": "Source-observed friction",
+      "title": "Search and sort a product’s purchase records",
+      "change": "Add a search and newest/oldest switch inside long purchase-record sheets.",
+      "acceptance": "A product with 80 original lots can be narrowed by store, date or storage without leaving its sheet.",
+      "evidence": {
+        "file": "src/components/InventoryBrowser.jsx",
+        "line": 52,
+        "anchor": "selected.records.map",
+        "observation": "The sheet renders all original purchases in their existing order."
+      },
+      "distinctFromCompletedBatch": "Completed 2 preserved original lots; this makes large groups manageable.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 109,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Inventory",
+      "priority": "P1",
+      "evidenceType": "Source-observed friction",
+      "title": "Review unknown quantities directly",
+      "change": "Give unknown-quantity records their own review queue instead of making users find them through All stock.",
+      "acceptance": "An unknown quantity opens the exact original record and is never interpreted as zero.",
+      "evidence": {
+        "file": "src/components/InventoryBrowser.jsx",
+        "line": 31,
+        "anchor": "unknownQuantity",
+        "observation": "Unknown quantities are described on cards; the dedicated attention queue is only for missing costs."
+      },
+      "distinctFromCompletedBatch": "Completed 4 added a cost queue; this targets a different unresolved field.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 110,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Inventory",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Reviewed multi-item storage changes",
+      "change": "Allow selecting several original records for a previewed storage-location update.",
+      "acceptance": "Show each affected original lot and old/new location before an explicit save; cancel changes nothing.",
+      "evidence": {
+        "file": "src/components/InventoryBrowser.jsx",
+        "line": 49,
+        "anchor": "inventory-browser-products",
+        "observation": "Product browsing currently opens one group at a time."
+      },
+      "distinctFromCompletedBatch": "This adds a batch workflow without merging the grouped data from 2.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 111,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Sales",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Reuse familiar sales channels",
+      "change": "Offer suggestions from previously recorded channels while preserving free text.",
+      "acceptance": "Typing a channel shows matching saved names and does not silently rename old sales.",
+      "evidence": {
+        "file": "src/components/SaleFormFields.jsx",
+        "line": 15,
+        "anchor": "Sales channel",
+        "observation": "Sales channel is a plain text field."
+      },
+      "distinctFromCompletedBatch": "Completed 54 filters sales history; this improves new entry.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 112,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Sales",
+      "priority": "P1",
+      "evidenceType": "Design proposal",
+      "title": "Preview stock after the sale",
+      "change": "Show available now, quantity being sold and available afterward together before confirmation.",
+      "acceptance": "The preview uses the same inventory authority as validation and distinguishes drafts from completed sales.",
+      "evidence": {
+        "file": "src/components/SaleFormFields.jsx",
+        "line": 14,
+        "anchor": "Quantity sold",
+        "observation": "The form shows available quantity and the sale quantity but no post-sale stock summary."
+      },
+      "distinctFromCompletedBatch": "Completed 10 prevents overselling; this explains the valid result.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 113,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Sales",
+      "priority": "P1",
+      "evidenceType": "Source-observed friction",
+      "title": "Choose Draft before filling a sale",
+      "change": "Expose Draft or Completed intent at the beginning of the sale flow.",
+      "acceptance": "A draft can be started intentionally without advancing to the final review to discover its status setting.",
+      "evidence": {
+        "file": "src/components/SaleFormFields.jsx",
+        "line": 25,
+        "anchor": "Sale status",
+        "observation": "Sale status is rendered only in the final step."
+      },
+      "distinctFromCompletedBatch": "Completed 55 made saved drafts selectable; this addresses creating one.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 114,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Sales",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Explicit currency on sales entry",
+      "change": "Label the sale currency once near the amount fields and in exported review summaries.",
+      "acceptance": "A USD sale is visibly identified as USD without implying currency conversion.",
+      "evidence": {
+        "file": "src/components/SaleFormFields.jsx",
+        "line": 5,
+        "anchor": "currency: 'USD'",
+        "observation": "The amount formatter is fixed to USD."
+      },
+      "distinctFromCompletedBatch": "Completed 11 distinguishes transaction total from per-unit price; this distinguishes currency.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 115,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Sales",
+      "priority": "P1",
+      "evidenceType": "Source-observed friction",
+      "title": "Explain blank optional expenses",
+      "change": "Clearly distinguish an expense left blank from an explicitly entered zero in the review and profit explanation.",
+      "acceptance": "The review explains how a blank expense affects the estimate and never rewrites it to a fabricated saved zero.",
+      "evidence": {
+        "file": "src/components/SaleFormFields.jsx",
+        "line": 6,
+        "anchor": "'Not recorded'",
+        "observation": "Blank costs display Not recorded while calculated totals are still shown."
+      },
+      "distinctFromCompletedBatch": "Completed 12 combined the review; this removes ambiguity inside its calculations.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 116,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Sales",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Expandable profit calculation",
+      "change": "Add a compact expandable arithmetic breakdown from sale proceeds to net proceeds and profit.",
+      "acceptance": "Displayed components reconcile exactly with the existing calculation, including discounts and buyer-paid shipping.",
+      "evidence": {
+        "file": "src/components/SaleFormFields.jsx",
+        "line": 34,
+        "anchor": "Realized profit",
+        "observation": "The review shows results and component fields as a detail list."
+      },
+      "distinctFromCompletedBatch": "This explains calculation relationships rather than adding review fields from 12.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 117,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Sales",
+      "priority": "P1",
+      "evidenceType": "Design proposal",
+      "title": "Possible duplicate sale warning",
+      "change": "Show a nonblocking review when a new sale closely matches an existing record’s item, date, channel, quantity and total.",
+      "acceptance": "Users can open the possible match or deliberately continue; nothing is merged or deleted automatically.",
+      "evidence": {
+        "file": "src/pages/EverydayWorkspaces.jsx",
+        "line": 733,
+        "anchor": "const draftSales",
+        "observation": "Sales browsing retains original records and a draft queue."
+      },
+      "distinctFromCompletedBatch": "Completed 54 supports finding history; this surfaces likely accidental re-entry before save.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 118,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Sales",
+      "priority": "P1",
+      "evidenceType": "Source-observed friction",
+      "title": "Honest form draft-saving status",
+      "change": "Replace a generic draft badge with Saved on this tab, Saving, or Draft could not be kept where persistence supports it.",
+      "acceptance": "When session storage fails, users see an actionable notice instead of assuming their edits are recoverable.",
+      "evidence": {
+        "file": "src/pages/EverydayWorkspaces.jsx",
+        "line": 228,
+        "anchor": "Draft preservation is best effort.",
+        "observation": "Draft persistence errors are caught silently."
+      },
+      "distinctFromCompletedBatch": "Completed 44 fixed step navigation; this covers draft preservation feedback.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 119,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Sales",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "A useful sale-saved receipt",
+      "change": "After saving, show a compact confirmation with the original sale, remaining stock and View sale action.",
+      "acceptance": "One successful save creates one sale and offers an immediate route to its detail without replaying submission.",
+      "evidence": {
+        "file": "src/pages/EverydayWorkspaces.jsx",
+        "line": 567,
+        "anchor": "onCancel={() => setForm(null)}",
+        "observation": "The form closes through its onCancel callback after save."
+      },
+      "distinctFromCompletedBatch": "Completed 12 improved pre-save review; this completes the post-save experience.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 120,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Sales",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Inspect the acquisition before selling",
+      "change": "Add a read-only acquisition peek beside the selected sale purchase record.",
+      "acceptance": "Inspecting its purchase date, cost and condition keeps the unsaved sale intact and returns focus to the picker.",
+      "evidence": {
+        "file": "src/components/SaleFormFields.jsx",
+        "line": 13,
+        "anchor": "Choose the original purchase record.",
+        "observation": "The picker identifies the original record through option text and helper text."
+      },
+      "distinctFromCompletedBatch": "Completed 51 added search and copy context; this enables in-place inspection.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 121,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Collection and portfolios",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Compact Collection density",
+      "change": "Add Comfortable and Compact density choices alongside Grid/List.",
+      "acceptance": "Compact mode fits more records while retaining readable names, quantities and 44px actions.",
+      "evidence": {
+        "file": "src/components/CollectionPortfolio.jsx",
+        "line": 206,
+        "anchor": "Collection display",
+        "observation": "The available display modes are Grid and List."
+      },
+      "distinctFromCompletedBatch": "This is density control, not the existing Grid/List switch.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 122,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Collection and portfolios",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Save named Collection searches",
+      "change": "Let collectors save combinations such as Hold + Japanese + a set query.",
+      "acceptance": "Opening a saved search restores its filters only and never changes portfolio membership.",
+      "evidence": {
+        "file": "src/components/CollectionPortfolio.jsx",
+        "line": 207,
+        "anchor": "collection-portfolio-toolbar",
+        "observation": "Collection combines search, condition, game, purpose and sort controls."
+      },
+      "distinctFromCompletedBatch": "Completed 21/22 added individual filters; this reuses combinations.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 123,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Collection and portfolios",
+      "priority": "P1",
+      "evidenceType": "Design proposal",
+      "title": "Filter unvalued collection records",
+      "change": "Provide a value-coverage filter for Valued, Not valued and Other currency.",
+      "acceptance": "Unknown values remain unknown; opening a result reaches the exact original copy needing review.",
+      "evidence": {
+        "file": "src/components/CollectionPortfolio.jsx",
+        "line": 226,
+        "anchor": "About these saved estimates",
+        "observation": "Value coverage is explained in a disclosure rather than offered as a browse filter."
+      },
+      "distinctFromCompletedBatch": "Completed 13 describes price freshness; this is a completeness workflow.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 124,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Collection and portfolios",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Filter Collection by storage",
+      "change": "Offer storage-location filtering for personal and hold copies.",
+      "acceptance": "A product group includes only matching copies in the filtered subtotal while original records remain intact.",
+      "evidence": {
+        "file": "src/components/CollectionPortfolio.jsx",
+        "line": 215,
+        "anchor": "collection-portfolio-filter-row",
+        "observation": "The visible Collection selectors cover purpose and sort alongside game controls."
+      },
+      "distinctFromCompletedBatch": "Completed 29 added Inventory storage filtering, not Collection storage filtering.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 125,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Collection and portfolios",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Filter owned Collection by printing",
+      "change": "Add language/finish/edition filters to the owned Collection, using recorded facts only.",
+      "acceptance": "Unknown variants stay explicitly unknown and do not get treated as standard.",
+      "evidence": {
+        "file": "src/components/CollectionPortfolio.jsx",
+        "line": 215,
+        "anchor": "collection-portfolio-filter-row",
+        "observation": "Collection filtering is separate from the set-catalog finish browser."
+      },
+      "distinctFromCompletedBatch": "Completed 35 added finish filtering within Sets; this applies to owned copies across sets.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 126,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Collection and portfolios",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Compare two owned purchases",
+      "change": "Allow choosing two original copies for a side-by-side purchase and purpose comparison.",
+      "acceptance": "Each column names its acquisition and keeps its own cost, condition and date.",
+      "evidence": {
+        "file": "src/components/CollectionPortfolio.jsx",
+        "line": 58,
+        "anchor": "openGroup",
+        "observation": "The grouped Collection opens a product’s original copies."
+      },
+      "distinctFromCompletedBatch": "Completed 38/46 improved individual copy recognition and editing; this is comparison.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 127,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Collection and portfolios",
+      "priority": "P3",
+      "evidenceType": "Design proposal",
+      "title": "Annotate value snapshots",
+      "change": "Offer an optional short note when saving a portfolio snapshot, such as Added convention purchases.",
+      "acceptance": "The note is display metadata and does not alter any price or old snapshot.",
+      "evidence": {
+        "file": "src/components/CollectionPortfolio.jsx",
+        "line": 233,
+        "anchor": "Save value snapshot",
+        "observation": "Snapshot creation currently records the current estimate through one action."
+      },
+      "distinctFromCompletedBatch": "No completed item adds snapshot annotations.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 128,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Collection and portfolios",
+      "priority": "P2",
+      "evidenceType": "Source-observed friction",
+      "title": "Distinguish same-day snapshots",
+      "change": "Show the time alongside dates in the snapshot values table when several snapshots share a day.",
+      "acceptance": "Two snapshots saved on the same date are distinguishable visually and to a screen reader.",
+      "evidence": {
+        "file": "src/components/CollectionPortfolioViews.jsx",
+        "line": 100,
+        "anchor": "dateFormat.format(point.at)",
+        "observation": "Snapshot rows format only month, day and year despite retaining full timestamps."
+      },
+      "distinctFromCompletedBatch": "This improves the existing data table; it does not duplicate a chart-accessibility feature.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 129,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Collection and portfolios",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Currency-specific value subtotals",
+      "change": "Show separate saved subtotals for each currency instead of only a count of unconverted records.",
+      "acceptance": "USD, CAD and other saved currencies remain separate; no exchange rate is assumed.",
+      "evidence": {
+        "file": "src/components/CollectionPortfolio.jsx",
+        "line": 226,
+        "anchor": "unconvertedCurrencies",
+        "observation": "The estimate note lists currencies excluded from the USD total."
+      },
+      "distinctFromCompletedBatch": "Completed 27 added filtered totals; this adds non-converted currency grouping.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 130,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Collection and portfolios",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Choose Collection export columns",
+      "change": "Offer a previewable field chooser with an explicit private-cost/notes toggle for CSV exports.",
+      "acceptance": "Export shows selected columns and row scope before download, preserving original records.",
+      "evidence": {
+        "file": "src/components/CollectionPortfolio.jsx",
+        "line": 10,
+        "anchor": "ExportDisclosure",
+        "observation": "The export disclosure describes fields and value inclusion."
+      },
+      "distinctFromCompletedBatch": "Completed 24 added result-vs-portfolio scope; this controls fields within that scope.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 131,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Sets and binders",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Browse sets by series",
+      "change": "Offer expandable series groups with a jump list for large set libraries.",
+      "acceptance": "Searching still spans every series and reopening a group preserves browsing position.",
+      "evidence": {
+        "file": "src/components/CollectionSets.jsx",
+        "line": 2,
+        "anchor": "CollectionSetGrid",
+        "observation": "The library renders one flat filtered set grid."
+      },
+      "distinctFromCompletedBatch": "Completed 33/34 improved scope and sorting; this adds hierarchy.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 132,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Sets and binders",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Pin sets being collected",
+      "change": "Allow a personal pinned-set strip for sets the collector is actively completing.",
+      "acceptance": "Pinning changes browsing preferences only, never collection records or completeness.",
+      "evidence": {
+        "file": "src/components/CollectionSets.jsx",
+        "line": 34,
+        "anchor": "All sets",
+        "observation": "Set scopes distinguish all, owned, in-progress and complete."
+      },
+      "distinctFromCompletedBatch": "Pins are user-selected priorities, not another completion filter.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 133,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Sets and binders",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Filter sets by release era",
+      "change": "Add year or series-era filtering using available release metadata.",
+      "acceptance": "Missing release dates are labeled and can still be included.",
+      "evidence": {
+        "file": "src/components/CollectionSets.jsx",
+        "line": 34,
+        "anchor": "Release date",
+        "observation": "Release date exists as a sort option but not a range filter."
+      },
+      "distinctFromCompletedBatch": "This extends date browsing beyond the existing sort.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 134,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Sets and binders",
+      "priority": "P1",
+      "evidenceType": "Source-observed friction",
+      "title": "Make set language scope match the numbers",
+      "change": "Offer a clearly scoped language-only count mode instead of implying selected language changes all totals.",
+      "acceptance": "With Japanese selected, either totals are explicitly all-language or a Japanese-only toggle changes only the projection.",
+      "evidence": {
+        "file": "src/components/CollectionSets.jsx",
+        "line": 38,
+        "anchor": "Counts and values include every language",
+        "observation": "The source explicitly says selected language finds sets but counts every language."
+      },
+      "distinctFromCompletedBatch": "Completed set filters remain; this clarifies and optionally narrows their totals.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 135,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Sets and binders",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Filter by checklist availability",
+      "change": "Provide Catalog available and Saved records only views in the set library.",
+      "acceptance": "Collectors can find sets with complete browsing support without hiding their unsupported saved sets permanently.",
+      "evidence": {
+        "file": "src/components/CollectionSets.jsx",
+        "line": 38,
+        "anchor": "Checklist totals appear where available",
+        "observation": "Checklist availability is described in a footer note."
+      },
+      "distinctFromCompletedBatch": "No completed item exposes catalog coverage as a library filter.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 136,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Sets and binders",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Download a missing-set shopping checklist",
+      "change": "Offer a printable or downloadable checklist from the current Missing view.",
+      "acceptance": "The checklist includes recorded set number/printing and no private purchase information by default.",
+      "evidence": {
+        "file": "src/components/CollectionSets.jsx",
+        "line": 3,
+        "anchor": "CollectionSetCatalog",
+        "observation": "Set detail delegates catalog ownership browsing to CollectionSetCatalog."
+      },
+      "distinctFromCompletedBatch": "Completed 14 added Missing browsing; this makes that view usable away from the app.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 137,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Sets and binders",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Review missing cards into Wants",
+      "change": "Allow selecting missing catalog entries and reviewing them as wishlist targets.",
+      "acceptance": "Nothing is marked owned; duplicate existing targets are identified before saving.",
+      "evidence": {
+        "file": "src/features/manualLifecycles/ManualLifecycles.jsx",
+        "line": 107,
+        "anchor": "record.type === \"wish\"",
+        "observation": "Wishlist targets are separate lifecycle records with matching owned records."
+      },
+      "distinctFromCompletedBatch": "This connects Missing browsing to existing Wants without duplicating ownership filters.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 138,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Sets and binders",
+      "priority": "P1",
+      "evidenceType": "Design proposal",
+      "title": "Explain card-number versus variant completion",
+      "change": "Show the current completion definition and offer a supported variant-based target only when the catalog contains those facts.",
+      "acceptance": "A set never becomes complete because holo and reverse holo were incorrectly treated as the same target.",
+      "evidence": {
+        "file": "src/components/CollectionSets.jsx",
+        "line": 27,
+        "anchor": "unique card",
+        "observation": "The header summarizes unique cards owned while variant browsing is separate."
+      },
+      "distinctFromCompletedBatch": "Completed 35 filters finishes; this defines the completion denominator.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 139,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Sets and binders",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Move binder assignments visually",
+      "change": "Add accessible destination-slot selection from a binder preview.",
+      "acceptance": "A move previews source and destination, prevents occupied-slot loss and retains the original unit identity.",
+      "evidence": {
+        "file": "src/features/manualLifecycles/ManualLifecycles.jsx",
+        "line": 98,
+        "anchor": "manual-binder-preview",
+        "observation": "Binder preview renders slot labels and assignments as a read-only list."
+      },
+      "distinctFromCompletedBatch": "No completed item adds binder assignment manipulation.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 140,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Sets and binders",
+      "priority": "P3",
+      "evidenceType": "Design proposal",
+      "title": "Binder page overview",
+      "change": "Show a compact page index with filled/total slots before opening one page.",
+      "acceptance": "A large binder can jump directly to a partially filled page and read counts without opening every page.",
+      "evidence": {
+        "file": "src/features/manualLifecycles/ManualLifecycles.jsx",
+        "line": 98,
+        "anchor": "Preview page",
+        "observation": "Binder preview selects one page from a dropdown."
+      },
+      "distinctFromCompletedBatch": "This is binder navigation, distinct from visual slot movement.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 141,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Restock browsing",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Save restock search presets",
+      "change": "Offer reusable area/product/retailer/time combinations.",
+      "acceptance": "A saved search restores browse preferences without converting historic observations into live availability.",
+      "evidence": {
+        "file": "src/components/RestockReportBrowser.jsx",
+        "line": 12,
+        "anchor": "EMPTY_FILTERS",
+        "observation": "The report browser manages one current set of filter values."
+      },
+      "distinctFromCompletedBatch": "Completed 16/17 added time and radius controls; this saves combinations.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 142,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Restock browsing",
+      "priority": "P1",
+      "evidenceType": "Source-observed friction",
+      "title": "Clear product filters without losing nearby area",
+      "change": "Separate Clear filters from Change area so clearing a query does not unexpectedly switch to nationwide.",
+      "acceptance": "Clearing text or retailer retains the selected five-mile area; nationwide requires an explicit area choice.",
+      "evidence": {
+        "file": "src/components/RestockReportBrowser.jsx",
+        "line": 57,
+        "anchor": "setLocation({ ...location, mode: 'all' })",
+        "observation": "The current clearFilters function resets the location mode to all."
+      },
+      "distinctFromCompletedBatch": "This corrects reset scope after 17, not the radius feature itself.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 143,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Restock browsing",
+      "priority": "P1",
+      "evidenceType": "Design proposal",
+      "title": "Finer freshness windows",
+      "change": "Offer Past hour and Past three hours in addition to 24 hours and seven days.",
+      "acceptance": "The window uses observation time and excludes unknown times from a fresh-only result.",
+      "evidence": {
+        "file": "src/components/RestockReportBrowser.jsx",
+        "line": 38,
+        "anchor": "Past 7 days",
+        "observation": "Observed-time choices are Any time, 24 hours and seven days."
+      },
+      "distinctFromCompletedBatch": "Completed 16 added a 24-hour shortcut; these address short-lived drops.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 144,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Restock browsing",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Compact repeated sightings from one store",
+      "change": "Provide an optional grouped-by-store feed with each original report accessible chronologically.",
+      "acceptance": "Grouping never merges observations, overwrites timestamps or hides no-stock follow-ups.",
+      "evidence": {
+        "file": "src/components/RestockReportBrowser.jsx",
+        "line": 159,
+        "anchor": "visible.map",
+        "observation": "The feed currently renders one entry for each report."
+      },
+      "distinctFromCompletedBatch": "This organizes repeated observations rather than changes pagination from 58.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 145,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Restock browsing",
+      "priority": "P1",
+      "evidenceType": "Design proposal",
+      "title": "Show conflicting store observations together",
+      "change": "Surface a recent no-stock follow-up beside an earlier stock sighting for the same product and store.",
+      "acceptance": "The UI cites both observation times and avoids declaring either report current inventory.",
+      "evidence": {
+        "file": "src/components/RestockReportDetails.jsx",
+        "line": 157,
+        "anchor": "Report summary",
+        "observation": "Individual detail presents one observation summary."
+      },
+      "distinctFromCompletedBatch": "This links potentially contradictory reports instead of merely formatting their times.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 146,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Restock browsing",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Explain nearby coordinate exclusions",
+      "change": "Show how many otherwise matching reports cannot be placed within the chosen radius.",
+      "acceptance": "Users can inspect unlocated observations separately without treating unknown coordinates as nearby.",
+      "evidence": {
+        "file": "src/components/RestockReportBrowser.jsx",
+        "line": 154,
+        "anchor": "Reports without coordinates appear last.",
+        "observation": "Nearest-order help acknowledges coordinate gaps."
+      },
+      "distinctFromCompletedBatch": "Completed 56 added nearest ordering; this exposes missing-location coverage.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 147,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Restock browsing",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Bookmark a report privately",
+      "change": "Add a saved-report list for planning a store visit or comparing observations later.",
+      "acceptance": "A bookmark keeps the original timestamp and does not mark the report as recent or verified.",
+      "evidence": {
+        "file": "src/components/RestockReportDetails.jsx",
+        "line": 113,
+        "anchor": "RestockReportDetails",
+        "observation": "The read-only detail renders a report and its evidence."
+      },
+      "distinctFromCompletedBatch": "This is personal report organization, not following stores.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 148,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Restock browsing",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Show exactly which products matched a report search",
+      "change": "Highlight matching product entries while preserving the whole original report.",
+      "acceptance": "A search for 151 distinguishes the matching line from other products mentioned in the same sighting.",
+      "evidence": {
+        "file": "src/components/RestockReportBrowser.jsx",
+        "line": 159,
+        "anchor": "renderReport(report, { compact: true, feed: true })",
+        "observation": "Compact rendering receives the report without explicit matched-field context."
+      },
+      "distinctFromCompletedBatch": "Completed menu search highlighting in 88 does not cover report product matches.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 149,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Restock browsing",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Copy an exact store address from detail",
+      "change": "Place a small Copy address action beside the recorded address, with a copied confirmation.",
+      "acceptance": "Only the selected store address is copied and unavailable addresses show no misleading action.",
+      "evidence": {
+        "file": "src/components/RestockReportDetails.jsx",
+        "line": 158,
+        "anchor": "scout-report-details__store",
+        "observation": "Store name and location are rendered as text."
+      },
+      "distinctFromCompletedBatch": "Completed 18 moved the address near the top; this makes it actionable.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 150,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Restock browsing",
+      "priority": "P1",
+      "evidenceType": "Design proposal",
+      "title": "Return to the same report-feed position",
+      "change": "Preserve report filters, loaded pages and scroll anchor after inspecting a report.",
+      "acceptance": "After opening item 35 and returning, the feed retains its prior order and position.",
+      "evidence": {
+        "file": "src/components/RestockReportBrowser.jsx",
+        "line": 20,
+        "anchor": "useState(PAGE_SIZE)",
+        "observation": "The report browser maintains filter and limit state locally."
+      },
+      "distinctFromCompletedBatch": "Completed 15 retained set browsing; this covers the restock feed.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 151,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Screenshot review",
+      "priority": "P1",
+      "evidenceType": "Source-observed friction",
+      "title": "Structured quantities and prices per detected product",
+      "change": "Extend each reviewed product row with optional quantity and reported price, preserving unknown values.",
+      "acceptance": "Two products with different observed amounts remain separate in the final review and saved report.",
+      "evidence": {
+        "file": "src/components/StockScreenshotImport.jsx",
+        "line": 198,
+        "anchor": "Products mentioned",
+        "observation": "Detected products are currently individual name strings, while stock status is shared."
+      },
+      "distinctFromCompletedBatch": "Completed 63 split editable names; this adds structured per-product evidence.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 152,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Screenshot review",
+      "priority": "P1",
+      "evidenceType": "Source-observed friction",
+      "title": "Choose replacements field by field",
+      "change": "Let the user choose Keep current or Use reviewed separately for store, products, status and observation time.",
+      "acceptance": "An existing store can stay while reviewed products are accepted; notes and photos remain protected.",
+      "evidence": {
+        "file": "src/components/StockScreenshotImport.jsx",
+        "line": 205,
+        "anchor": "Replace report fields I already entered",
+        "observation": "There is one global replace checkbox."
+      },
+      "distinctFromCompletedBatch": "Completed 64 compares current/after; this gives control over each displayed difference.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 153,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Screenshot review",
+      "priority": "P1",
+      "evidenceType": "Design proposal",
+      "title": "Confirm the screenshot observation time zone",
+      "change": "Display the assumed zone and permit correction when the source post describes another state.",
+      "acceptance": "A local datetime is never silently interpreted in the wrong zone; the confirmation shows the resulting time.",
+      "evidence": {
+        "file": "src/components/StockScreenshotImport.jsx",
+        "line": 201,
+        "anchor": "type=\"datetime-local\"",
+        "observation": "The screenshot time field accepts a local datetime without a visible zone selector."
+      },
+      "distinctFromCompletedBatch": "Completed 59 labels times in report detail; this captures source time accurately.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 154,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Screenshot review",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Convert relative source times with an explicit reference",
+      "change": "Offer a helper for 48 minutes ago using a user-confirmed screenshot capture time.",
+      "acceptance": "The proposed observation timestamp is shown for review, and no inferred time is saved automatically.",
+      "evidence": {
+        "file": "src/components/StockScreenshotImport.jsx",
+        "line": 201,
+        "anchor": "When was the stock seen?",
+        "observation": "Users currently enter the observation timestamp directly."
+      },
+      "distinctFromCompletedBatch": "This assists relative-time entry without duplicating the existing required-time validation.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 155,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Screenshot review",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Optional source-post reference",
+      "change": "Add an optional source URL field for manually supplied posts with a clear private/public disclosure.",
+      "acceptance": "The app never fetches a private group automatically; the user reviews whether the reference is included.",
+      "evidence": {
+        "file": "src/components/StockScreenshotImport.jsx",
+        "line": 176,
+        "anchor": "Post source",
+        "observation": "Source selection records Facebook, Discord or Other screenshot."
+      },
+      "distinctFromCompletedBatch": "This adds provenance precision beyond platform selection and source text privacy.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 156,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Screenshot review",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Reuse a recent confirmed screenshot store",
+      "change": "Show recently confirmed exact locations above the store search when appropriate.",
+      "acceptance": "The shortcut includes street/city and requires explicit selection; it never guesses that two branches are identical.",
+      "evidence": {
+        "file": "src/components/StockScreenshotImport.jsx",
+        "line": 192,
+        "anchor": "Find a store",
+        "observation": "The review offers store search and an exact-store dropdown."
+      },
+      "distinctFromCompletedBatch": "Completed 62 added search; this reduces repeated entry at familiar branches.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 157,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Screenshot review",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Review manual OCR text corrections",
+      "change": "Offer a local before/after text comparison and Undo for edits to extracted source text.",
+      "acceptance": "The original extracted text remains a private reference and restoring it requires an explicit action.",
+      "evidence": {
+        "file": "src/components/StockScreenshotImport.jsx",
+        "line": 181,
+        "anchor": "Paste or correct post text",
+        "observation": "The source textarea is editable and reruns suggestions."
+      },
+      "distinctFromCompletedBatch": "This compares the OCR text itself, not the report-field changes from 64.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 158,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Screenshot review",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Flag repeated detected product rows",
+      "change": "Warn when two reviewed product names appear identical and allow keeping or removing either row.",
+      "acceptance": "The user decides whether a repeat is intentional; quantities are not combined automatically.",
+      "evidence": {
+        "file": "src/components/StockScreenshotImport.jsx",
+        "line": 77,
+        "anchor": "productRows.map",
+        "observation": "Product rows are editable/removable independently."
+      },
+      "distinctFromCompletedBatch": "This addresses duplicate source extraction, not adding product-row editing again.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 159,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Screenshot review",
+      "priority": "P1",
+      "evidenceType": "Design proposal",
+      "title": "Undo applying screenshot details to a draft",
+      "change": "Provide a temporary Undo after applying reviewed fields to an unsent report.",
+      "acceptance": "Undo restores only the prior affected draft fields and keeps unrelated notes, photos and later edits safe.",
+      "evidence": {
+        "file": "src/components/StockScreenshotImport.jsx",
+        "line": 154,
+        "anchor": "Reviewed details added",
+        "observation": "The applied state offers Edit details after the patch."
+      },
+      "distinctFromCompletedBatch": "Completed 64 added pre-apply review; this adds local reversal before posting.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 160,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Screenshot review",
+      "priority": "P2",
+      "evidenceType": "Source-observed friction",
+      "title": "Show OCR readiness before upload",
+      "change": "Indicate whether offline text-reading assets are ready before starting a large screenshot read.",
+      "acceptance": "First-use download, ready-for-offline and unavailable states are distinct without exposing technical model names.",
+      "evidence": {
+        "file": "src/components/StockScreenshotImport.jsx",
+        "line": 180,
+        "anchor": "The first use downloads the text reader.",
+        "observation": "The first-use download explanation appears only while reading is already busy."
+      },
+      "distinctFromCompletedBatch": "Completed scanner recovery does not explain screenshot OCR readiness.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 161,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Alerts",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Counts on alert categories",
+      "change": "Show current All, Restocks, Watched stores and Account counts near the filter.",
+      "acceptance": "Counts reflect pending archives and unread scope consistently with the visible list.",
+      "evidence": {
+        "file": "src/components/NotificationInbox.jsx",
+        "line": 47,
+        "anchor": "Alert type",
+        "observation": "Alert types are selected from a dropdown with no per-category count."
+      },
+      "distinctFromCompletedBatch": "Completed 71 added filters; this reveals their size.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 162,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Alerts",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Search notification history",
+      "change": "Add keyword search for store, product and notification title/message.",
+      "acceptance": "Search combines with unread/category filters and reports the exact number of matches.",
+      "evidence": {
+        "file": "src/components/NotificationInbox.jsx",
+        "line": 39,
+        "anchor": "const matching = notifications.filter",
+        "observation": "The filtering pipeline uses category and unread state."
+      },
+      "distinctFromCompletedBatch": "This is text search, not the category filters in 71.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 163,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Alerts",
+      "priority": "P1",
+      "evidenceType": "Source-observed friction",
+      "title": "Keep pending alert Undo reachable",
+      "change": "Place the pending-archive Undo in a sticky compact status area while the alert list scrolls.",
+      "acceptance": "Archiving a lower alert leaves Undo within reach without jumping to the top.",
+      "evidence": {
+        "file": "src/components/NotificationInbox.jsx",
+        "line": 38,
+        "anchor": "pending.map",
+        "observation": "Undo notices are rendered before the full notification list."
+      },
+      "distinctFromCompletedBatch": "Completed 72 added Undo; this ensures it remains reachable on long histories.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 164,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Alerts",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Select alerts for bulk actions",
+      "change": "Offer a select mode for marking chosen alerts read or archiving them together.",
+      "acceptance": "The selected count and affected alerts are clear; non-dismissible entries cannot be archived.",
+      "evidence": {
+        "file": "src/components/NotificationInbox.jsx",
+        "line": 44,
+        "anchor": "Mark all read",
+        "observation": "The panel has Mark all read and per-alert actions."
+      },
+      "distinctFromCompletedBatch": "This selects a subset rather than adding the existing all-read action.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 165,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Alerts",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Explain protected alerts",
+      "change": "Give non-dismissible account alerts a short reason where an Archive action would otherwise be expected.",
+      "acceptance": "A protected notice is labeled without implying a broken or missing control.",
+      "evidence": {
+        "file": "src/components/NotificationInbox.jsx",
+        "line": 54,
+        "anchor": "entry.dismissible !== false",
+        "observation": "The Archive button is omitted for non-dismissible entries."
+      },
+      "distinctFromCompletedBatch": "This is permission-state explanation, not archive/Undo behavior.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 166,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Alerts",
+      "priority": "P1",
+      "evidenceType": "Design proposal",
+      "title": "Explain why an alert reached me",
+      "change": "Show a compact reason such as Watched store or Matched saved product when that metadata exists.",
+      "acceptance": "No reason is invented; users can identify the existing preference responsible for a notification.",
+      "evidence": {
+        "file": "src/components/NotificationInbox.jsx",
+        "line": 51,
+        "anchor": "notificationCategoryLabel(entry)",
+        "observation": "Alerts display a category, title and message but no dedicated preference reason."
+      },
+      "distinctFromCompletedBatch": "Completed 71 categories describe type; this describes the recipient match.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 167,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Alerts",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Optional priority-first inbox",
+      "change": "Allow an explicit priority-first ordering while retaining chronological ordering as a choice.",
+      "acceptance": "Urgent/high-priority alerts are distinguishable and their exact times remain visible.",
+      "evidence": {
+        "file": "src/components/NotificationInbox.jsx",
+        "line": 51,
+        "anchor": "entry.priority === \"urgent\"",
+        "observation": "Priority is currently a label on each alert."
+      },
+      "distinctFromCompletedBatch": "Completed 75 grouped history by day; this adds an optional priority ordering.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 168,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Alerts",
+      "priority": "P1",
+      "evidenceType": "Design proposal",
+      "title": "Separate permission from push registration status",
+      "change": "Show whether phone delivery is enabled for this device, versus in-app alerts merely being available.",
+      "acceptance": "A granted OS permission does not claim registration or delivery succeeded; setup failures offer appropriate recovery.",
+      "evidence": {
+        "file": "src/components/NotificationInbox.jsx",
+        "line": 43,
+        "anchor": "deviceState.label",
+        "observation": "The panel renders the supplied device status and permission controls."
+      },
+      "distinctFromCompletedBatch": "Completed 74 explains denied permission; this covers registration and delivery state.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 169,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Alerts",
+      "priority": "P3",
+      "evidenceType": "Design proposal",
+      "title": "Pause one alert source temporarily",
+      "change": "Offer a reviewed temporary pause for a store/product notification source when preference support is available.",
+      "acceptance": "The duration and scope are explicit, expire predictably, and do not remove saved stores or reports.",
+      "evidence": {
+        "file": "src/components/NotificationInbox.jsx",
+        "line": 54,
+        "anchor": "onOpen?.(entry)",
+        "observation": "Alert actions currently open, mark read or archive."
+      },
+      "distinctFromCompletedBatch": "This controls future notification volume rather than dismissing old alerts.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 170,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Alerts",
+      "priority": "P2",
+      "evidenceType": "Source-observed friction",
+      "title": "Recover from an empty filtered inbox",
+      "change": "Add Clear alert filters directly to the No alerts match state.",
+      "acceptance": "One action restores all categories and unread scope without altering any alert.",
+      "evidence": {
+        "file": "src/components/NotificationInbox.jsx",
+        "line": 56,
+        "anchor": "No alerts match these filters.",
+        "observation": "The empty filtered state is a text paragraph only."
+      },
+      "distinctFromCompletedBatch": "Completed 71 added filters; this improves their zero-result recovery.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 171,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Sync and backups",
+      "priority": "P1",
+      "evidenceType": "Design proposal",
+      "title": "Show pending local changes by group",
+      "change": "Expose a concise queue summary when authoritative sync state provides it.",
+      "acceptance": "Pending Collection changes and pending settings are distinct; no saved confirmation is shown before acknowledgment.",
+      "evidence": {
+        "file": "src/features/persistence/CloudSyncPanel.jsx",
+        "line": 10,
+        "anchor": "CloudSavingStatus",
+        "observation": "Cloud saving currently displays aggregate status and action progress."
+      },
+      "distinctFromCompletedBatch": "Completed 65 labeled actions; this describes the actual pending data scope.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 172,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Sync and backups",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Search within large sync comparisons",
+      "change": "Add record/field search and a changed-fields count inside the existing bounded comparison.",
+      "acceptance": "Filtering changes the preview only and preserves whole-group resolution semantics.",
+      "evidence": {
+        "file": "src/features/persistence/CloudConflictDifferences.jsx",
+        "line": 9,
+        "anchor": "differences.rows.map",
+        "observation": "Field differences render as a bounded table."
+      },
+      "distinctFromCompletedBatch": "Completed 66 guided groups; this searches fields within one group.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 173,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Sync and backups",
+      "priority": "P2",
+      "evidenceType": "Source-observed friction",
+      "title": "Read a long compared value inline",
+      "change": "Allow a private full-value expansion for one shortened conflict cell when safely available.",
+      "acceptance": "Expanding never merges fields and clearly marks any value still bounded by limits.",
+      "evidence": {
+        "file": "src/features/persistence/CloudConflictDifferences.jsx",
+        "line": 10,
+        "anchor": "Long values are shortened in this preview.",
+        "observation": "The current UI tells users to download both versions to inspect full-length values."
+      },
+      "distinctFromCompletedBatch": "This improves inspection inside an existing comparison rather than adding comparison itself.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 174,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Sync and backups",
+      "priority": "P1",
+      "evidenceType": "Design proposal",
+      "title": "Summarize all conflict choices before applying",
+      "change": "Present a final compact list of group names and chosen Device/Cloud versions.",
+      "acceptance": "Users can return to a group to change its choice before one explicit apply action.",
+      "evidence": {
+        "file": "src/features/persistence/CloudSyncPanel.jsx",
+        "line": 127,
+        "anchor": "Preserve originals and apply choices",
+        "observation": "The current final control follows individual radio groups."
+      },
+      "distinctFromCompletedBatch": "Completed 66 counts reviewed groups; this reviews the chosen outcomes.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 175,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Sync and backups",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Filter saved cloud versions by date",
+      "change": "Add date-range filtering and lazy expansion to longer version histories.",
+      "acceptance": "Finding an older version does not change which version is active.",
+      "evidence": {
+        "file": "src/features/persistence/CloudSyncPanel.jsx",
+        "line": 129,
+        "anchor": "history.map",
+        "observation": "Saved versions are rendered as one list after Load version history."
+      },
+      "distinctFromCompletedBatch": "Completed 67 improved version labels; this navigates large histories.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 176,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Sync and backups",
+      "priority": "P1",
+      "evidenceType": "Design proposal",
+      "title": "Name the backup file in the confirmation",
+      "change": "Keep the exact generated filename and download/share status visible after export.",
+      "acceptance": "Users can distinguish verified bytes from a browser download merely initiated and can locate the file they need.",
+      "evidence": {
+        "file": "src/features/backup/WorkspaceBackupPanel.jsx",
+        "line": 9,
+        "anchor": "setCoverage",
+        "observation": "Post-export state stores record/attachment coverage, not a dedicated visible filename."
+      },
+      "distinctFromCompletedBatch": "Completed 68 compares backup scope; this helps locate the resulting artifact.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 177,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Sync and backups",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Backup completeness checklist",
+      "change": "Show Records, private files, external references and unavailable sources as a completion checklist with the next action.",
+      "acceptance": "The checklist never calls an incomplete attachment export a complete backup.",
+      "evidence": {
+        "file": "src/features/backup/WorkspaceBackupPanel.jsx",
+        "line": 42,
+        "anchor": "backup-scope-comparison",
+        "observation": "The backup panel explains device/cloud scopes and later lists exclusions."
+      },
+      "distinctFromCompletedBatch": "This turns scope explanation into actionable completion state.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 178,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Sync and backups",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "A printable device-move checklist",
+      "change": "Offer a compact print/share-safe checklist of transfer steps without any account records or secret values.",
+      "acceptance": "The checklist clearly separates old-device export from new-device comparison and photo checks.",
+      "evidence": {
+        "file": "src/features/backup/DeviceTransferPanel.jsx",
+        "line": 65,
+        "anchor": "Which device are you using?",
+        "observation": "Transfer currently provides on-screen original/new device instructions."
+      },
+      "distinctFromCompletedBatch": "Completed 69 separates steps in-app; this provides an offline companion.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 179,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Sync and backups",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Show only transfer groups needing attention",
+      "change": "Add a mismatch-only toggle to the transfer comparison groups.",
+      "acceptance": "Fully matching groups remain inspectable and the total compared coverage stays visible.",
+      "evidence": {
+        "file": "src/features/backup/DeviceTransferPanel.jsx",
+        "line": 75,
+        "anchor": "Review record groups",
+        "observation": "All compared sections are listed together."
+      },
+      "distinctFromCompletedBatch": "Completed 70 reuses the checked file; this reduces comparison noise.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 180,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Sync and backups",
+      "priority": "P1",
+      "evidenceType": "Design proposal",
+      "title": "Turn recovery findings into a next-action summary",
+      "change": "Summarize what blocks recovery and which actions are informational before showing technical findings.",
+      "acceptance": "Every blocker maps to a specific safe next action while the original backup and existing records remain untouched.",
+      "evidence": {
+        "file": "src/features/backup/BackupRecoveryPanel.jsx",
+        "line": 240,
+        "anchor": "Structured findings",
+        "observation": "Recovery exposes grouped structured findings and detailed validation sections."
+      },
+      "distinctFromCompletedBatch": "This improves recovery guidance beyond existing comparison/download features.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 181,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Imports and business tools",
+      "priority": "P1",
+      "evidenceType": "Source-observed friction",
+      "title": "Jump from an import error to its field",
+      "change": "Make each invalid-row summary entry focus and reveal the exact invalid input.",
+      "acceptance": "A keyboard user can fix row 70 directly from the summary without scanning every row.",
+      "evidence": {
+        "file": "src/features/deferredViews/InventoryImportContent.jsx",
+        "line": 316,
+        "anchor": "invalidRows.slice(0, 8)",
+        "observation": "The error summary renders plain list items with source-line references."
+      },
+      "distinctFromCompletedBatch": "This extends import error navigation, outside the completed 1–100 scope.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 182,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Imports and business tools",
+      "priority": "P1",
+      "evidenceType": "Source-observed friction",
+      "title": "Compact large import reviews",
+      "change": "Collapse resolved/imported rows to short summaries and expand only the row being edited.",
+      "acceptance": "A 200-row import remains navigable and its original fields and per-row decisions are retained.",
+      "evidence": {
+        "file": "src/features/deferredViews/InventoryImportContent.jsx",
+        "line": 350,
+        "anchor": "importRows.map",
+        "observation": "Every import row renders a full fieldset."
+      },
+      "distinctFromCompletedBatch": "Completed screenshot product rows are separate from inventory CSV import review.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 183,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Imports and business tools",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Search import rows by source line or item",
+      "change": "Add an import-only search that can find original line numbers, names and identifiers.",
+      "acceptance": "Search narrows display without changing row order, validation or duplicate decisions.",
+      "evidence": {
+        "file": "src/features/deferredViews/InventoryImportContent.jsx",
+        "line": 363,
+        "anchor": "Original source row",
+        "observation": "Original source-line context is already present on each row."
+      },
+      "distinctFromCompletedBatch": "This is an import review search, not Inventory/Sales search.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 184,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Imports and business tools",
+      "priority": "P1",
+      "evidenceType": "Design proposal",
+      "title": "Filter import review by decision state",
+      "change": "Provide Needs fix, Needs match, Duplicate warning, Ready, Skipped and Saved tabs with counts.",
+      "acceptance": "The selected subset never changes which rows will actually be imported unless explicitly reviewed.",
+      "evidence": {
+        "file": "src/features/deferredViews/InventoryImportContent.jsx",
+        "line": 114,
+        "anchor": "Needs Review",
+        "observation": "The import page shows summary counts and a full row list."
+      },
+      "distinctFromCompletedBatch": "This surfaces existing import statuses rather than adding a generic app filter.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 185,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Imports and business tools",
+      "priority": "P1",
+      "evidenceType": "Source-observed friction",
+      "title": "Preview import bulk updates",
+      "change": "Show the affected rows and old/new field values before applying bulk destination, condition or purchase edits.",
+      "acceptance": "Cancel leaves all review rows unchanged; imported rows remain protected.",
+      "evidence": {
+        "file": "src/features/deferredViews/InventoryImportContent.jsx",
+        "line": 287,
+        "anchor": "Apply to Review Rows",
+        "observation": "Bulk updates are applied through a direct button."
+      },
+      "distinctFromCompletedBatch": "This is an import-specific pre-apply comparison, not screenshot draft comparison 64.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 186,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Imports and business tools",
+      "priority": "P1",
+      "evidenceType": "Source-observed friction",
+      "title": "Show sample values during column mapping",
+      "change": "Display a few source-cell examples beside each column name and chosen destination field.",
+      "acceptance": "Users can distinguish Unit price from Total cost before any import writes occur.",
+      "evidence": {
+        "file": "src/features/deferredViews/InventoryImportContent.jsx",
+        "line": 147,
+        "anchor": "mapping-column-row",
+        "observation": "Mapping renders the header and field selector without example cells."
+      },
+      "distinctFromCompletedBatch": "This improves spreadsheet mapping rather than catalog matching from 37.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 187,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Imports and business tools",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Reusable import mapping presets",
+      "change": "Allow naming and previewing a mapping preset for a recurring seller/export format.",
+      "acceptance": "Reusing a preset flags missing/changed columns and never auto-confirms an import.",
+      "evidence": {
+        "file": "src/features/deferredViews/InventoryImportContent.jsx",
+        "line": 144,
+        "anchor": "Column mapping",
+        "observation": "Column choices are provided for the current uploaded file."
+      },
+      "distinctFromCompletedBatch": "This adds reusable mapping preferences, not bulk row updates.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 188,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Imports and business tools",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "A real monthly deadline view",
+      "change": "Offer calendar and agenda views for business deadlines with explicit missing-date entries.",
+      "acceptance": "Recurring and completed dates stay authoritative; moving a date requires existing edit confirmation.",
+      "evidence": {
+        "file": "src/features/businessCompliance/BusinessCompliancePage.jsx",
+        "line": 160,
+        "anchor": "Filing and renewal calendar",
+        "observation": "The deadline tab is labeled calendar but renders a list of DeadlineCards."
+      },
+      "distinctFromCompletedBatch": "This is a business deadline visualization, not Home activity navigation.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 189,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Imports and business tools",
+      "priority": "P2",
+      "evidenceType": "Source-observed friction",
+      "title": "Clickable business attention metrics",
+      "change": "Make Overdue, Due in 30 days and Needs a date open the matching deadline subset.",
+      "acceptance": "Counts and destination results reconcile and retain keyboard-focus context.",
+      "evidence": {
+        "file": "src/features/businessCompliance/BusinessCompliancePage.jsx",
+        "line": 146,
+        "anchor": "MetricCard label=\"Overdue\"",
+        "observation": "Overview metrics are rendered without navigation callbacks."
+      },
+      "distinctFromCompletedBatch": "Completed 76 made Home activity actionable; these are business compliance counters.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 190,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Imports and business tools",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Search the business document index",
+      "change": "Add title/type/location search and expiring-soon filtering to indexed documents.",
+      "acceptance": "Search does not load sensitive document contents or change their locations.",
+      "evidence": {
+        "file": "src/features/businessCompliance/BusinessCompliancePage.jsx",
+        "line": 113,
+        "anchor": "state.documents.map",
+        "observation": "The document tab renders the whole document list."
+      },
+      "distinctFromCompletedBatch": "This is document-index organization outside the earlier batch.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 191,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Navigation, accessibility and account",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "User-controlled readable text size",
+      "change": "Offer Standard and Larger text presets using shared tokens, with a live preview.",
+      "acceptance": "At 200% zoom and narrow phone widths, actions remain usable and no values are clipped.",
+      "evidence": {
+        "file": "src/styles/theme.css",
+        "line": 11,
+        "anchor": "--font-ui:",
+        "observation": "The shared theme centralizes typography and surface tokens."
+      },
+      "distinctFromCompletedBatch": "Completed 98 prevented undersized buttons; this adds an explicit user preference.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 192,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Navigation, accessibility and account",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Reorder pinned menu shortcuts",
+      "change": "Allow keyboard Move earlier/later controls for the user’s pinned shortcuts.",
+      "acceptance": "Reordering affects only personal navigation preferences and remains limited to permitted destinations.",
+      "evidence": {
+        "file": "src/features/deferredViews/MenuNavigation.jsx",
+        "line": 128,
+        "anchor": "menu-pin-editor",
+        "observation": "Pinned shortcuts are selected by checkbox and displayed in saved order."
+      },
+      "distinctFromCompletedBatch": "Completed 86 added pin selection; this changes their order.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 193,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Navigation, accessibility and account",
+      "priority": "P1",
+      "evidenceType": "Source-observed friction",
+      "title": "Clear destructive-confirmation context",
+      "change": "Replace generic browser confirmation with an accessible dialog naming the record and exact effect.",
+      "acceptance": "Focus is trapped and restored; Cancel is the safe default; no deletion happens merely by opening the dialog.",
+      "evidence": {
+        "file": "src/pages/EverydayWorkspaces.jsx",
+        "line": 194,
+        "anchor": "window.confirm(`Delete",
+        "observation": "Deletion currently uses window.confirm with the record title."
+      },
+      "distinctFromCompletedBatch": "This is destructive-action presentation, not direct Edit placement from 45.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 194,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Navigation, accessibility and account",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Discoverable desktop shortcut help",
+      "change": "Add a small keyboard-shortcut reference for existing search, menu and navigation actions.",
+      "acceptance": "All advertised shortcuts work, avoid focused text inputs and have visible equivalent buttons.",
+      "evidence": {
+        "file": "src/features/deferredViews/MenuNavigation.jsx",
+        "line": 100,
+        "anchor": "onKeyDown={event",
+        "observation": "Menu search already handles Escape and ArrowDown."
+      },
+      "distinctFromCompletedBatch": "Completed 89 made menu keyboard behavior work; this makes it discoverable.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 195,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Navigation, accessibility and account",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Contextual record breadcrumbs",
+      "change": "Replace an ambiguous Back label with the originating workspace/group when known.",
+      "acceptance": "A record opened from a filtered product group returns to that exact context and announces the destination.",
+      "evidence": {
+        "file": "src/components/operations/RecordExperience.jsx",
+        "line": 41,
+        "anchor": ">Back</QuietButton>",
+        "observation": "Shared record detail uses a generic Back button."
+      },
+      "distinctFromCompletedBatch": "This adds path context; it does not duplicate filter-state preservation.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 196,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Navigation, accessibility and account",
+      "priority": "P1",
+      "evidenceType": "Source-observed friction",
+      "title": "Accessible compliance tabs",
+      "change": "Give compliance tabs roving focus, arrow-key navigation, stable panel IDs and aria-controls.",
+      "acceptance": "Only the active tab is in the tab sequence and its corresponding panel is labeled correctly.",
+      "evidence": {
+        "file": "src/features/businessCompliance/BusinessCompliancePage.jsx",
+        "line": 141,
+        "anchor": "role=\"tablist\"",
+        "observation": "Compliance renders role=tab buttons with click handlers but no roving focus or linked panels."
+      },
+      "distinctFromCompletedBatch": "Completed 89 covered menus; shared WorkspaceTabs already implements a pattern this page can adopt.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 197,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Navigation, accessibility and account",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Caps Lock warning on password fields",
+      "change": "Show a discreet Caps Lock indicator when the keyboard reports that state.",
+      "acceptance": "The warning does not expose, store or alter the password and disappears when Caps Lock is off.",
+      "evidence": {
+        "file": "src/features/auth/PasswordInput.jsx",
+        "line": 8,
+        "anchor": "type={visible ?",
+        "observation": "PasswordInput currently controls visibility only."
+      },
+      "distinctFromCompletedBatch": "Completed 91 added Show/Hide; this addresses mistaken capitalization.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 198,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Navigation, accessibility and account",
+      "priority": "P1",
+      "evidenceType": "Source-observed friction",
+      "title": "Recognizable names for signed-in devices",
+      "change": "Let a user label a session My Pixel or Office laptop while keeping technical identity separate.",
+      "acceptance": "Renaming cannot change revocation authority and the current device remains unmistakable.",
+      "evidence": {
+        "file": "src/features/security/AccountSessionPanel.jsx",
+        "line": 33,
+        "anchor": "\"Phone or tablet\" : \"Computer browser\"",
+        "observation": "New sessions receive only generic Phone or tablet or Computer browser labels."
+      },
+      "distinctFromCompletedBatch": "Completed account labels did not differentiate several devices of the same type.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 199,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Navigation, accessibility and account",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Hide inactive sessions without losing history",
+      "change": "Offer Active and Signed out/revoked views in the session list.",
+      "acceptance": "Revoked devices remain available for audit and cannot regain access through display controls.",
+      "evidence": {
+        "file": "src/features/security/AccountSessionPanel.jsx",
+        "line": 71,
+        "anchor": "devices.map",
+        "observation": "The session list renders active, signed-out and revoked entries together."
+      },
+      "distinctFromCompletedBatch": "This is session-list browsing, not granting/revoking access.",
+      "status": "proposed_not_implemented"
+    },
+    {
+      "id": 200,
+      "batch": "Next UI backlog — not implemented",
+      "area": "Navigation, accessibility and account",
+      "priority": "P2",
+      "evidenceType": "Design proposal",
+      "title": "Clear recent menu history",
+      "change": "Provide a privacy-friendly Clear recently visited action separate from pinned shortcuts.",
+      "acceptance": "Clearing recent destinations leaves pins, permissions, records and other preferences unchanged.",
+      "evidence": {
+        "file": "src/features/deferredViews/MenuNavigation.jsx",
+        "line": 130,
+        "anchor": "menu-recent-destinations",
+        "observation": "Recent destinations are persisted and displayed, with no dedicated clearing action here."
+      },
+      "distinctFromCompletedBatch": "Completed 87 added recents; this gives the user control over them.",
+      "status": "proposed_not_implemented"
+    }
+  ]
+}

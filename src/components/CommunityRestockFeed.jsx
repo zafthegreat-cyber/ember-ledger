@@ -28,18 +28,16 @@ export default function CommunityRestockFeed({compact=false,onOpenMap}) {
   function refresh(){setData(null);setState('loading');setReload(value=>value+1);}
   return <section className="community-scout" aria-labelledby={`${id}-title`}>
     <div className="community-scout__masthead">
-      <div><span className="community-scout__eyebrow">Code 3 TCG · together</span><h2 id={`${id}-title`}>A good find is worth sharing.</h2><p>Reviewed community observations, from Discord to Restocks. Check the observed time before making a trip.</p></div>
-      <div className="community-scout__seal" aria-hidden="true"><AppNavIcon kind="scout"/><span>Community<br/>first</span></div>
+      <div><h2 id={`${id}-title`}>Community reports</h2><p>Reviewed sightings shared through Discord. Stock can change after a report.</p></div>
     </div>
     <nav className="community-scout__actions" aria-label="Community shortcuts">
       <OutsideLink className="community-scout__primary" href={DISCORD_COMMUNITY.reports}><AppNavIcon kind="plus"/>Report in Discord</OutsideLink>
       <button type="button" onClick={onOpenMap}><AppNavIcon kind="map"/>Restocks map</button>
-      <button type="button" onClick={()=>setView('calendar')}><AppNavIcon kind="calendar"/>Release calendar</button>
       <OutsideLink href={DISCORD_COMMUNITY.roles}><AppNavIcon kind="bell"/>Choose alerts</OutsideLink>
     </nav>
     <div className="community-scout__tabs" role="group" aria-label="Community view"><button type="button" aria-pressed={view==='reports'} onClick={()=>setView('reports')}>Recent reports</button><button type="button" aria-pressed={view==='calendar'} onClick={()=>setView('calendar')}>Release dates</button></div>
     {view==='calendar'?<CommunityReleaseCalendar/>:<>
-    <div className="community-scout__heading"><div><h3>Reviewed community reports</h3><p>Past 24 hours · stock can change · staff review is not a retailer guarantee</p></div><button className="community-scout__refresh" type="button" disabled={state==='loading'} onClick={refresh}>Refresh</button></div>
+    <div className="community-scout__heading"><div><h3>Recent observations</h3><p>Past 24 hours · staff review is not a retailer guarantee</p></div><button className="community-scout__refresh" type="button" disabled={state==='loading'} onClick={refresh}>Refresh</button></div>
     <NationwideLocationPicker />
     <div className="community-scout__filters" role="search" aria-label="Filter reviewed community reports">
       <label htmlFor={`${id}-search`}><span>Find a report</span><input id={`${id}-search`} value={search} onChange={event=>setSearch(event.target.value)} type="search" placeholder="Product, store, or area"/></label>

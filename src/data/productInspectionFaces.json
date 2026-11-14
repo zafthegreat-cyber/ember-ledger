@@ -1,0 +1,168 @@
+{
+  "tcgplayer:672401": {
+    "name": "Perfect Order Elite Trainer Box",
+    "sourcePage": "https://www.asmodee.co.uk/products/pok1010372111-pokemon-tcg-mega-evolution-perfect-order-elite-trainer-box-1",
+    "dimensions": {
+      "width": 18.4,
+      "height": 16.3,
+      "depth": 8.5
+    },
+    "surfaceColor": "#4f5148",
+    "faces": {
+      "front": {
+        "src": "/assets/inspection/perfect-order/front.webp",
+        "quad": [
+          [
+            0.133125,
+            0.040337711069418386
+          ],
+          [
+            0.844375,
+            0.040337711069418386
+          ],
+          [
+            0.843125,
+            0.9662288930581614
+          ],
+          [
+            0.1375,
+            0.9634146341463414
+          ]
+        ],
+        "sourceKind": "shop-product-photo",
+        "sourcePage": "https://www.ebay.com/itm/147307632866",
+        "sourceImage": "https://i.ebayimg.com/images/g/A4QAAeSw0lVqA4SR/s-l1600.webp",
+        "sha256": "7fc97f4accff8b38a2a8113e9501899de22135d9f8dcf290cba2de59703d5af0"
+      },
+      "left": {
+        "src": "/assets/inspection/perfect-order/left.webp",
+        "quad": [
+          [
+            0.14071294559099437,
+            0.0625
+          ],
+          [
+            0.8320825515947468,
+            0.061875
+          ],
+          [
+            0.8405253283302064,
+            0.946875
+          ],
+          [
+            0.16322701688555347,
+            0.9475
+          ]
+        ],
+        "sourceKind": "shop-product-photo",
+        "sourcePage": "https://www.ebay.com/itm/147307632866",
+        "sourceImage": "https://i.ebayimg.com/images/g/x~kAAeSwwSZqA4SR/s-l1600.webp",
+        "sha256": "0f3bd8ab8faf4174ca59181956d719fa44296c67bd5cd5718092c0fab43bf193"
+      },
+      "top": {
+        "src": "/assets/inspection/perfect-order/top.webp",
+        "quad": [
+          [
+            0.03125,
+            0.22514071
+          ],
+          [
+            0.945,
+            0.22514071
+          ],
+          [
+            0.9375,
+            0.84333959
+          ],
+          [
+            0.03375,
+            0.84896811
+          ]
+        ],
+        "sourceKind": "shop-product-photo",
+        "sourcePage": "https://www.ebay.com/itm/147307632866",
+        "sourceImage": "https://i.ebayimg.com/images/g/h5IAAeSw7pFqA4SR/s-l1600.webp",
+        "sha256": "b56408420cd418caa2f9c100a0735b8b8b37980a81265d49aac76fa4f10b3235"
+      },
+      "bottom": {
+        "src": "/assets/inspection/perfect-order/bottom.webp",
+        "quad": [
+          [
+            0.0325,
+            0.20731707
+          ],
+          [
+            0.95125,
+            0.20825516
+          ],
+          [
+            0.95875,
+            0.8424015
+          ],
+          [
+            0.02625,
+            0.82833021
+          ]
+        ],
+        "sourceKind": "shop-product-photo",
+        "sourcePage": "https://www.ebay.com/itm/147307632866",
+        "sourceImage": "https://i.ebayimg.com/images/g/B7QAAeSw3uFqA4SR/s-l1600.webp",
+        "sha256": "215f41a05da2442dbd1b9cd6172027308ec31bc11cfe9bba8d6d775a337435ee"
+      },
+      "right": {
+        "src": "/assets/inspection/perfect-order/right.webp",
+        "quad": [
+          [
+            0.14821764,
+            0.056875
+          ],
+          [
+            0.80675422,
+            0.05875
+          ],
+          [
+            0.80769231,
+            0.930625
+          ],
+          [
+            0.16697936,
+            0.919375
+          ]
+        ],
+        "sourceKind": "shop-product-photo",
+        "sourcePage": "https://www.ebay.com/itm/147307632866",
+        "sourceImage": "https://i.ebayimg.com/images/g/2NkAAeSwm5BqA4SR/s-l1600.webp",
+        "sha256": "f78f09ad836b0dc5a95913e7c426108f71467425690a9c16813820e6610c9b5f"
+      },
+      "back": {
+        "src": "/assets/inspection/perfect-order/back.webp",
+        "quad": [
+          [
+            0.150625,
+            0.04971857
+          ],
+          [
+            0.843125,
+            0.04878049
+          ],
+          [
+            0.846875,
+            0.95966229
+          ],
+          [
+            0.15,
+            0.95309568
+          ]
+        ],
+        "sourceKind": "shop-product-photo",
+        "sourcePage": "https://www.ebay.com/itm/147307632866",
+        "sourceImage": "https://i.ebayimg.com/images/g/Lo4AAeSwv5dqA4SR/s-l1600.webp",
+        "sha256": "31c88dac74ec21263926a65cc79a18d0a76cddc33a411e2e55f4c519a4a1a61c"
+      }
+    },
+    "model": "10-10372-111",
+    "upc": "0196214152038",
+    "checkedAt": "2026-11-10",
+    "photoNotes": "All six faces use the same photographed standard ETB. Original images remain unchanged; face quads remove the room background at render time. Distributor artwork remains the model/dimensions reference."
+  }
+}

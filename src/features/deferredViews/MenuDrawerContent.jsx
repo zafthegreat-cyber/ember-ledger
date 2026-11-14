@@ -1,5 +1,6 @@
 import { useId, useRef } from "react";
 import SocialSignInButtons from "../auth/SocialSignIn.jsx";
+import PasswordInput from '../auth/PasswordInput.jsx';
 import { SignupFieldPrivacy } from "../auth/EmailConfirmationHelp.jsx";
 import { useModalFocus } from "../../components/operations/useModalFocus.js";
 import MenuNavigation from "./MenuNavigation.jsx";
@@ -269,7 +270,7 @@ export default function MenuDrawerContent({ scope }) {
               <div className="menu-brand-heading"><img src={BRAND_CONFIG.logoReference} alt="" /><div><p>{BRAND_CONFIG.applicationDisplayName}</p><h2 id={titleId}>Menu</h2></div></div>
               <button type="button" className="secondary-button drawer-close-button" aria-label="Close menu" onClick={() => setMenuOpen(false)}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
             </div>
-            <MenuNavigation sections={menuCommandSections} NavIcon={AppNavIcon} isItemActive={isMenuItemActive} onSelect={openMenuItem} onAdd={() => openAddActionSheet("menu")} modeLabel={experiencePresentation?.personaLabel || adaptiveUiState.modeLabel} experiencePresentation={experiencePresentation} workspaces={switcherWorkspaces} currentWorkspaceId={menuCurrentWorkspaceId} onSelectWorkspace={workspace => runMenuAction(() => navigateProductWorkspace(workspace.id))}>
+            <MenuNavigation key={`${currentUserProfile?.id || currentUserProfile?.userId || "guest"}:${activeWorkspace?.id || "personal"}`} preferenceScope={`${currentUserProfile?.id || currentUserProfile?.userId || "guest"}:${activeWorkspace?.id || "personal"}`} sections={menuCommandSections} NavIcon={AppNavIcon} isItemActive={isMenuItemActive} onSelect={openMenuItem} onAdd={() => openAddActionSheet("menu")} modeLabel={experiencePresentation?.personaLabel || adaptiveUiState.modeLabel} experiencePresentation={experiencePresentation} workspaces={switcherWorkspaces} currentWorkspaceId={menuCurrentWorkspaceId} onSelectWorkspace={workspace => runMenuAction(() => navigateProductWorkspace(workspace.id))}>
               {renderMenuPullDown("account", "Account", "App version, sign-in, and account actions", (
                 <div className="drawer-links">
                   <div className="drawer-info-card account-status-card">
@@ -279,7 +280,7 @@ export default function MenuDrawerContent({ scope }) {
                     </div>
                     <dl className="drawer-status-list">
                   <div><dt>App Version</dt><dd>{BRAND_CONFIG.applicationDisplayName} beta web application</dd></div>
-                      <div><dt>Account</dt><dd>{guestPreviewActive ? "Guest preview" : signedInWithSupabase ? "Supabase" : "Private beta"}</dd></div>
+                      <div><dt>Account</dt><dd>{guestPreviewActive ? "Guest preview" : signedInWithSupabase ? "Code 3 TCG" : "Private beta"}</dd></div>
                       <div><dt>Role</dt><dd>{actualAdminUser ? actualAdminRole : "user"}</dd></div>
                       <div><dt>Tier</dt><dd>{TIER_LABELS[currentTier] || "Free"}</dd></div>
                       <div><dt>Data</dt><dd>{guestPreviewActive ? "Read-only preview" : cloudSyncPreference === "cloud" ? "Local now, cloud sync requested" : "Stored on this device"}</dd></div>
@@ -311,15 +312,16 @@ export default function MenuDrawerContent({ scope }) {
                       <form className="drawer-info-card" onSubmit={handlePasswordResetRequest} noValidate>
                         <strong>Reset password</strong>
                         <p className="compact-subtitle">Enter your account email and we&apos;ll send a password reset link.</p>
-                        {!isSupabaseConfigured ? <p className="compact-subtitle danger-text">Supabase anon auth is not configured in this frontend.</p> : null}
-                        <input
+                        {!isSupabaseConfigured ? <p className="compact-subtitle danger-text">Account sign-in is unavailable in this app version. Try again later.</p> : null}
+                        <label>Email (required)<input
                           className="drawer-field"
                           type="email"
                           value={passwordResetEmail}
                           onChange={(event) => setPasswordResetEmail(event.target.value)}
                           placeholder="Email"
                           autoComplete="email"
-                        />
+                          required
+                        /></label>
                         {passwordResetError ? <p className="auth-status-message error" role="alert">{passwordResetError}</p> : null}
                         {passwordResetMessage ? <p className="auth-status-message success" role="status">{passwordResetMessage}</p> : null}
                         <div className="drawer-inline-actions">
@@ -342,68 +344,72 @@ export default function MenuDrawerContent({ scope }) {
                     ) : (
                       <form className="drawer-info-card" onSubmit={handleAuth} noValidate>
                         <SocialSignInButtons />
-                        <strong>{authMode === "login" ? "Sign in with Supabase" : "Create Supabase account"}</strong>
+                        <strong>{authMode === "login" ? "Sign in to Code 3 TCG" : "Create your Code 3 TCG account"}</strong>
                         <p className="compact-subtitle">Sign in to your Code 3 TCG account. Confirm your email if needed; no beta access request is required.</p>
-                        {!isSupabaseConfigured ? <p className="compact-subtitle danger-text">Supabase anon auth is not configured in this frontend.</p> : null}
+                        {!isSupabaseConfigured ? <p className="compact-subtitle danger-text">Account sign-in is unavailable in this app version. Try again later.</p> : null}
                         {authMode === "signup" ? (
                           <>
                             <div className="drawer-two-column">
-                              <input
+                              <label>First name (required)<input
                                 className="drawer-field"
                                 type="text"
                                 value={authFirstName}
                                 onChange={(event) => setAuthFirstName(event.target.value)}
                                 placeholder="First name"
                                 autoComplete="given-name"
-                              />
-                              <input
+                                required
+                              /></label>
+                              <label>Last name (required)<input
                                 className="drawer-field"
                                 type="text"
                                 value={authLastName}
                                 onChange={(event) => setAuthLastName(event.target.value)}
                                 placeholder="Last name"
                                 autoComplete="family-name"
-                              />
+                                required
+                              /></label>
                             </div>
-                            <input
+                            <label>Public username (required)<input
                               className="drawer-field"
                               type="text"
                               value={authPublicUsername}
                               onChange={(event) => setAuthPublicUsername(normalizePublicUsername(event.target.value))}
                               placeholder="public_username"
                               autoComplete="nickname"
-                            />
+                              required
+                            /></label>
                             <p className="compact-subtitle">{SIGNUP_NAME_HELPER}</p>
                             <SignupFieldPrivacy />
                             {renderUsernameRulesCard({ compact: true })}
                             <label className="checkbox-row">
-                              <input type="checkbox" checked={authTermsAccepted} onChange={(event) => setAuthTermsAccepted(event.target.checked)} />
-                              <span>{SIGNUP_TERMS_TEXT}</span>
+                              <input type="checkbox" required checked={authTermsAccepted} onChange={(event) => setAuthTermsAccepted(event.target.checked)} />
+                              <span>{SIGNUP_TERMS_TEXT} (required)</span>
                             </label>
                             <label className="checkbox-row">
                               <input type="checkbox" checked={authBetaAcknowledged} onChange={(event) => setAuthBetaAcknowledged(event.target.checked)} />
-                              <span>{SIGNUP_BETA_ACK_TEXT}</span>
+                              <span>{SIGNUP_BETA_ACK_TEXT} (optional)</span>
                             </label>
                             <button type="button" className="auth-text-button drawer-auth-link" onClick={() => runMenuAction(() => setActiveTab("trust"))}>
                               View Terms / Privacy
                             </button>
                           </>
                         ) : null}
-                        <input
+                        <label>Email (required)<input
                           className="drawer-field"
                           type="email"
                           value={authEmail}
                           onChange={(event) => setAuthEmail(event.target.value)}
                           placeholder="Email"
                           autoComplete="email"
-                        />
-                        <input
+                          required
+                        /></label>
+                        <PasswordInput
                           className="drawer-field"
-                          type="password"
                           value={authPassword}
                           onChange={(event) => setAuthPassword(event.target.value)}
                           placeholder="Password"
                           autoComplete={authMode === "login" ? "current-password" : "new-password"}
+                          required
                         />
                         {authError ? <p className="auth-status-message error" role="alert">{authError}</p> : null}
                         {authMessage ? <p className="auth-status-message success" role="status">{authMessage}</p> : null}
@@ -442,7 +448,7 @@ export default function MenuDrawerContent({ scope }) {
                   ) : (
                     <div className="drawer-info-card">
                       <strong>{actualAdminUser ? "Signed in with admin role" : "Signed in"}</strong>
-                      <p className="compact-subtitle">Supabase session is active. Log out only clears the account session; it does not erase private beta records on this device.</p>
+                      <p className="compact-subtitle">You are signed in to Code 3 TCG. Signing out ends this account session; your saved records remain on this device.</p>
                       {passwordResetError ? <p className="auth-status-message error" role="alert">{passwordResetError}</p> : null}
                       {passwordResetMessage ? <p className="auth-status-message success" role="status">{passwordResetMessage}</p> : null}
                       <button type="button" className="drawer-link" disabled={passwordResetLoading || !isSupabaseConfigured} onClick={handleSignedInPasswordReset}>
@@ -457,7 +463,7 @@ export default function MenuDrawerContent({ scope }) {
                       <p className="compact-subtitle">Your full name is private by default and used for account, Kids Program, and admin review context.</p>
                       <dl className="drawer-status-list">
                         <div><dt>Profile source</dt><dd>{settingsProfilePersistenceLabel}</dd></div>
-                        <div><dt>Display name / region</dt><dd>{signedInWithSupabase ? "Supabase profile" : "Local beta"}</dd></div>
+                        <div><dt>Display name / region</dt><dd>{signedInWithSupabase ? "Code 3 TCG profile" : "Local beta"}</dd></div>
                         <div><dt>Username / bio</dt><dd>{signedInWithSupabase ? "Account metadata" : "Local beta"}</dd></div>
                       </dl>
                       <div className="profile-public-preview settings-highlight-card">
@@ -1264,12 +1270,8 @@ export default function MenuDrawerContent({ scope }) {
                     <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("knownLimitations"))}>Open Glossary</button>
                   </div>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openPublicBetaFeedback({ page: "More Feedback", mainReason: "General feedback" }))}>Share feedback</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("feedback"))}>Tester Notes</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("bug"))}>Report a Bug</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("feature"))}>Request a Feature</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("catalog_data"))}>Report Bad Catalog Data</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("store_data"))}>Report Bad Store Data</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("market_data"))}>Report Wrong Market Price</button>
+                  <p className="compact-subtitle">Choose a bug, feature, catalog, store, or price issue in the feedback form.</p>
+                  <details><summary>Private tester notes</summary><p>Keep a note on this device before sharing it.</p><button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("feedback"))}>Write a private note</button></details>
                   {adminToolsVisible ? <button type="button" className="drawer-link" onClick={() => runMenuAction(() => void runFeedbackAiSummary())}>Summarize feedback</button> : null}
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(restartOnboarding)}>App Guide / Replay Onboarding</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("profileProgress"))}>Profile progress</button>

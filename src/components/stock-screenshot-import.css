@@ -24,7 +24,29 @@ html body .flow-modal[data-flow="scoutSubmit"] :is(.stock-screenshot-source-text
 html body .flow-modal[data-flow="scoutSubmit"] :is(.stock-screenshot-source-text,.stock-screenshot-preview) > summary { display: flex; align-items: center; padding: 10px 0; color: var(--action-primary); font: 600 .875rem/1.5 var(--font-ui); cursor: pointer; }
 html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-preview img { display: block; width: 100%; max-height: 260px; object-fit: contain; }
 html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-source-text[open] { display: grid; gap: 12px; }
-html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-review-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: 14px; min-width: 0; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-review-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; min-width: 0; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-review-layout { display:grid; gap:16px; min-width:0; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-compare-source { min-width:0; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-compare-source > div { display:none; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-compare-source > div.is-expanded { display:grid; gap:8px; padding-top:12px; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-compare-source img { width:100%; max-height:480px; object-fit:contain; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-compare-source pre { white-space:pre-wrap; overflow-wrap:anywhere; max-height:360px; overflow:auto; margin:0; font:400 14px/1.5 var(--font-ui); }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-panel h5 { font:650 .9375rem/1.5 var(--font-ui); margin:0; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-product-rows { display:grid; gap:10px; margin:0; padding:12px; border:1px solid var(--border-subtle); border-radius:8px; min-width:0; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-product-rows > div { display:flex; gap:8px; align-items:end; min-width:0; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-product-rows > div > label { flex:1; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-change-review { display:grid; gap:10px; min-width:0; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-change-table { overflow:auto; max-width:100%; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-change-table table { width:100%; border-collapse:collapse; table-layout:fixed; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-change-table :is(th,td) { padding:10px 8px; text-align:left; vertical-align:top; border-bottom:1px solid var(--border-subtle); font:400 .8125rem/1.5 var(--font-ui); overflow-wrap:anywhere; white-space:pre-wrap; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-change-table th { font-weight:650; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-change-table td small { display:block; color:var(--action-primary); }
+@media(min-width:900px){
+  html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-review-layout:has(.stock-screenshot-compare-source) { grid-template-columns:minmax(180px,.8fr) minmax(0,1.2fr); align-items:start; }
+  html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-compare-source { position:sticky; top:12px; }
+  html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-compare-source > div { display:grid; gap:8px; }
+  html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-source-toggle { display:none; }
+}
 html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-review { display: grid; gap: 16px; min-width: 0; padding-top: 16px; border-top: 1px solid var(--border-subtle); }
 html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-manual-fallback { display: grid; justify-items: start; gap: 8px; min-width: 0; }
 html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-applied { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
@@ -39,3 +61,39 @@ html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-progress progre
 html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-panel .stock-screenshot-error { color: var(--status-danger-text, var(--text-primary)); }
 html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-panel .stock-screenshot-apply { color: var(--on-primary) !important; background: var(--action-primary) !important; border-color: var(--action-primary); justify-self: start; }
 html body .flow-modal[data-flow="scoutSubmit"] .modal-close-button { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0 0 14px; border-bottom: 1px solid var(--border-subtle); list-style: none; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-steps > li { display: flex; align-items: center; gap: 7px; min-width: 0; color: var(--text-secondary); font: 500 .8125rem/1.4 var(--font-ui); }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-steps > li > span { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 24px; height: 24px; border: 1px solid var(--border-strong); border-radius: 50%; color: var(--text-secondary); font-size: .75rem; font-variant-numeric: tabular-nums; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-steps > li[aria-current="step"] { color: var(--text-primary); font-weight: 650; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-steps > li[aria-current="step"] > span { border-color: var(--action-primary); background: var(--action-primary); color: var(--on-primary); }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-source { min-width: 0; padding: 0 12px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-secondary); }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-source > summary { min-height: 46px; padding: 11px 0; color: var(--text-primary); font: 600 .875rem/1.5 var(--font-ui); cursor: pointer; overflow-wrap: anywhere; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-source > summary > small { display: block; padding-inline-start: 16px; color: var(--text-secondary); font-size: .75rem; font-weight: 400; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-source__body { display: grid; gap: 14px; min-width: 0; padding: 4px 0 14px; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-panel[data-stage="review"] .stock-screenshot-review { padding-top: 0; border-top: 0; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-panel h4 { font-family: var(--font-ui); }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-panel header p { font-size: .875rem; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-review-flags { display: grid; gap: 5px; padding: 12px 12px 12px 30px; border-inline-start: 3px solid var(--status-warning); border-radius: 4px; background: var(--surface-secondary); }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-panel .stock-screenshot-status { padding: 0 2px; color: var(--text-secondary); }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-replace { align-items: flex-start; padding-top: 12px; border-top: 1px solid var(--border-subtle); }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-replace input { margin-top: 2px; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-privacy { padding-top: 2px; }
+@media (max-width: 480px) {
+  html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-panel { padding: 12px; }
+  html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-steps > li { align-items: flex-start; gap: 5px; }
+  html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-upload-row > label { flex: 1 1 100%; }
+  html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-panel .stock-screenshot-apply { width: 100%; }
+}
+
+/* Review fields keep long store identities readable and required time actionable. */
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-review-fields > :is(.stock-screenshot-field--wide,.scout-manual-store-panel) { grid-column: 1 / -1; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-store-help { padding: 8px 10px; border-inline-start: 2px solid var(--border-strong); background: var(--surface-secondary); border-radius: 3px; overflow-wrap: anywhere; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-required { margin-inline-start: 6px; color: var(--text-secondary); font: 400 .75rem/1.5 var(--font-ui); }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-panel .stock-screenshot-field-error { color: var(--status-danger); font-weight: 550; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-panel input[aria-invalid="true"] { border-color: var(--status-danger); }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-report-start-options > button[aria-pressed="true"] { background: var(--action-primary) !important; color: var(--on-primary) !important; border-color: var(--action-primary) !important; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-report-start-options > button[aria-pressed="true"] strong { color: var(--on-primary) !important; }
+@media(max-width:480px) {
+  html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-review-fields { grid-template-columns: minmax(0,1fr); gap: 14px; }
+}

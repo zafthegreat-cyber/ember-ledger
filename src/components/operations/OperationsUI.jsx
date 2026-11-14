@@ -203,10 +203,10 @@ export function ProviderStatus({ name, status, detail, checkedAt = "" }) {
   return <RecordCard className="ops-provider-status"><div><SourceBadge>{name}</SourceBadge><h3>{status}</h3><p>{detail}</p>{checkedAt ? <small>Last checked {checkedAt}</small> : null}</div><StatusBadge tone={tone}>{status}</StatusBadge></RecordCard>;
 }
 
-export function BottomSheet({ open, title, children, onClose }) {
+export function BottomSheet({ open, title, children, onClose, className = "" }) {
   const { dialogRef, onKeyDown } = useModalFocus(open, onClose);
   if (!open) return null;
-  return <div className="ops-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose?.(); }}><section ref={dialogRef} className="ops-bottom-sheet" role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} onKeyDown={onKeyDown}><header><h2>{title}</h2><IconButton label="Close" icon="close" onClick={onClose} /></header>{children}</section></div>;
+  return <div className="ops-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose?.(); }}><section ref={dialogRef} className={cx("ops-bottom-sheet", className)} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} onKeyDown={onKeyDown}><header><h2>{title}</h2><IconButton label="Close" icon="close" onClick={onClose} /></header>{children}</section></div>;
 }
 
 export function Dialog({ open, title, description = "", children, actions = null, onClose }) {

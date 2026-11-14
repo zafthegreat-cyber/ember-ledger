@@ -1,6 +1,6 @@
 import { getStoreDirectoryState, normalizeStoreStateCode } from "../data/storeStates.js";
 import { COLLECTIBLE_GAMES, getRecordGame, normalizeCollectibleGame } from "./collectibleGames.mjs";
-import { locationScopeMatch } from './nationwideLocation.mjs';
+import { distanceMiles, locationScopeMatch } from './nationwideLocation.mjs';
 
 const STOCK_SEEN_STATUSES = new Set(["in_stock", "stock_on_shelf", "stock_seen", "leftover_stock", "behind_counter", "vendor_stocking", "restock_happening_now"]);
 
@@ -122,10 +122,11 @@ export function restockFeedLocationOptions(entries = []) {
 }
 
 // This operates only on reports already permitted by Scout's existing visibility checks.
-export function filterRestockFeed(entries = [], { search = "", stock = "all", period = "all", retailer = "", city = "", state = "all", game = "all", location } = {}, now = Date.now()) {
+export function filterRestockFeed(entries = [], { search = "", stock = "all", period = "all", retailer = "", city = "", state = "all", game = "all", knownTimeOnly = false, location } = {}, now = Date.now()) {
   const terms = String(search).trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
   const windowMs = period === "24h" ? 24 * 60 * 60 * 1000 : period === "7d" ? 7 * 24 * 60 * 60 * 1000 : null;
   return entries.filter((entry) => {
+    if (knownTimeOnly && !Number.isFinite(entry.observedAt)) return false;
     if (location && !locationScopeMatch(entry.locationRecord || entry.report, location)) return false;
     if (state === "unspecified" ? Boolean(entry.state) : state !== "all" && (!normalizeStoreStateCode(state) || entry.state !== normalizeStoreStateCode(state))) return false;
     const gameIds = entry.gameIds || [];
@@ -136,6 +137,23 @@ export function filterRestockFeed(entries = [], { search = "", stock = "all", pe
     if (terms.some((term) => !entry.searchText.includes(term))) return false;
     if (windowMs !== null && (!Number.isFinite(entry.observedAt) || entry.observedAt > now || now - entry.observedAt > windowMs)) return false;
     return true;
+  });
+}
+
+export function restockEntryDistance(entry, area) {
+  const record = entry.locationRecord || entry.report || {};
+  const lat = record.latitude ?? record.lat, lng = record.longitude ?? record.lng ?? record.lon;
+  if (lat === '' || lat == null || lng === '' || lng == null) return null;
+  return distanceMiles(area, { lat: Number(lat), lng: Number(lng) });
+}
+
+export function orderRestockEntries(entries, order = 'newest', area) {
+  return [...entries].sort((a, b) => {
+    if (order === 'nearest' && area) {
+      const aDistance = restockEntryDistance(a, area), bDistance = restockEntryDistance(b, area);
+      if (aDistance !== bDistance) return (aDistance ?? Infinity) - (bDistance ?? Infinity);
+    }
+    return (b.observedAt ?? -Infinity) - (a.observedAt ?? -Infinity);
   });
 }
 

@@ -93,3 +93,17 @@ html body .app[data-theme] .restock-browser-freshness {
   .scout-reports-landing .restock-browser-area__fields { grid-template-columns: minmax(0, 1fr); }
   .scout-reports-landing .scout-report-results { flex-wrap: wrap; }
 }
+
+/* Keep the first pass focused on product search and the reported shelf state. */
+.scout-reports-landing .scout-report-filters__fields { grid-template-columns: minmax(0, 1fr); }
+.scout-reports-landing .scout-report-filters { gap: 12px; }
+html body .app[data-theme] .restock-browser-area > summary > span { margin-inline-start: 12px; color: var(--text-secondary); font: 400 13px/1.5 var(--font-ui); }
+html body .app[data-theme] .scout-reports-landing .scout-report-filters select { font-size: 16px; }
+.scout-reports-landing .restock-browser-area__fields > label { font-size: 14px; }
+.scout-reports-landing .scout-report-filter-options { gap: 8px; }
+html body .app[data-theme] .scout-reports-landing .scout-report-filter-options button { padding-inline: 11px; font-size: 14px; }
+@media (max-width: 420px) {
+  html body .app[data-theme] .restock-browser-area > summary > span { display: block; margin-inline-start: 18px; }
+  .scout-reports-landing .scout-report-filter-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html body .app[data-theme] .scout-reports-landing .scout-report-filter-options button { justify-content: space-between; }
+}

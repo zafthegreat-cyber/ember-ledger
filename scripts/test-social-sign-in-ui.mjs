@@ -28,7 +28,18 @@ const click = button => button.dispatchEvent(new dom.window.MouseEvent("click", 
 
 test("unconfigured providers render no buttons or misleading login promises", async () => {
   environment(); await act(async () => root.render(React.createElement(SocialSignIn, { loadProviders: async () => [] })));
-  assert.equal(buttons().length, 0); assert.equal(document.getElementById("root").textContent, "");
+  assert.equal(buttons().length, 0); assert.match(document.getElementById("root").textContent, /not available here. Use email and password/);
+});
+
+test('provider discovery distinguishes loading from failure and retries safely', async () => {
+  environment(); let reject, calls = 0;
+  const loadProviders = () => { calls++; return calls === 1 ? new Promise((resolve, no) => { reject = no; }) : Promise.resolve(SOCIAL_PROVIDERS.slice(0, 1)); };
+  await act(async () => root.render(React.createElement(SocialSignIn, { loadProviders })));
+  assert.match(document.body.textContent, /Checking available sign-in methods/); assert.equal(buttons().length, 0);
+  await act(async () => reject(new Error('private-provider-detail')));
+  assert.match(document.querySelector('[role="alert"]').textContent, /could not load/); assert.ok(!document.body.textContent.includes('private-provider-detail'));
+  await act(async () => click(buttons().find(button => button.textContent === 'Retry sign-in methods')));
+  assert.equal(calls, 2); assert.equal(buttons()[0].textContent, 'Continue with Google'); assert.equal(buttons()[0].querySelector('svg').getAttribute('aria-hidden'), 'true');
 });
 test("configured provider labels are explicit and duplicate clicks start only once", async () => {
   environment(); let calls = 0, reject;

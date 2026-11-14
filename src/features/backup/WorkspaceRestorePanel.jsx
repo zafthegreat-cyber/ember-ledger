@@ -9,7 +9,7 @@ const CURRENT_APP_VERSION = typeof __EMBER_TIDE_APP_VERSION__ === "undefined" ? 
 
 // Mounted by the workspace gate, after app writers have been unmounted. The
 // host rechecks this exact plan, verifies the account, and commits under a lock.
-export default function WorkspaceRestorePanel({ storage = globalThis.localStorage, onRestore, onRestoreCloud, userId, onCancel }) {
+export default function WorkspaceRestorePanel({ storage = globalThis.localStorage, onRestore, onRestoreCloud, userId, onCancel, initialFile = null }) {
   const [plan, setPlan] = useState(null);
   const [review, setReview] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -101,6 +101,7 @@ export default function WorkspaceRestorePanel({ storage = globalThis.localStorag
     <h2 id="workspace-recovery-title">Recover saved records</h2>
     <p>Add missing records from a verified Code 3 backup. Existing records and settings stay in place, including newer versions with the same ID.</p>
     <label>Select backup or transfer file<input type="file" accept="application/json,.json" disabled={busy} onChange={inspect} /></label>
+    {initialFile ? <div><p>Checked transfer: {initialFile.name}</p><button type="button" disabled={busy} onClick={() => inspect({ target: { files: [initialFile], value: '' } })}>Review checked transfer file</button><p>The file is held only for this review. Its account, format, and contents are checked again before recovery.</p></div> : null}
     {message ? <p role="status">{message}</p> : null}
     {review && !plan ? <div className="backup-result" aria-label="Backup compatibility review"><RestoreReviewSummary compatibility={review.compatibility} dryRun={review.dryRun} headingLevel="h3" idPrefix="recovery-blocked-review" /></div> : null}
     {transfer ? <div><p>This transfer is linked to your signed-in account. Device records and cloud records are reviewed and recovered separately.</p><div className="backup-actions"><button type="button" disabled={busy} onClick={() => chooseTransferPart("device")}>Review device records</button>{transfer.cloudRaw ? <button type="button" disabled={busy || !onRestoreCloud} onClick={() => chooseTransferPart("cloud")}>Review cloud records and attachments</button> : null}</div>{transfer.warnings.length ? <details><summary>Transfer limitations</summary><ul>{transfer.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul></details> : null}</div> : null}

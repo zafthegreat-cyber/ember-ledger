@@ -66,3 +66,12 @@ html body .app[data-theme] .scout-report-detail-sheet .scout-report-details .sco
   .scout-report-details__image--reference img { height: 72px; }
   .scout-report-details__context > div { grid-template-columns: minmax(0, 1fr); gap: 3px; }
 }
+.scout-report-details__store { flex-basis: 100%; }
+.scout-report-details__store p { margin: .25rem 0 0; }
+.scout-photo-inspector { width: min(94vw, 70rem); max-height: 92dvh; padding: 1rem; border: 1px solid var(--border-subtle, #84766b); border-radius: 1rem; color: var(--text-primary, #27201c); background: var(--surface-primary, #fffaf1); }
+.scout-photo-inspector::backdrop { background: rgb(0 0 0 / .72); }
+.scout-photo-inspector header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.scout-photo-inspector label { display: flex; align-items: center; gap: .75rem; margin: .75rem 0; }
+.scout-photo-inspector__viewport { overflow: auto; max-height: 68dvh; }
+.scout-photo-inspector__viewport img { display: block; height: auto; object-fit: contain; }
+.scout-photo-inspector button, .scout-photo-inspector input { min-height: 44px; }

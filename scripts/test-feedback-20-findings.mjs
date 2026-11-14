@@ -169,7 +169,7 @@ test("F18: malformed acquisition values present as unknown; numeric zero is kept
 // ------------------------------------------------- component-level guards
 test("F01: cloud controls remount per account", () => {
   const panel = src("src/features/persistence/CloudSyncPanel.jsx");
-  assert.match(panel, /<CloudSyncPanelControls key=\{accountKey\} \/>/);
+  assert.match(panel, /<CloudSyncPanelControls key=\{accountKey\} includeAccountSecurity=\{includeAccountSecurity\} \/>/);
   assert.match(panel, /workspace\?\.user\?\.id/);
 });
 

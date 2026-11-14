@@ -1,0 +1,145 @@
+.app.app-command-shell[data-theme] .product-inspect{display:grid;gap:12px;min-width:0;width:100%;font-family:var(--font-ui,system-ui);color:var(--text-primary,#f6f0e6)}
+.app.app-command-shell[data-theme] .product-inspect button{min-width:44px;min-height:44px;padding:9px 12px;border:1px solid var(--border-strong,#73676f)!important;border-radius:8px;background:var(--surface-primary,#242126)!important;color:var(--text-primary,#f6f0e6)!important;font:600 .875rem/1.4 var(--font-ui,system-ui);cursor:pointer;touch-action:manipulation}
+.app.app-command-shell[data-theme] .product-inspect button:focus-visible,.app.app-command-shell[data-theme] .product-inspect__stage:focus-visible,.app.app-command-shell[data-theme] .product-inspect-launch:focus-visible{outline:3px solid var(--action-primary,#d4af37);outline-offset:4px}
+.app.app-command-shell[data-theme] .product-inspect__topline{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:.875rem;font-weight:600}
+.app.app-command-shell[data-theme] .product-inspect__topline button{padding:6px 10px;background:transparent!important}
+.app.app-command-shell[data-theme] .product-inspect__stage{position:relative;display:grid;place-items:center;min-width:0;height:340px;overflow:hidden;isolation:isolate;perspective:1100px;border:0;border-radius:0;background:transparent;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+.app.app-command-shell[data-theme] .product-inspect__stage[data-interactive="false"]{touch-action:pan-y;cursor:default}
+.app.app-command-shell[data-theme] .product-inspect__stage[data-dragging="true"]{cursor:grabbing}
+.app.app-command-shell[data-theme] .product-inspect__stage::before{content:"";position:absolute;width:58%;height:18px;bottom:25px;background:#0009;border-radius:50%;filter:blur(13px);pointer-events:none}
+.app.app-command-shell[data-theme] .product-inspect__object{--object-width:min(230px,60vw);--object-height:calc(var(--object-width)*1.4);--object-depth:1px;--inspect-yaw:-8deg;--inspect-pitch:5deg;--light-x:42%;--light-y:38%;--foil-angle:110deg;position:relative;width:var(--object-width);height:var(--object-height);transform-style:preserve-3d;transform:rotateX(var(--inspect-pitch)) rotateY(var(--inspect-yaw));pointer-events:none}
+.app.app-command-shell[data-theme] .product-inspect__object[data-shape="box"]{--object-width:min(204px,53vw);--object-height:calc(var(--object-width)*var(--box-height,.886));--object-depth:calc(var(--object-width)*var(--box-depth,.462))}
+.app.app-command-shell[data-theme] .product-inspect__object[data-shape="pack"]{--object-width:min(185px,50vw);--object-height:calc(var(--object-width)*1.5);--object-depth:12px}
+.app.app-command-shell[data-theme] .product-inspect__face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border:1px solid #b3a792;overflow:hidden;background:#f7f3eb;display:grid;place-items:center}
+.app.app-command-shell[data-theme] .product-inspect__face img{display:block;width:100%;height:100%;max-width:none!important;max-height:none!important;padding:0!important;object-fit:contain!important;border-radius:0!important;user-select:none;-webkit-user-drag:none}
+.app.app-command-shell[data-theme] .product-inspect__front{transform:translateZ(calc(var(--object-depth)/2));border-radius:9px}
+.app.app-command-shell[data-theme] .product-inspect__back{transform:rotateY(180deg) translateZ(calc(var(--object-depth)/2));border-radius:9px;background:linear-gradient(130deg,#27303b,#151a24);color:#f6f0e6}
+.app.app-command-shell[data-theme] .product-inspect__left,.app.app-command-shell[data-theme] .product-inspect__right{width:var(--object-depth);height:100%;inset:0 auto 0 calc(50% - var(--object-depth)/2);background:#353038;border-color:#9a8b70;color:#e5dccb;font:500 10px/1.5 var(--font-ui,system-ui);text-align:center}
+.app.app-command-shell[data-theme] .product-inspect__left{transform:rotateY(-90deg) translateZ(calc(var(--object-width)/2))}
+.app.app-command-shell[data-theme] .product-inspect__right{transform:rotateY(90deg) translateZ(calc(var(--object-width)/2))}
+.app.app-command-shell[data-theme] .product-inspect__top,.app.app-command-shell[data-theme] .product-inspect__bottom{width:100%;height:var(--object-depth);inset:calc(50% - var(--object-depth)/2) 0 auto;background:#777166}
+.app.app-command-shell[data-theme] .product-inspect__top{transform:rotateX(90deg) translateZ(calc(var(--object-height)/2))}
+.app.app-command-shell[data-theme] .product-inspect__bottom{transform:rotateX(-90deg) translateZ(calc(var(--object-height)/2));background:#37312d}
+.app.app-command-shell[data-theme] .product-inspect__object[data-shape="box"] .product-inspect__face{border-radius:2px}
+.app.app-command-shell[data-theme] .product-inspect__missing{display:grid;place-content:center;justify-items:center;gap:12px;max-width:90%;text-align:center;color:inherit;font:500 .875rem/1.5 var(--font-ui,system-ui)}
+.app.app-command-shell[data-theme] .product-inspect__missing>span:first-child{font-size:2rem;color:#d4af37}
+.app.app-command-shell[data-theme] .product-inspect__glare,.app.app-command-shell[data-theme] .product-inspect__foil{position:absolute;inset:0;pointer-events:none;opacity:0}
+.app.app-command-shell[data-theme] .product-inspect__hint,.app.app-command-shell[data-theme] .product-inspect__note,.app.app-command-shell[data-theme] .product-inspect__view{margin:0;font:400 .8125rem/1.5 var(--font-ui,system-ui);color:var(--text-secondary,#c7bdc5)}
+.app.app-command-shell[data-theme] .product-inspect__view{text-align:center;font-variant-numeric:tabular-nums}
+.app.app-command-shell[data-theme] .product-inspect__rotation{display:grid;grid-template-columns:44px 44px minmax(90px,1fr) 44px 44px;gap:6px}
+.app.app-command-shell[data-theme] .product-inspect__rotation button{padding:8px 3px}
+.app.app-command-shell[data-theme] .product-inspect-launch{position:relative;display:grid;place-items:center;gap:6px;min-width:0;width:100%;padding:0;border:0!important;background:transparent!important;color:var(--text-primary,#f6f0e6)!important;cursor:zoom-in}
+.app.app-command-shell[data-theme] .product-inspect-launch img{width:100%;height:230px;object-fit:contain}
+.app.app-command-shell[data-theme] .product-inspect-launch>span:last-child{min-height:44px;display:flex;align-items:center;justify-content:center;gap:6px;font:600 .8125rem/1.4 var(--font-ui,system-ui);padding:7px}
+.ops-detail-hero>.product-inspect-launch{width:132px;padding:8px;border:1px solid var(--border-subtle)!important;border-radius:9px;background:var(--surface-inset)!important}
+.ops-detail-hero>.product-inspect-launch img{height:150px}
+.app.app-command-shell[data-theme] .product-inspect__loading{min-height:452px;display:grid;place-items:center;color:var(--text-secondary,#c7bdc5)}
+@media(max-width:359px){.app.app-command-shell[data-theme] .product-inspect__rotation{grid-template-columns:44px 44px minmax(44px,1fr) 44px 44px;gap:3px}.app.app-command-shell[data-theme] .product-inspect__rotation button{font-size:.75rem;padding:4px 2px}}
+@media(prefers-reduced-motion:reduce){.product-inspect *{animation:none!important;transition:none!important}}
+
+/* Surface reflections are small and directional; they never recolor the base scan. */
+.app.app-command-shell[data-theme] .product-inspect__texture{position:relative;width:100%;height:100%;overflow:hidden}
+.app.app-command-shell[data-theme] .product-inspect__texture[data-projected="true"] img{position:absolute;inset:0;width:100%;height:100%;object-fit:fill!important;transform-origin:0 0}
+.app.app-command-shell[data-theme] .product-inspect__object{--foil-power:.13;filter:none}
+.app.app-command-shell[data-theme] .product-inspect__front{box-shadow:inset 0 0 0 .5px #fff5,0 6px 14px #0003;border-color:#17191c}
+.app.app-command-shell[data-theme] .product-inspect__object[data-shape="box"] .product-inspect__face{background:var(--surface-color,#2b2c2e);border-color:#292b2a}
+/* The laminate has a small white reflection; foil lives under ink, in its own mask. */
+.app.app-command-shell[data-theme] .product-inspect__object[data-art-ready="true"] .product-inspect__glare{opacity:var(--gloss-power,.06);background:radial-gradient(ellipse 52% 72% at var(--reflection-x,30%) var(--reflection-y,25%),#fff 0%,#fff8 18%,#fff1 50%,transparent 76%);mix-blend-mode:screen}
+.app.app-command-shell[data-theme] .product-inspect__object[data-art-ready="true"]:is([data-finish="holo"],[data-finish="reverse"]) .product-inspect__foil{opacity:var(--foil-power,.35);mask-image:var(--foil-mask);mask-size:100% 100%;mask-repeat:no-repeat;mix-blend-mode:screen}
+.app.app-command-shell[data-theme] .product-inspect__material{position:absolute;inset:0;mask-image:var(--ink-mask);mask-size:100% 100%;mask-repeat:no-repeat}
+.app.app-command-shell[data-theme] :is(.product-inspect__diffraction,.product-inspect__metal,.product-inspect__grain){position:absolute;inset:0;pointer-events:none}
+.app.app-command-shell[data-theme] .product-inspect__diffraction{background:linear-gradient(var(--foil-angle),transparent 24%,#70b0cd15 34%,#c7b9d333 41%,#f0d7b148 47%,#e3e9d05c 51%,#a5d0d44a 57%,#b5a1c333 63%,transparent 75%);background-size:210% 180%;background-position:calc(50% + var(--foil-shift,0%)) var(--reflection-y);mask-image:radial-gradient(ellipse 100% 85% at var(--reflection-x) var(--reflection-y),#000 10%,#0009 38%,transparent 85%)}
+.app.app-command-shell[data-theme] .product-inspect__metal{background:radial-gradient(ellipse 18% 70% at var(--reflection-x) var(--reflection-y),#fff9,#dce5ed28 45%,transparent 90%);opacity:.65}
+.app.app-command-shell[data-theme] .product-inspect__grain{background:url('/assets/inspection/foil-grain.svg');background-size:88px 88px;opacity:.15;mask-image:radial-gradient(ellipse 40% 55% at var(--reflection-x) var(--reflection-y),#000,transparent 76%)}
+.app.app-command-shell[data-theme] .product-inspect__object[data-finish="reverse"] .product-inspect__metal{background:linear-gradient(var(--foil-angle),transparent 18%,#a6b2c72a 34%,#dce5ee90 47%,#fff6 50%,#c4d3e160 54%,transparent 73%);background-size:225% 160%;background-position:var(--reflection-x) var(--reflection-y);opacity:.85}
+.app.app-command-shell[data-theme] .product-inspect__object[data-finish="reverse"] .product-inspect__grain{opacity:.08}
+.app.app-command-shell[data-theme] .product-inspect__faces{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.app.app-command-shell[data-theme] .product-inspect__faces button{flex:1 0 44px;font-size:.8125rem;padding:7px 5px}
+.app.app-command-shell[data-theme] .card-version-picker{display:grid;gap:10px;min-width:0;padding-bottom:14px;border-bottom:1px solid var(--border-subtle)}
+.app.app-command-shell[data-theme] .card-version-picker__header{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.app.app-command-shell[data-theme] .card-version-picker__header h3{margin:0;font:600 .9375rem/1.4 var(--font-ui)}
+.app.app-command-shell[data-theme] .card-version-picker__header>span{font-size:.875rem;color:var(--text-secondary)}
+.app.app-command-shell[data-theme] .card-version-picker__options{display:flex;gap:8px;flex-wrap:wrap}
+.app.app-command-shell[data-theme] .card-version-picker__options>button{display:grid;gap:4px;min-height:52px;min-width:100px;padding:10px 13px;border:1px solid var(--border-strong)!important;border-radius:8px;background:var(--surface-primary)!important;color:var(--text-primary)!important;text-align:left;font:500 .875rem/1.4 var(--font-ui);cursor:pointer}
+.app.app-command-shell[data-theme] .card-version-picker__options>button[aria-pressed="true"]{border-color:var(--action-primary)!important;box-shadow:inset 0 0 0 1px var(--action-primary)}
+.app.app-command-shell[data-theme] .card-version-picker__options>button:focus-visible{outline:3px solid var(--action-primary);outline-offset:3px}
+.app.app-command-shell[data-theme] .card-version-picker__options>button span{color:var(--text-secondary);font-variant-numeric:tabular-nums}
+.app.app-command-shell[data-theme] .card-version-picker__summary{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;font:400 .8125rem/1.5 var(--font-ui);color:var(--text-secondary)}
+.app.app-command-shell[data-theme] .card-version-picker>p{margin:0;font:400 .8125rem/1.5 var(--font-ui);color:var(--text-secondary)}
+.app.app-command-shell[data-theme] .product-inspect-sheet>header{position:sticky;top:-18px;z-index:3;padding:18px 0 10px;margin-top:-18px;background:var(--surface-elevated);border-bottom:1px solid var(--border-subtle);margin-bottom:12px}
+.app.app-command-shell[data-theme] .product-inspect__hint,.app.app-command-shell[data-theme] .product-inspect__view{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+@media(max-width:599px){.app.app-command-shell[data-theme] .product-inspect__stage{height:300px}.app.app-command-shell[data-theme] .product-inspect__object{--object-width:min(200px,58vw)}.app.app-command-shell[data-theme] .product-inspect-sheet>header{top:-14px;padding-top:14px;margin-top:-14px}.app.app-command-shell[data-theme] .product-inspect{gap:10px}}
+@media(max-width:599px){.app.app-command-shell[data-theme] .product-inspect__loading{min-height:408px}}
+.app.app-command-shell[data-theme] .collection-product-photo{background:transparent;padding:0;border:0}
+.app.app-command-shell[data-theme] .ops-detail-hero>.product-inspect-launch{background:transparent!important}
+
+.app.app-command-shell[data-theme] .product-inspect__faces button[aria-pressed="true"]{border-color:var(--action-primary,#d4af37)!important;background:var(--surface-selected,#3e3425)!important;color:var(--text-primary)!important}
+
+/* Off-angle foil darkens slightly; the printed illustration and paper stay intact. */
+.app.app-command-shell[data-theme] .product-inspect__foil-shade{position:absolute;inset:0;pointer-events:none;opacity:0;mask-image:var(--foil-mask);mask-size:100% 100%;mask-repeat:no-repeat;mix-blend-mode:multiply}
+.app.app-command-shell[data-theme] .product-inspect__foil-shade .product-inspect__material{background:#101926}
+.app.app-command-shell[data-theme] .product-inspect__object[data-art-ready="true"]:is([data-finish="holo"],[data-finish="reverse"]) .product-inspect__foil-shade{opacity:var(--foil-shade,0)}
+
+@media(max-width:599px){.app.app-command-shell[data-theme] .product-inspect__faces{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.app.app-command-shell[data-theme] .product-inspect__faces button{width:100%}}
+
+/* Card stock has a thin paper edge and a dark core, not a box-like gold rim. */
+.app.app-command-shell[data-theme] .product-inspect__object[data-shape="card"]{--object-depth:1.1px;--card-radius:calc(var(--object-width)*.035)}
+.app.app-command-shell[data-theme] .product-inspect__object[data-shape="card"] :is(.product-inspect__front,.product-inspect__back){border-radius:var(--card-radius);border-width:.5px}
+.app.app-command-shell[data-theme] .product-inspect__object[data-shape="card"] .product-inspect__back{border-color:#112849;background:#123559;box-shadow:inset 0 0 0 .5px #fff2,0 6px 14px #0003}
+.app.app-command-shell[data-theme] .product-inspect__object[data-shape="card"] :is(.product-inspect__left,.product-inspect__right){height:calc(100% - var(--card-radius)*2);top:var(--card-radius);bottom:auto;border:0;background:linear-gradient(90deg,#ded9ca 0 30%,#5c5c5b 40% 58%,#e9e1d2 72%)}
+.app.app-command-shell[data-theme] .product-inspect__object[data-shape="card"] :is(.product-inspect__top,.product-inspect__bottom){width:calc(100% - var(--card-radius)*2);left:var(--card-radius);right:auto;border:0;background:linear-gradient(#ded9ca 0 30%,#5c5c5b 40% 58%,#e9e1d2 72%)}
+.app.app-command-shell[data-theme] .product-inspect__texture[data-fit="card"] img{object-fit:fill!important}
+.app.app-command-shell[data-theme] .product-inspect__back-glare{position:absolute;inset:0;pointer-events:none;opacity:0;mix-blend-mode:screen;background:radial-gradient(ellipse 46% 66% at var(--back-reflection-x,45%) var(--back-reflection-y,35%),#fff,#fff3 32%,transparent 76%)}
+.app.app-command-shell[data-theme] .product-inspect__object[data-back-ready="true"] .product-inspect__back-glare{opacity:var(--back-gloss-power,.04)}
+.app.app-command-shell[data-theme] .product-inspect__faces--card{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+
+/* Larger inspection keeps the same photo, finish and angle; it fits the stage. */
+.app.app-command-shell[data-theme] .product-inspect__topline{flex-wrap:wrap}
+.app.app-command-shell[data-theme] .product-inspect__topline>span{white-space:nowrap;flex:1 1 auto}
+.app.app-command-shell[data-theme] .product-inspect__tools{display:flex;gap:6px;flex:0 1 auto}
+.app.app-command-shell[data-theme] .product-inspect__tools button{white-space:nowrap;flex:1 0 auto}
+.app.app-command-shell[data-theme] .product-inspect__stage[data-detail="true"]{height:var(--detail-stage-height,440px)}
+.app.app-command-shell[data-theme] .product-inspect__stage[data-detail="true"] .product-inspect__object{--object-width:var(--detail-width,260px)}
+.app.app-command-shell[data-theme] .product-inspect__stage[data-interactive="false"]{touch-action:pan-y pinch-zoom}
+
+.app.app-command-shell[data-theme] .product-inspect__tools button[aria-pressed="true"]{border-color:var(--action-primary,#d4af37)!important;background:var(--surface-selected,#3e3425)!important}
+
+/* A photographed carton: continuous edges, restrained shrink-wrap reflections,
+   and one studio light across all six faces. These rules do not affect cards. */
+.app.app-command-shell[data-theme] .product-inspect__stage[data-shape="box"]{--box-view-width:min(250px,58vw)}
+.app.app-command-shell[data-theme] .product-inspect__stage[data-shape="box"][data-detail="true"]{--box-view-width:var(--detail-width,260px)}
+.app.app-command-shell[data-theme] .product-inspect__stage[data-shape="box"]::before{display:none}
+.app.app-command-shell[data-theme] .product-inspect__stage[data-shape="box"] .product-inspect__object{--object-width:var(--box-view-width)}
+.app.app-command-shell[data-theme] .product-inspect__box-shadow{position:absolute;left:50%;top:calc(50% + var(--box-view-width)*var(--box-shadow-bottom,.5) + 7px);width:calc(var(--box-view-width)*var(--box-shadow-span,1));height:16px;transform:translate(-50%,-50%);border-radius:50%;background:#0005;filter:blur(7px);pointer-events:none}
+.app.app-command-shell[data-theme] .product-inspect__object[data-shape="box"] .product-inspect__face{border:0;border-radius:.65px;box-shadow:inset 0 0 0 .5px #17201980}
+.app.app-command-shell[data-theme] .product-inspect__object[data-shape="box"] :is(.product-inspect__glare,.product-inspect__back-glare){display:none}
+.app.app-command-shell[data-theme] .product-inspect__box-material{position:absolute;inset:0;pointer-events:none;box-shadow:inset .6px .6px .6px #fff3,inset -.6px -.6px .6px #0005}
+.app.app-command-shell[data-theme] .product-inspect__box-material::before,.app.app-command-shell[data-theme] .product-inspect__box-material::after{content:"";position:absolute;inset:0;pointer-events:none}
+.app.app-command-shell[data-theme] .product-inspect__box-material::before{background:#080d10;opacity:var(--face-shade,.08);mix-blend-mode:multiply}
+.app.app-command-shell[data-theme] .product-inspect__box-material::after{background:radial-gradient(ellipse 38% 95% at var(--face-x,35%) var(--face-y,30%),#fff,#fff7 30%,transparent 75%);opacity:var(--face-gloss,.02);mix-blend-mode:screen}
+.app.app-command-shell[data-theme="light"] .product-inspect button[aria-pressed="true"]{background:#78081c!important;color:#fbf4e6!important;border-color:#78081c!important}
+
+.app.app-command-shell[data-theme] .product-inspect__tools{flex-wrap:wrap}
+.product-inspect__fullscreen{box-sizing:border-box;inset:0;width:100vw;max-width:none;height:100dvh;max-height:none;margin:0;border:0;border-radius:0;padding:max(16px,env(safe-area-inset-top)) 16px max(20px,env(safe-area-inset-bottom));background:var(--surface-panel,#18191e);color:var(--text-primary,#f7f1df);overflow:auto}
+.product-inspect__fullscreen>header{display:flex;gap:16px;align-items:center;justify-content:space-between;max-width:1100px;margin:0 auto 12px}.product-inspect__fullscreen>header h2{font-size:1.15rem;margin:0}.product-inspect__fullscreen>header button{min-height:44px;flex-shrink:0}.product-inspect__fullscreen>.product-inspect{max-width:1100px;margin:auto}
+.app.app-command-shell[data-theme] .product-inspect__fullscreen .product-inspect__stage{height:60dvh;min-height:320px}.app.app-command-shell[data-theme] .product-inspect__fullscreen .product-inspect__object{--object-width:min(390px,64vw)}.product-inspect__version-error{padding:12px;border:1px solid var(--edge-accent);border-radius:8px}.product-inspect__version-error button{min-height:44px}
+
+/* Deliberate horizontal turns coexist with normal phone scrolling and zoom. */
+.app.app-command-shell[data-theme] .product-inspect__stage{touch-action:pan-y pinch-zoom;perspective:1400px}
+.app.app-command-shell[data-theme] .product-inspect__stage:not([data-shape="box"])::before{display:none}
+.app.app-command-shell[data-theme] .product-inspect__object[data-shape="card"]{--object-height:calc(var(--object-width)*1.3968254)}
+.app.app-command-shell[data-theme] .product-inspect__object[data-shape="card"] .product-inspect__front{box-shadow:inset 0 0 0 .5px #fff3,0 8px 18px #0003}
+/* Composite packaging photos remain photographs: no invented rear or side art. */
+.app.app-command-shell[data-theme] .product-inspect__object[data-shape="photo"]{--object-width:min(280px,70vw,calc(310px / var(--photo-aspect,1)));--object-height:calc(var(--object-width)*var(--photo-aspect,1));--object-depth:0px}
+.app.app-command-shell[data-theme] .product-inspect__object[data-shape="photo"] .product-inspect__front{background:transparent;border:0;border-radius:0;box-shadow:none}
+.app.app-command-shell[data-theme] .product-inspect__object[data-shape="photo"] :is(.product-inspect__left,.product-inspect__right,.product-inspect__top,.product-inspect__bottom,.product-inspect__glare){display:none}
+/* Unknown card layouts retain the printed scan and laminate reflection. A
+   Pokémon artwork-window mask must never be imposed on another game's card. */
+.app.app-command-shell[data-theme] .product-inspect__object[data-foil-layout="unknown"] :is(.product-inspect__foil,.product-inspect__foil-shade){display:none}
+.app.app-command-shell[data-theme] .product-inspect__object[data-finish="reverse"] .product-inspect__diffraction{opacity:.38}
+.app.app-command-shell[data-theme] .product-inspect__object[data-finish="reverse"] .product-inspect__metal{opacity:.62}
+.app.app-command-shell[data-theme] .product-inspect__object[data-finish="holo"] .product-inspect__metal{opacity:.5}
+.app.app-command-shell[data-theme] .product-inspect__object[data-foil-pattern="cosmos"] .product-inspect__grain{background-size:110px 110px;opacity:.19}
+.app.app-command-shell[data-theme] .product-inspect__stage[data-dragging="true"] .product-inspect__object,.app.app-command-shell[data-theme] .product-inspect__object[data-moving="true"]{will-change:transform}
+
+.app.app-command-shell[data-theme] .product-inspect__object[data-shape="photo"][data-has-back="false"] .product-inspect__back{display:none}

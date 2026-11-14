@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { PrivateStorageImage } from "./PrivateReceipt.jsx";
 import { preserveLegacyReportZeros } from "../utils/restockDetailItems.mjs";
 import "./restock-report-details.css";
@@ -14,6 +14,11 @@ function savedCatalogImage(snapshot = {}) {
 function ReportImage({ src, alt, reference = false }) {
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [zoom, setZoom] = useState(1);
+  const [inspecting, setInspecting] = useState(false);
+  const dialog = useRef(null);
+  const trigger = useRef(null);
+  const imageId = useId();
 
   return (
     <div className={`scout-report-details__image${reference ? " scout-report-details__image--reference" : ""}`}>
@@ -24,8 +29,16 @@ function ReportImage({ src, alt, reference = false }) {
           {src ? <button type="button" className="secondary-button" onClick={() => { setAttempt((value) => value + 1); setFailed(false); }}>Retry {reference ? "image" : "photo"}</button> : null}
         </div>
       ) : (
-        <PrivateStorageImage key={attempt} src={src} alt={alt} authorizePrivate={!reference} loading="lazy" onError={() => setFailed(true)} />
+        <>
+          <PrivateStorageImage key={attempt} src={src} alt={alt} authorizePrivate={!reference} loading="lazy" onError={() => setFailed(true)} />
+          {!reference ? <button ref={trigger} type="button" className="secondary-button" onClick={() => { setZoom(1); setInspecting(true); dialog.current?.showModal(); }}>Enlarge photo</button> : null}
+        </>
       )}
+      {!reference && src ? <dialog ref={dialog} className="scout-photo-inspector" aria-labelledby={imageId} onCancel={event => event.stopPropagation()} onKeyDown={event => { if (event.key === 'Escape') event.stopPropagation(); }} onClose={() => { setInspecting(false); trigger.current?.focus(); }}>
+        <header><strong id={imageId}>{alt}</strong><button type="button" className="secondary-button" onClick={() => dialog.current?.close()}>Close photo</button></header>
+        <label>Zoom <input aria-label="Photo zoom" type="range" min="1" max="4" step="0.25" value={zoom} onChange={event => setZoom(Number(event.target.value))} /> {Math.round(zoom * 100)}%</label>
+        <div className="scout-photo-inspector__viewport">{inspecting ? <PrivateStorageImage src={src} alt={alt} authorizePrivate style={{ width: `${zoom * 100}%`, maxWidth: 'none' }} /> : null}</div>
+      </dialog> : null}
     </div>
   );
 }
@@ -130,13 +143,22 @@ export default function RestockReportDetails({
   });
   const savedReferenceName = savedText(report.catalogProductName || report.catalog_product_name || report.productName || report.product_name || report.itemName || report.item_name) || "Selected product";
   const photoUrls = photos.filter((photo) => typeof photo === "string" && photo.trim());
+  let observation = observedLabel.replace(/^Observed\s+/i, '');
+  const savedObservation = report.observedAt || report.observed_at || report.reportedAt || report.reported_at;
+  // A saved zone can format an absolute instant. Do not reinterpret legacy
+  // date-only/local-time strings as if they carried an offset.
+  if (savedText(report.timezone) && typeof savedObservation === 'string' && /(?:Z|[+-]\d{2}:?\d{2})$/i.test(savedObservation) && Number.isFinite(Date.parse(savedObservation))) {
+    try { observation = new Intl.DateTimeFormat(undefined, { timeZone: report.timezone, dateStyle: 'medium', timeStyle: 'short' }).format(new Date(savedObservation)); }
+    catch { /* Keep the original readable label for unknown legacy zone names. */ }
+  }
 
   return (
     <div className="scout-report-details">
       <div className="scout-report-details__overview" aria-label="Report summary">
+        <div className="scout-report-details__store"><strong>{storeName}</strong>{location ? <p>{location}</p> : null}</div>
         <span className={`scout-report-details__stock scout-report-details__stock--${statusClass}`}>{stockLabel}</span>
         <dl>
-          <div><dt>Observed</dt><dd>{observedLabel.replace(/^Observed\s+/i, "")}</dd></div>
+          <div><dt>Observed</dt><dd>{observation}{savedText(report.timezone) ? <small> · Report time zone: {report.timezone}</small> : null}</dd></div>
           <div><dt>Trust</dt><dd>{trustLabel}</dd></div>
         </dl>
       </div>

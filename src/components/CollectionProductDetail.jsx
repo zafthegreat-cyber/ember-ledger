@@ -1,5 +1,5 @@
 import { useId } from "react";
-import ItemPhoto from "./ItemPhoto.jsx";
+import ProductInspectButton from "./ProductInspectButton.jsx";
 import { PageHeader, QuietButton, SecondaryButton } from "./operations/OperationsUI.jsx";
 import { DetailList } from "./operations/RecordExperience.jsx";
 import WorkspaceTabs, { WorkspaceTabPanel } from "./operations/WorkspaceTabs.jsx";
@@ -7,6 +7,8 @@ import { inferOwnedItemPurpose, OWNED_ITEM_PURPOSE_OPTIONS } from "../features/o
 import { getRecordGameLabel } from "../utils/collectibleGames.mjs";
 import { collectionCopyQuantity } from "../utils/collectionCopyGroups.mjs";
 import { getPortfolioItemKey } from "../utils/collectionPortfolio.mjs";
+import { copyRecognition, priceMetadataLabel } from "../utils/collectionBrowse.mjs";
+import { cardVersionLabel } from "../utils/cardVersions.mjs";
 import "./collection-product-detail.css";
 
 const DETAIL_TABS = Object.freeze([{ key: "overview", label: "Overview" }, { key: "copies", label: "Copies" }]);
@@ -51,7 +53,7 @@ function PurposeBreakdown({ purposeCounts }) {
 }
 
 /** A derived product view. Every editable action opens its original copy record. */
-export default function CollectionProductDetail({ group, onBack, onOpenRecord, resolveItemImage, activeTab = "overview", onTabChange, showValues = true, hiddenValues = false, getAcquisitionCost = acquisitionCost }) {
+export default function CollectionProductDetail({ group, onBack, onOpenRecord, onEditRecord, canEditRecord = () => true, resolveItemImage, activeTab = "overview", onTabChange, showValues = true, hiddenValues = false, getAcquisitionCost = acquisitionCost }) {
   const tabsId = useId();
   if (!group?.item) return null;
   const item = group.item;
@@ -72,12 +74,12 @@ export default function CollectionProductDetail({ group, onBack, onOpenRecord, r
 
     <WorkspaceTabPanel id={tabsId} value="overview" active={tab}>
       <section className="collection-product-overview" aria-label="Product overview">
-        <div className="collection-product-photo"><ItemPhoto src={resolveItemImage?.(item) || ""} alt={title} fallbackClassName="collection-product-photo-fallback" loading="eager" /></div>
+        <div className="collection-product-photo"><ProductInspectButton product={item} records={records} src={resolveItemImage?.(item) || ""} title={title} fallbackClassName="collection-product-photo-fallback" /></div>
         <div className="collection-product-overview-copy">
           <dl className="collection-product-totals"><div><dt>Total quantity</dt><dd>{group.quantity}</dd></div><div><dt>{partialValue && !hiddenValues && showValues ? "Partial saved value" : "Total saved value"}</dt><dd>{value}</dd></div></dl>
           <PurposeBreakdown purposeCounts={purposeCounts} />
           {partialValue && !hiddenValues && showValues ? <p className="collection-product-note">Some copies do not have a saved value. This total includes only the values already recorded.</p> : null}
-          <p className="collection-product-note">Open the Copies tab for each purchase date, cost and purpose.</p>
+          <QuietButton onClick={() => onTabChange?.("copies")}>View your copies</QuietButton>{!hiddenValues && showValues && priceMetadataLabel(records) ? <p className="collection-product-note">{priceMetadataLabel(records)}</p> : null}
         </div>
       </section>
       <section className="collection-product-identification" aria-labelledby={`${tabsId}-identification`}><h2 id={`${tabsId}-identification`}>Product details</h2><DetailList items={[
@@ -97,20 +99,25 @@ export default function CollectionProductDetail({ group, onBack, onOpenRecord, r
             const purpose = purposeForRecord(record, purposeCounts);
             const quantity = collectionCopyQuantity(record);
             return <li key={`${record.id || "copy"}-${index}`}><article className="collection-product-copy" aria-labelledby={`${tabsId}-copy-${index}`}>
-              <header><div><h3 id={`${tabsId}-copy-${index}`}>{purpose.shortLabel} · {quantity}</h3><p>{purpose.label}</p></div><span>Record {index + 1}</span></header>
+              <header><div><h3 id={`${tabsId}-copy-${index}`}>{purpose.shortLabel} · {quantity}</h3><p>{purpose.label}</p></div><span>{copyRecognition(record,{hidden:hiddenValues}).title}</span></header>
               <DetailList items={[
                 { label: "Purchase date", value: purchaseDate(record) },
                 { label: "Recorded cost", value: hiddenValues ? "Cost hidden" : recordedCost(record, getAcquisitionCost), numeric: true },
                 { label: "Purchase source", value: record.purchaseSource || record.purchase_source || record.source || "Not recorded" },
                 { label: "Condition", value: record.condition },
+                { label: "Finish", value: cardVersionLabel(record.variant || record.finish || record.priceSubtype || record.cardVariant || record.printing) },
+                { label: "Edition", value: record.edition },
+                { label: "Language", value: record.language },
                 { label: "Grade", value: [record.gradingCompany, record.grade].filter(Boolean).join(" ") },
                 { label: "Storage", value: record.storageLocation || record.storage_location },
               ]} />
+              {!hiddenValues && showValues && priceMetadataLabel([record]) ? <p className="collection-product-note">{priceMetadataLabel([record])}</p> : null}
+              {onEditRecord && canEditRecord(record) ? <div className="collection-product-copy-actions"><QuietButton onClick={() => onEditRecord(record,"purchase")}>{record._recordOrigin === "legacy" ? "Edit purchase record" : "Edit purchase details"}</QuietButton><QuietButton onClick={() => onEditRecord(record,"purpose")}>Change purpose</QuietButton></div> : null}
               <SecondaryButton data-copy-record-key={getPortfolioItemKey(record)} onClick={(event) => onOpenRecord?.(record, event.currentTarget)} aria-label={`Open copy record ${index + 1}: ${purpose.label}, quantity ${quantity}`}>Open copy record<span aria-hidden="true"> →</span></SecondaryButton>
             </article></li>;
           })}
         </ol>
-        <p className="collection-product-note">To edit, change purpose or remove a copy, open its original record. A record with multiple units stays together.</p>
+        <p className="collection-product-note">Changes apply to each original record. Open a copy record for its full history and other actions. A record with multiple units stays together.</p>
       </section>
     </WorkspaceTabPanel>
   </main>;

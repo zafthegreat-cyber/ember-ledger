@@ -43,18 +43,19 @@
 .app.app-command-shell[data-theme] .collection-sets-grid > li { display: grid; min-width: 0; }
 .app.app-command-shell[data-theme] .collection-sets-card { display: grid; grid-template-rows: auto 1fr; align-content: start; width: 100%; min-width: 0; padding: 0; overflow: hidden; border: 1px solid var(--border-subtle) !important; border-radius: 12px; background: var(--surface-primary) !important; color: var(--text-primary) !important; font: inherit; text-align: left; cursor: pointer; box-shadow: none; }
 .app.app-command-shell[data-theme] .collection-sets-card:hover { border-color: var(--action-primary) !important; }
-.app.app-command-shell[data-theme] .collection-sets-artwork { position: relative; display: grid; place-items: center; isolation: isolate; width: 100%; min-width: 0; min-height: 96px; aspect-ratio: 1.62 / 1; overflow: hidden; border: 1px solid var(--border-subtle); border-radius: 12px; background: #f7f3eb; }
+.app.app-command-shell[data-theme] .collection-sets-artwork { position: relative; display: grid; grid-template-rows: minmax(0, 1fr); place-items: center; isolation: isolate; width: 100%; min-width: 0; min-height: 96px; aspect-ratio: 1.62 / 1; overflow: hidden; border: 1px solid var(--border-subtle); border-radius: 12px; background: #f7f3eb; }
 .app.app-command-shell[data-theme="dark"] .collection-sets-artwork { background: #ece7df !important; border-color: var(--border-strong); }
 .app.app-command-shell[data-theme] .collection-sets-card > .collection-sets-artwork { border: 0; border-bottom: 1px solid var(--border-subtle); border-radius: 0; }
 .app.app-command-shell[data-theme] .collection-sets-artwork[data-artwork="fallback"] { background: var(--surface-inset) !important; }
 .app.app-command-shell[data-theme] .collection-sets-artwork-fallback { display: grid; align-content: center; justify-items: center; width: 100%; min-width: 0; gap: 6px; padding: 12px 10px; color: var(--text-secondary); text-align: center; }
-.app.app-command-shell[data-theme] .collection-sets-artwork[data-has-release="true"] .collection-sets-artwork-fallback { padding-top: 34px; }
+.app.app-command-shell[data-theme] .collection-sets-artwork[data-has-release="true"] { grid-template-rows: minmax(0, 1fr) auto; }
+.app.app-command-shell[data-theme] .collection-sets-artwork-frame { display:grid;place-items:center;min-width:0;min-height:0;width:100%;height:100%;overflow:hidden; }
 .app.app-command-shell[data-theme] .collection-sets-artwork-fallback > svg { width: 42px; height: 36px; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .app.app-command-shell[data-theme] .collection-sets-artwork-fallback > span { max-width: 100%; font: 400 .8125rem/1.4 var(--font-ui); overflow-wrap: anywhere; }
 .app.app-command-shell[data-theme] .collection-sets-artwork-logo { display: block; box-sizing: border-box; width: 100%; height: 100%; min-height: 0; max-height: 100%; padding: clamp(7px, 1.5vw, 12px); object-fit: contain; }
-.app.app-command-shell[data-theme] .collection-sets-release { position: absolute; top: 6px; right: 6px; max-width: calc(100% - 12px); padding: 3px 6px; border: 1px solid var(--border-subtle); border-radius: 6px; background: var(--surface-primary); color: var(--text-secondary); font: 500 .625rem/1.4 var(--font-ui); overflow-wrap: anywhere; }
+.app.app-command-shell[data-theme] .collection-sets-release { position:static;justify-self:end;max-width:calc(100% - 12px);margin:0 6px 6px;padding:2px 6px;border:1px solid var(--border-subtle);border-radius:4px;background:var(--surface-primary);color:var(--text-secondary);font:500 .75rem/1.4 var(--font-ui);overflow-wrap:anywhere; }
 .app.app-command-shell[data-theme] .collection-sets-card-copy { display: flex; flex-direction: column; min-width: 0; gap: 6px; padding: 12px; }
-.app.app-command-shell[data-theme] .collection-sets-card-name { min-height: 2.8em; color: var(--text-primary); font: 600 1rem/1.4 var(--font-display); overflow-wrap: anywhere; }
+.app.app-command-shell[data-theme] .collection-sets-card-name { min-height: 2.8em; color: var(--text-primary); font: 600 1rem/1.4 var(--font-ui); overflow-wrap: anywhere; }
 .app.app-command-shell[data-theme] :is(.collection-sets-card-series, .collection-sets-value-coverage) { color: var(--text-secondary); font: 400 .8125rem/1.5 var(--font-ui); overflow-wrap: anywhere; }
 .app.app-command-shell[data-theme] .collection-sets-card-summary { display: grid; gap: 6px; margin-top: auto; padding-top: 4px; }
 .app.app-command-shell[data-theme] .collection-sets-progress-label { color: var(--text-secondary); font: 400 .8125rem/1.5 var(--font-ui); overflow-wrap: anywhere; }
@@ -98,3 +99,47 @@
   .app.app-command-shell[data-theme] .collection-set-detail-header { grid-template-columns: 92px minmax(0, 1fr); gap: 12px; }
   .app.app-command-shell[data-theme] .collection-set-detail-header > .collection-sets-artwork { width: 92px; }
 }
+
+/* Set logos are displayed like a collector's index, with artwork left intact. */
+html body .app.app-command-shell[data-theme] .collection-sets-card {
+  border:1px solid #654735 !important;
+  border-radius:8px;
+  background:#35111c !important;
+  color:#fff1d4 !important;
+  box-shadow:none;
+}
+html body .app.app-command-shell[data-theme] .collection-sets-card:hover { border-color:#d5b879 !important; }
+html body .app.app-command-shell[data-theme] .collection-sets-card > .collection-sets-artwork {
+  background:#f7efdf !important;
+  border-bottom:1px solid #654735;
+  min-height:90px;
+  aspect-ratio:1.75 / 1;
+}
+html body .app.app-command-shell[data-theme] .collection-sets-card > .collection-sets-artwork[data-artwork="fallback"] { background:#eadcc4 !important; }
+html body .app.app-command-shell[data-theme] .collection-sets-card .collection-sets-artwork-fallback { color:#714524; }
+html body .app.app-command-shell[data-theme] .collection-sets-card-copy { padding:14px; gap:6px; }
+html body .app.app-command-shell[data-theme] .collection-sets-card-name {
+  min-height:2.8em;
+  color:#fff1d4;
+  font:600 .9375rem/1.4 var(--font-ui);
+}
+html body .app.app-command-shell[data-theme] .collection-sets-card :is(.collection-sets-card-series,.collection-sets-value-coverage,.collection-sets-progress-label,.collection-sets-value) { color:#d1baaa; font-size:.75rem; }
+html body .app.app-command-shell[data-theme] .collection-sets-card .collection-sets-value > strong { color:#f5dfaa; font:650 .9375rem/1.4 var(--font-ui); }
+html body .app.app-command-shell[data-theme] .collection-sets-card .collection-sets-value { justify-content:space-between; align-items:baseline; column-gap:8px; }
+html body .app.app-command-shell[data-theme] .collection-sets-card .collection-sets-card-summary { padding-top:8px; }
+html body .app.app-command-shell[data-theme] .collection-sets-card .collection-sets-progress { background:#68483c; color:#d5b879; accent-color:#d5b879; }
+html body .app.app-command-shell[data-theme] .collection-sets-card .collection-sets-progress::-webkit-progress-bar { background:#68483c; }
+html body .app.app-command-shell[data-theme] .collection-sets-card .collection-sets-progress::-webkit-progress-value { background:#d5b879; }
+html body .app.app-command-shell[data-theme] .collection-sets-card .collection-sets-progress::-moz-progress-bar { background:#d5b879; }
+html body .app.app-command-shell[data-theme] .collection-sets-card .collection-sets-release { border-color:#c8ae7d; color:#553d25; background:#fff8e9; }
+html body .app.app-command-shell[data-theme] .collection-sets-tabs { border-color:var(--lounge-line,var(--border-subtle)); }
+html body .app.app-command-shell[data-theme] .collection-sets-tabs > :is([aria-selected="true"],[aria-pressed="true"])::after { height:2px; background:var(--lounge-gold,var(--action-primary)); }
+html body .app.app-command-shell[data-theme] :is(.collection-set-detail-header,.collection-sets-binders) { border-color:var(--lounge-line,var(--border-subtle)); }
+html body .app.app-command-shell[data-theme] .collection-set-detail-header h2 { font:500 clamp(1.5rem,5vw,2rem)/1.15 var(--lounge-display,Georgia,serif) !important; color:var(--lounge-ink,var(--text-primary)); }
+@media(max-width:600px) {
+  html body .app.app-command-shell[data-theme] .collection-sets-grid { gap:12px; }
+  html body .app.app-command-shell[data-theme] .collection-sets-card-copy { padding:11px; }
+  html body .app.app-command-shell[data-theme] .collection-sets-card-name { font-size:.875rem; }
+}
+
+.collection-sets-filter-summary{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border-block:1px solid var(--border-subtle);padding-block:10px}.collection-sets-filter-summary p{margin:0;font-size:.875rem}.collection-sets-tabs{flex-wrap:wrap}

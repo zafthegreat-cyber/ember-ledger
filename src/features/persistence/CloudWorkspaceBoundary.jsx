@@ -255,7 +255,7 @@ function ProtectedCloudWorkspaceBoundary({ children, client = supabase, configur
     exportCloudBackup: (signal) => exportLegacyCloudBackup({ client, userId: screen.user.id, signal }),
     reviewConflicts: () => controller.current?.previewConflicts(),
     resolveConflicts: (reviewId, choices) => runExclusive(({ sync }) => sync.resolveConflicts({ reviewId, choices, confirmed: true })),
-    openRecovery: () => setScreen((current) => ({ ...current, phase: "restore" })),
+    openRecovery: (file) => setScreen((current) => ({ ...current, phase: "restore", recoveryFile: current.user?.id === screen.user.id && file && typeof file.text === 'function' ? file : null })),
     loadNewer: () => runExclusive(async ({ sync }) => { const result = await sync.sync({ allowApply: true }); if (!["SYNCED", "PENDING"].includes(result.status)) throw syncError(result); }),
   };
 
@@ -297,7 +297,7 @@ function ProtectedCloudWorkspaceBoundary({ children, client = supabase, configur
   if (screen.phase === "passthrough") return <CloudWorkspaceContext.Provider value={null}>{children}</CloudWorkspaceContext.Provider>;
   if (screen.phase === "recovery-signin") return <WorkspaceScreen title="Sign in to recover your records"><WorkspaceRecoverySignIn client={client} /></WorkspaceScreen>;
   if (screen.phase === "signedout") return <CloudWorkspaceContext.Provider value={null}><WorkspaceLease onError={fail}>{children}</WorkspaceLease></CloudWorkspaceContext.Provider>;
-  if (screen.phase === "restore") return <WorkspaceScreen title="Recover your saved records"><WorkspaceRestorePanel userId={screen.user.id} onRestore={restore} onRestoreCloud={restoreCloud} onCancel={() => window.location.reload()} /></WorkspaceScreen>;
+  if (screen.phase === "restore") return <WorkspaceScreen title="Recover your saved records"><WorkspaceRestorePanel userId={screen.user.id} initialFile={screen.recoveryFile} onRestore={restore} onRestoreCloud={restoreCloud} onCancel={() => window.location.reload()} /></WorkspaceScreen>;
   if (screen.phase === "ready") return <CloudWorkspaceContext.Provider value={value}><WorkspaceLease onError={fail}>{children}
     <WorkspaceSyncNotice status={syncState} ownerId={screen.user.id} onLoadNewer={value.loadNewer} onReviewChanges={requestCloudSyncReview} />
   </WorkspaceLease></CloudWorkspaceContext.Provider>;

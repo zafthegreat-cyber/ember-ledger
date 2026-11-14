@@ -4487,6 +4487,7 @@ async function handleUpdateStore(e) {
       "distance"
     );
     const regionalStoreRows = activeStoreRows.filter((store) =>
+      matchesOverviewArea(store) &&
       (selectedState === "All" || normalizeStateLabel(store.state) === selectedState) &&
       (selectedRegion === "All" || normalizeStoreRegion(store.region) === selectedRegion)
     );
@@ -5576,7 +5577,7 @@ async function handleUpdateStore(e) {
         ) : null}
 
         {reportsBrowseMode ? (
-          <RestockReportBrowser reports={restockHistory} getStore={getReportStore} renderReport={renderCompactReportCard} now={scoutNow} onReport={() => onQuickReport({})} showLocation={false} />
+          <RestockReportBrowser reports={restockHistory} getStore={getReportStore} renderReport={renderCompactReportCard} now={scoutNow} onReport={() => onQuickReport({})} showLocation={false} initialStoreId={targetSubTab?.storeId || ""} initialFollowedOnly={targetSubTab?.followedOnly === true} followedStoreIds={watchedStoreOverviewRows.map(store => String(store.id))} />
         ) : null}
 
         {scoutSubTab === "reports" && !reportsBrowseMode ? (

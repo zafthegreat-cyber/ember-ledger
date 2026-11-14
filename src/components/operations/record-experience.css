@@ -96,6 +96,7 @@
 .ops-record-timeline p { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.6; }
 .ops-form-steps { display: grid; grid-template-columns: repeat(var(--ops-step-count, 2), minmax(0, 1fr)); gap: 6px; margin: 0; padding: 6px; border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-inset); list-style: none; }
 .ops-form-steps li { min-width: 0; }
+.ops-form-steps button:disabled { opacity: .45; cursor: not-allowed; }
 html body .app[data-theme] .ops-form-steps button { width: 100%; min-width: 0; min-height: 48px; display: flex; align-items: center; gap: 9px; padding: 8px 12px; border: 1px solid transparent !important; border-radius: 7px; background: transparent !important; color: var(--text-secondary) !important; font: 550 12px/1.4 var(--font-ui); text-align: left; box-shadow: none !important; }
 .ops-form-steps button > span { width: 26px; height: 26px; display: grid; place-items: center; flex: 0 0 26px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface-primary); font: 500 11px/1 var(--font-mono); }
 html body .app[data-theme] .ops-form-steps .is-active button { background: var(--surface-primary) !important; color: var(--text-primary) !important; border-color: var(--edge-accent) !important; box-shadow: var(--shadow-1) !important; }

@@ -1,4 +1,4 @@
-import { PrivateStorageImage } from "../components/PrivateReceipt.jsx";
+import ItemPhoto from "../components/ItemPhoto.jsx";
 import { useId, useRef, useState } from "react";
 import "./market-search-results.css";
 import { buildManualMarketDraft, formatMarketQuoteValue, getMarketQuoteContext, getMarketResultMatchLabel } from "../utils/marketSearchPresentation.mjs";
@@ -253,7 +253,7 @@ export default function MarketPage(props) {
                   <article className="market-v4-result-row" key={product.id || product.productId || product.name || `market-product-${index}`}>
                     <div className="market-v4-thumb">
                       {catalogImage(product) ? (
-                        <PrivateStorageImage src={catalogImage(product)} alt="" />
+                        <ItemPhoto sizes="72px" src={catalogImage(product)} product={product} alt="" fallback={<span>{index + 1}</span>} />
                       ) : (
                         <span>{index + 1}</span>
                       )}

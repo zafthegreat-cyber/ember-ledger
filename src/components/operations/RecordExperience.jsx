@@ -1,5 +1,6 @@
-import { useId } from "react";
+import { Children, Fragment, useId, useState } from "react";
 import ItemPhoto from "../ItemPhoto.jsx";
+import ProductInspectButton from "../ProductInspectButton.jsx";
 import { PageHeader, PrimaryButton, QuietButton, StatusBadge } from "./OperationsUI.jsx";
 import "./record-experience.css";
 
@@ -18,7 +19,7 @@ export function RecordSummary({ items = [] }) {
 }
 
 export function DetailSection({ title, description = "", children, open = false }) {
-  return <details className="ops-detail-section" name="record-detail-sections" open={open}><summary><span><strong>{title}</strong>{description ? <small>{description}</small> : null}</span><RecordDirectionIcon /></summary><div className="ops-detail-section__body">{children}</div></details>;
+  return <details className="ops-detail-section" open={open}><summary><span><strong>{title}</strong>{description ? <small>{description}</small> : null}</span><RecordDirectionIcon /></summary><div className="ops-detail-section__body">{children}</div></details>;
 }
 
 export function DetailList({ items = [] }) {
@@ -32,13 +33,16 @@ export function RecordTimeline({ entries = [] }) {
   return <ol className="ops-record-timeline">{entries.map((entry, index) => <li key={entry.id || `${entry.title}-${index}`}><span aria-hidden="true" /><div><strong>{entry.title}</strong><time>{entry.date || "Date not recorded"}</time>{entry.detail ? <p>{entry.detail}</p> : null}</div></li>)}</ol>;
 }
 
-export function RecordDetailPage({ eyebrow = "Record detail", title, status = "", statusTone = "neutral", image = "", imageAlt = "", identity = "", summary = [], primaryAction = null, secondaryActions = null, sections = [], timeline = [], related = null, onBack }) {
+export function RecordDetailPage({ eyebrow = "Record detail", title, status = "", statusTone = "neutral", image = "", imageAlt = "", imageProduct = null, identity = "", summary = [], primaryAction = null, secondaryActions = null, sections = [], timeline = [], related = null, onBack }) {
+  const actions = Children.toArray(secondaryActions?.type === Fragment ? secondaryActions.props.children : secondaryActions);
+  const editActions = actions.filter(action => action?.props?.children === 'Edit' || action?.props?.children === 'Edit details');
+  const moreActions = actions.filter(action => !editActions.includes(action));
   return <main className="ops-record-detail" data-testid="record-detail-page">
     <QuietButton className="ops-detail-back" onClick={onBack}><RecordDirectionIcon back />Back</QuietButton>
     <PageHeader eyebrow={eyebrow} title={title} actions={status ? <StatusBadge tone={statusTone}>{status}</StatusBadge> : null} />
     <section className="ops-detail-hero">
-      <ItemPhoto src={image} alt={imageAlt || title} fallbackClassName="ops-detail-identity" loading="eager" />
-      <div className="ops-detail-content">{identity ? <p className="ops-detail-identity-copy">{identity}</p> : null}<RecordSummary items={summary} /><div className="ops-detail-actions">{primaryAction}{secondaryActions ? <details className="ops-detail-more"><summary>More</summary><div>{secondaryActions}</div></details> : null}</div></div>
+      {imageProduct ? <ProductInspectButton product={imageProduct} src={image} title={imageAlt || title} fallbackClassName="ops-detail-identity" /> : <ItemPhoto src={image} alt={imageAlt || title} fallbackClassName="ops-detail-identity" loading="eager" />}
+      <div className="ops-detail-content">{identity ? <p className="ops-detail-identity-copy">{identity}</p> : null}<RecordSummary items={summary} /><div className="ops-detail-actions">{primaryAction}{editActions}{moreActions.length ? <details className="ops-detail-more"><summary>More</summary><div>{moreActions}</div></details> : null}</div></div>
     </section>
     <div className="ops-detail-sections">
       {sections.map((section, index) => <DetailSection key={section.key || section.title} {...section} open={section.open ?? index === 0} />)}
@@ -68,15 +72,17 @@ export function TextField({ label, required, helper, error, value, onChange, mul
 }
 
 export function SelectField({ label, required, helper, error, value, onChange, options = [], className = "", ...props }) {
-  return <FormField id={props.id} label={label} required={required} helper={helper} error={error} className={className}>{(id, accessibility) => <select id={id} value={value ?? ""} onChange={(event) => onChange?.(event.target.value)} {...accessibility} {...props} aria-describedby={joinClassNames(accessibility["aria-describedby"], props["aria-describedby"]) || undefined}>{options.map((option) => { const normalized = typeof option === "string" ? { value: option, label: option } : option; return <option key={normalized.value} value={normalized.value}>{normalized.label}</option>; })}</select>}</FormField>;
+  return <FormField id={props.id} label={label} required={required} helper={helper} error={error} className={className}>{(id, accessibility) => <select id={id} value={value ?? ""} onChange={(event) => onChange?.(event.target.value)} {...accessibility} {...props} aria-describedby={joinClassNames(accessibility["aria-describedby"], props["aria-describedby"]) || undefined}>{options.map((option) => { const normalized = typeof option === "string" ? { value: option, label: option } : option; return <option key={normalized.value} value={normalized.value} disabled={Boolean(normalized.disabled)}>{normalized.label}</option>; })}</select>}</FormField>;
 }
 
 export function GuidedFormPage({ title, description, steps = [], activeStep = 0, onStepChange, onBack, onCancel, onSubmit, canContinue = true, submitLabel = "Save", draftLabel = "Draft saved on this device", error = "", children }) {
   const isLast = activeStep >= steps.length - 1;
+  const [furthestStep, setFurthestStep] = useState(activeStep);
+  if (activeStep > furthestStep) setFurthestStep(activeStep);
   return <main className="ops-guided-form" data-testid="guided-record-form">
     <QuietButton className="ops-detail-back" onClick={onBack || onCancel}><RecordDirectionIcon back />Back</QuietButton>
     <PageHeader eyebrow="Record form" title={title} description={description} actions={<StatusBadge tone="neutral">{draftLabel}</StatusBadge>} />
-    {steps.length > 1 ? <ol className="ops-form-steps" aria-label={`${title} steps`} style={{ "--ops-step-count": steps.length }}>{steps.map((step, index) => <li key={step} className={index === activeStep ? "is-active" : index < activeStep ? "is-complete" : ""}><button type="button" onClick={() => index <= activeStep && onStepChange?.(index)} aria-current={index === activeStep ? "step" : undefined}><span>{index + 1}</span>{step}</button></li>)}</ol> : null}
+    {steps.length > 1 ? <ol className="ops-form-steps" aria-label={`${title} steps`} style={{ "--ops-step-count": steps.length }}>{steps.map((step, index) => <li key={step} className={index === activeStep ? "is-active" : index <= furthestStep ? "is-complete" : ""}><button type="button" disabled={index > furthestStep} onClick={() => index <= furthestStep && onStepChange?.(index)} aria-current={index === activeStep ? "step" : undefined}><span>{index + 1}</span>{step}</button></li>)}</ol> : null}
     <form onSubmit={(event) => { event.preventDefault(); if (isLast) onSubmit?.(); else if (canContinue) onStepChange?.(activeStep + 1); }} noValidate>
       <section className="ops-form-surface">{children}</section>
       {error ? <p className="ops-form-error" role="alert">{error}</p> : null}

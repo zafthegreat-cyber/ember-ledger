@@ -11,6 +11,14 @@ export default function OverflowMenu({
   const [open, setOpen] = useState(false);
   const id = useId();
   const ref = useRef(null);
+  const trigger = useRef(null);
+  const initialFocus = useRef('first');
+  useEffect(() => {
+    if (!open) return;
+    const items = [...(ref.current?.querySelectorAll('[role="menuitem"]:not(:disabled)') || [])];
+    (initialFocus.current === 'last' ? items.at(-1) : items[0])?.focus();
+    initialFocus.current = 'first';
+  }, [open]);
 
   useEffect(() => {
     function closeOnOutsideClick(event) {
@@ -23,17 +31,11 @@ export default function OverflowMenu({
       if (event.detail !== id) setOpen(false);
     }
 
-    function closeOnEscape(event) {
-      if (event.key === "Escape") setOpen(false);
-    }
-
     document.addEventListener("pointerdown", closeOnOutsideClick);
-    window.addEventListener("keydown", closeOnEscape);
     window.addEventListener("overflow-menu-open", closeOtherMenus);
 
     return () => {
       document.removeEventListener("pointerdown", closeOnOutsideClick);
-      window.removeEventListener("keydown", closeOnEscape);
       window.removeEventListener("overflow-menu-open", closeOtherMenus);
     };
   }, [id]);
@@ -51,21 +53,37 @@ export default function OverflowMenu({
   function runAction(action) {
     if (typeof action === "function") {
       setOpen(false);
+      trigger.current?.focus();
       action();
       return;
     }
     if (!action || action.disabled) return;
     setOpen(false);
+    trigger.current?.focus();
     action.onClick?.();
   }
 
+  function keyboard(event) {
+    if (event.key === 'Escape' && open) { event.preventDefault(); event.stopPropagation(); setOpen(false); trigger.current?.focus(); return; }
+    if (event.key === 'Tab' && open) { trigger.current?.focus(); setOpen(false); return; }
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault(); event.stopPropagation();
+    if (!open) { initialFocus.current = event.key === 'ArrowUp' || event.key === 'End' ? 'last' : 'first'; toggleMenu(); return; }
+    const items = [...(ref.current?.querySelectorAll('[role="menuitem"]:not(:disabled)') || [])];
+    const current = items.indexOf(document.activeElement);
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : (current + (event.key === 'ArrowUp' ? -1 : 1) + items.length) % items.length;
+    items[next]?.focus();
+  }
+
   return (
-    <div className={`overflow-menu${open ? " open" : ""}`} ref={ref}>
+    <div className={`overflow-menu${open ? " open" : ""}`} ref={ref} onKeyDown={keyboard}>
       <button
+        ref={trigger}
         type="button"
         className="overflow-menu-button"
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-controls={open ? `${id}-actions` : undefined}
         aria-label="More actions"
         onClick={toggleMenu}
       >
@@ -74,8 +92,8 @@ export default function OverflowMenu({
 
       {open ? (
         <>
-          <div className="overflow-menu-backdrop" aria-hidden="true" onClick={() => setOpen(false)} />
-          <div className="overflow-menu-list" role="menu">
+          <div className="overflow-menu-backdrop" aria-hidden="true" onClick={() => { setOpen(false); trigger.current?.focus(); }} />
+          <div id={`${id}-actions`} className="overflow-menu-list" role="menu" aria-label="More actions">
             {onEdit ? (
               <button type="button" role="menuitem" onClick={() => runAction(onEdit)}>
                 {editLabel}

@@ -11,6 +11,17 @@ const QUICK_LABELS = { scanProduct: "Scan", watchList: "Alerts" };
 const SEARCH_TERMS = { settings: "cloud saving sync backup recovery theme appearance dark light preferences", collections: "family workspace members", exchange: "sell prices market research", watchList: "notifications watchlist", reportRestock: "report restock stock low empty shelves shelf sighting store visit found in out of stock availability" };
 const WORKSPACE_HINTS = { COLLECT: "Your cards, sets & wishlist.", FIND: "Restocks, alerts & finding cards.", SELL: "Inventory, listings & sales.", BUSINESS: "Purchases, expenses & reports.", BOT: "Private bot tools & activity." };
 
+function readMenuPreferences(key) {
+  try { const value = JSON.parse(localStorage.getItem(key) || "null"); return { pins: Array.isArray(value?.pins) ? value.pins.filter(item => typeof item === "string").slice(0, 8) : QUICK_KEYS, recent: Array.isArray(value?.recent) ? value.recent.filter(item => typeof item === "string").slice(0, 5) : [] }; } catch { return { pins: QUICK_KEYS, recent: [] }; }
+}
+function Highlight({ text = "", terms = [] }) {
+  const value = String(text); const lower = value.toLocaleLowerCase();
+  const indexes = new Set(); for (const term of terms) { let at = lower.indexOf(term); while (at >= 0) { for (let index = at; index < at + term.length; index++) indexes.add(index); at = lower.indexOf(term, at + term.length); } }
+  const parts = []; let start = 0;
+  for (let index = 1; index <= value.length; index++) if (index === value.length || indexes.has(index) !== indexes.has(start)) { parts.push(indexes.has(start) ? <mark key={start}>{value.slice(start,index)}</mark> : <span key={start}>{value.slice(start,index)}</span>); start = index; }
+  return parts;
+}
+
 function Chevron({ expanded = false }) {
   return <svg className={`menu-command-chevron${expanded ? " is-expanded" : ""}`} viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m9 6 6 6-6 6" /></svg>;
 }
@@ -27,7 +38,10 @@ function groupDestinations(sections) {
 }
 
 // This presentation layer only receives destinations already permitted by App.
-export default function MenuNavigation({ sections, NavIcon, isItemActive, onSelect, onAdd, modeLabel, experiencePresentation, workspaces = [], currentWorkspaceId = "", onSelectWorkspace, children }) {
+export default function MenuNavigation({ sections, NavIcon, isItemActive, onSelect, onAdd, modeLabel, experiencePresentation, workspaces = [], currentWorkspaceId = "", preferenceScope = "guest", onSelectWorkspace, children }) {
+  const preferenceKey = `code3.menu.v1:${preferenceScope}`;
+  const [menuPreferences, setMenuPreferences] = useState(() => readMenuPreferences(preferenceKey));
+  const [preferenceNotice, setPreferenceNotice] = useState("");
   const searchId = useId();
   const sectionId = useId();
   const workspaceId = useId();
@@ -55,12 +69,22 @@ export default function MenuNavigation({ sections, NavIcon, isItemActive, onSele
   const resultCount = visibleSections.reduce((total, section) => total + section.items.length, 0) + visibleWorkspaces.length;
   const currentWorkspace = workspaces.find(workspace => workspace.id === currentWorkspaceId);
   const allItems = sections.flatMap(section => section.items);
-  const quickItems = QUICK_KEYS.map(key => allItems.find(item => item.key === key)).filter(Boolean);
+  const quickItems = menuPreferences.pins.map(key => allItems.find(item => item.key === key)).filter(Boolean);
   const reportItem = allItems.find(item => item.key === "reportRestock");
 
+  function saveMenuPreferences(next) {
+    setMenuPreferences(next);
+    try { localStorage.setItem(preferenceKey, JSON.stringify(next)); setPreferenceNotice("Menu preferences saved on this device."); }
+    catch { setPreferenceNotice("Menu preferences apply for this visit. This browser could not save them."); }
+  }
+  function selectItem(item) {
+    saveMenuPreferences({ ...menuPreferences, recent: [item.key, ...menuPreferences.recent.filter(key => key !== item.key)].slice(0,5) });
+    onSelect(item);
+  }
+  const recentItems = menuPreferences.recent.map(key => allItems.find(item => item.key === key)).filter(Boolean);
   function updateQuery(value) {
     setQuery(value);
-    scrollRef.current?.scrollTo({ top: 0 });
+    scrollRef.current?.scrollTo?.({ top: 0 });
   }
 
   function clearSearch() {
@@ -88,7 +112,7 @@ export default function MenuNavigation({ sections, NavIcon, isItemActive, onSele
             {workspaces.length > 0 ? <button type="button" className="menu-workspace-toggle" aria-expanded={workspacesOpen} aria-controls={workspaceId} onClick={() => setWorkspacesOpen(open => !open)}>
               <NavIcon kind={currentWorkspace?.icon || "workspace"} /><span><small>Workspace</small><strong>{currentWorkspace?.label || "Choose workspace"}</strong></span><Chevron expanded={workspacesOpen} />
             </button> : <span className="menu-workspace-label">{modeLabel}</span>}
-            <button type="button" className="menu-quick-add" onClick={onAdd}><NavIcon kind="plus" />Quick Add</button>
+            <button type="button" className="menu-quick-add" onClick={onAdd}><NavIcon kind="plus" />Quick add</button>
           </div>
           <div id={workspaceId} className="menu-workspace-options" hidden={!workspacesOpen} role="group" aria-label="Switch workspace">
             {workspaces.map(workspace => <button type="button" key={workspace.id} data-menu-workspace={workspace.id} className={`menu-workspace-option${workspace.id === currentWorkspaceId ? " is-current" : ""}`} onClick={() => onSelectWorkspace(workspace)}>
@@ -96,12 +120,15 @@ export default function MenuNavigation({ sections, NavIcon, isItemActive, onSele
             </button>)}
           </div>
           {quickItems.length > 0 && <section className="menu-shortcuts" aria-label="Quick access">
-            {quickItems.map(item => <button key={item.key} type="button" className={`menu-shortcut${isItemActive(item) ? " active" : ""}`} data-menu-shortcut={item.key} aria-label={item.key === "scanProduct" ? "Scan card or product" : item.label} aria-current={isItemActive(item) ? "page" : undefined} onClick={() => onSelect(item)}>
+            {quickItems.map(item => <button key={item.key} type="button" className={`menu-shortcut${isItemActive(item) ? " active" : ""}`} data-menu-shortcut={item.key} aria-label={item.key === "scanProduct" ? "Scan card or product" : item.label} aria-current={isItemActive(item) ? "page" : undefined} onClick={() => selectItem(item)}>
               <MenuItemIcon item={item} NavIcon={NavIcon} />
               <span>{QUICK_LABELS[item.key] || item.label}</span>
             </button>)}
           </section>}
-          {reportItem && <button type="button" className="menu-report-action" data-menu-report="restock" onClick={() => onSelect(reportItem)}>
+          <details className="menu-pin-editor"><summary>Customize shortcuts</summary><p>Choose up to eight. These shortcuts stay on this device.</p><div>{allItems.map(item => <label key={item.key}><input type="checkbox" checked={menuPreferences.pins.includes(item.key)} disabled={!menuPreferences.pins.includes(item.key) && menuPreferences.pins.length >= 8} onChange={event => saveMenuPreferences({ ...menuPreferences, pins: event.target.checked ? [...menuPreferences.pins, item.key] : menuPreferences.pins.filter(key => key !== item.key) })} />{item.label}</label>)}</div></details>
+          {preferenceNotice && <p className="menu-preference-status" role="status">{preferenceNotice}</p>}
+          {recentItems.length > 0 && <section className="menu-recent-destinations" aria-label="Recently visited"><h3>Recently visited</h3>{recentItems.map(item => <button type="button" key={item.key} onClick={() => selectItem(item)}>{item.label}<Chevron /></button>)}</section>}
+          {reportItem && <button type="button" className="menu-report-action" data-menu-report="restock" onClick={() => selectItem(reportItem)}>
             <span className="menu-report-icon" aria-hidden="true"><MenuItemIcon item={reportItem} NavIcon={NavIcon} /></span>
             <span><strong>{reportItem.label}</strong><small>{reportItem.helper}</small></span><Chevron />
           </button>}
@@ -129,9 +156,9 @@ export default function MenuNavigation({ sections, NavIcon, isItemActive, onSele
                 </button>
               </h3>}
               <div id={groupId} className="menu-command-grid" hidden={!open}>
-                {section.items.map(item => <button type="button" key={item.key} className={`menu-command-link${isItemActive(item) ? " active" : ""}`} data-menu-key={item.key} aria-current={isItemActive(item) ? "page" : undefined} aria-label={`${item.label}. ${item.helper || "Open this workspace area."}`} onClick={() => onSelect(item)}>
+                {section.items.map(item => <button type="button" key={item.key} className={`menu-command-link${isItemActive(item) ? " active" : ""}`} data-menu-key={item.key} aria-current={isItemActive(item) ? "page" : undefined} aria-label={`${item.label}. ${item.helper || "Open this workspace area."}`} onClick={() => selectItem(item)}>
                   <span className="menu-command-icon" aria-hidden="true"><MenuItemIcon item={item} NavIcon={NavIcon} /></span>
-                  <span className="menu-command-copy"><strong>{item.label}</strong><small>{item.helper}</small></span>
+                  <span className="menu-command-copy"><strong><Highlight text={item.label} terms={terms} /></strong><small><Highlight text={item.helper} terms={terms} /></small>{searching && terms.some(term => (SEARCH_TERMS[item.key] || "").includes(term)) && <small className="menu-search-keywords">Includes: <Highlight text={SEARCH_TERMS[item.key]} terms={terms} /></small>}</span>
                   <Chevron />
                 </button>)}
               </div>

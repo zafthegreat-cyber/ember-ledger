@@ -39,6 +39,7 @@ export default function WorkspaceBackupPanel({ onRecover, configuredSourceIds = 
     <h3 id="workspace-backup-title">Backup &amp; recovery</h3>
     <p>Download verified device records before a change or keep an independent copy. Cloud synchronization does not replace a separate backup.</p>
     <p>Backups can include private collection details, costs, notes, storage locations, household settings and recoverable drafts in the listed scope. A cloud backup can also include private attachments. Authentication credentials and account permissions are excluded. Keep downloaded files private.</p>
+    <dl className="backup-scope-comparison"><div><dt>Device backup</dt><dd>Supported records and settings stored in this browser or installed app. Some photos are references only; keep the originals.</dd></div><div><dt>Cloud backup</dt><dd>Supported account records and available private attachments. The result lists anything unavailable or excluded.</dd></div><div><dt>Keep both</dt><dd>Neither includes your password or account permissions. Review the verified coverage after downloading.</dd></div></dl>
     <div className="backup-actions">
       <button type="button" onClick={exportBackup} disabled={busy || externalBusy}>{busy ? "Verifying backup…" : "Download device backup"}</button>
       {onExportCloud ? <button type="button" onClick={onExportCloud} disabled={busy || externalBusy}>Download cloud backup</button> : null}

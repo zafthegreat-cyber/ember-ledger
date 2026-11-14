@@ -18,3 +18,14 @@
 .social-callback-card { max-width: 480px; padding: 28px; border: 1px solid #a7803d; border-radius: 20px; background: #3e1825; line-height: 1.6; }
 .social-callback-card a { display: inline-flex; align-items: center; min-height: 48px; padding: 8px 16px; border-radius: 10px; background: #e6b94b; color: #30111b; font-weight: 700; }
 @media (max-width: 380px) { .social-sign-in-grid { grid-template-columns: 1fr; } }
+.social-sign-in .social-sign-in-button { display: flex; align-items: center; justify-content: center; gap: .65rem; }
+.social-provider-icon { width: 1.4rem; height: 1.4rem; flex: 0 0 1.4rem; }
+.auth-password-control input { flex: 1 1 12rem; min-width: 0; }
+.app.app-command-shell[data-theme] .auth-password-control > .drawer-inline-actions,
+.auth-password-control > .drawer-inline-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .5rem; }
+.app.app-command-shell[data-theme] .auth-password-control > .drawer-inline-actions > input,
+.auth-password-control > .drawer-inline-actions > input { width: 100%; min-width: 0; margin: 0; }
+.app.app-command-shell[data-theme] .auth-password-control > .drawer-inline-actions > button,
+.auth-password-control > .drawer-inline-actions > button { width: auto; min-height: 44px; margin: 0; white-space: nowrap; }
+.auth-password-control label { display: block; margin-bottom: .4rem; }
+.social-sign-in-availability { font-size: .9rem; line-height: 1.5; }
