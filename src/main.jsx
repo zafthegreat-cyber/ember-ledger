@@ -39,7 +39,8 @@ class AppErrorBoundary extends Component {
 }
 
 applyBrandDocumentMetadata();
-// Crash reports (errors only, scrubbed, off for kid profiles and when turned off in Settings → Privacy).
+// Crash reports (errors only, scrubbed, off when turned off in Settings → Privacy). The profile is not
+// known yet here; App.jsx calls setCrashReportingKidSafe() once it is, and kid-safe sessions send nothing.
 initCrashReporting().catch(() => {});
 
 createRoot(document.getElementById("root")).render(

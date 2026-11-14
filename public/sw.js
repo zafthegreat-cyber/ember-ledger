@@ -64,6 +64,9 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (["script", "style", "worker"].includes(event.request.destination)) {
+    // Hashed build files (/assets/name-HASH.ext) never change, so let the browser's
+    // HTTP cache serve them (vercel.json marks them immutable). Anything else stays fresh.
+    if (/^\/assets\/[^/]+-[A-Za-z0-9_-]{8}\.[a-z0-9]+$/.test(requestUrl.pathname)) return;
     event.respondWith(fetch(event.request, { cache: "no-store" }));
     return;
   }

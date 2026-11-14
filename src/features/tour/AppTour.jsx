@@ -53,7 +53,7 @@ export const APP_TOUR_STEPS = [
     key: "you",
     selectors: [".command-board-v4-profile-action", ".ops-desktop-sidebar [data-nav-key='settings']", ".topbar-command-actions .menu-button"],
     title: "You, settings and sign out",
-    body: "Your account, backups, theme and Sign out live under You / Settings. Backups are yours to download any time; nothing leaves this device without you.",
+    body: "Your account, backups, theme and Sign out live under You / Settings. Backups are yours to download any time, and crash reports can be turned off under Privacy.",
   },
 ];
 

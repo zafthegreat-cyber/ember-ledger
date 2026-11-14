@@ -1,5 +1,7 @@
 # Code 3 TCG — Google Play Data safety form answers (draft, Nov 7, 2026)
 
+> **Updated 2026-11-14 (audit):** the app now ships Sentry crash reporting (`@sentry/react`). In Play Console → App content → Data safety, change **Crash logs** to Yes (optional) and re-submit. The package.json note below about "no crash SDKs" is out of date.
+
 Built from the live Supabase schema (public tables + storage buckets), the Android manifest (INTERNET, CAMERA, COARSE/FINE LOCATION) and package.json (no analytics, ads or crash SDKs; Stripe is sandbox only). Package `app.code3tcg.mobile`. Only the Supabase backend receives data; Vercel and Supabase are service providers, not third parties.
 
 ## Overview questions
@@ -31,13 +33,14 @@ Built from the live Supabase schema (public tables + storage buckets), the Andro
 | App activity | App interactions | Yes | Optional | Analytics, App functionality — `app_activity_events`, AI-assist accept/decline |
 | App activity | Other user-generated content | Yes | Optional | App functionality — collection items, listings, restock reports, notes, reviews, catalog suggestions |
 | App activity | Other actions | Yes | Optional | App functionality — saved listings, watchlists, preferences |
-| App info and performance | Crash logs | No (no crash SDK) | | |
+| App info and performance | Crash logs | **Yes** (updated 2026-11-14) | Optional (Settings → Privacy) | App functionality, Analytics — Sentry error reports, scrubbed of emails, card/phone digits, tokens, query strings and typed text; never sent for kid-safe profiles. Sentry is a service provider, so Shared = No |
 | App info and performance | Diagnostics | Yes | Optional | Analytics, App functionality — `app_error_logs` (error message, page, user agent) |
 | Device or other IDs | Device or other IDs | Yes | Optional | Analytics, Fraud prevention/security — campaign `anonymous_id`, user agent, audit-log IP address |
 | Web browsing, Contacts, Calendar, Health, Audio, Videos, Installed apps | — | No | | |
 
 ## Notes for the reviewer fields
-- Data is collected only after the user creates an account; browsing public catalog pages needs none of it.
+- Most data is collected only after the user creates an account. Exceptions (updated 2026-11-14): guests can send Feedback with an optional email; crash reports run for guests too (opt-out in Settings → Privacy); deletion requests and campaign visits are logged without an account.
+- Feedback text (no email) is also posted to a private channel in our own Discord server; that is our team tool, not a third-party share.
 - Approved community restock reports are published to the Code 3 Discord and app feed **without** submitter identity; the user is told this in the form before submitting. This is user-initiated publication, not third-party sharing.
 - Children: the app is not directed at children; kids-program and "Kid Mode" features are operated by the parent's account. The separate **Target audience and content** declaration should say 18+ (or 13+ with parent-managed profiles) — decide before the COPPA review on the board.
 - Account deletion: users can request deletion in-app and at code3tcg.app/delete-account; audited financial records are archived per policy, which the deletion page should state.

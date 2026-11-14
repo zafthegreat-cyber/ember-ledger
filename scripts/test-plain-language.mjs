@@ -17,4 +17,22 @@ assert.equal(plainLanguageText("Smoke Personal Vault Item"), "Smoke Personal Vau
 assert.equal(plainLanguageText("Focused Forge Inventory Box"), "Focused Forge Inventory Box", "inventory titles are not rebranded");
 assert.equal(plainLanguageText("Obsidian Flames booster"), "Obsidian Flames booster", "Pokémon set names are preserved");
 
+// Audit 2026-11-14: developer notes must not ship as user-facing copy.
+{
+  const { readdirSync, readFileSync, statSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const DEV_PHRASES = [/not fully wired/i, /beta\/placeholder/i, /Dynamic release notes/i, /pretend unsupported backends/i, /\bin Phase 1\b/i, /Open Beacon/, /Edit supported/, /UI polish checkpoint/i, /TCGPLAYER_PRODUCT_ID:/];
+  const walk = (dir) => readdirSync(dir).flatMap((name) => {
+    const full = join(dir, name);
+    if (statSync(full).isDirectory()) return name === "data" ? [] : walk(full);
+    return /\.(jsx|js)$/.test(name) ? [full] : [];
+  });
+  const hits = [];
+  for (const file of walk("src")) {
+    const text = readFileSync(file, "utf8");
+    for (const phrase of DEV_PHRASES) if (phrase.test(text)) hits.push(`${file}: ${phrase}`);
+  }
+  assert.deepEqual(hits, [], "developer notes found in user-facing source");
+}
+
 console.log("Plain-language display-copy checks passed.");

@@ -19,8 +19,19 @@ export const DEFAULT_SENTRY_DSN = "https://aaf9f856fa13922eeec673769069e443@o451
 
 let started = false;
 let sentryModule = null;
+// Reporting starts at boot, before the profile is known; the app flips this
+// once it knows the person is in a kid-safe view, and every event is dropped.
+let kidSafeSession = false;
+
+export function setCrashReportingKidSafe(kidSafe) {
+  kidSafeSession = Boolean(kidSafe);
+}
+export function crashReportingKidSafe() {
+  return kidSafeSession;
+}
 
 export function crashReportingAllowed() {
+  if (kidSafeSession) return false;
   try { return window.localStorage.getItem(CRASH_REPORTING_OPT_OUT_KEY) !== "1"; } catch { return true; }
 }
 export function setCrashReportingAllowed(allowed) {
@@ -116,8 +127,8 @@ export async function initCrashReporting({ dsn = resolveSentryDsn(), kidSafe = f
       replaysOnErrorSampleRate: 0,
       maxBreadcrumbs: 30,
       integrations: (defaults) => defaults.filter((integration) => !/Replay|BrowserTracing|Feedback/i.test(integration.name)),
-      beforeSend: (event) => scrubEvent(event),
-      beforeBreadcrumb: (crumb) => scrubBreadcrumb(crumb),
+      beforeSend: (event) => (kidSafeSession ? null : scrubEvent(event)),
+      beforeBreadcrumb: (crumb) => (kidSafeSession ? null : scrubBreadcrumb(crumb)),
       ignoreErrors: [/ResizeObserver loop/, /Loading chunk \d+ failed/, /NetworkError/, /AbortError/],
     });
     return true;

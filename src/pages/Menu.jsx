@@ -152,7 +152,7 @@ export default function MenuPage(props) {
                 </SettingsDisclosure>
               ) : null}
               <SettingsRow icon="account" title="Account & security" description="Sign-in, private account details, and access" onClick={() => openUtilityPage("account")} />
-              <SettingsRow icon="bell" title="Notifications" description="Open Beacon to review alerts and reminders" status={notificationUnreadCount ? `${notificationUnreadCount} unread` : "All quiet"} onClick={() => openBeacon("you_beacon")} />
+              <SettingsRow icon="bell" title="Notifications" description="Review your alerts and reminders" status={notificationUnreadCount ? `${notificationUnreadCount} unread` : "All quiet"} onClick={() => openBeacon("you_beacon")} />
               <SettingsRow icon="plan" title="Plans & access" description="Plan limits and access review" onClick={() => openUtilityPage("membership")} />
             </SettingsGroup>
 

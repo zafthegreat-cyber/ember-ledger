@@ -159,7 +159,8 @@ test("#24 typed age ranges are accepted", () => {
 });
 
 test("#27-28 pending review copy sets expectations", () => {
-  assert.match(tidepool.tidepoolPendingReviewCopy({}), /quick queue/);
+  assert.match(tidepool.tidepoolPendingReviewCopy({}), /passed the automatic safety check/);
+  assert.match(tidepool.TIDEPOOL_REVIEW_EXPECTATION, /saved on this device/);
   assert.match(tidepool.tidepoolPendingReviewCopy({ safetyReviewReason: "Possible private contact information." }), /closer look/);
 });
 

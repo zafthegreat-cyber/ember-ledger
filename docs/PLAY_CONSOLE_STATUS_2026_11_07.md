@@ -20,5 +20,5 @@ With both set to No (keeping "users interact", block/report = Yes) the result is
 
 ## Housekeeping
 - Privacy policy URL in console: https://code3tcg.com/privacy (loads; covers all declared categories). App docs cite code3tcg.app/privacy — make both resolve.
-- Policy mentions Sentry/Vercel analytics; neither is in the Android bundle. Harmless over-declaration.
+- **Corrected 2026-11-14:** Sentry crash reporting *is* in every build, including Android (`src/main.jsx`). Data safety must declare Crash logs = Yes (optional); see `PLAY_DATA_SAFETY_ANSWERS.md`. Vercel analytics is not used.
 - Add Dillon's Gmail to the tester list; the opt-in link appears after the first release publishes.

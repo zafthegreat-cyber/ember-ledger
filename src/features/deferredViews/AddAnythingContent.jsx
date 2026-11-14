@@ -16,7 +16,6 @@ export default function AddAnythingContent({ scope }) {
     onOpenSellTrade,
     onOpenExperienceSettings,
     ADD_ITEM_QUICK_SEARCH_CHIPS,
-    CollectorShowcaseCard,
     CommandGlyphIcon,
     Field,
     LazySmartCatalogSearchBox,
@@ -41,7 +40,6 @@ export default function AddAnythingContent({ scope }) {
     createQuickAddCardScanRow,
     createQuickAddWizardState,
     detectCollectorItemVisualType,
-    getCatalogIdentifiers,
     getCatalogPickerResults,
     getTideTradrMarketInfo,
     handleQuickAddPhotoFile,
@@ -145,12 +143,7 @@ export default function AddAnythingContent({ scope }) {
     );
     const renderProductResult = (product, source = "quick-add-search") => {
       const priceInfo = getTideTradrMarketInfo(product);
-      const identifiers = getCatalogIdentifiers(product)
-        .filter((identifier) => ["UPC", "EAN", "GTIN", "SKU", "RETAILER_SKU", "TCGPLAYER_PRODUCT_ID"].includes(String(identifier.label || "").toUpperCase()))
-        .slice(0, 1)
-        .map((identifier) => `${identifier.label}: ${identifier.value}`);
       const cardNumberText = product.cardNumber ? `#${product.cardNumber}` : "";
-      const sourceText = product._matchReason || product.marketSource || product.sourceType || "Market Watch catalog";
       const productKind = detectCollectorItemVisualType(product);
       const productKindLabel = collectorVisualTypeLabel(productKind);
       const productTypeLabel = catalogProductTypeLabel(product);
@@ -165,18 +158,6 @@ export default function AddAnythingContent({ scope }) {
           key={product.id || catalogTitle(product)}
           onClick={() => openQuickAddReviewForProduct(product, source)}
         >
-          <CollectorShowcaseCard
-            title={catalogTitle(product)}
-            subtitle={catalogExpansionName(product) || catalogProductTypeLabel(product)}
-            image={catalogImage(product)}
-            kind={productKind}
-            mode="mini"
-            valueLabel={hasCatalogMarketPrice(product) ? `${money(priceInfo.currentMarketValue)} saved estimate` : "Market data unavailable"}
-            rarity={product.rarity || product.variant || product.priceSubtype || ""}
-            meta={[...productTypeLabels, sourceText]}
-            helper="Preview only. Review destination and details before anything is saved."
-            className="quick-add-showcase-preview"
-          />
           <span className="quick-add-result-thumb">
             {catalogImage(product) ? (
               <PrivateStorageImage
@@ -193,7 +174,6 @@ export default function AddAnythingContent({ scope }) {
           <span className="quick-add-result-copy">
             <strong>{catalogTitle(product)}</strong>
             <small>{[catalogExpansionName(product), cardNumberText, ...productTypeLabels].filter(Boolean).join(" | ") || "Catalog product"}</small>
-            <small>{[sourceText, ...identifiers].filter(Boolean).join(" | ")}</small>
             <small>{hasCatalogMarketPrice(product) ? `Market ${money(priceInfo.currentMarketValue)}` : "Market data unavailable"}</small>
           </span>
           <span className="quick-add-result-action">Review/Add</span>

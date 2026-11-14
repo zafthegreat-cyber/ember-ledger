@@ -61,7 +61,7 @@ import { AppShell, DesktopSidebar, MobileBottomNavigation } from "./components/o
 import WorkspaceSwitcher from "./features/workspaces/WorkspaceSwitcher";
 import AppTour, { appTourSeen } from "./features/tour/AppTour.jsx";
 import QuickFeedback, { openQuickFeedback } from "./features/feedback/QuickFeedback.jsx";
-import { crashReportingAllowed, setCrashReportingAllowed } from "./features/monitoring/crashReporting.js";
+import { crashReportingAllowed, setCrashReportingAllowed, setCrashReportingKidSafe } from "./features/monitoring/crashReporting.js";
 import { rowsToCsvAsync } from "./features/exports/csv.js";
 import { RELEASE_NOTES } from "./features/tour/releaseNotes.js";
 import { reportHandledError } from "./features/monitoring/crashReporting.js";
@@ -16438,9 +16438,10 @@ export default function App() {
     if (activeFlowModal?.type === "tidepoolCreatePost") {
       closeFlowModal({ force: true, reset: false });
     }
+    // Audit 2026-11-14: posts are stored on this device only (no server table yet), so don't promise a review queue.
     setVaultToast(safetyReviewReason
-      ? "Post saved. It was held for a closer safety look before it appears publicly; you will get an alert either way."
-      : "Post saved. It passed the automatic safety check and is in the quick review queue, usually within a day.");
+      ? "Post saved on this device. It was flagged by the safety check, so it stays private to you."
+      : "Post saved on this device. Sharing posts with other members is coming soon; for now only you can see it.");
     return true;
   }
 
@@ -17908,7 +17909,7 @@ export default function App() {
         return;
       }
       if (!authTermsAccepted) {
-        setAuthError("You must agree to the Terms of Use and Privacy Policy before creating an account.");
+        setAuthError("Confirm you are 13 or older and agree to the Terms of Use and Privacy Policy to create an account. Younger collectors can join through a parent's account.");
         return;
       }
     }
@@ -31833,6 +31834,8 @@ function renderForgeBusinessLedgerPanel() {
   }, [catalogSearchHasRun, submittedCatalogSearch, catalogSearch, catalogSetFilter, vaultSetLibraryRows]);
   // Kid-safe view (A48–A51): derived from the profile's declared collector/account type.
   const kidSafeView = !adminViewingAsAdmin && isKidSafeProfile(currentUserProfile || {}, shorelineState.betaRequest || {});
+  // Audit 2026-11-14: crash reports start at boot, so tell them when a kid view is active (events are dropped).
+  useEffect(() => { setCrashReportingKidSafe(kidSafeView); }, [kidSafeView]);
   // A50: kid profiles see "—" instead of dollar amounts on every page that takes `money` as a prop.
   const displayMoney = kidSafeView ? () => "—" : money;
   const featureGateOptions = {
@@ -47423,7 +47426,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <div className="compact-card-header">
           <div>
             <strong>Workspace</strong>
-            <p className="compact-subtitle">Choose where Vault, Business, and shared records belong.</p>
+            <p className="compact-subtitle">Choose which space your collection, selling and shared records live in.</p>
           </div>
           <span className="status-badge">{workspaceTypeLabel(activeWorkspace?.type)}</span>
         </div>
@@ -47435,7 +47438,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <dl className="drawer-status-list settings-compact-status-list">
           <div><dt>Active Business</dt><dd>{activeForgeWorkspace?.name || "Unavailable"}</dd></div>
           <div><dt>Business mode</dt><dd>{forgeIdentityModeLabel(activeForgeIdentityMode)}</dd></div>
-          <div><dt>Workspace actions</dt><dd>{canEditActiveWorkspace ? "Edit supported" : "View only"}</dd></div>
+          <div><dt>Workspace actions</dt><dd>{canEditActiveWorkspace ? "You can edit" : "View only"}</dd></div>
         </dl>
         <div className="drawer-inline-actions settings-action-row">
           <button type="button" className="drawer-link" onClick={() => openUtilityPage("collections")}>Manage workspace</button>
@@ -47988,11 +47991,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { key: "market_data", label: "Bad report", detail: "Report or price looks wrong." },
       { key: "feature", label: "Feature request", detail: "Suggest a future improvement." },
     ];
-    const releaseRows = [
-      { title: "The Spark kids program UI", body: "Warmer, parent-safe Kids Program layout and request flow." },
-      { title: "Community community UI", body: "Calmer community feed, safety copy, and bottom spacing." },
-      { title: "Market, Business, and Vault polish", body: "Cleaner mobile cards, tabs, and mode-aware actions." },
-    ];
+    // Audit 2026-11-14: Help shows the real What's New entries, not hard-coded placeholder rows.
+    const releaseRows = RELEASE_NOTES.slice(0, 3).map((note) => ({ title: note.title, body: note.body }));
     return renderUtilityPageShell({
       title: "Help & Support",
       subtitle: "Known issues, release notes, feedback, support, and app version.",
@@ -48034,7 +48034,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </div>
           <div className="drawer-info-card help-release-card utility-card">
             <strong>Release notes</strong>
-            <p className="compact-subtitle">Latest UI polish checkpoint. Dynamic release notes can replace this later.</p>
+            <p className="compact-subtitle">What changed in the latest updates.</p>
             <div className="settings-stacked-list">
               {releaseRows.map((row) => (
                 <article className="settings-list-row" key={row.title}>
@@ -48048,7 +48048,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="compact-card-header">
               <div>
                 <strong>Send feedback</strong>
-                <p className="compact-subtitle">Feedback is saved for beta/admin review when supported. We do not pretend unsupported backends are live.</p>
+                <p className="compact-subtitle">Tell us what broke, what confused you, or what you wish the app did. A person on the team reads every message.</p>
               </div>
               <span className="status-badge">Beta feedback</span>
             </div>
