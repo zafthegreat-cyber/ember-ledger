@@ -18056,6 +18056,12 @@ export default function App() {
     }
 
     receiveAuthUser(null);
+    // Audit 2026-11-14 (shared family devices): records saved on this device stay sealed to
+    // their owner (the cloud boundary archives them when another account signs in), but React
+    // state still held the last person's purchasers, watchlists, comparisons and drafts. Save
+    // anything pending for them, then reload so nothing of theirs stays in memory.
+    localStoreSaver.flush();
+    if (typeof window !== "undefined" && !BETA_LOCAL_MODE) window.location.assign("/");
   }
 
   function changeActiveWorkspace(workspaceId) {
