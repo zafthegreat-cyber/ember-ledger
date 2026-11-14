@@ -42,6 +42,9 @@ export default function AddAnythingContent({ scope }) {
     createQuickAddWizardState,
     detectCollectorItemVisualType,
     getCatalogIdentifiers,
+    findCatalogProductsByBarcode,
+    onOpenBarcodeScanner,
+    onOpenItemPhoto,
     getCatalogPickerResults,
     getTideTradrMarketInfo,
     handleQuickAddPhotoFile,
@@ -86,7 +89,7 @@ export default function AddAnythingContent({ scope }) {
     const searchQuery = String(quickAddWizard.query || "").trim();
     const upcQuery = String(quickAddWizard.upcQuery || "").trim();
     const searchResults = searchQuery ? getCatalogPickerResults(searchQuery, 8) : [];
-    const upcResults = upcQuery ? getCatalogPickerResults(upcQuery, 8) : [];
+    const upcResults = upcQuery ? findCatalogProductsByBarcode(catalogProducts, upcQuery).slice(0, 24) : [];
     const sellerQuickAddActive = quickAddSellerToolsEnabled();
     const presentation = experiencePresentation || resolveExperiencePresentation();
     const familyVisible = presentation.showAdminTools || (typeof showFamilyExperience === "boolean" ? showFamilyExperience : presentation.showFamilyTools);
@@ -97,7 +100,6 @@ export default function AddAnythingContent({ scope }) {
       { value: "wishlist", label: "Wishlist/Watch", helper: "Track for later" },
     ];
     const comingLaterScanModes = [
-      { key: "card", title: "Scan Card", helper: "Card image matching is coming later.", icon: "scan", tone: "search" },
       { key: "binder", title: "Scan Binder", helper: "Binder intake is coming later.", icon: "vault", tone: "vault" },
       { key: "slab", title: "Scan Slab", helper: "Slab intake is coming later.", icon: "grade", tone: "warning" },
       { key: "receipt", title: "Scan Receipt", helper: "Receipt parsing is coming later.", icon: "receipt", tone: "forge" },
@@ -311,9 +313,19 @@ export default function AddAnythingContent({ scope }) {
           {renderFlowHeader("Scan Anything", "Search, enter UPC/SKU, or add manually.")}
           <div className="scan-anything-principle-card">
             <strong>Review before saving.</strong>
-            <p>Search, UPC/SKU lookup, Restocks screenshot review, and manual card-page review work now. Camera scanning and automatic card detection are coming later.</p>
+            <p>Scan a barcode or read a printed name and card number from a photo. Choose the correct product, printing and quantity before saving.</p>
           </div>
           <div className="add-anything-option-grid">
+            <button type="button" className="add-anything-option add-anything-option--search" onClick={onOpenItemPhoto}>
+              <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="scan" /></span>
+              <strong>Identify from a photo</strong>
+              <small>Read printed text on a card or sealed product, then review catalog matches.</small>
+            </button>
+            <button type="button" className="add-anything-option add-anything-option--search" onClick={onOpenBarcodeScanner}>
+              <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="scan" /></span>
+              <strong>Scan barcode</strong>
+              <small>Use the camera to look up a package. Shared codes show a choice of products.</small>
+            </button>
             <button type="button" className="add-anything-option add-anything-option--scout" aria-label="Restocks screenshot or photo review. Try text extraction, then review before saving a restock report." onClick={() => setQuickAddPath("scoutScreenshotReview")}>
               <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="scout" /></span>
               <strong>Restocks screenshot/photo review</strong>
@@ -619,7 +631,7 @@ export default function AddAnythingContent({ scope }) {
     if (quickAddScreen === "upc") {
       return (
         <div className="add-anything-flow add-anything-upc">
-          {renderFlowHeader("Enter UPC/SKU", "Type or paste a UPC, barcode, SKU, or product ID. Automated scan lookup is coming later.")}
+          {renderFlowHeader("Enter UPC/SKU", "Scan a package barcode, or enter a UPC, SKU or product ID. Choose the matching edition before adding.")}
           <div className="scan-anything-principle-card">
             <strong>Review before saving.</strong>
             <p>If the source is weak or the match looks wrong, search again or request a missing item.</p>
@@ -635,7 +647,8 @@ export default function AddAnythingContent({ scope }) {
           </Field>
           <div className="quick-add-inline-actions">
             <button type="button" onClick={runUpcLookup}>Lookup UPC/SKU</button>
-            <button type="button" className="secondary-button" disabled>Scan lookup coming later</button>
+            <button type="button" className="secondary-button" onClick={onOpenBarcodeScanner}>Scan barcode</button>
+            <button type="button" className="secondary-button" onClick={onOpenItemPhoto}>Use item photo</button>
           </div>
           <div className="empty-state small-empty-state quick-add-empty-result quick-add-upc-fallback">
             <h3>No UPC match?</h3>

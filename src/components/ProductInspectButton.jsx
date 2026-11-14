@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState } from "react";
 import ItemPhoto from "./ItemPhoto.jsx";
-import { getItemImageUrl } from "../utils/productDisplayUtils.js";
+import { getDisplayImageCandidates } from "../utils/imagePresentation.mjs";
 import { BottomSheet } from "./operations/OperationsUI.jsx";
 import "./product-inspect.css";
 
@@ -8,7 +8,7 @@ const ProductInspectionContent = lazy(() => import("./ProductInspectionContent.j
 
 export default function ProductInspectButton({ product, src = "", title = "Item", fallbackClassName = "", records }) {
   const [open, setOpen] = useState(false);
-  const image = src || getItemImageUrl(product);
+  const image = getDisplayImageCandidates(product, src, { quality: "detail" })[0] || "";
   if (!image) return <ItemPhoto product={product} src={image} alt={title} fallbackClassName={fallbackClassName} />;
   return <>
     <button type="button" className="product-inspect-launch" aria-label={`Inspect ${title} in 3D`} onClick={() => setOpen(true)}><ItemPhoto product={product} quality="detail" src={image} alt={title} loading="eager" fallbackClassName={fallbackClassName} /><span><span aria-hidden="true">↔</span>Inspect item</span></button>

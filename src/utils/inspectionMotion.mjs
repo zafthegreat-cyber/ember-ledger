@@ -37,9 +37,24 @@ export function inspectionLightFrame(current, target, elapsed = 16) {
   return done ? { ...target, done } : { x, y, done };
 }
 
-export function inspectionDetailSize(width, profile) {
+export function inspectionDetailSize(width, profile, dimensions) {
   if (!Number.isFinite(width) || width <= 0) return null;
   const box = profile === "box";
   const objectWidth = Math.max(100, Math.min(box ? 320 : 340, box ? width * .78 : width - 16));
-  return { width: objectWidth, height: Math.ceil(objectWidth * (box ? 1.2 : profile === "pack" ? 1.5 : 1.4) + (box ? 50 : 40)) };
+  const packRatio = dimensions?.width > 0 && dimensions?.height > 0 ? dimensions.height / dimensions.width : 1.846;
+  return { width: objectWidth, height: Math.ceil(objectWidth * (box ? 1.2 : profile === "pack" ? packRatio : 1.4) + (box ? 50 : 40)) };
+}
+
+// Fit the entire rotating package, including tall bundles and portrait cartons.
+// A sphere around its eight corners bounds every yaw/pitch. Account for the
+// stage's 1100px perspective so a near corner cannot be clipped during a turn.
+export function inspectionBoxViewport(width, dimensions, detail = false) {
+  if (!Number.isFinite(width) || width <= 0 || !dimensions || ![dimensions.width, dimensions.height, dimensions.depth].every(value => Number.isFinite(value) && value > 0)) return null;
+  const diagonal = Math.hypot(1, dimensions.height / dimensions.width, dimensions.depth / dimensions.width);
+  const available = Math.max(1, width - 24), perspective = 1100;
+  const maxWidth = available / (diagonal * Math.sqrt(1 + (available / (2 * perspective)) ** 2));
+  const objectWidth = Math.min(detail ? 320 : 250, width * (detail ? .82 : .58), maxWidth);
+  const radius = objectWidth * diagonal / 2;
+  const projectedDiameter = 2 * radius * perspective / Math.sqrt(perspective ** 2 - radius ** 2);
+  return { width: objectWidth, height: Math.ceil(projectedDiameter + 28) };
 }

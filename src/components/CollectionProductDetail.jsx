@@ -9,6 +9,8 @@ import { collectionCopyQuantity } from "../utils/collectionCopyGroups.mjs";
 import { getPortfolioItemKey } from "../utils/collectionPortfolio.mjs";
 import { copyRecognition, priceMetadataLabel } from "../utils/collectionBrowse.mjs";
 import { cardVersionLabel } from "../utils/cardVersions.mjs";
+import GradedCopiesPanel from './GradedCopiesPanel.jsx';
+import { gradingDetails } from '../utils/gradedCopies.mjs';
 import "./collection-product-detail.css";
 
 const DETAIL_TABS = Object.freeze([{ key: "overview", label: "Overview" }, { key: "copies", label: "Copies" }]);
@@ -53,7 +55,7 @@ function PurposeBreakdown({ purposeCounts }) {
 }
 
 /** A derived product view. Every editable action opens its original copy record. */
-export default function CollectionProductDetail({ group, onBack, onOpenRecord, onEditRecord, canEditRecord = () => true, resolveItemImage, activeTab = "overview", onTabChange, showValues = true, hiddenValues = false, getAcquisitionCost = acquisitionCost }) {
+export default function CollectionProductDetail({ group, allRecords, onAddGradedCopy, onBack, onOpenRecord, onEditRecord, canEditRecord = () => true, resolveItemImage, activeTab = "overview", onTabChange, showValues = true, hiddenValues = false, getAcquisitionCost = acquisitionCost }) {
   const tabsId = useId();
   if (!group?.item) return null;
   const item = group.item;
@@ -89,6 +91,7 @@ export default function CollectionProductDetail({ group, onBack, onOpenRecord, o
         { label: "Card number", value: item.cardNumber || item.card_number },
         { label: "Language", value: item.language },
       ]} /></section>
+      <GradedCopiesPanel product={item} records={allRecords || records} onOpenRecord={onOpenRecord} onEditRecord={onEditRecord} canEditRecord={canEditRecord} onAddCopy={onAddGradedCopy ? () => onAddGradedCopy(item) : undefined} hiddenValues={hiddenValues} getAcquisitionCost={getAcquisitionCost} />
     </WorkspaceTabPanel>
 
     <WorkspaceTabPanel id={tabsId} value="copies" active={tab}>
@@ -108,7 +111,8 @@ export default function CollectionProductDetail({ group, onBack, onOpenRecord, o
                 { label: "Finish", value: cardVersionLabel(record.variant || record.finish || record.priceSubtype || record.cardVariant || record.printing) },
                 { label: "Edition", value: record.edition },
                 { label: "Language", value: record.language },
-                { label: "Grade", value: [record.gradingCompany, record.grade].filter(Boolean).join(" ") },
+                { label: "Grade", value: [gradingDetails(record).gradingCompany, gradingDetails(record).grade].filter(Boolean).join(" ") },
+                { label: "Certification number", value: gradingDetails(record).certificationNumber },
                 { label: "Storage", value: record.storageLocation || record.storage_location },
               ]} />
               {!hiddenValues && showValues && priceMetadataLabel([record]) ? <p className="collection-product-note">{priceMetadataLabel([record])}</p> : null}

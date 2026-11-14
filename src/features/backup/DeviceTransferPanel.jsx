@@ -4,6 +4,7 @@ import { compareDeviceTransfer, createDeviceTransfer, DEVICE_TRANSFER_MAX_BYTES 
 import { exportFile, exportFileStatus } from "../../native/nativeFiles.js";
 import "./device-transfer.css";
 
+import { DeviceMoveChecklist } from './BackupNextTools.jsx';
 function Totals({ title, result }) {
   if (!result) return <p>{title}: not checked. Include cloud records in the comparison.</p>;
   return <div><h4>{title}</h4><dl className="device-transfer__totals">
@@ -22,6 +23,7 @@ export default function DeviceTransferPanel() {
   const [notice, setNotice] = useState("");
   const [result, setResult] = useState(null);
   const [deviceStep, setDeviceStep] = useState('original');
+  const [mismatchOnly,setMismatchOnly]=useState(false);
   const checkedFile = useRef(null);
   const active = useRef(null);
   const pending = useRef(null);
@@ -46,7 +48,7 @@ export default function DeviceTransferPanel() {
         const exported = await createDeviceTransfer(options); assertCurrent();
         const saved = await exportFile({ blob: new Blob([exported.json], { type: "application/json" }), filename: exported.fileName, signal: controller.signal, assertCurrent }); assertCurrent();
         setResult({ kind, ...exported, transfer: undefined, json: undefined, cloud: undefined, ownerId });
-        setNotice(`${exportFileStatus(saved)} Keep the original app and its stored data.`);
+        setNotice(`${exported.fileName} · ${exportFileStatus(saved)} Verified file bytes were prepared. Check the destination to confirm you kept it. Keep the original app and its stored data.`);
       } else {
         if (file.size > DEVICE_TRANSFER_MAX_BYTES) throw new Error("Choose a Code 3 transfer file smaller than 52 MB.");
         const raw = await file.text(); assertCurrent();
@@ -64,6 +66,7 @@ export default function DeviceTransferPanel() {
     <p>Your installed app has separate device storage. Sign in to the same account, then compare a transfer file from your original browser or phone.</p>
     <div role="group" aria-label="Which device are you using?"><button type="button" aria-pressed={deviceStep === 'original'} onClick={() => setDeviceStep('original')}>Original device</button><button type="button" aria-pressed={deviceStep === 'new'} onClick={() => setDeviceStep('new')}>New device</button></div>
     {deviceStep === 'original' ? <ol><li>Save a transfer file below.</li><li>Send the file privately to your new device.</li><li>Keep this app and its data until you have checked your records and photos on the new device.</li></ol> : <ol><li>Sign in to the same Code 3 TCG account and let cloud saving load.</li><li>Compare the transfer file from your original device.</li><li>Review any missing records before choosing recovery.</li></ol>}
+    <DeviceMoveChecklist />
     {!ownerId ? <p>Sign in to an approved account to prepare or compare your records.</p> : <>
       <label className="device-transfer__checkbox"><input type="checkbox" checked={includeCloud} disabled={busy} onChange={(event) => setIncludeCloud(event.target.checked)} />Include cloud records and attachment verification</label>
       {!includeCloud ? <p>Device-only mode works offline. It cannot confirm that cloud records or photos have transferred.</p> : null}
@@ -72,7 +75,7 @@ export default function DeviceTransferPanel() {
       {visible?.kind === "export" ? <p>Included: {visible.deviceRecordCount} device records, {visible.cloudRecordCount ?? "unchecked"} cloud records, and {visible.attachmentCount ?? "unchecked"} cloud attachments.</p> : null}
       {visible?.kind === "compare" ? <><Totals title="Device records" result={visible.device} /><Totals title="Cloud records" result={visible.cloud} /><Totals title="Cloud attachment bytes" result={visible.attachments} />
         {visible.settingsDiffer ? <p>{visible.settingsDiffer} source(s) have different settings or metadata. Current device settings stay in place.</p> : null}
-        <details><summary>Review record groups</summary><ul>{visible.sections.map((section) => <li key={section.sourceId}><strong>{section.name}</strong>: {section.matched} matching, {section.missing} missing, {section.different} different, {section.additional} additional.</li>)}</ul></details>
+        <details><summary>Review record groups</summary><label><input type="checkbox" checked={mismatchOnly} onChange={event=>setMismatchOnly(event.target.checked)} /> Show groups with mismatches only</label><p>{visible.sections.length} groups checked in total. Totals above always include matching groups.</p><ul>{visible.sections.filter(section=>!mismatchOnly||section.missing||section.different||section.additional||section.settingsDiffer).map((section) => <li key={section.sourceId}><strong>{section.name}</strong>: {section.matched} matching, {section.missing} missing, {section.different} different, {section.additional} additional.{section.settingsDiffer?" Settings or metadata differ.":""}</li>)}</ul></details>
         <button type="button" className="device-transfer__secondary" disabled={busy} onClick={() => workspace.openRecovery(checkedFile.current?.ownerId === ownerId ? checkedFile.current.file : undefined)}>Review recovery options</button><p>Your checked file will be available for review. Recovery checks it again and requires account verification before adding missing records; existing versions are kept.</p>
       </> : null}
       {visible?.warnings?.length ? <details open><summary>What still needs checking</summary><ul>{visible.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul></details> : null}

@@ -89,7 +89,7 @@
 .app.app-command-shell[data-theme] .collection-portfolio-photo-fallback { display: grid; place-items: center; color: var(--text-secondary); }
 .app.app-command-shell[data-theme] .collection-portfolio-photo-fallback svg { width: 32px; height: 32px; }
 .app.app-command-shell[data-theme] .collection-portfolio-item-copy { display: grid; align-content: start; gap: 5px; min-width: 0; padding: 14px; }
-.app.app-command-shell[data-theme] .collection-portfolio-copy-details { display: grid; gap: 4px; min-width: 0; color: var(--text-secondary); font: 400 14px/1.5 var(--font-ui); overflow-wrap: anywhere; }
+.app.app-command-shell[data-theme] .collection-portfolio-copy-details { display: grid; gap: 4px; min-width: 0; color: var(--text-secondary); font: 400 0.875rem/1.5 var(--font-ui); overflow-wrap: anywhere; }
 .app.app-command-shell[data-theme] .collection-portfolio-copy-note { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; white-space: pre-wrap; }
 .app.app-command-shell[data-theme] .collection-portfolio-item-name { color: var(--text-primary); font: 600 .9375rem/1.4 var(--font-ui); overflow-wrap: anywhere; }
 .app.app-command-shell[data-theme] :is(.collection-portfolio-item-meta, .collection-portfolio-item-quantity) { color: var(--text-secondary); font: 400 .75rem/1.5 var(--font-ui); overflow-wrap: anywhere; }
@@ -180,7 +180,7 @@
 .collection-portfolio-value-note { display: block; margin-top: 2px; font-size: .8125rem; line-height: 1.5; font-weight: 500; letter-spacing: 0; color: var(--ops-muted, #8a95a5); }
 .collection-portfolio-value-hidden { letter-spacing: 0.06em; opacity: 0.8; }
 .collection-portfolio-value-unvalued { font-style: italic; color: var(--ops-muted, #8a95a5); }
-.collection-product-value-label { display: block; color: var(--text-secondary); font: 400 12px/1.5 var(--font-ui); margin-bottom: 2px; }
+.collection-product-value-label { display: block; color: var(--text-secondary); font: 400 0.75rem/1.5 var(--font-ui); margin-bottom: 2px; }
 
 /* Keep browsing immediate; secondary tools and price context stay available. */
 .app.app-command-shell[data-theme] .collection-portfolio-value-caption { color:var(--text-secondary); font:500 .8125rem/1.5 var(--font-ui); }
@@ -192,12 +192,12 @@ html body .app.app-command-shell[data-theme] .collection-portfolio-toolbar .coll
 .app.app-command-shell[data-theme] .collection-portfolio-search[data-has-query="true"] input { padding-inline-end:48px; }
 .app.app-command-shell[data-theme] .collection-portfolio-search input::-webkit-search-cancel-button { appearance:none; }
 html body .app.app-command-shell[data-theme] .collection-portfolio-search-clear { position:absolute; inset:0 0 0 auto; display:grid; place-items:center; width:44px; min-width:44px; min-height:44px; padding:0; border:0; border-radius:0 8px 8px 0; background:transparent !important; color:var(--text-secondary) !important; cursor:pointer; }
-.app.app-command-shell[data-theme] .collection-portfolio-search-clear > span { font:400 22px/1 var(--font-ui); }
+.app.app-command-shell[data-theme] .collection-portfolio-search-clear > span { font:400 1.375rem/1 var(--font-ui); }
 html body .app.app-command-shell[data-theme] .collection-portfolio-search-clear:hover { background:var(--surface-secondary) !important; color:var(--text-primary) !important; }
-.app.app-command-shell[data-theme] .collection-portfolio-filter-count { display:inline-flex; align-items:center; justify-content:center; min-width:18px; min-height:18px; padding-inline:4px; border-radius:4px; color:var(--on-primary); background:var(--action-primary); font:600 11px/1.3 var(--font-ui); }
+.app.app-command-shell[data-theme] .collection-portfolio-filter-count { display:inline-flex; align-items:center; justify-content:center; min-width:18px; min-height:18px; padding-inline:4px; border-radius:4px; color:var(--on-primary); background:var(--action-primary); font:600 0.6875rem/1.3 var(--font-ui); }
 .app.app-command-shell[data-theme] .collection-portfolio-active-filters { grid-column:1 / -1; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px 12px; min-width:0; }
-.app.app-command-shell[data-theme] .collection-portfolio-active-filters > div { min-width:0; color:var(--text-secondary); font:400 13px/1.5 var(--font-ui); }
-html body .app.app-command-shell[data-theme] .collection-portfolio-active-filters button { min-height:44px; max-width:100%; border-radius:6px; font:500 13px/1.5 var(--font-ui); cursor:pointer; }
+.app.app-command-shell[data-theme] .collection-portfolio-active-filters > div { min-width:0; color:var(--text-secondary); font:400 0.8125rem/1.5 var(--font-ui); }
+html body .app.app-command-shell[data-theme] .collection-portfolio-active-filters button { min-height:44px; max-width:100%; border-radius:6px; font:500 0.8125rem/1.5 var(--font-ui); cursor:pointer; }
 html body .app.app-command-shell[data-theme] .collection-portfolio-condition-chip { display:flex; align-items:center; gap:8px; padding:6px 10px; border:1px solid var(--border-subtle); background:var(--surface-secondary) !important; color:var(--text-primary) !important; text-align:left; }
 .app.app-command-shell[data-theme] .collection-portfolio-condition-chip > span { color:var(--text-secondary); }
 .app.app-command-shell[data-theme] .collection-portfolio-condition-chip > strong { min-width:0; overflow-wrap:anywhere; font-weight:550; }

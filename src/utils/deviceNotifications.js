@@ -39,8 +39,8 @@ export async function requestDeviceNotifications(globalObject = globalThis) {
   if (!support.supported) return support;
   if (support.permission === "granted" || support.permission === "denied") return support;
   try {
-    const result = await globalObject.Notification.requestPermission();
-    return deviceNotificationSupport({ Notification: { ...globalObject.Notification, permission: result, requestPermission: globalObject.Notification.requestPermission } });
+    await globalObject.Notification.requestPermission();
+    return deviceNotificationSupport(globalObject);
   } catch {
     return deviceNotificationSupport(globalObject);
   }
@@ -77,7 +77,7 @@ export function selectNotificationsToAnnounce(rows = [], seenIds = [], { now = D
  * shown. Safe to call on every render: it only acts when permission is granted
  * and returns the number of notifications shown.
  */
-export function announceNewNotifications(rows = [], { storage = globalThis.localStorage, globalObject = globalThis, firstRun = false } = {}) {
+export function announceNewNotifications(rows = [], { storage = globalThis.localStorage, globalObject = globalThis, firstRun = false, mutedIds = new Set() } = {}) {
   const support = deviceNotificationSupport(globalObject);
   const seen = readSeen(storage);
   if (firstRun || !seen.length) {
@@ -86,7 +86,8 @@ export function announceNewNotifications(rows = [], { storage = globalThis.local
     writeSeen(storage, rows.map((row) => String(row?.id || "")).filter(Boolean));
     return 0;
   }
-  const fresh = selectNotificationsToAnnounce(rows, seen);
+  const fresh = selectNotificationsToAnnounce(rows.filter(row => !mutedIds.has(row.id)), seen);
+  if (mutedIds.size) writeSeen(storage, [...seen, ...mutedIds].map(String));
   if (!fresh.length) return 0;
   writeSeen(storage, [...seen, ...rows.map((row) => String(row?.id || "")).filter(Boolean)]);
   if (support.permission !== "granted") return 0;

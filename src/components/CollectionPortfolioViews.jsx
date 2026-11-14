@@ -1,5 +1,6 @@
 import { useId } from "react";
 import ItemPhoto from "./ItemPhoto.jsx";
+import CatalogItemDisplay from "./CatalogItemDisplay.jsx";
 import { BottomSheet } from "./operations/OperationsUI.jsx";
 import "./collection-portfolio.css";
 import { getRecordGameLabel } from "../utils/collectibleGames.mjs";
@@ -8,7 +9,7 @@ import { collectionCopyDetails } from "../utils/collectionCopyDetails.mjs";
 
 const EMPTY_ITEMS = Object.freeze([]);
 const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
-const dateFormat = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" });
+const dateFormat = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric", hour:"numeric", minute:"2-digit", second:"2-digit" });
 
 function formatMoney(value, formatter) {
   return formatter ? formatter(value) : currency.format(value);
@@ -57,13 +58,13 @@ export function PortfolioValueChart({ points = EMPTY_ITEMS, hidden = false, mone
     return <div className="collection-portfolio-chart-hidden"><span aria-hidden="true">—</span><p>Value history hidden</p></div>;
   }
   const validPoints = points.filter((point) => point && point.at !== "" && point.at != null)
-    .map((point) => ({ at: new Date(point.at).getTime(), total: point.total }))
+    .map((point) => ({ ...point, at: new Date(point.at).getTime(), total: point.total }))
     .filter((point) => Number.isFinite(point.at) && point.total !== "" && point.total != null && Number.isFinite(Number(point.total)) && Number(point.total) >= 0)
-    .map((point) => ({ at: point.at, total: Number(point.total) }))
+    .map((point) => ({ ...point, total: Number(point.total) }))
     .sort((left, right) => left.at - right.at);
   const first = validPoints[0];
   const last = validPoints[validPoints.length - 1];
-  if (validPoints.length < 2 || first.at === last.at) {
+  if (!validPoints.length) {
     return <div className="collection-portfolio-chart-empty"><span aria-hidden="true">↗</span><p>No value history yet</p><small>Saved snapshots will show how this portfolio changes over time.</small></div>;
   }
 
@@ -75,7 +76,7 @@ export function PortfolioValueChart({ points = EMPTY_ITEMS, hidden = false, mone
   const height = 248;
   const baseline = height - 16;
   const coords = validPoints.map((point) => ({
-    x: 14 + ((point.at - first.at) / (last.at - first.at)) * (width - 28),
+    x: 14 + ((point.at - first.at) / Math.max(1,last.at - first.at)) * (width - 28),
     y: 16 + ((max - point.total) / (max - min)) * (height - 32),
   }));
   const line = coords.map((point, index) => `${index ? "L" : "M"}${point.x.toFixed(2)},${point.y.toFixed(2)}`).join(" ");
@@ -97,7 +98,7 @@ export function PortfolioValueChart({ points = EMPTY_ITEMS, hidden = false, mone
     <figcaption className="collection-portfolio-chart-caption">Saved portfolio estimates. Adding or removing items can change the total.</figcaption>
     <details className="collection-portfolio-chart-data">
       <summary>View snapshot values</summary>
-      <div><table><caption className="sr-only">{periodLabel} saved portfolio values</caption><thead><tr><th scope="col">Saved</th><th scope="col">Estimated value</th></tr></thead><tbody>{validPoints.map((point, index) => <tr key={`${point.at}-${index}`}><th scope="row"><time dateTime={new Date(point.at).toISOString()}>{dateFormat.format(point.at)}</time></th><td>{formatMoney(point.total, money)}</td></tr>)}</tbody></table></div>
+      <div><table><caption className="sr-only">{periodLabel} saved portfolio values</caption><thead><tr><th scope="col">Saved</th><th scope="col">Estimated value</th><th scope="col">Note</th></tr></thead><tbody>{validPoints.map((point, index) => <tr key={`${point.at}-${index}`}><th scope="row"><time dateTime={new Date(point.at).toISOString()}>{dateFormat.format(point.at)}</time></th><td>{formatMoney(point.total, money)}</td><td>{point.note||"—"}</td></tr>)}</tbody></table></div>
     </details>
   </figure>;
 }
@@ -119,13 +120,13 @@ export function PortfolioItemGrid({ items = EMPTY_ITEMS, groups, resolveItemImag
   const gridId = useId();
   if (groups) return <ul className="collection-portfolio-grid" data-mode={mode === "list" ? "list" : "grid"} aria-label="Collection items">
     {groups.map(group => <li key={group.key}><button type="button" className="collection-portfolio-item" data-collection-product-key={group.key} onClick={event => onOpenGroup?.(group, event.currentTarget)} aria-label={`Open ${itemTitle(group.item)}, quantity ${group.quantity}, ${group.purposeCounts.map(row => `${row.label}: ${row.quantity}`).join(", ")}`}>
-      <span className="collection-portfolio-item-media"><ItemPhoto sizes={mode === "list" ? "96px" : "(max-width: 600px) 44vw, (max-width: 1000px) 28vw, 240px"} product={group.item} src={resolveItemImage?.(group.item) || ""} fallbackClassName="collection-portfolio-photo-fallback" /></span>
+      <span className="collection-portfolio-item-media"><CatalogItemDisplay sizes={mode === "list" ? "96px" : "(max-width: 600px) 44vw, (max-width: 1000px) 28vw, 240px"} product={group.item} src={resolveItemImage?.(group.item) || ""} fallbackClassName="collection-portfolio-photo-fallback" /></span>
       <span className="collection-portfolio-item-copy"><strong className="collection-portfolio-item-name">{itemTitle(group.item)}</strong><span className="collection-portfolio-item-meta">{groupContext(group)}</span><span className="collection-portfolio-item-holdings"><span className="collection-portfolio-item-quantity">Qty {group.quantity}</span>{group.purposeCounts.map(row => <span className="collection-portfolio-purpose" key={row.purpose} title={row.label}>{row.shortLabel} · {row.quantity}</span>)}</span><span className="collection-portfolio-item-value">{!hidden && group.valuation.value !== null ? <small className="collection-product-value-label">Total saved value</small> : null}{groupValue(group, { hidden, money })}</span>{!hidden && priceMetadataLabel(group.records) ? <small className="collection-portfolio-price-context">{priceMetadataLabel(group.records)}</small> : null}</span>
     </button></li>)}
   </ul>;
   return <ul className="collection-portfolio-grid" data-mode={mode === "list" ? "list" : "grid"} aria-label="Collection items">
     {items.map((item, index) => { const copy = collectionCopyDetails(item); const detailsId = `${gridId}-copy-${index}`; return <li key={item.id || `${itemTitle(item)}-${index}`}><button type="button" className="collection-portfolio-item" onClick={() => onOpen?.(item)} aria-label={`Open ${itemTitle(item)}`} aria-describedby={detailsId}>
-      <span className="collection-portfolio-item-media"><ItemPhoto sizes={mode === "list" ? "96px" : "(max-width: 600px) 44vw, (max-width: 1000px) 28vw, 240px"} product={item} src={resolveItemImage?.(item) || ""} fallbackClassName="collection-portfolio-photo-fallback" /></span>
+      <span className="collection-portfolio-item-media"><CatalogItemDisplay sizes={mode === "list" ? "96px" : "(max-width: 600px) 44vw, (max-width: 1000px) 28vw, 240px"} product={item} src={resolveItemImage?.(item) || ""} fallbackClassName="collection-portfolio-photo-fallback" /></span>
       <span className="collection-portfolio-item-copy"><strong className="collection-portfolio-item-name">{itemTitle(item)}</strong><span className="collection-portfolio-item-meta">{itemContext(item)}</span><span className="collection-portfolio-item-quantity">Qty {item.quantity ?? item.ownedQuantity ?? 1}</span><span id={detailsId} className="collection-portfolio-copy-details">{copy.identity ? <span>{copy.identity}</span> : null}<span>Storage: {copy.storage || "Not recorded"}</span><span className="collection-portfolio-copy-note" title={copy.notes || undefined}>Note: {copy.notes || "Not recorded"}</span></span><span className="collection-portfolio-item-value">{visibleValue(item, { hidden, valueForItem, valuationForItem, money })}</span></span>
     </button></li>; })}
   </ul>;

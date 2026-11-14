@@ -1,4 +1,5 @@
 import { useId, useRef, useState } from "react";
+import "./menu-preferences.css";
 import MenuItemIcon from "./MenuItemIcon.jsx";
 
 const SECTION_ORDER = ["find", "collection", "community", "account", "tools", "admin"];
@@ -77,6 +78,13 @@ export default function MenuNavigation({ sections, NavIcon, isItemActive, onSele
     try { localStorage.setItem(preferenceKey, JSON.stringify(next)); setPreferenceNotice("Menu preferences saved on this device."); }
     catch { setPreferenceNotice("Menu preferences apply for this visit. This browser could not save them."); }
   }
+  function movePin(key, delta) {
+    const allowed = quickItems.map(item => item.key);
+    const at = allowed.indexOf(key), target = at + delta;
+    if (at < 0 || target < 0 || target >= allowed.length) return;
+    [allowed[at], allowed[target]] = [allowed[target], allowed[at]];
+    saveMenuPreferences({ ...menuPreferences, pins: allowed });
+  }
   function selectItem(item) {
     saveMenuPreferences({ ...menuPreferences, recent: [item.key, ...menuPreferences.recent.filter(key => key !== item.key)].slice(0,5) });
     onSelect(item);
@@ -125,9 +133,9 @@ export default function MenuNavigation({ sections, NavIcon, isItemActive, onSele
               <span>{QUICK_LABELS[item.key] || item.label}</span>
             </button>)}
           </section>}
-          <details className="menu-pin-editor"><summary>Customize shortcuts</summary><p>Choose up to eight. These shortcuts stay on this device.</p><div>{allItems.map(item => <label key={item.key}><input type="checkbox" checked={menuPreferences.pins.includes(item.key)} disabled={!menuPreferences.pins.includes(item.key) && menuPreferences.pins.length >= 8} onChange={event => saveMenuPreferences({ ...menuPreferences, pins: event.target.checked ? [...menuPreferences.pins, item.key] : menuPreferences.pins.filter(key => key !== item.key) })} />{item.label}</label>)}</div></details>
+          <details className="menu-pin-editor"><summary>Customize shortcuts</summary><p>Choose up to eight. These shortcuts stay on this device.</p><ol className="menu-pin-order" aria-label="Shortcut order">{quickItems.map((item,index)=><li key={item.key}><span>{index+1}. {item.label}</span><button type="button" disabled={index===0} aria-label={`Move ${item.label} earlier`} onClick={()=>movePin(item.key,-1)}>↑ Earlier</button><button type="button" disabled={index===quickItems.length-1} aria-label={`Move ${item.label} later`} onClick={()=>movePin(item.key,1)}>↓ Later</button></li>)}</ol><div>{allItems.map(item => <label key={item.key}><input type="checkbox" checked={menuPreferences.pins.includes(item.key)} disabled={!menuPreferences.pins.includes(item.key) && menuPreferences.pins.length >= 8} onChange={event => saveMenuPreferences({ ...menuPreferences, pins: event.target.checked ? [...menuPreferences.pins, item.key] : menuPreferences.pins.filter(key => key !== item.key) })} />{item.label}</label>)}</div></details>
           {preferenceNotice && <p className="menu-preference-status" role="status">{preferenceNotice}</p>}
-          {recentItems.length > 0 && <section className="menu-recent-destinations" aria-label="Recently visited"><h3>Recently visited</h3>{recentItems.map(item => <button type="button" key={item.key} onClick={() => selectItem(item)}>{item.label}<Chevron /></button>)}</section>}
+          {recentItems.length > 0 && <section className="menu-recent-destinations" aria-label="Recently visited"><h3>Recently visited</h3><button type="button" onClick={()=>saveMenuPreferences({...menuPreferences,recent:[]})}>Clear recent history</button>{recentItems.map(item => <button type="button" key={item.key} onClick={() => selectItem(item)}>{item.label}<Chevron /></button>)}</section>}
           {reportItem && <button type="button" className="menu-report-action" data-menu-report="restock" onClick={() => selectItem(reportItem)}>
             <span className="menu-report-icon" aria-hidden="true"><MenuItemIcon item={reportItem} NavIcon={NavIcon} /></span>
             <span><strong>{reportItem.label}</strong><small>{reportItem.helper}</small></span><Chevron />
@@ -170,6 +178,7 @@ export default function MenuNavigation({ sections, NavIcon, isItemActive, onSele
           <button type="button" onClick={clearSearch}>Clear search</button>
         </div>}
       </nav>
+      {!searching && <details className="menu-keyboard-help"><summary>Keyboard shortcuts</summary><dl><dt>Tab / Shift + Tab</dt><dd>Move through menu controls.</dd><dt>↓ in menu search</dt><dd>Move to the first matching destination.</dd><dt>Escape in menu search</dt><dd>Clear the search.</dd><dt>Enter / Space</dt><dd>Activate a focused button, including shortcut order controls.</dd></dl></details>}
       {!searching && children}
     </div>
   </>;

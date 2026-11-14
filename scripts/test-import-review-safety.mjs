@@ -4,6 +4,9 @@ import { readFile } from "node:fs/promises";
 import ts from "typescript";
 import * as safety from "../src/utils/importReviewSafety.mjs";
 import { catalogIdentifiersForProduct, normalizeBarcodeValue } from "../src/utils/inventoryImportUtils.js";
+import { readLegacyCatalogIdentity } from "../src/utils/legacyCatalogIdentity.mjs";
+import { readLegacyGradingMetadata } from "../src/utils/legacyGradingMetadata.mjs";
+import { readLegacyStorageLocation } from "../src/utils/legacyStorageMetadata.mjs";
 
 const app = await readFile(new URL("../src/App.jsx", import.meta.url), "utf8");
 const ast = ts.createSourceFile("App.jsx", app, ts.ScriptTarget.Latest, true, ts.ScriptKind.JSX);
@@ -101,7 +104,11 @@ test("private import metadata survives the actual inventory mapper without a sch
   const serialized = safety.withImportSavedDetails(record);
   assert.equal(safety.readImportSavedDetails(serialized).notes, record.notes);
   assert.equal((safety.withImportSavedDetails({ ...record, actionNotes: serialized }).match(/Code3 import details v1:/g) || []).length, 1);
-  const { mapItem } = actual(["mapItem"], { readImportSavedDetails: safety.readImportSavedDetails, normalizeDestinationScopes: () => [], DEFAULT_PERSONAL_WORKSPACE_ID: "personal" });
+  const { mapItem } = actual(["blankToNull", "mapItem"], {
+    readImportSavedDetails: safety.readImportSavedDetails,
+    readLegacyCatalogIdentity, readLegacyGradingMetadata, readLegacyStorageLocation,
+    normalizeDestinationScopes: () => [], DEFAULT_PERSONAL_WORKSPACE_ID: "personal",
+  });
   const reloaded = mapItem({ id: "saved", name: "Example card", action_notes: serialized, language: "Japanese", printing: "Holo" });
   assert.equal(reloaded.cardNumber, "25/100"); assert.equal(reloaded.grade, "10"); assert.equal(reloaded.gradingCompany, "Example grader"); assert.equal(reloaded.setName, "Example set"); assert.equal(reloaded.notes, record.notes);
   assert.equal(safety.sameImportCopy({ ...record, itemName: "Example card" }, reloaded), true);

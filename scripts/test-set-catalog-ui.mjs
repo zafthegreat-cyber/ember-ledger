@@ -8,6 +8,7 @@ import { JSDOM } from "jsdom";
 import React, { act } from "react";
 import { createSetCatalogItemSeed } from "../src/utils/setCatalog.mjs";
 import { createEmptyFlipScoutState } from "../src/features/flipScout/constants.js";
+import { gradedCopySeed } from '../src/utils/gradedCopies.mjs';
 
 async function compile(options) {
   const result = await build({ ...options, bundle: true, platform: "node", format: "cjs", write: false, jsx: "automatic", loader: { ".css": "empty" }, external: ["react", "react/jsx-runtime", "virtual:code3-set-catalog"], define: { "import.meta.env": "{}" }, logLevel: "silent" });
@@ -16,7 +17,7 @@ async function compile(options) {
 const { default: Catalog } = await compile({ entryPoints: ["src/components/CollectionSetCatalog.jsx"] });
 async function environment(run) {
   const dom = new JSDOM('<div id="root"></div>', { url: "https://fixture.invalid/", pretendToBeVisual: true }); const previous = new Map();
-  for (const [key, value] of Object.entries({ window: dom.window, document: dom.window.document, sessionStorage: dom.window.sessionStorage, IS_REACT_ACT_ENVIRONMENT: true })) { previous.set(key, Object.getOwnPropertyDescriptor(globalThis,key)); Object.defineProperty(globalThis,key,{ value,writable:true,configurable:true }); }
+  for (const [key, value] of Object.entries({ window: dom.window, document: dom.window.document, sessionStorage: dom.window.sessionStorage, requestAnimationFrame: dom.window.requestAnimationFrame.bind(dom.window), cancelAnimationFrame: dom.window.cancelAnimationFrame.bind(dom.window), IS_REACT_ACT_ENVIRONMENT: true })) { previous.set(key, Object.getOwnPropertyDescriptor(globalThis,key)); Object.defineProperty(globalThis,key,{ value,writable:true,configurable:true }); }
   const { createRoot } = await import("react-dom/client"); const root = createRoot(document.getElementById("root"));
   try { await run(root); } finally { await act(async () => root.unmount()); dom.window.close(); for (const [key, descriptor] of previous) if (descriptor) Object.defineProperty(globalThis,key,descriptor); else delete globalThis[key]; }
 }
@@ -93,4 +94,23 @@ test("real version choices keep prices and quantities separate and carry the exa
   await act(async()=>[...document.querySelectorAll('[aria-label="Available versions"] button')].find(button=>button.textContent.startsWith('Reverse Holo')).click());
   assert.match(document.body.textContent,/You own 1 · Reverse Holo/);assert.equal(document.querySelector('[data-finish]').dataset.finish,'reverse');
   await act(async()=>click('Add another copy'));assert.equal(selected.variant,'Reverse Holofoil');assert.equal(selected.marketPrice,18);assert.equal(JSON.stringify({exactCard,copies}),before);
+}));
+
+test('actual graded-copy wizard saves company/grade/certificate separately with no inherited raw quote',async()=>environment(async root=>{
+ const source=readFileSync('src/pages/EverydayWorkspaces.jsx','utf8')+'\nexport { RecordForm };';
+ const {RecordForm}=await compile({stdin:{contents:source,loader:'jsx',resolveDir:fileURLToPath(new URL('../src/pages/',import.meta.url))}});
+ let saved;const seed=gradedCopySeed({...card,variant:'Normal'},{catalogProduct:true});
+ await act(async()=>root.render(React.createElement(RecordForm,{type:'collection',seed,draftScope:'graded-fixture',state:createEmptyFlipScoutState(),onCancel:()=>{},onSave:async(_collection,record)=>{saved=record;return{...record,id:'graded-new'};}})));
+ const change=async(label,value)=>{const input=[...document.querySelectorAll('label')].find(node=>node.textContent.startsWith(label))?.querySelector('input');assert.ok(input,label);const props=input[Object.keys(input).find(key=>key.startsWith('__reactProps'))];await act(async()=>props.onChange({target:{value}}));};
+ await change('Grading company','PSA');await change('Grade','10');await change('Certification number','00001234');
+ await act(async()=>click('Continue'));await change('Purchase source','Test shop');await change('Allocated item cost','0');await act(async()=>click('Continue'));assert.equal(saved,undefined);await act(async()=>click('Save item'));
+ assert.equal(saved.certificationNumber,'00001234');assert.equal(saved.gradingCompany,'PSA');assert.equal(saved.grade,'10');assert.equal(saved.marketPrice,undefined);assert.equal(saved.priceCheckedAt,undefined);assert.equal(saved.id,undefined);assert.equal(saved.catalogProductId,card.id);assert.equal(saved.quantity,1);assert.equal(saved.purchaseSource,'Test shop');assert.equal(saved.allocatedItemCost,'0');
+}));
+
+test('catalog graded action retains exact printing and opens each original slab rather than duplicating it',async()=>environment(async root=>{
+ const slab={...record,id:'slab-original',gradingCompany:'PSA',grade:'10',certificationNumber:'000088',variant:'Normal'};let opened,adding;
+ await render(root,{row:{...row,ownedItems:[slab]},loadCatalog:async()=>({available:true,products:[{...card,variant:'Normal'}]}),onOpenItem:item=>opened=item,onAddCatalogItem:(_set,product)=>adding=product});
+ await act(async()=>document.querySelector('.set-catalog-product').click());assert.match(document.body.textContent,/000088/);assert.equal(document.querySelectorAll('.graded-copies-panel article').length,1);
+ await act(async()=>click('Open graded copy 1'));assert.equal(opened,slab);assert.equal(adding,undefined);
+ await act(async()=>document.querySelector('.set-catalog-product').click());await act(async()=>click('Add graded copy'));assert.equal(adding.graded,true);assert.equal(adding.variant,'Normal');assert.equal(adding.id,card.id);
 }));

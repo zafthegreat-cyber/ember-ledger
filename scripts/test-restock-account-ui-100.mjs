@@ -56,7 +56,7 @@ test('report shortcuts and pagination show exact counts without mutating reports
   await act(async () => root.render(React.createElement(Browser, props)));
   await click('Show next 20 · 26 remaining'); assert.equal(document.querySelectorAll('[data-report]').length, 40);
   await click('Past 24 hours'); assert.equal(document.querySelectorAll('[data-report]').length, 3);
-  await click('Past 24 hours'); await change(document.querySelector('input[type="checkbox"]')); assert.match(document.body.textContent, /20 of 45/);
+  await click('Past 24 hours'); await change([...document.querySelectorAll('label')].find(node=>node.textContent.includes('Only reports with an observation time')).querySelector('input')); assert.match(document.body.textContent, /20 of 45/);
   await act(async () => root.render(React.createElement(Browser, { ...props, initialStoreId: 'one' })));
   assert.ok([...document.querySelectorAll('[data-report]')].every(row => Number(row.dataset.report) % 2 === 1));
   await act(async () => root.render(React.createElement(Browser, { ...props, initialFollowedOnly: true, followedStoreIds: ['two'] })));

@@ -150,6 +150,7 @@ export default function MenuDrawerContent({ scope }) {
     renderMenuPullDown,
     renderOnboardingSettingsCard,
     renderThemeChoiceControl,
+    renderTextSizeControl,
     renderUsernameRulesCard,
     requestLockedFeatureAccess,
     resetBetaLocalData,
@@ -995,6 +996,7 @@ export default function MenuDrawerContent({ scope }) {
                     <strong>Appearance</strong>
                     <p className="compact-subtitle">Theme: {resolvedAppTheme === "dark" ? "Dark" : "Light"}. Light is the default; Dark stays available for low light.</p>
                     {renderThemeChoiceControl({ compact: true })}
+                    {renderTextSizeControl?.()}
                     <p className="compact-subtitle">Current density: {dashboardCardStyle}. Keep the beta compact on mobile, or switch to a roomier card style.</p>
                     <div className="drawer-inline-actions">
                       {DASHBOARD_CARD_STYLES.map((style) => (

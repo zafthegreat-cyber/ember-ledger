@@ -1,11 +1,12 @@
 // Project a verified face quadrilateral onto a flat face of the 3D object.
 // This is UV mapping at render time; source photos and saved records stay intact.
-export function faceProjection(quad, width, height) {
+export function faceProjection(quad, width, height, sourceWidth = width, sourceHeight = height) {
   if (!Array.isArray(quad) || quad.length !== 4 || !(width > 0 && height > 0) || !quad.every(point => Array.isArray(point) && point.length === 2 && point.every(Number.isFinite))) return null;
+  if (!(sourceWidth > 0 && sourceHeight > 0) || !Number.isFinite(sourceWidth) || !Number.isFinite(sourceHeight)) return null;
   const target = [[0,0],[width,0],[width,height],[0,height]];
   const matrix = [];
   for (let i=0;i<4;i++) {
-    const x=quad[i][0]*width,y=quad[i][1]*height,[u,v]=target[i];
+    const x=quad[i][0]*sourceWidth,y=quad[i][1]*sourceHeight,[u,v]=target[i];
     matrix.push([x,y,1,0,0,0,-u*x,-u*y,u],[0,0,0,x,y,1,-v*x,-v*y,v]);
   }
   for (let col=0;col<8;col++) {
@@ -16,7 +17,13 @@ export function faceProjection(quad, width, height) {
     for(let r=0;r<8;r++)if(r!==col){const scale=matrix[r][col];for(let c=col;c<=8;c++)matrix[r][c]-=scale*matrix[col][c];}
   }
   const [a,b,c,d,e,f,g,h]=matrix.map(row=>row[8]);
-  return [a,d,0,g,b,e,0,h,0,0,1,0,c,f,0,1];
+  // A valid homography can have negative homogeneous depth over the entire
+  // photographed face. CSS clips that face behind the camera even though its
+  // divided coordinates are correct. Choose the equivalent positive-depth
+  // matrix; do not change the photo, crop or perspective.
+  const center=quad.reduce((sum,point)=>[sum[0]+point[0]/4,sum[1]+point[1]/4],[0,0]);
+  const sign=g*center[0]*sourceWidth+h*center[1]*sourceHeight+1<0?-1:1;
+  return [a,d,0,g,b,e,0,h,0,0,1,0,c,f,0,1].map(value=>value*sign);
 }
 
 export function inspectionImageUrl(src) {

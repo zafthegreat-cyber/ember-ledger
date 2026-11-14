@@ -15,3 +15,5 @@
 .owner-sessions button:focus-visible, .owner-sessions input:focus-visible { outline: 3px solid var(--brand-primary); outline-offset: 3px; }
 .owner-sessions button:disabled { opacity: .55; cursor: not-allowed; }
 @media (max-width: 480px) { .owner-sessions header { flex-direction: column; } .owner-sessions li { display: grid; } }
+.owner-sessions__filter { display:grid; gap:6px; }
+.owner-sessions__filter select { min-height:44px; color:var(--text-primary); background:var(--surface-primary); border:1px solid var(--border-strong); border-radius:8px; padding:8px; font:inherit; }

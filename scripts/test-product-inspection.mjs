@@ -94,3 +94,14 @@ test("a saved back photo always wins over a stock reference, with original recor
  assert.equal(createHash("sha256").update(readFileSync("public"+asset.src)).digest("hex"),asset.sha256);
  assert.match(asset.sourceImage,/^https:\/\/tcg\.pokemon\.com\//);
 });
+
+test("Prismatic retail ETB has six verified physical faces without leaking them to other editions", () => {
+ const manifest=JSON.parse(readFileSync("src/data/productInspectionFaces.json","utf8"));const model=manifest["tcgplayer:593355"];
+ assert.equal(model.model,"100-10013");assert.equal(model.upc,"0196214105133");
+ assert.deepEqual(Object.keys(model.faces).sort(),["back","bottom","front","left","right","top"]);
+ assert.equal(new Set(Object.values(model.faces).map(face=>face.src)).size,6);
+ const reviewedPages=new Set(['https://www.bestbuy.com/product/pokemon-trading-card-game-scarlet-violet-prismatic-evolutions-elite-trainer-box/6606082','https://www.ebay.co.uk/itm/257649648275','https://www.ebay.com/itm/117331801263']);
+ for(const face of Object.values(model.faces)){assert.equal(createHash("sha256").update(readFileSync("public"+face.src)).digest("hex"),face.sha256);assert.ok(face.quad.flat().every(value=>value>=0&&value<=1));assert.ok(reviewedPages.has(face.sourcePage),'Use an independently reviewed exact-product source');}
+ for(const id of [616163,644852,598487,670607,670608])assert.equal(manifest["tcgplayer:"+id],undefined);
+ const custom={catalogType:"sealed",inspectionFaces:{back:{src:"owner-back-photo"}}};assert.equal(productInspectionProfile(custom,model).faces.back.src,"owner-back-photo");
+});

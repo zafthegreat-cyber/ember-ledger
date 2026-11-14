@@ -24,7 +24,7 @@ test('61–64: source comparison, searchable stores, individual product edits an
     assert.ok(document.querySelector('.stock-screenshot-compare-source pre'));await click('View source while reviewing');assert.equal(button('Hide source').getAttribute('aria-expanded'),'true');
     await change(document.querySelector('input[type="search"]'),'Austin High');const select=document.querySelector('.stock-screenshot-review-fields select');assert.ok(select.querySelector('option[value="keep"]'),'current draft remains selectable');assert.ok(select.querySelector('option[value="next"]'));assert.equal(select.querySelector('option[value="other"]'),null);
     await change(select,'next');
-    const productInputs=()=>[...document.querySelectorAll('.stock-screenshot-product-rows input')];assert.ok(productInputs().length>=2);
+    const productInputs=()=>[...document.querySelectorAll('.stock-screenshot-product-rows > div > label:first-child input')];assert.ok(productInputs().length>=2);
     while(productInputs().length>1)await click('Remove product 2');
     await change(productInputs()[0],'Reviewed Elite Trainer Box');await click('Add product');await change(productInputs()[1],'Reviewed Booster Bundle');
     await change(document.querySelector('input[type="datetime-local"]'),'2026-10-19T11:30');

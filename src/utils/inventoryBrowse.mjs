@@ -33,19 +33,31 @@ export function inventoryStockLabel(records, available) {
   return 'Available';
 }
 
-export function filterInventoryRows(records, { query = '', stock = 'available', game = 'all', type = 'all', storage = 'all', missingCost = false, available, cost }) {
+export function filterInventoryRows(records, { query = '', stock = 'available', game = 'all', type = 'all', storage = 'all', missingCost = false, unknownQuantityOnly = false, available, cost }) {
   return filterBusinessInventory(records, { stockFilter: stock, getAvailableQuantity: available }).filter(row =>
     businessRecordMatchesQuery(row, query) && (game === 'all' || getRecordGame(row) === game)
     && (type === 'all' || inventoryType(row) === type) && (storage === 'all' || inventoryStorage(row) === storage)
-    && (!missingCost || cost(row) == null));
+    && (!missingCost || cost(row) == null) && (!unknownQuantityOnly || !Number.isFinite(available(row))));
 }
 
-export function sortInventoryGroups(groups, sort = 'name') {
-  return [...groups].sort((a, b) => (sort === 'date' ? b.newestPurchase.localeCompare(a.newestPurchase)
+export function sortInventoryGroups(groups, sort = 'name', direction = 'default') {
+  const descendingDefault = ['date','quantity','cost'].includes(sort);
+  const multiplier = direction === 'default' || (direction === 'desc') === descendingDefault ? 1 : -1;
+  return [...groups].sort((a, b) => multiplier * ((sort === 'date' ? b.newestPurchase.localeCompare(a.newestPurchase)
     : sort === 'quantity' ? b.quantity - a.quantity
       : sort === 'cost' ? (b.cost ?? -1) - (a.cost ?? -1)
         : sort === 'storage' ? a.locations.join(', ').localeCompare(b.locations.join(', ')) : 0)
-    || inventoryName(a.item).localeCompare(inventoryName(b.item), undefined, { numeric: true }));
+    || inventoryName(a.item).localeCompare(inventoryName(b.item), undefined, { numeric: true })) || a.key.localeCompare(b.key));
+}
+
+export const inventoryRecordKey = row => `${row._recordOrigin || 'repository'}:${row.id}`;
+export function inventoryLocationQuantities(records, available) {
+  const locations = new Map();
+  for (const row of records) { const label=inventoryStorage(row), quantity=available(row), current=locations.get(label)||{label,quantity:0,unknown:0}; if(Number.isFinite(quantity))current.quantity+=quantity;else current.unknown++;locations.set(label,current); }
+  return [...locations.values()].sort((a,b)=>a.label.localeCompare(b.label));
+}
+export function browseInventoryLots(records, query='', order='newest') {
+  return records.filter(row=>businessRecordMatchesQuery({...row,description:[row.description,row.purchaseDate,row.purchaseSource,row.source].filter(Boolean).join(' ')},query)).slice().sort((a,b)=>(order==='oldest'?1:-1)*String(a.purchaseDate||a.createdAt||'').localeCompare(String(b.purchaseDate||b.createdAt||''))||inventoryRecordKey(a).localeCompare(inventoryRecordKey(b)));
 }
 
 export function saleInventoryChoices(records, { available, editingItemId = '', selectedId = '', query = '' }) {

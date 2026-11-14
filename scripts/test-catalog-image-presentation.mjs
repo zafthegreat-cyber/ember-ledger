@@ -1,18 +1,20 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
+import fs from "node:fs";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import React, { act } from "react";
 import { getDisplayImageCandidates, getResponsiveImageAttributes } from "../src/utils/imagePresentation.mjs";
 import { getItemImageUrl } from "../src/utils/productDisplayUtils.js";
 
-const compiled = await build({ entryPoints: ["src/components/ItemPhoto.jsx"], bundle: true, platform: "node", format: "cjs", write: false, jsx: "automatic", loader: { ".css": "empty" }, external: ["react", "react/jsx-runtime"], logLevel: "silent", plugins: [{ name: "isolated-artwork", setup(api) {
+const compiled = await build({ stdin: { contents: 'export {default as ItemPhoto} from "./src/components/ItemPhoto.jsx"; export {default as ProductInspectButton} from "./src/components/ProductInspectButton.jsx";', resolveDir: process.cwd(), loader: "jsx" }, bundle: true, platform: "node", format: "cjs", write: false, jsx: "automatic", loader: { ".css": "empty" }, external: ["react", "react/jsx-runtime"], logLevel: "silent", plugins: [{ name: "isolated-artwork", setup(api) {
   api.onLoad({ filter: /PrivateReceipt\.jsx$/ }, () => ({ contents: 'import React from "react"; export function PrivateStorageImage(props){return <img {...props} data-private-resolver="unchanged"/>}', loader: "jsx" }));
+  api.onLoad({ filter: /ProductInspectionContent\.jsx$/ }, () => ({ contents: 'import React from "react"; export default function Inspection({title,src}){return <p data-inspection-src={src}>{title} inspection opened</p>}', loader: "jsx" }));
 } }] });
 const compiledModule = { exports: {} };
 new Function("require", "module", "exports", compiled.outputFiles[0].text)(createRequire(import.meta.url), compiledModule, compiledModule.exports);
-const ItemPhoto = compiledModule.exports.default;
+const { ItemPhoto, ProductInspectButton } = compiledModule.exports;
 
 async function environment(run) {
   const dom = new JSDOM('<div id="root"></div>', { url: "https://fixture.invalid/", pretendToBeVisual: true });
@@ -94,4 +96,31 @@ test("detail fallback keeps the original card and decorative missing art does no
   await render({ src: "", alt: "" }); assert.equal(document.querySelector('[data-photo-fallback="true"]').getAttribute("aria-hidden"), "true");
   await render({ src: "", fallback: React.createElement("span", null, "Catalog image unavailable") });
   assert.equal(document.body.textContent, "Catalog image unavailable");
+}));
+
+test("exact manual catalog artwork fills only missing images and never overrides owner photos or conflicting identities", () => {
+  const catalog = JSON.parse(fs.readFileSync('src/data/generated/sealedProducts.json'));
+  const registry = JSON.parse(fs.readFileSync('src/data/productInspectionFaces.json'));
+  const id = 'sealed-prismatic-evolutions-surprise-box-pre';
+  const product = Object.freeze(catalog.find(row => row.id === id));
+  const before = JSON.stringify(product), front = registry[`catalog:${id}`].faces.front.src;
+  assert.deepEqual(getDisplayImageCandidates(product), [front]);
+  assert.deepEqual(getDisplayImageCandidates({ ...product, id: 'owned-copy', catalogProductId: id }), [front]);
+  assert.deepEqual(getDisplayImageCandidates(product, 'private://owner/item/front'), ['private://owner/item/front']);
+  assert.deepEqual(getDisplayImageCandidates({ ...product, photoUrl: '/owner-photo.jpg' }), ['/owner-photo.jpg']);
+  for (const patch of [{ id: id + '-different' }, { language: 'Japanese' }, { name: product.name + ' Case' }, { tcgplayerProductId: '999999' }]) assert.deepEqual(getDisplayImageCandidates({ ...product, ...patch }), []);
+  assert.equal(JSON.stringify(product), before);
+});
+
+test("a manual catalog item without an old thumbnail has a working inspector launch and retained artwork fallback", async () => environment(async ({ root, render, emit }) => {
+  const product = JSON.parse(fs.readFileSync('src/data/generated/sealedProducts.json')).find(row => row.id === 'sealed-prismatic-evolutions-surprise-box-pre');
+  await render({ product, alt: product.name });
+  const front = document.querySelector('img').getAttribute('src');
+  const registeredFront = JSON.parse(fs.readFileSync('src/data/productInspectionFaces.json'))[`catalog:${product.id}`].faces.front.src;
+  assert.equal(front, registeredFront, 'The launch uses this exact registered product front regardless of the source photograph filename');
+  await emit('error'); assert.ok(document.querySelector('[data-photo-fallback="true"]'));
+  await act(async () => root.render(React.createElement(ProductInspectButton, { product, title: product.name })));
+  assert.equal(document.querySelector('.product-inspect-launch img').getAttribute('src'), front);
+  await act(async () => document.querySelector('.product-inspect-launch').click());
+  assert.equal(document.querySelector('[data-inspection-src]').getAttribute('data-inspection-src'), front);
 }));

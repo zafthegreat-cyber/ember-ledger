@@ -1,3 +1,5 @@
+import { identifiersMatch, isLikelyBarcodeValue } from "./barcodeIdentity.mjs";
+import { verifiedBarcodeEntriesForProduct, isRejectedImportedBarcode } from "./catalogBarcodeLookup.mjs";
 import { normalizeCatalogName, searchCatalog } from "./catalogSearchUtils";
 
 export function normalizeScanInput(value) {
@@ -8,13 +10,6 @@ export function normalizeScanInput(value) {
     .toLowerCase()
     .replace(/[‐‑‒–—]/g, "-")
     .replace(/[^\w]+/g, "");
-}
-
-function scanVariants(value) {
-  const normalized = normalizeScanInput(value);
-  if (!normalized) return [];
-  const withoutLeadingZeroes = normalized.replace(/^0+/, "");
-  return [...new Set([normalized, withoutLeadingZeroes].filter(Boolean))];
 }
 
 function normalizeIdentifierType(value) {
@@ -33,21 +28,15 @@ function productIdentifiers(item = {}) {
     .split(/[,\s|]+/)
     .map((identifierValue) => ({ identifierType: "OTHER", identifierValue, confidence: "imported" }))
     .filter((entry) => entry.identifierValue);
-  return [...explicit, ...fallback, ...fromSearch]
+  return [...verifiedBarcodeEntriesForProduct(item), ...explicit, ...fallback, ...fromSearch]
     .map((identifier) => ({
       type: normalizeIdentifierType(identifier.identifierType || identifier.identifier_type || identifier.type || identifier.label),
       value: identifier.identifierValue || identifier.identifier_value || identifier.value || "",
       source: identifier.source || identifier.retailer || "",
       confidence: identifier.confidence || identifier.status || "",
-      isVerified: Boolean(identifier.isVerified || identifier.is_verified || /verified/i.test(String(identifier.confidence || identifier.status || ""))),
+      isVerified: Boolean(identifier.isVerified || identifier.is_verified || /^verified$/i.test(String(identifier.confidence || identifier.status || ""))),
     }))
-    .filter((identifier) => identifier.value);
-}
-
-function identifierMatches(input, identifierValue) {
-  const lookup = scanVariants(input);
-  const candidate = scanVariants(identifierValue);
-  return lookup.some((value) => candidate.includes(value));
+    .filter((identifier) => identifier.value && !isRejectedImportedBarcode(item, identifier.value));
 }
 
 export function matchUpcToProduct(upc, catalog = []) {
@@ -56,7 +45,7 @@ export function matchUpcToProduct(upc, catalog = []) {
   const upcTypes = new Set(["UPC", "EAN", "GTIN"]);
   return catalog
     .flatMap((item) => productIdentifiers(item)
-      .filter((identifier) => upcTypes.has(identifier.type) && identifierMatches(normalized, identifier.value))
+      .filter((identifier) => upcTypes.has(identifier.type) && identifiersMatch(normalized, identifier.value))
       .map((identifier) => ({
         item,
         score: identifier.isVerified ? 1200 : 1080,
@@ -85,7 +74,7 @@ export function matchSkuToProduct(sku, catalog = []) {
   ]);
   return catalog
     .flatMap((item) => productIdentifiers(item)
-      .filter((identifier) => skuTypes.has(identifier.type) && identifierMatches(normalized, identifier.value))
+      .filter((identifier) => skuTypes.has(identifier.type) && identifiersMatch(normalized, identifier.value))
       .map((identifier) => ({
         item,
         score: identifier.isVerified ? 1030 : 940,
@@ -137,7 +126,7 @@ export function getBestCatalogMatches(input, catalog = [], limit = 12) {
     ...matchUpcToProduct(normalized, catalog),
     ...matchSkuToProduct(normalized, catalog),
     ...(cardNumberLike ? matchCardNumberToCard(input, "", catalog) : []),
-    ...matchProductByAlias(input, catalog, limit),
+    ...(!isLikelyBarcodeValue(input) ? matchProductByAlias(input, catalog, limit) : []),
   ];
   const seen = new Set();
   return matches

@@ -3,6 +3,7 @@ import { PrivateStorageImage } from "./PrivateReceipt.jsx";
 import { preserveLegacyReportZeros } from "../utils/restockDetailItems.mjs";
 import "./restock-report-details.css";
 
+import RestockObservationTools from './RestockObservationTools.jsx';
 function savedText(value) {
   return typeof value === "string" || typeof value === "number" ? String(value).trim() : "";
 }
@@ -111,6 +112,7 @@ function ProofGallery({ photos, proofNotes }) {
 
 /** Read-only report content. The owning dialog controls navigation and focus. */
 export default function RestockReportDetails({
+  preferenceScope = "", relatedReports = [], getStore,
   report = {},
   store = {},
   items = [],
@@ -156,6 +158,7 @@ export default function RestockReportDetails({
     <div className="scout-report-details">
       <div className="scout-report-details__overview" aria-label="Report summary">
         <div className="scout-report-details__store"><strong>{storeName}</strong>{location ? <p>{location}</p> : null}</div>
+        <RestockObservationTools report={report} reports={relatedReports} getStore={getStore} scope={preferenceScope} address={savedText(store.address) ? location : ''} />
         <span className={`scout-report-details__stock scout-report-details__stock--${statusClass}`}>{stockLabel}</span>
         <dl>
           <div><dt>Observed</dt><dd>{observation}{savedText(report.timezone) ? <small> · Report time zone: {report.timezone}</small> : null}</dd></div>

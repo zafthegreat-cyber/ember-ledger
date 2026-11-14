@@ -77,7 +77,7 @@ test('1,2,4,30: real Inventory UI starts available, expands original lots, offer
   assert.equal(document.querySelectorAll('.inventory-product').length,4);
   await click('Open Collector Box, 4 available, 2 purchase records');
   const lots=document.querySelectorAll('.inventory-lots > button');assert.equal(lots.length,2);
-  await act(async()=>lots[1].click());assert.equal(opened,rows[1]);
+  await act(async()=>[...lots].find(node=>node.textContent.includes("2026-02-01")).click());assert.equal(opened,rows[1]);
   await click('Review missing costs');assert.equal(document.querySelectorAll('.inventory-product').length,2);
   assert.match(document.body.textContent,/Second cost review/);
   await click('Table');assert.equal(document.querySelectorAll('tbody tr').length,2);

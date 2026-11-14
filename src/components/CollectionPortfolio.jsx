@@ -2,15 +2,22 @@ import { useEffect, useRef, useState } from "react";
 import { exportFile, exportFileError, exportFileStatus } from "../native/nativeFiles.js";
 import { BottomSheet, FilterButton, QuietButton, SearchField } from "./operations/OperationsUI.jsx";
 import { PortfolioChooser, PortfolioItemGrid, PortfolioMostValuable, PortfolioValueChart } from "./CollectionPortfolioViews.jsx";
-import { buildPortfolioCsv, createPortfolioStore, getPortfolioItemKey, getPortfolioItemValuation, portfolioSeries, selectPortfolioItems, summarizePortfolio } from "../utils/collectionPortfolio.mjs";
+import { createPortfolioStore, getPortfolioItemKey, getPortfolioItemValuation, portfolioSeries, selectPortfolioItems, summarizePortfolio } from "../utils/collectionPortfolio.mjs";
 import { groupCollectionCopies } from "../utils/collectionCopyGroups.mjs";
 import { createRestockDetailsHistory } from "../utils/restockDetailsHistory.mjs";
 import { copyRecognition, sortCollectionGroups } from "../utils/collectionBrowse.mjs";
 import { inferOwnedItemPurpose, OWNED_ITEM_PURPOSE_OPTIONS } from "../features/ownedItems/ownedItemPurpose.js";
+import CollectionBrowseTools from './CollectionBrowseTools.jsx';
+import PhoneMotionControl from './PhoneMotionControl.jsx';
+import { CollectionCopyCompare, CollectionExportReview } from './CollectionRecordTools.jsx';
+import { collectionPreferenceStore, filterOwnedCollection, collectionCurrencyTotals, collectionExportRows, collectionRowsCsv } from '../utils/collectionNext.mjs';
+import './collection-next.css';
 import ExportDisclosure from "./ExportDisclosure.jsx";
 
 const PERIODS = [["1d", "1D"], ["7d", "7D"], ["1m", "1M"], ["3m", "3M"], ["6m", "6M"], ["max", "MAX"]];
 const EMPTY_FEATURES = Object.freeze({});
+const EXTRA_FILTER_LABELS = {storage:"Storage", language:"Language", finish:"Finish", edition:"Edition", coverage:"Valuation"};
+const COVERAGE_LABELS = {valued:"Valued in USD", unvalued:"Not valued", "other-currency":"Other currencies"};
 const money = (value) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
 const title = (item) => item.name || item.title || item.cardName || item.productName || "Untitled item";
 const valueForItem = (item) => getPortfolioItemValuation(item).value;
@@ -20,9 +27,16 @@ function identity(prefix) { return `${prefix}-${globalThis.crypto?.randomUUID?.(
 export default function CollectionPortfolio({
   items = [], visibleItems = [], preferenceScope, query, onQueryChange, conditionFilter,
   onOpenFilters, onClearFilters, onOpenItem, onOpenGroup, onAddItem, resolveItemImage, moreActions,
-  features = EMPTY_FEATURES, onLockedFeature, viewState, onViewStateChange, gameFilters, filterSummary = null, gameFiltered = false,
+  features = EMPTY_FEATURES, onLockedFeature, viewState, onViewStateChange, gameFilters, filterSummary = null, gameFiltered = false, externalFilterState = {}, onRestoreExternalFilters,
 }) {
   const [initial] = useState(() => { const store = createPortfolioStore({ storage: deviceStorage(), scope: preferenceScope }); return { store, result: store.load() }; });
+  const [extraStore] = useState(()=>collectionPreferenceStore(deviceStorage(),preferenceScope));
+  const [extraPreferences,setExtraPreferences]=useState(()=>extraStore.load());
+  const [snapshotNote,setSnapshotNote]=useState('');
+  const [exportScope,setExportScope]=useState('portfolio');
+  const extraFilters=viewState.extraFilters||{};
+  const activeExtraFilters=Object.entries(EXTRA_FILTER_LABELS).filter(([key])=>extraFilters[key]&&extraFilters[key]!=="all");
+  const saveExtraPreferences=next=>{const result=extraStore.save(next);setExtraPreferences(result);};
   const [saved, setSaved] = useState(initial.result);
   const [activeId, setActiveId] = useState(initial.result.state.selectedPortfolioId || "main");
   const { section: requestedSection, period, hidden, display, sort } = viewState;
@@ -47,9 +61,9 @@ export default function CollectionPortfolio({
   const portfolioItems = selectPortfolioItems(items, state, selectedId);
   const summary = summarizePortfolio(portfolioItems);
   const portfolioGroups = groupCollectionCopies(portfolioItems);
-  const hasBrowseFilters = Boolean(query || conditionFilter || gameFiltered || purpose !== "all");
+  const hasBrowseFilters = Boolean(query || conditionFilter || gameFiltered || purpose !== "all" || Object.values(extraFilters).some(value=>value&&value!=="all"));
   const included = new Set(portfolioItems);
-  const shown = visibleItems.filter(item => included.has(item) && (purpose === "all" || inferOwnedItemPurpose(item) === purpose));
+  const shown = filterOwnedCollection(visibleItems.filter(item => included.has(item) && (purpose === "all" || inferOwnedItemPurpose(item) === purpose)),extraFilters);
   const shownGroups = sortCollectionGroups(groupCollectionCopies(shown), sort);
   const shownSummary = summarizePortfolio(shown);
   const membershipItems = items.filter(item => !membershipQuery.trim() || [title(item), copyRecognition(item, {hidden}).title, copyRecognition(item, {hidden}).detail, item.id].join(" ").toLowerCase().includes(membershipQuery.trim().toLowerCase()));
@@ -63,7 +77,7 @@ export default function CollectionPortfolio({
   useEffect(() => {
     const controller = createRestockDetailsHistory({
       target: window, historyKey: "code3CollectionPortfolioDialog",
-      resolveReport: (payload) => ["chooser", "form", "remove"].includes(payload?.type) ? payload : null,
+      resolveReport: (payload) => ["chooser", "form", "remove", "export", "compare"].includes(payload?.type) ? payload : null,
       onOpen: (payload) => setModal(payload.type),
       onClose: () => {
         setModal("");
@@ -147,12 +161,13 @@ export default function CollectionPortfolio({
   }
   function saveSnapshot() {
     if (!historyAllowed || !summary.isValid || !summary.knownCount || hidden) return;
-    if (save((next) => { next.snapshots.push({ id: identity("snapshot"), at: new Date().toISOString(), portfolioId: selectedId, total: summary.total, knownCount: summary.knownCount, totalCount: summary.totalCount, quantity: summary.quantity }); })) setMessage("Value snapshot saved on this device.");
+    const snapshotId=identity("snapshot");
+    if (save((next) => { next.snapshots.push({ id: snapshotId, at: new Date().toISOString(), portfolioId: selectedId, total: summary.total, knownCount: summary.knownCount, totalCount: summary.totalCount, quantity: summary.quantity }); })) { if(snapshotNote.trim())saveExtraPreferences({...extraPreferences.state,snapshotNotes:{...extraPreferences.state.snapshotNotes,[snapshotId]:snapshotNote.trim()}});setSnapshotNote('');setMessage("Value snapshot saved on this device."); }
   }
   // F19: export goes through the shared native file/share adapter (browser
   // download or mobile share sheet), reports interruption or failure honestly,
   // and a synchronous guard ignores duplicate taps while one export is running.
-  async function exportPortfolio(exportScope = "portfolio") {
+  async function exportPortfolio(config) {
     const exportItems = exportScope === "results" ? shown : portfolioItems;
     if (features.export !== true) { onLockedFeature?.("collection_export"); return; }
     if (exportingRef.current) return;
@@ -160,9 +175,9 @@ export default function CollectionPortfolio({
     setExporting(true);
     setMessage(`Preparing export of ${exportItems.length} record${exportItems.length === 1 ? "" : "s"} ${exportScope === "results" ? "from these results" : `in ${activeName}`}…`);
     try {
-      const blob = new Blob(["\uFEFF", buildPortfolioCsv(exportItems, { includeValues: !hidden })], { type: "text/csv;charset=utf-8" });
+      const blob = new Blob(["\uFEFF", collectionRowsCsv(collectionExportRows(exportItems,config.fields,{privateDetails:config.privateDetails,hiddenValues:hidden}))], { type: "text/csv;charset=utf-8" });
       const result = await exportFile({ blob, filename: exportScope === "results" ? "code3-tcg-collection-results.csv" : "code3-tcg-portfolio.csv" });
-      setMessage(`${exportFileStatus(result)} ${hidden ? "Monetary values were left out." : "Saved estimates were included."}`);
+      setMessage(`${exportFileStatus(result)} Selected columns only.`); closeDialog();
     } catch (error) {
       setMessage(exportFileError(error).replace("No saved backup was confirmed; your records are unchanged.", "No file was confirmed; your records are unchanged."));
     } finally {
@@ -179,12 +194,13 @@ export default function CollectionPortfolio({
     searchRef.current?.querySelector("input")?.focus();
   }
   function clearBrowseFilters() {
-    updateView({purpose:"all"});
+    updateView({purpose:"all",extraFilters:{}});
     onClearFilters?.();
     searchRef.current?.querySelector("input")?.focus();
   }
 
-  return <section className="collection-portfolio" aria-label="Collection portfolio">
+  return <section className="collection-portfolio" data-density={extraPreferences.state.density} aria-label="Collection portfolio">
+    <PhoneMotionControl compact />
     <div ref={contentRef} inert={Boolean(modal)} aria-hidden={modal ? true : undefined}>
       <div className="collection-portfolio-tabs" role="group" aria-label="Portfolio section">
         <button type="button" aria-pressed={section === "overview"} onClick={() => updateView({ section: "overview" })}>Overview</button>
@@ -199,6 +215,7 @@ export default function CollectionPortfolio({
         {series.hasHistory && historyAllowed && !hidden ? <p className="collection-portfolio-change" data-tone={series.change > 0 ? "positive" : series.change < 0 ? "negative" : "neutral"}>{series.change > 0 ? "+" : ""}{money(series.change)}{series.percentChange == null ? "" : ` (${series.percentChange > 0 ? "+" : ""}${series.percentChange.toFixed(1)}%)`} <span>between saved snapshots</span></p> : null}
       </header>
       {!saved.ok ? <div className="collection-portfolio-notice" role="alert"><p>{saved.error}</p><button type="button" onClick={reloadSettings}>Reload portfolio settings</button></div> : null}
+      {!extraPreferences.ok&&<p role="alert">{extraPreferences.error}</p>}
       {message ? <p className="collection-portfolio-message" role="status">{message}</p> : null}
       {formError && !modal ? <div className="collection-portfolio-notice" role="alert"><p>{formError}</p><button type="button" onClick={reloadSettings}>Reload portfolio settings</button></div> : null}
       {section === "overview" ? <>
@@ -214,27 +231,30 @@ export default function CollectionPortfolio({
             </div>
             <div className="collection-portfolio-filter-row">{gameFilters}<label className="collection-portfolio-sort">Purpose<select aria-label="Collection purpose" value={purpose} onChange={event => updateView({purpose:event.target.value})}><option value="all">All collection purposes</option>{OWNED_ITEM_PURPOSE_OPTIONS.filter(option => option.value !== "FOR_RESALE").map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label><label className="collection-portfolio-sort">Sort<select aria-label="Sort collection" value={sort} onChange={(event) => updateView({ sort: event.target.value })}><option value="name">Name</option><option value="value">Most valuable</option><option value="recent">Recently added</option><option value="quantity">Quantity</option><option value="set">Set</option></select></label></div>
             {hasBrowseFilters ? <div className="collection-portfolio-active-filters" aria-label="Applied collection filters">
-              <div>{purpose !== "all" ? <button type="button" className="collection-portfolio-condition-chip" onClick={() => updateView({purpose:"all"})} aria-label="Clear purpose filter">{OWNED_ITEM_PURPOSE_OPTIONS.find(option => option.value === purpose)?.label} ×</button> : null}{conditionFilter ? <button type="button" className="collection-portfolio-condition-chip" aria-label={`Change condition filter: ${conditionFilter}`} onClick={onOpenFilters}><span>Condition</span><strong>{conditionFilter}</strong></button> : query || gameFiltered ? <span>{query ? "Search applied" : "Game filter applied"}</span> : null}</div>
+              <div>{activeExtraFilters.map(([key,label])=><button type="button" key={key} className="collection-portfolio-condition-chip" aria-label={`Clear ${label.toLowerCase()} filter: ${key==="coverage"?COVERAGE_LABELS[extraFilters[key]]||extraFilters[key]:extraFilters[key]}`} onClick={()=>updateView({extraFilters:{...extraFilters,[key]:"all"}})}><span>{label}</span><strong>{key==="coverage"?COVERAGE_LABELS[extraFilters[key]]||extraFilters[key]:extraFilters[key]}</strong><span aria-hidden="true">×</span></button>)}{purpose !== "all" ? <button type="button" className="collection-portfolio-condition-chip" onClick={() => updateView({purpose:"all"})} aria-label="Clear purpose filter">{OWNED_ITEM_PURPOSE_OPTIONS.find(option => option.value === purpose)?.label} ×</button> : null}{conditionFilter ? <button type="button" className="collection-portfolio-condition-chip" aria-label={`Change condition filter: ${conditionFilter}`} onClick={onOpenFilters}><span>Condition</span><strong>{conditionFilter}</strong></button> : query || gameFiltered ? <span>{query ? "Search applied" : "Game filter applied"}</span> : null}</div>
               <button type="button" className="collection-portfolio-clear-filters" onClick={clearBrowseFilters}>Clear all</button>
             </div> : null}
           </div>
+          <CollectionBrowseTools items={portfolioItems} filters={extraFilters} onChange={patch=>updateView({extraFilters:{...extraFilters,...patch}})} preferences={extraPreferences.state} onSavePreferences={saveExtraPreferences} currentSearch={{query:query||'',purpose,sort,extraFilters,...externalFilterState}} onRestoreSearch={filters=>{onQueryChange?.(filters.query||'');updateView({purpose:filters.purpose||'all',sort:filters.sort||'name',extraFilters:filters.extraFilters||{}});onRestoreExternalFilters?.({game:filters.game||'all',condition:filters.condition||''});}} />
           {filterSummary}
           {hasBrowseFilters ? <p className="collection-portfolio-filtered-total" role="status"><strong>These results</strong> · {shownGroups.length} product{shownGroups.length === 1 ? "" : "s"} · {shownSummary.quantity ?? "Unknown"} total quantity · {hidden ? "Value hidden" : shownSummary.knownCount && shownSummary.isValid ? `${money(shownSummary.total)} saved value${shownSummary.unknownCount ? ` · ${shownSummary.unknownCount} records not valued` : ""}` : "Not valued"}</p> : null}
           {shownGroups.length ? <PortfolioItemGrid groups={shownGroups} resolveItemImage={resolveItemImage} onOpenGroup={openGroup} hidden={hidden} valueForItem={valueForItem} money={money} mode={display} /> : <div className="collection-portfolio-empty"><h3>{hasBrowseFilters && portfolioGroups.length ? "No matching items" : "This portfolio is ready for your items"}</h3><p>{hasBrowseFilters && portfolioGroups.length ? `${portfolioGroups.length} product${portfolioGroups.length === 1 ? " is" : "s are"} saved in ${activeName}. Try another search or clear the filters to see them.` : items.length ? "Choose another portfolio or organize existing items into this one." : "Add a card, sealed product, or collectible to get started. Existing records keep their purpose."}</p>{hasBrowseFilters && portfolioGroups.length ? <button type="button" onClick={clearBrowseFilters}>Clear search &amp; filters</button> : <button type="button" onClick={items.length ? () => showDialog("chooser") : onAddItem}>{items.length ? "Choose portfolio" : "Add item"}</button>}</div>}
         </section>
       </> : <section className="collection-portfolio-performance"><h2>Understanding your performance</h2><p>Saved snapshots show your collection's recorded value over time. Additions, removals, portfolio organization and estimate changes can all move the total.</p><p>{summary.marketKnownCount} product{summary.marketKnownCount === 1 ? " has" : "s have"} a saved market estimate; {summary.projectedKnownCount} use a projected estimate. Purchase costs are not substituted for missing prices.</p><p>Snapshots and portfolio organization are saved on this device. Original items keep their existing saving and sync behavior.</p></section>}
+      {!hidden&&<div className="collection-currency-totals" aria-label="Saved subtotals by currency">{collectionCurrencyTotals(hasBrowseFilters?shown:portfolioItems).map(row=><span key={row.currency}><strong>{new Intl.NumberFormat("en-US",{style:"currency",currency:row.currency}).format(row.total)}</strong> {row.currency} · {row.records} valued records</span>)}</div>}
       <details className="collection-portfolio-estimate-note"><summary>About these saved estimates</summary><p className="collection-portfolio-privacy">{summary.knownCount} of {summary.totalCount} purchase records have a saved value. Wishlist budgets and items for sale are not included. {summary.valuationLabel}. {summary.unknownCount ? `${summary.unknownCount} without usable values are excluded from the total.` : "Values are estimates, not sale proceeds."}{summary.unconvertedCount ? ` ${summary.unconvertedCount} saved in ${summary.unconvertedCurrencies.join(", ")} ${summary.unconvertedCount === 1 ? "is" : "are"} kept as saved and not converted into the USD total.` : ""}</p></details>
-      <details className="collection-portfolio-tools"><summary>Organize & export</summary><div className="collection-portfolio-actions"><button type="button" onClick={() => showDialog("chooser")}>Organize portfolios</button><button type="button" aria-describedby="portfolio-export-disclosure" aria-busy={exporting} disabled={exporting} onClick={() => exportPortfolio("portfolio")}>{exporting ? "Exporting…" : "Export whole portfolio"}</button><button type="button" disabled={exporting || !shown.length} onClick={() => exportPortfolio("results")}>Export these results ({shown.length} record{shown.length === 1 ? "" : "s"})</button>{moreActions}</div>
+      <details className="collection-portfolio-tools"><summary>Organize & export</summary><div className="collection-portfolio-actions"><button type="button" onClick={() => showDialog("chooser")}>Organize portfolios</button><button type="button" aria-describedby="portfolio-export-disclosure" aria-busy={exporting} disabled={exporting} onClick={() => {if(features.export!==true){onLockedFeature?.("collection_export");return;}setExportScope("portfolio");showDialog("export");}}>{exporting ? "Exporting…" : "Export whole portfolio"}</button><button type="button" disabled={exporting || !shown.length} onClick={() => {if(features.export!==true){onLockedFeature?.("collection_export");return;}setExportScope("results");showDialog("export");}}>Export these results ({shown.length} record{shown.length === 1 ? "" : "s"})</button><button type="button" disabled={shown.length<2} onClick={()=>showDialog("compare")}>Compare purchases</button>{moreActions}</div>
       <ExportDisclosure id="portfolio-export-disclosure" kind="portfolio-csv" format="csv" recordCount={portfolioItems.length} includeValues={!hidden} /></details>
       {historyAllowed && section === "performance" ? <section className="collection-portfolio-history" aria-label="Portfolio value history">
-        <PortfolioValueChart points={series.points} hidden={hidden} money={money} periodLabel={PERIODS.find(([key]) => key === period)?.[1]} />
+        <PortfolioValueChart points={series.points.map(point=>({...point,note:extraPreferences.state.snapshotNotes[point.id]||""}))} hidden={hidden} money={money} periodLabel={PERIODS.find(([key]) => key === period)?.[1]} />
         <div className="collection-portfolio-periods" role="group" aria-label="Value history period">{PERIODS.map(([key, label]) => <button type="button" key={key} aria-pressed={period === key} onClick={() => updateView({ period: key })}>{label}</button>)}</div>
         {!hidden ? <p className="collection-portfolio-privacy">{series.coverageLabel}</p> : null}
-        <div className="collection-portfolio-snapshot"><button type="button" disabled={!saved.writable || !summary.isValid || !summary.knownCount || hidden} onClick={saveSnapshot}>Save value snapshot</button><small>Records the current estimate on this device. No past values are invented.</small></div>
+        <div className="collection-portfolio-snapshot"><label className="collection-snapshot-note">Snapshot note (optional)<input maxLength={240} value={snapshotNote} onChange={event=>setSnapshotNote(event.target.value)} placeholder="e.g. Added two cards" /></label><button type="button" disabled={!saved.writable || !summary.isValid || !summary.knownCount || hidden} onClick={saveSnapshot}>Save value snapshot</button><small>Records the current estimate on this device. No past values are invented.</small></div>
       </section> : null}
       {section === "overview" && rankedGroups.length ? <details className="collection-portfolio-highlights"><summary>Most valuable items</summary><PortfolioMostValuable groups={rankedGroups} resolveItemImage={resolveItemImage} onOpenGroup={openGroup} hidden={hidden} valueForItem={valueForItem} money={money} /></details> : section === "performance" ? <PortfolioMostValuable groups={rankedGroups} resolveItemImage={resolveItemImage} onOpenGroup={openGroup} hidden={hidden} valueForItem={valueForItem} money={money} /> : null}
     </div>
     <div className="collection-portfolio-modal">
+<CollectionExportReview open={modal==="export"} onClose={closeDialog} items={exportScope==="results"?shown:portfolioItems} scopeLabel={exportScope==="results"?"Current filtered results":activeName} hidden={hidden} onExport={exportPortfolio} busy={exporting}/><CollectionCopyCompare open={modal==="compare"} onClose={closeDialog} items={shown} hidden={hidden}/>
       <PortfolioChooser open={modal === "chooser"} onClose={closeDialog} notice={modalNotice} portfolios={rows} activeId={selectedId} onSelect={choosePortfolio} onCreate={() => openForm()} onManage={openForm} onToggleFavorite={(id) => save((next) => { const row = next.portfolios.find((entry) => entry.id === id); if (row) row.favorite = !row.favorite; })} onMove={movePortfolio} />
       <BottomSheet open={modal === "form"} title={draft.id ? "Manage portfolio" : "New portfolio"} onClose={closeDialog}>
         <form className="collection-portfolio-form" onSubmit={submitPortfolio}>

@@ -15,6 +15,26 @@ function restore(target,current,keys) {
   for(const key of keys) { if(Object.hasOwn(current,key))target[key]=current[key];else delete target[key]; }
 }
 
+const SAVED_QUOTE_FIELDS = Object.freeze([...new Set([
+  ...Object.values(FIELDS).flatMap(field => field.local), ...METADATA,
+  'marketPriceSource','market_price_source','marketPriceConfidence','market_price_confidence',
+  'priceConfidence','price_confidence','marketPriceReviewedAt','market_price_reviewed_at',
+  'priceReviewedAt','price_reviewed_at','priceReviewNote','price_review_note','msrpSource','msrp_source',
+  'currency','marketCurrency','market_currency','priceCurrency','price_currency',
+])]);
+
+/** Reconcile a completed edit with the latest local original. A quote refresh
+ * during the request wins as one snapshot, including aliases and provenance;
+ * this cannot pair a fresh amount with stale source/check metadata. With no
+ * intervening quote change, the reviewed server result is accepted normally. */
+export function mergeLegacySavedQuoteRecord({atSave,current,saved}={}) {
+  if(!atSave?.id || current?.id !== atSave.id || saved?.id !== atSave.id)return current;
+  const merged={...current,...saved};
+  const changed=SAVED_QUOTE_FIELDS.some(key => Object.hasOwn(current,key)!==Object.hasOwn(atSave,key) || !Object.is(current[key],atSave[key]));
+  if(changed)restore(merged,current,SAVED_QUOTE_FIELDS);
+  return merged;
+}
+
 /** Pure edit reconciliation. `baseline` is the form snapshot at edit start;
  * `current` is the latest original record at Save, not the original snapshot.
  * Unchanged inputs cannot write stale quotes over a refresh that arrived while

@@ -1,0 +1,20 @@
+.restock-browse-tools,.restock-store-group,.restock-unlocated{border:1px solid var(--line, #8d8174);border-radius:12px;padding:1rem;margin-block:1rem;}
+.restock-browse-tools>label,.restock-browse-tools>button{margin:.5rem .6rem .5rem 0;}
+.restock-browse-tools input:not([type=checkbox]){display:block;max-width:100%;}
+.restock-browse-tools ul{padding-left:1.2rem;}
+.restock-browse-tools li{display:flex;flex-wrap:wrap;gap:.5rem;margin-block:.5rem;}
+.restock-feed-entry{min-width:0;margin-bottom:1.25rem;}
+.restock-observation-tools{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-top:.5rem;}
+.restock-observation-tools>details,.restock-observation-tools>p{flex-basis:100%;}
+.restock-observation-tools summary{cursor:pointer;}
+.restock-matching-products mark{display:inline-block;margin:.25rem;padding:.2rem .45rem;border-radius:4px;background:#dec86c;color:#241c12;}
+.stock-screenshot-intake .stock-screenshot-field-decisions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem;}
+.stock-screenshot-intake pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:15rem;overflow:auto;}
+.stock-screenshot-intake .stock-screenshot-product-rows > div{flex-wrap:wrap;}
+.stock-screenshot-intake .stock-screenshot-product-rows > div label{min-width:0;max-width:100%;}
+@media(max-width:480px){.stock-screenshot-intake .stock-screenshot-field-decisions{grid-template-columns:1fr;}}
+html body .stock-screenshot-intake .stock-screenshot-product-rows > div,
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-product-rows > div{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) auto;gap:.65rem;align-items:end;}
+.stock-screenshot-product-rows input{width:100%;min-width:0;box-sizing:border-box;}
+.stock-screenshot-duplicate{grid-column:1/-1;}
+@media(max-width:650px){html body .stock-screenshot-intake .stock-screenshot-product-rows > div,html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-product-rows > div{grid-template-columns:repeat(2,minmax(0,1fr));}html body .stock-screenshot-product-rows > div > label:first-child{grid-column:1/-1;}html body .stock-screenshot-product-rows > div > button{grid-column:1/-1;justify-self:end;}}

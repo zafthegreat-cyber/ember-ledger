@@ -83,8 +83,10 @@
 @media(max-width:599px){.app.app-command-shell[data-theme] .product-inspect__faces{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.app.app-command-shell[data-theme] .product-inspect__faces button{width:100%}}
 
 /* Card stock has a thin paper edge and a dark core, not a box-like gold rim. */
-.app.app-command-shell[data-theme] .product-inspect__object[data-shape="card"]{--object-depth:1.1px;--card-radius:calc(var(--object-width)*.035)}
-.app.app-command-shell[data-theme] .product-inspect__object[data-shape="card"] :is(.product-inspect__front,.product-inspect__back){border-radius:var(--card-radius);border-width:.5px}
+.app.app-command-shell[data-theme] .product-inspect__object[data-shape="card"]{--object-depth:1.1px;--card-radius:calc(var(--object-width)*.05)}
+/* Catalog JPEGs include white outside the rounded paper corners. Clip the
+   entire face (scan and reflection together) to the physical card outline. */
+.app.app-command-shell[data-theme] .product-inspect__object[data-shape="card"] :is(.product-inspect__front,.product-inspect__back){border-radius:var(--card-radius);clip-path:inset(0 round var(--card-radius));border:0;background:transparent}
 .app.app-command-shell[data-theme] .product-inspect__object[data-shape="card"] .product-inspect__back{border-color:#112849;background:#123559;box-shadow:inset 0 0 0 .5px #fff2,0 6px 14px #0003}
 .app.app-command-shell[data-theme] .product-inspect__object[data-shape="card"] :is(.product-inspect__left,.product-inspect__right){height:calc(100% - var(--card-radius)*2);top:var(--card-radius);bottom:auto;border:0;background:linear-gradient(90deg,#ded9ca 0 30%,#5c5c5b 40% 58%,#e9e1d2 72%)}
 .app.app-command-shell[data-theme] .product-inspect__object[data-shape="card"] :is(.product-inspect__top,.product-inspect__bottom){width:calc(100% - var(--card-radius)*2);left:var(--card-radius);right:auto;border:0;background:linear-gradient(#ded9ca 0 30%,#5c5c5b 40% 58%,#e9e1d2 72%)}
@@ -132,6 +134,11 @@
 /* Composite packaging photos remain photographs: no invented rear or side art. */
 .app.app-command-shell[data-theme] .product-inspect__object[data-shape="photo"]{--object-width:min(280px,70vw,calc(310px / var(--photo-aspect,1)));--object-height:calc(var(--object-width)*var(--photo-aspect,1));--object-depth:0px}
 .app.app-command-shell[data-theme] .product-inspect__object[data-shape="photo"] .product-inspect__front{background:transparent;border:0;border-radius:0;box-shadow:none}
+
+/* Use each verified package's proportions; a tall bundle is not an ETB. */
+.app.app-command-shell[data-theme] .product-inspect__stage[data-shape="box"],.app.app-command-shell[data-theme] .product-inspect__fullscreen .product-inspect__stage[data-shape="box"]{height:var(--fitted-box-height,340px);--box-view-width:var(--fitted-box-width,220px)}
+.app.app-command-shell[data-theme] .product-inspect__stage[data-shape="box"][data-detail="true"]{height:var(--fitted-box-height,440px);--box-view-width:var(--fitted-box-width,260px)}
+.app.app-command-shell[data-theme] .product-inspect__stage[data-shape="box"] .product-inspect__object{--object-width:var(--fitted-box-width,220px)}
 .app.app-command-shell[data-theme] .product-inspect__object[data-shape="photo"] :is(.product-inspect__left,.product-inspect__right,.product-inspect__top,.product-inspect__bottom,.product-inspect__glare){display:none}
 /* Unknown card layouts retain the printed scan and laminate reflection. A
    Pokémon artwork-window mask must never be imposed on another game's card. */
@@ -143,3 +150,29 @@
 .app.app-command-shell[data-theme] .product-inspect__stage[data-dragging="true"] .product-inspect__object,.app.app-command-shell[data-theme] .product-inspect__object[data-moving="true"]{will-change:transform}
 
 .app.app-command-shell[data-theme] .product-inspect__object[data-shape="photo"][data-has-back="false"] .product-inspect__back{display:none}
+
+/* Reverse foil is metallic on the card body, while the artwork window remains printed.
+   Normal cards never receive either foil layer. Directional contrast follows tilt. */
+.app.app-command-shell[data-theme] .product-inspect__object[data-art-ready="true"][data-finish="reverse"] .product-inspect__foil{opacity:min(.88,calc(var(--foil-power,.35)*1.5 + .14));}
+.app.app-command-shell[data-theme] .product-inspect__object[data-art-ready="true"][data-finish="reverse"] .product-inspect__foil-shade{opacity:calc(.075 + var(--foil-shade,0)*1.8);}
+.app.app-command-shell[data-theme] .product-inspect__object[data-finish="reverse"] .product-inspect__metal{background:linear-gradient(var(--foil-angle),#2c354c08 5%,#8197aa45 29%,#e5eef9b5 45%,#ffffffe0 50%,#b9c9da90 55%,#52637830 70%,transparent 88%);background-size:190% 160%;background-position:var(--reflection-x) var(--reflection-y);opacity:.94;}
+.app.app-command-shell[data-theme] .product-inspect__object[data-finish="reverse"] .product-inspect__diffraction{opacity:.56;}
+
+/* A loose wrapper has two photographed faces and a thin folded foil edge. */
+.app.app-command-shell[data-theme] .product-inspect__object[data-shape="pack"]{--object-width:min(180px,48vw);--object-height:calc(var(--object-width)*var(--box-height,1.846));--object-depth:calc(var(--object-width)*var(--box-depth,.035))}
+.app.app-command-shell[data-theme] .product-inspect__object[data-shape="pack"] :is(.product-inspect__front,.product-inspect__back){border:0;border-radius:1px;background:var(--surface-color,#b8b8b4);box-shadow:none}
+.app.app-command-shell[data-theme] .product-inspect__object[data-shape="pack"] :is(.product-inspect__left,.product-inspect__right){border:0;border-radius:45%;background:linear-gradient(90deg,#6d6d68,#bbbcb4 35%,#757770 60%,#a4a59f)}
+.app.app-command-shell[data-theme] .product-inspect__object[data-shape="pack"] :is(.product-inspect__top,.product-inspect__bottom){height:1px;inset:calc(50% - .5px) 0 auto;border:0;background:#a5a59f}
+.app.app-command-shell[data-theme] .product-inspect__stage[data-shape="pack"]{height:max(340px,calc(min(180px,48vw)*1.846 + 36px))}
+.app.app-command-shell[data-theme] .product-inspect__stage[data-shape="pack"][data-detail="true"]{height:var(--detail-stage-height,440px)}
+.app.app-command-shell[data-theme] .product-inspect__fullscreen .product-inspect__object[data-shape="card"]{--object-width:min(390px,64vw,calc((max(320px,60dvh) - 48px)/1.3968254))}
+.app.app-command-shell[data-theme] .product-inspect__fullscreen .product-inspect__object[data-shape="pack"]{--object-width:min(270px,58vw,calc((max(340px,60dvh) - 48px)/var(--box-height,1.846)))}
+.app.app-command-shell[data-theme] .product-inspect__fullscreen .product-inspect__stage[data-shape="pack"]{height:max(340px,60dvh)}
+
+/* Real wrapper photos follow a shallow profile. The crimp closes at each end;
+   no rigid silver side wall or extra artificial gloss covers the print. */
+.app.app-command-shell[data-theme] .product-inspect__wrapper{position:absolute;inset:0;transform-style:preserve-3d}
+.app.app-command-shell[data-theme] .product-inspect__wrapper-row{inset:50% 0 auto;display:block;border:0;border-radius:0;background:transparent;box-shadow:none;transform-origin:50% 50%;overflow:hidden}
+.app.app-command-shell[data-theme] .product-inspect__wrapper-photo{position:absolute;left:0;width:100%}
+.app.app-command-shell[data-theme] .product-inspect__wrapper-edge,.app.app-command-shell[data-theme] .product-inspect__wrapper-end{position:absolute;top:50%;left:50%;backface-visibility:hidden;background:#494945;pointer-events:none}
+.app.app-command-shell[data-theme] .product-inspect__wrapper-end{left:0;width:100%;background:#74736d}

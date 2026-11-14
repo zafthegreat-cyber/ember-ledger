@@ -124,8 +124,9 @@ export function restockFeedLocationOptions(entries = []) {
 // This operates only on reports already permitted by Scout's existing visibility checks.
 export function filterRestockFeed(entries = [], { search = "", stock = "all", period = "all", retailer = "", city = "", state = "all", game = "all", knownTimeOnly = false, location } = {}, now = Date.now()) {
   const terms = String(search).trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
-  const windowMs = period === "24h" ? 24 * 60 * 60 * 1000 : period === "7d" ? 7 * 24 * 60 * 60 * 1000 : null;
+  const windowMs = period === "1h" ? 60 * 60 * 1000 : period === "3h" ? 3 * 60 * 60 * 1000 : period === "24h" ? 24 * 60 * 60 * 1000 : period === "7d" ? 7 * 24 * 60 * 60 * 1000 : null;
   return entries.filter((entry) => {
+    if (["1h", "3h"].includes(period) && !(entry.report.observedAt || entry.report.observed_at || entry.report.reportedAt || entry.report.reported_at || entry.report.reportDate || entry.report.report_date)) return false;
     if (knownTimeOnly && !Number.isFinite(entry.observedAt)) return false;
     if (location && !locationScopeMatch(entry.locationRecord || entry.report, location)) return false;
     if (state === "unspecified" ? Boolean(entry.state) : state !== "all" && (!normalizeStoreStateCode(state) || entry.state !== normalizeStoreStateCode(state))) return false;

@@ -33,12 +33,12 @@ export function RecordTimeline({ entries = [] }) {
   return <ol className="ops-record-timeline">{entries.map((entry, index) => <li key={entry.id || `${entry.title}-${index}`}><span aria-hidden="true" /><div><strong>{entry.title}</strong><time>{entry.date || "Date not recorded"}</time>{entry.detail ? <p>{entry.detail}</p> : null}</div></li>)}</ol>;
 }
 
-export function RecordDetailPage({ eyebrow = "Record detail", title, status = "", statusTone = "neutral", image = "", imageAlt = "", imageProduct = null, identity = "", summary = [], primaryAction = null, secondaryActions = null, sections = [], timeline = [], related = null, onBack }) {
+export function RecordDetailPage({ eyebrow = "Record detail", title, status = "", statusTone = "neutral", image = "", imageAlt = "", imageProduct = null, identity = "", summary = [], primaryAction = null, secondaryActions = null, sections = [], timeline = [], related = null, onBack, backLabel = "Back" }) {
   const actions = Children.toArray(secondaryActions?.type === Fragment ? secondaryActions.props.children : secondaryActions);
   const editActions = actions.filter(action => action?.props?.children === 'Edit' || action?.props?.children === 'Edit details');
   const moreActions = actions.filter(action => !editActions.includes(action));
   return <main className="ops-record-detail" data-testid="record-detail-page">
-    <QuietButton className="ops-detail-back" onClick={onBack}><RecordDirectionIcon back />Back</QuietButton>
+    <QuietButton className="ops-detail-back" onClick={onBack}><RecordDirectionIcon back />{backLabel}</QuietButton>
     <PageHeader eyebrow={eyebrow} title={title} actions={status ? <StatusBadge tone={statusTone}>{status}</StatusBadge> : null} />
     <section className="ops-detail-hero">
       {imageProduct ? <ProductInspectButton product={imageProduct} src={image} title={imageAlt || title} fallbackClassName="ops-detail-identity" /> : <ItemPhoto src={image} alt={imageAlt || title} fallbackClassName="ops-detail-identity" loading="eager" />}

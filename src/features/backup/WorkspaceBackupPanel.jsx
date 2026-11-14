@@ -3,10 +3,12 @@ import { createVerifiedBackup } from "./backupFormat.js";
 import { exportFile, exportFileStatus, exportFileError } from "../../native/nativeFiles.js";
 import { useCloudWorkspace } from "../persistence/CloudWorkspaceContext.js";
 
+import { BackupCompleteness } from './BackupNextTools.jsx';
 export default function WorkspaceBackupPanel({ onRecover, configuredSourceIds = ["supabase-owner-data"], onExportCloud = null, externalBusy = false }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [coverage, setCoverage] = useState(null);
+  const [lastFile,setLastFile]=useState(null);
   const pending = useRef(false);
   const exportRequest = useRef(null);
   const ownerId = useCloudWorkspace()?.user?.id;
@@ -29,6 +31,7 @@ export default function WorkspaceBackupPanel({ onRecover, configuredSourceIds = 
       try { saved = await exportFile({ blob: new Blob([result.json], { type: "application/json;charset=utf-8" }), filename: result.fileName, signal: controller.signal }); }
       catch (error) { throw new Error(exportFileError(error)); }
       if (request !== lifetime.current) return;
+      setLastFile({name:result.fileName,status:exportFileStatus(saved)});
       setCoverage({ recordCount: result.backup.coverageSummary.recordCount, excludedSources: result.backup.manifest.excludedSources.filter((source) => source.affectsCoverage), fileReferences: result.backup.coverageSummary.fileReferences });
       setMessage(`${exportFileStatus(saved)} ${result.coverageStatus === "COMPLETE" ? "Device record backup verified." : "Device record backup verified. Review the exclusions below and keep any separate cloud or file backups with it."}`);
     } catch (error) { if (request === lifetime.current) setMessage(error?.message || "Backup could not be downloaded. Your records were not changed."); }
@@ -46,6 +49,8 @@ export default function WorkspaceBackupPanel({ onRecover, configuredSourceIds = 
       <button type="button" onClick={onRecover} disabled={busy || externalBusy || !onRecover}>Recover from backup</button>
     </div>
     {message ? <p role="status">{message}</p> : null}
+    {lastFile?<p><strong>{lastFile.name}</strong> · {lastFile.status} The bytes were verified; check the destination to confirm the file was kept.</p>:null}
+    {coverage?<BackupCompleteness records={coverage.recordCount} embedded={coverage.fileReferences.embedded} references={Math.max(0,coverage.fileReferences.total-coverage.fileReferences.embedded)} unavailable={coverage.fileReferences.unresolved} excluded={coverage.excludedSources.length} />:null}
     {coverage ? <div>
       <p>{coverage.recordCount} records included. Authentication and account permissions are excluded.</p>
       {coverage.excludedSources.length ? <ul>{coverage.excludedSources.map((source) => <li key={source.sourceId}>{source.displayName}: {source.reason}</li>)}</ul> : null}

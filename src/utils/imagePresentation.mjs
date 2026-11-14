@@ -1,5 +1,7 @@
 import { getItemImageUrl } from "./productDisplayUtils.js";
 import { inspectionImageUrl } from "./faceProjection.mjs";
+import inspectionFaces from "../data/productInspectionFaces.json" with { type: "json" };
+import { resolveInspectionArtwork } from "./productInspection.mjs";
 
 const usable = value => typeof value === "string" && value.trim() && !/^(null|undefined|none|n\/a|na|unknown|image needed|image unavailable|placeholder)$/i.test(value.trim()) ? value.trim() : "";
 const unique = values => [...new Set(values.map(usable).filter(Boolean))];
@@ -38,5 +40,12 @@ export function getDisplayImageCandidates(product = {}, preferredSource = "", { 
     images.imageUrl, images.image_url, ...small,
     product.catalogImageUrl, product.catalog_image_url, product.productImageUrl, product.product_image_url,
   ]);
+  // An exact manually indexed product may have researched faces before the
+  // read-only catalog has a thumbnail. Use its real front only when it has no
+  // existing image source; never replace an owner's photo or borrow by name.
+  if (!sources.length && !String(product.tcgplayerProductId ?? "").trim()) {
+    const front = usable(resolveInspectionArtwork(product, inspectionFaces)?.faces?.front?.src);
+    if (front) sources.push(front);
+  }
   return quality === "detail" ? unique(sources.flatMap(source => [detailSource(source), source])) : sources;
 }

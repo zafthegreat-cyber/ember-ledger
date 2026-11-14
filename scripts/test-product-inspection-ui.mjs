@@ -12,6 +12,35 @@ const module = { exports: {} }; new Function("require", "module", "exports", out
 const Viewer = module.exports.default;
 const product = Object.freeze({ id: "card", catalogType: "card", game:"Pokemon", language:"English", finish: "Reverse Holo", marketPrice: 22, quantity: 2 });
 
+test('missing signed front uses its exact photo only after source failures and preserves owner photos',async()=>environment(async({render,dom})=>{
+ const row=Object.freeze(JSON.parse(readFileSync('src/data/generated/pokemonTcgCards.json')).find(r=>String(r.tcgplayerProductId)==='690281'));
+ const before=JSON.stringify(row),front=()=>document.querySelector('.product-inspect__front img');
+ await render({product:row,src:row.imageUrl});assert.match(front().getAttribute('src'),/690281_in_1000x1000/);
+ await act(async()=>front().dispatchEvent(new dom.window.Event('error')));assert.match(front().getAttribute('src'),/690281_200w/);
+ await act(async()=>front().dispatchEvent(new dom.window.Event('error')));assert.match(front().getAttribute('src'),/raging-bolt-ex-front20261114h/);assert.equal(document.querySelector('.product-inspect__front [data-projected]').dataset.projected,'true');
+ await act(async()=>front().dispatchEvent(new dom.window.Event('error')));assert.match(document.querySelector('.product-inspect__front').textContent,/Photo unavailable/);
+ await render({product:{...row,displayImage:'/owner-photo.jpg'},src:'/owner-photo.jpg'});assert.equal(front().getAttribute('src'),'/owner-photo.jpg');assert.equal(document.querySelector('.product-inspect__front [data-projected]').dataset.projected,'false');
+ assert.equal(JSON.stringify(row),before);
+}));
+
+test('new artwork for the same card cannot inherit the reviewed fallback crop or native dimensions',async()=>environment(async({render,dom})=>{
+ const row=Object.freeze(JSON.parse(readFileSync('src/data/generated/pokemonTcgCards.json')).find(r=>String(r.tcgplayerProductId)==='690281'));
+ const before=JSON.stringify(row),front=()=>document.querySelector('.product-inspect__front img');
+ await render({product:row,src:row.imageUrl});
+ await act(async()=>front().dispatchEvent(new dom.window.Event('error')));
+ await act(async()=>front().dispatchEvent(new dom.window.Event('error')));
+ const host=document.querySelector('.product-inspect__front .product-inspect__texture');host.style.width='160px';host.style.height='224px';
+ Object.defineProperties(front(),{naturalWidth:{value:1200,configurable:true},naturalHeight:{value:1600,configurable:true}});
+ await act(async()=>front().dispatchEvent(new dom.window.Event('load')));
+ assert.match(front().style.transform,/matrix3d/);assert.equal(front().style.width,'1200px');
+ await render({product:{...row,imageLarge:'/fresh-provider.jpg'},src:row.imageUrl});
+ assert.equal(front().getAttribute('src'),'/fresh-provider.jpg');assert.equal(host.dataset.projected,'false');
+ assert.equal(front().style.transform,'');assert.equal(front().style.width,'');assert.equal(front().style.height,'');
+ await act(async()=>front().dispatchEvent(new dom.window.Event('error')));
+ assert.match(front().getAttribute('src'),/raging-bolt-ex-front20261114h/);assert.equal(host.dataset.projected,'true');
+ assert.equal(JSON.stringify(row),before);
+}));
+
 test("box uses six consistent photographed faces and box-only light/shadow without altering card surfaces", async () => environment(async ({render,click,flush}) => {
   await render({product:{tcgplayerProductId:672401,catalogType:"sealed",productType:"Elite Trainer Box"}});
   const stage = document.querySelector('.product-inspect__stage'), object = document.querySelector('.product-inspect__object');
@@ -19,7 +48,8 @@ test("box uses six consistent photographed faces and box-only light/shadow witho
   assert.ok(document.querySelector('.product-inspect__box-shadow'));
   assert.equal(object.style.getPropertyValue('--inspect-pitch'),'0deg');
   assert.equal(object.style.getPropertyValue('--gloss-power'),'');
-  for(const img of object.querySelectorAll('img'))assert.match(img.getAttribute('src'),/^\/assets\/inspection\/perfect-order\//);
+  const expectedFaces=Object.values(JSON.parse(readFileSync('src/data/productInspectionFaces.json','utf8'))['tcgplayer:672401'].faces).map(face=>face.src).sort();
+  assert.deepEqual([...object.querySelectorAll('img')].map(img=>img.getAttribute('src')).sort(),expectedFaces);
   const initialShadow=stage.style.getPropertyValue('--box-shadow-bottom');
   await act(async()=>{click('Top');flush();});
   assert.notEqual(stage.style.getPropertyValue('--box-shadow-bottom'),initialShadow);
@@ -49,7 +79,7 @@ test("actual version metadata drives foil; the viewer never offers invented fini
   assert.equal(document.querySelector('.product-inspect__finishes'),null);
   assert.equal(JSON.stringify(product), before);
   await render({ product: { catalogType: "sealed", productType: "Elite Trainer Box", frontImageUrl:"/front.jpg", backImageUrl:"/back.jpg" }, src: "/box.jpg" });
-  assert.equal(document.querySelector('[data-shape]').dataset.shape, "box"); assert.equal(document.querySelector('.product-inspect__finishes'), null);
+  assert.equal(document.querySelector('[data-shape]').dataset.shape, "photo"); assert.equal(document.querySelector('.product-inspect__finishes'), null);
 }));
 
 test("keyboard and buttons rotate through the real back, reset, and preserve Escape for the parent modal", async () => environment(async ({ render, click, flush, dom }) => {
@@ -110,11 +140,11 @@ test("grouped collection opens the same viewer and keeps each original copy acce
   assert.match(document.body.textContent, /Recorded cost\$8.00/); assert.equal(JSON.stringify(group), before);
 }));
 
-test("inventory detail opens box geometry and preserves existing summary/actions", async () => environment(async ({ root, click }) => {
+test("inventory detail keeps partial box photographs truthful and preserves existing summary/actions", async () => environment(async ({ root, click }) => {
   const box = Object.freeze({ id: "saved-box", catalogType: "sealed", productType: "Elite Trainer Box", frontImageUrl:"/front.jpg", backImageUrl:"/back.jpg", quantity: 3, marketPrice: 70.3 });
   const before = JSON.stringify(box); let action = 0;
   await act(async () => root.render(React.createElement(module.exports.RecordDetailPage, { title: "Saved box", image: "/box.jpg", imageProduct: box, summary: [{ label: "Quantity", value: box.quantity }], primaryAction: React.createElement("button", { onClick: () => action++ }, "Existing action") })));
-  await act(async () => click("Inspect Saved box in 3D")); assert.equal(document.querySelector('[data-shape]').dataset.shape, "box");
+  await act(async () => click("Inspect Saved box in 3D")); assert.equal(document.querySelector('[data-shape]').dataset.shape, "photo");
   await act(async () => click("Close")); await act(async () => click("Existing action"));
   assert.equal(action, 1); assert.match(document.body.textContent, /Quantity3/); assert.equal(JSON.stringify(box), before);
 }));
@@ -224,6 +254,6 @@ test("reduced motion suppresses incidental hover lighting but explicit controls 
  mediaPreference(dom,true);await render({product:motionCard});const stage=document.querySelector('.product-inspect__stage');stage.getBoundingClientRect=()=>({left:0,top:0,width:300,height:340});const e=new dom.window.Event('pointermove',{bubbles:true});for(const[k,v]of Object.entries({pointerType:'mouse',buttons:0,clientX:299,clientY:339}))Object.defineProperty(e,k,{value:v});stage.dispatchEvent(e);assert.equal(frames.size,0);await act(async()=>{click('Back');flush();});assert.equal(document.querySelector('.product-inspect__object').style.getPropertyValue('--inspect-yaw'),'-180deg');assert.equal(frames.size,0);
 }));
 
-test("recorded version-specific front art follows version selection without changing saved records or prices",async()=>environment(async({root,click})=>{
+test("recorded version-specific front art follows version selection without changing saved records or prices",async()=>environment(async({root})=>{
  const original=Object.freeze({...product,finish:'Normal',versions:[{key:'normal',variant:'Normal',label:'Normal',marketPrice:10,imageUrl:'/normal.jpg'},{key:'reverse holo',variant:'Reverse Holofoil',label:'Reverse',marketPrice:18,imageUrl:'/reverse.jpg'}]});const before=JSON.stringify(original);await act(async()=>root.render(React.createElement(module.exports.Content,{product:original,src:'/saved.jpg',title:'Version test'})));assert.equal(document.querySelector('.product-inspect__front img').getAttribute('src'),'/normal.jpg');await act(async()=>[...document.querySelectorAll('[aria-label="Available versions"] button')][1].click());assert.equal(document.querySelector('.product-inspect__front img').getAttribute('src'),'/reverse.jpg');assert.equal(document.querySelector('[data-finish]').dataset.finish,'reverse');assert.equal(JSON.stringify(original),before);
 }));
