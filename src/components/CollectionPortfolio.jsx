@@ -2,13 +2,21 @@ import { useEffect, useRef, useState } from "react";
 import { exportFile, exportFileError, exportFileStatus } from "../native/nativeFiles.js";
 import { BottomSheet, FilterButton, QuietButton, SearchField } from "./operations/OperationsUI.jsx";
 import { PortfolioChooser, PortfolioItemGrid, PortfolioMostValuable, PortfolioValueChart } from "./CollectionPortfolioViews.jsx";
-import { buildPortfolioCsv, createPortfolioStore, getPortfolioItemKey, getPortfolioItemValuation, portfolioSeries, selectPortfolioItems, summarizePortfolio } from "../utils/collectionPortfolio.mjs";
+import { createPortfolioStore, getPortfolioItemKey, getPortfolioItemValuation, portfolioSeries, selectPortfolioItems, summarizePortfolio } from "../utils/collectionPortfolio.mjs";
 import { groupCollectionCopies } from "../utils/collectionCopyGroups.mjs";
 import { createRestockDetailsHistory } from "../utils/restockDetailsHistory.mjs";
-import ExportDisclosure from "./ExportDisclosure.jsx";
+import { copyRecognition, sortCollectionGroups } from "../utils/collectionBrowse.mjs";
+import { inferOwnedItemPurpose, OWNED_ITEM_PURPOSE_OPTIONS } from "../features/ownedItems/ownedItemPurpose.js";
+import CollectionBrowseTools from './CollectionBrowseTools.jsx';
+import PhoneMotionControl from './PhoneMotionControl.jsx';
+import { CollectionCopyCompare, CollectionExportReview } from './CollectionRecordTools.jsx';
+import { collectionPreferenceStore, filterOwnedCollection, collectionCurrencyTotals, collectionExportRows, collectionRowsCsv } from '../utils/collectionNext.mjs';
+import './collection-next.css';
 
 const PERIODS = [["1d", "1D"], ["7d", "7D"], ["1m", "1M"], ["3m", "3M"], ["6m", "6M"], ["max", "MAX"]];
 const EMPTY_FEATURES = Object.freeze({});
+const EXTRA_FILTER_LABELS = {storage:"Storage", language:"Language", finish:"Finish", edition:"Edition", coverage:"Valuation"};
+const COVERAGE_LABELS = {valued:"Valued in USD", unvalued:"Not valued", "other-currency":"Other currencies"};
 const money = (value) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
 const title = (item) => item.name || item.title || item.cardName || item.productName || "Untitled item";
 const valueForItem = (item) => getPortfolioItemValuation(item).value;
@@ -18,9 +26,16 @@ function identity(prefix) { return `${prefix}-${globalThis.crypto?.randomUUID?.(
 export default function CollectionPortfolio({
   items = [], visibleItems = [], preferenceScope, query, onQueryChange, conditionFilter,
   onOpenFilters, onClearFilters, onOpenItem, onOpenGroup, onAddItem, resolveItemImage, moreActions,
-  features = EMPTY_FEATURES, onLockedFeature, viewState, onViewStateChange, gameFilters, filterSummary = null, gameFiltered = false,
+  features = EMPTY_FEATURES, onLockedFeature, viewState, onViewStateChange, gameFilters, filterSummary = null, gameFiltered = false, externalFilterState = {}, onRestoreExternalFilters,
 }) {
   const [initial] = useState(() => { const store = createPortfolioStore({ storage: deviceStorage(), scope: preferenceScope }); return { store, result: store.load() }; });
+  const [extraStore] = useState(()=>collectionPreferenceStore(deviceStorage(),preferenceScope));
+  const [extraPreferences,setExtraPreferences]=useState(()=>extraStore.load());
+  const [snapshotNote,setSnapshotNote]=useState('');
+  const [exportScope,setExportScope]=useState('portfolio');
+  const extraFilters=viewState.extraFilters||{};
+  const activeExtraFilters=Object.entries(EXTRA_FILTER_LABELS).filter(([key])=>extraFilters[key]&&extraFilters[key]!=="all");
+  const saveExtraPreferences=next=>{const result=extraStore.save(next);setExtraPreferences(result);};
   const [saved, setSaved] = useState(initial.result);
   const [activeId, setActiveId] = useState(initial.result.state.selectedPortfolioId || "main");
   const { section: requestedSection, period, hidden, display, sort } = viewState;
@@ -28,9 +43,12 @@ export default function CollectionPortfolio({
   const [draft, setDraft] = useState({ id: "", name: "", keys: [] });
   const [message, setMessage] = useState("");
   const [formError, setFormError] = useState("");
+  const [membershipQuery, setMembershipQuery] = useState("");
+  const purpose = viewState.purpose || "all";
   const historyRef = useRef(null);
   const openerRef = useRef(null);
   const contentRef = useRef(null);
+  const searchRef = useRef(null);
   const exportingRef = useRef(false);
   const [exporting, setExporting] = useState(false);
   const historyAllowed = features.history === true && features.value === true;
@@ -42,13 +60,12 @@ export default function CollectionPortfolio({
   const portfolioItems = selectPortfolioItems(items, state, selectedId);
   const summary = summarizePortfolio(portfolioItems);
   const portfolioGroups = groupCollectionCopies(portfolioItems);
+  const hasBrowseFilters = Boolean(query || conditionFilter || gameFiltered || purpose !== "all" || Object.values(extraFilters).some(value=>value&&value!=="all"));
   const included = new Set(portfolioItems);
-  const shown = visibleItems.filter((item) => included.has(item)).slice().sort((left, right) => sort === "value"
-    ? (valueForItem(right) ?? -1) - (valueForItem(left) ?? -1) || title(left).localeCompare(title(right))
-    : title(left).localeCompare(title(right)));
-  const shownGroups = groupCollectionCopies(shown).sort((left, right) => sort === "value"
-    ? (right.valuation.value ?? -1) - (left.valuation.value ?? -1) || title(left.item).localeCompare(title(right.item))
-    : title(left.item).localeCompare(title(right.item)));
+  const shown = filterOwnedCollection(visibleItems.filter(item => included.has(item) && (purpose === "all" || inferOwnedItemPurpose(item) === purpose)),extraFilters);
+  const shownGroups = sortCollectionGroups(groupCollectionCopies(shown), sort);
+  const shownSummary = summarizePortfolio(shown);
+  const membershipItems = items.filter(item => !membershipQuery.trim() || [title(item), copyRecognition(item, {hidden}).title, copyRecognition(item, {hidden}).detail, item.id].join(" ").toLowerCase().includes(membershipQuery.trim().toLowerCase()));
   const rankedGroups = portfolioGroups.filter(group => group.valuation.value !== null).sort((left, right) =>
     right.valuation.value - left.valuation.value || title(left.item).localeCompare(title(right.item))).slice(0, 5);
   const openGroup = (group, opener) => onOpenGroup ? onOpenGroup(group, opener) : onOpenItem?.(group.item);
@@ -59,7 +76,7 @@ export default function CollectionPortfolio({
   useEffect(() => {
     const controller = createRestockDetailsHistory({
       target: window, historyKey: "code3CollectionPortfolioDialog",
-      resolveReport: (payload) => ["chooser", "form", "remove"].includes(payload?.type) ? payload : null,
+      resolveReport: (payload) => ["chooser", "form", "remove", "export", "compare"].includes(payload?.type) ? payload : null,
       onOpen: (payload) => setModal(payload.type),
       onClose: () => {
         setModal("");
@@ -101,7 +118,7 @@ export default function CollectionPortfolio({
   function openForm(id = "") {
     const existing = state.portfolios.find((row) => row.id === id);
     setDraft({ id, name: existing?.name || "", keys: id ? selectPortfolioItems(items, state, id).map(getPortfolioItemKey).filter(Boolean) : [] });
-    setFormError(""); showDialog("form");
+    setFormError(""); setMembershipQuery(""); showDialog("form");
   }
   function submitPortfolio(event) {
     event.preventDefault();
@@ -143,21 +160,23 @@ export default function CollectionPortfolio({
   }
   function saveSnapshot() {
     if (!historyAllowed || !summary.isValid || !summary.knownCount || hidden) return;
-    if (save((next) => { next.snapshots.push({ id: identity("snapshot"), at: new Date().toISOString(), portfolioId: selectedId, total: summary.total, knownCount: summary.knownCount, totalCount: summary.totalCount, quantity: summary.quantity }); })) setMessage("Value snapshot saved on this device.");
+    const snapshotId=identity("snapshot");
+    if (save((next) => { next.snapshots.push({ id: snapshotId, at: new Date().toISOString(), portfolioId: selectedId, total: summary.total, knownCount: summary.knownCount, totalCount: summary.totalCount, quantity: summary.quantity }); })) { if(snapshotNote.trim())saveExtraPreferences({...extraPreferences.state,snapshotNotes:{...extraPreferences.state.snapshotNotes,[snapshotId]:snapshotNote.trim()}});setSnapshotNote('');setMessage("Value snapshot saved on this device."); }
   }
   // F19: export goes through the shared native file/share adapter (browser
   // download or mobile share sheet), reports interruption or failure honestly,
   // and a synchronous guard ignores duplicate taps while one export is running.
-  async function exportPortfolio() {
+  async function exportPortfolio(config) {
+    const exportItems = exportScope === "results" ? shown : portfolioItems;
     if (features.export !== true) { onLockedFeature?.("collection_export"); return; }
     if (exportingRef.current) return;
     exportingRef.current = true;
     setExporting(true);
-    setMessage(`Preparing export of ${portfolioItems.length} item${portfolioItems.length === 1 ? "" : "s"} in ${activeName}…`);
+    setMessage(`Preparing export of ${exportItems.length} record${exportItems.length === 1 ? "" : "s"} ${exportScope === "results" ? "from these results" : `in ${activeName}`}…`);
     try {
-      const blob = new Blob(["\uFEFF", buildPortfolioCsv(portfolioItems, { includeValues: !hidden })], { type: "text/csv;charset=utf-8" });
-      const result = await exportFile({ blob, filename: "code3-tcg-portfolio.csv" });
-      setMessage(`${exportFileStatus(result)} ${hidden ? "Monetary values were left out." : "Saved estimates were included."}`);
+      const blob = new Blob(["\uFEFF", collectionRowsCsv(collectionExportRows(exportItems,config.fields,{privateDetails:config.privateDetails,hiddenValues:hidden}))], { type: "text/csv;charset=utf-8" });
+      const result = await exportFile({ blob, filename: exportScope === "results" ? "code3-tcg-collection-results.csv" : "code3-tcg-portfolio.csv" });
+      setMessage(`${exportFileStatus(result)} Selected columns only.`); closeDialog();
     } catch (error) {
       setMessage(exportFileError(error).replace("No saved backup was confirmed; your records are unchanged.", "No file was confirmed; your records are unchanged."));
     } finally {
@@ -169,8 +188,18 @@ export default function CollectionPortfolio({
     const result = initial.store.load(); setSaved(result); setFormError("");
     if (result.ok) setActiveId(result.state.selectedPortfolioId);
   }
+  function clearSearch() {
+    onQueryChange?.("");
+    searchRef.current?.querySelector("input")?.focus();
+  }
+  function clearBrowseFilters() {
+    updateView({purpose:"all",extraFilters:{}});
+    onClearFilters?.();
+    searchRef.current?.querySelector("input")?.focus();
+  }
 
-  return <section className="collection-portfolio" aria-label="Collection portfolio">
+  return <section className="collection-portfolio" data-density={extraPreferences.state.density} aria-label="Collection portfolio">
+    <PhoneMotionControl compact />
     <div ref={contentRef} inert={Boolean(modal)} aria-hidden={modal ? true : undefined}>
       <div className="collection-portfolio-tabs" role="group" aria-label="Portfolio section">
         <button type="button" aria-pressed={section === "overview"} onClick={() => updateView({ section: "overview" })}>Overview</button>
@@ -179,39 +208,57 @@ export default function CollectionPortfolio({
       </div>
       <header className="collection-portfolio-heading">
         <button type="button" className="collection-portfolio-select" aria-label="Choose portfolio" aria-haspopup="dialog" onClick={() => showDialog("chooser")}><span>Portfolio</span><strong>{activeName}</strong><span className="collection-portfolio-select__chevron" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" focusable="false"><path d="m6 9 6 6 6-6" /></svg></span></button>
-        <div className="collection-portfolio-value"><strong data-testid="portfolio-total" data-state={hidden ? "hidden" : summary.knownCount && summary.isValid ? "valued" : "unvalued"}>{hidden ? <><span aria-hidden="true" className="collection-portfolio-value-mask">•••••</span><span className="collection-portfolio-value-note">Hidden by you</span></> : summary.knownCount && summary.isValid ? money(summary.total) : <><span>Not valued yet</span><span className="collection-portfolio-value-note">Add a market or projected estimate to an item</span></>}</strong><button type="button" className="collection-portfolio-eye" aria-label={hidden ? "Show values" : "Hide values"} aria-pressed={hidden} onClick={() => updateView({ hidden: !hidden })}><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" />{hidden ? <path d="m3 3 18 18" /> : null}</svg></button></div>
-        <p className="collection-portfolio-coverage">{portfolioGroups.length} product{portfolioGroups.length === 1 ? "" : "s"} · {summary.quantity ?? "Unknown"} total quantity · {summary.totalCount} purchase record{summary.totalCount === 1 ? "" : "s"} · {summary.knownCount} with a saved value · wishlist budgets and items for sale are not included</p>
+        <small className="collection-portfolio-device-note">Portfolio organization is saved on this device</small>
+        <span className="collection-portfolio-value-caption">Saved collection value</span><div className="collection-portfolio-value"><strong data-testid="portfolio-total" data-state={hidden ? "hidden" : summary.knownCount && summary.isValid ? "valued" : "unvalued"}>{hidden ? <><span aria-hidden="true" className="collection-portfolio-value-mask">•••••</span><span className="collection-portfolio-value-note">Hidden by you</span></> : summary.knownCount && summary.isValid ? money(summary.total) : <><span>Not valued yet</span><span className="collection-portfolio-value-note">Add a market or projected estimate to an item</span></>}</strong><button type="button" className="collection-portfolio-eye" aria-label={hidden ? "Show values" : "Hide values"} aria-pressed={hidden} onClick={() => updateView({ hidden: !hidden })}><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" />{hidden ? <path d="m3 3 18 18" /> : null}</svg></button></div>
+        <p className="collection-portfolio-coverage"><span><strong>{portfolioGroups.length}</strong> product{portfolioGroups.length === 1 ? "" : "s"}</span><span><strong>{summary.quantity ?? "Unknown"}</strong> total quantity</span><span><strong>{summary.totalCount}</strong> purchase record{summary.totalCount === 1 ? "" : "s"}</span></p>
         {series.hasHistory && historyAllowed && !hidden ? <p className="collection-portfolio-change" data-tone={series.change > 0 ? "positive" : series.change < 0 ? "negative" : "neutral"}>{series.change > 0 ? "+" : ""}{money(series.change)}{series.percentChange == null ? "" : ` (${series.percentChange > 0 ? "+" : ""}${series.percentChange.toFixed(1)}%)`} <span>between saved snapshots</span></p> : null}
       </header>
       {!saved.ok ? <div className="collection-portfolio-notice" role="alert"><p>{saved.error}</p><button type="button" onClick={reloadSettings}>Reload portfolio settings</button></div> : null}
+      {!extraPreferences.ok&&<p role="alert">{extraPreferences.error}</p>}
       {message ? <p className="collection-portfolio-message" role="status">{message}</p> : null}
       {formError && !modal ? <div className="collection-portfolio-notice" role="alert"><p>{formError}</p><button type="button" onClick={reloadSettings}>Reload portfolio settings</button></div> : null}
       {section === "overview" ? <>
         <section aria-label="Portfolio items" className="collection-portfolio-collection">
-          <div className="collection-portfolio-section-heading"><h2>Your collection</h2><span>{shownGroups.length} product{shownGroups.length === 1 ? "" : "s"} shown</span></div>
-          <div className="collection-portfolio-filter-row">{gameFilters}<label className="collection-portfolio-sort">Sort<select aria-label="Sort collection" value={sort} onChange={(event) => updateView({ sort: event.target.value })}><option value="name">Name</option><option value="value">Most valuable</option></select></label></div>
-          <div className="collection-portfolio-controls collection-portfolio-search-row"><SearchField label="Search collection" placeholder="Search collection" value={query} onChange={onQueryChange} enterKeyHint="search" autoComplete="off" /><FilterButton active={Boolean(conditionFilter)} onClick={onOpenFilters}>Filter</FilterButton><div className="collection-portfolio-display" role="group" aria-label="Collection display">{["grid", "list"].map((mode) => <button key={mode} type="button" aria-pressed={display === mode} onClick={() => updateView({ display: mode })}>{mode === "grid" ? "Grid" : "List"}</button>)}</div></div>
+          <div className="collection-portfolio-section-heading"><div className="collection-portfolio-section-title"><h2>Your collection</h2><span role="status" aria-live="polite" aria-atomic="true">{hasBrowseFilters ? `${shownGroups.length} of ${portfolioGroups.length} product${portfolioGroups.length === 1 ? "" : "s"} shown` : `${shownGroups.length} product${shownGroups.length === 1 ? "" : "s"} shown`}</span></div><div className="collection-portfolio-display" role="group" aria-label="Collection display">{["grid", "list"].map((mode) => <button key={mode} type="button" aria-pressed={display === mode} onClick={() => updateView({ display: mode })}>{mode === "grid" ? "Grid" : "List"}</button>)}</div></div>
+          <div className="collection-portfolio-toolbar">
+            <div className="collection-portfolio-controls collection-portfolio-search-row">
+              <div ref={searchRef} className="collection-portfolio-search" data-has-query={Boolean(query)}>
+                <SearchField label="Search collection" placeholder="Search your collection" value={query} onChange={onQueryChange} enterKeyHint="search" autoComplete="off" />
+                {query ? <button type="button" className="collection-portfolio-search-clear" aria-label="Clear collection search" onClick={clearSearch}><span aria-hidden="true">×</span></button> : null}
+              </div>
+              <FilterButton active={Boolean(conditionFilter)} aria-label={conditionFilter ? `Filters, condition: ${conditionFilter}` : "Filters"} onClick={onOpenFilters}>Filters{conditionFilter ? <span className="collection-portfolio-filter-count" aria-hidden="true">1</span> : null}</FilterButton>
+            </div>
+            <div className="collection-portfolio-filter-row">{gameFilters}<label className="collection-portfolio-sort">Purpose<select aria-label="Collection purpose" value={purpose} onChange={event => updateView({purpose:event.target.value})}><option value="all">All collection purposes</option>{OWNED_ITEM_PURPOSE_OPTIONS.filter(option => option.value !== "FOR_RESALE").map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label><label className="collection-portfolio-sort">Sort<select aria-label="Sort collection" value={sort} onChange={(event) => updateView({ sort: event.target.value })}><option value="name">Name</option><option value="value">Most valuable</option><option value="recent">Recently added</option><option value="quantity">Quantity</option><option value="set">Set</option></select></label></div>
+            {hasBrowseFilters ? <div className="collection-portfolio-active-filters" aria-label="Applied collection filters">
+              <div>{activeExtraFilters.map(([key,label])=><button type="button" key={key} className="collection-portfolio-condition-chip" aria-label={`Clear ${label.toLowerCase()} filter: ${key==="coverage"?COVERAGE_LABELS[extraFilters[key]]||extraFilters[key]:extraFilters[key]}`} onClick={()=>updateView({extraFilters:{...extraFilters,[key]:"all"}})}><span>{label}</span><strong>{key==="coverage"?COVERAGE_LABELS[extraFilters[key]]||extraFilters[key]:extraFilters[key]}</strong><span aria-hidden="true">×</span></button>)}{purpose !== "all" ? <button type="button" className="collection-portfolio-condition-chip" onClick={() => updateView({purpose:"all"})} aria-label="Clear purpose filter">{OWNED_ITEM_PURPOSE_OPTIONS.find(option => option.value === purpose)?.label} ×</button> : null}{conditionFilter ? <button type="button" className="collection-portfolio-condition-chip" aria-label={`Change condition filter: ${conditionFilter}`} onClick={onOpenFilters}><span>Condition</span><strong>{conditionFilter}</strong></button> : query || gameFiltered ? <span>{query ? "Search applied" : "Game filter applied"}</span> : null}</div>
+              <button type="button" className="collection-portfolio-clear-filters" onClick={clearBrowseFilters}>Clear all</button>
+            </div> : null}
+          </div>
+          <CollectionBrowseTools items={portfolioItems} filters={extraFilters} onChange={patch=>updateView({extraFilters:{...extraFilters,...patch}})} preferences={extraPreferences.state} onSavePreferences={saveExtraPreferences} currentSearch={{query:query||'',purpose,sort,extraFilters,...externalFilterState}} onRestoreSearch={filters=>{onQueryChange?.(filters.query||'');updateView({purpose:filters.purpose||'all',sort:filters.sort||'name',extraFilters:filters.extraFilters||{}});onRestoreExternalFilters?.({game:filters.game||'all',condition:filters.condition||''});}} />
           {filterSummary}
-          {shownGroups.length ? <PortfolioItemGrid groups={shownGroups} resolveItemImage={resolveItemImage} onOpenGroup={openGroup} hidden={hidden} valueForItem={valueForItem} money={money} mode={display} /> : <div className="collection-portfolio-empty"><h3>{query || conditionFilter || gameFiltered ? "No matching items" : "This portfolio is ready for your items"}</h3><p>{gameFiltered ? "Choose another game, clear the filters, or add an item for this game." : query || conditionFilter ? "Try another search or clear the filters." : items.length ? "Choose another portfolio or organize existing items into this one." : "Add a card, sealed product, or collectible to get started. Existing records keep their purpose."}</p>{query || conditionFilter || gameFiltered ? <><button type="button" onClick={onClearFilters}>Clear search &amp; filters</button>{gameFiltered ? <button type="button" onClick={onAddItem}>Add Item</button> : null}</> : <button type="button" onClick={items.length ? () => showDialog("chooser") : onAddItem}>{items.length ? "Choose portfolio" : "Add Item"}</button>}</div>}
+          {hasBrowseFilters ? <p className="collection-portfolio-filtered-total" role="status"><strong>These results</strong> · {shownGroups.length} product{shownGroups.length === 1 ? "" : "s"} · {shownSummary.quantity ?? "Unknown"} total quantity · {hidden ? "Value hidden" : shownSummary.knownCount && shownSummary.isValid ? `${money(shownSummary.total)} saved value${shownSummary.unknownCount ? ` · ${shownSummary.unknownCount} records not valued` : ""}` : "Not valued"}</p> : null}
+          {shownGroups.length ? <PortfolioItemGrid groups={shownGroups} resolveItemImage={resolveItemImage} onOpenGroup={openGroup} hidden={hidden} valueForItem={valueForItem} money={money} mode={display} /> : <div className="collection-portfolio-empty"><h3>{hasBrowseFilters && portfolioGroups.length ? "No matching items" : "This portfolio is ready for your items"}</h3><p>{hasBrowseFilters && portfolioGroups.length ? `${portfolioGroups.length} product${portfolioGroups.length === 1 ? " is" : "s are"} saved in ${activeName}. Try another search or clear the filters to see them.` : items.length ? "Choose another portfolio or organize existing items into this one." : "Add a card, sealed product, or collectible to get started. Existing records keep their purpose."}</p>{hasBrowseFilters && portfolioGroups.length ? <button type="button" onClick={clearBrowseFilters}>Clear search &amp; filters</button> : <button type="button" onClick={items.length ? () => showDialog("chooser") : onAddItem}>{items.length ? "Choose portfolio" : "Add item"}</button>}</div>}
         </section>
       </> : <section className="collection-portfolio-performance"><h2>Understanding your performance</h2><p>Saved snapshots show your collection's recorded value over time. Additions, removals, portfolio organization and estimate changes can all move the total.</p><p>{summary.marketKnownCount} product{summary.marketKnownCount === 1 ? " has" : "s have"} a saved market estimate; {summary.projectedKnownCount} use a projected estimate. Purchase costs are not substituted for missing prices.</p><p>Snapshots and portfolio organization are saved on this device. Original items keep their existing saving and sync behavior.</p></section>}
-      <details className="collection-portfolio-estimate-note"><summary>About these saved estimates</summary><p className="collection-portfolio-privacy">{summary.valuationLabel}. {summary.unknownCount ? `${summary.unknownCount} without usable values are excluded from the total.` : "Values are estimates, not sale proceeds."}{summary.unconvertedCount ? ` ${summary.unconvertedCount} saved in ${summary.unconvertedCurrencies.join(", ")} ${summary.unconvertedCount === 1 ? "is" : "are"} kept as saved and not converted into the USD total.` : ""}</p></details>
-      <div className="collection-portfolio-actions"><button type="button" onClick={() => showDialog("chooser")}>Organize portfolios</button><button type="button" aria-describedby="portfolio-export-disclosure" aria-busy={exporting} disabled={exporting} onClick={exportPortfolio}>{exporting ? "Exporting…" : `Export ${activeName === "All portfolios" ? "all portfolios" : "this portfolio"}`}</button>{moreActions}</div>
-      <ExportDisclosure id="portfolio-export-disclosure" kind="portfolio-csv" format="csv" recordCount={portfolioItems.length} includeValues={!hidden} />
-      {historyAllowed ? <section className="collection-portfolio-history" aria-label="Portfolio value history">
-        <PortfolioValueChart points={series.points} hidden={hidden} money={money} periodLabel={PERIODS.find(([key]) => key === period)?.[1]} />
+      {!hidden&&<div className="collection-currency-totals" aria-label="Saved subtotals by currency">{collectionCurrencyTotals(hasBrowseFilters?shown:portfolioItems).map(row=><span key={row.currency}><strong>{new Intl.NumberFormat("en-US",{style:"currency",currency:row.currency}).format(row.total)}</strong> {row.currency} · {row.records} valued records</span>)}</div>}
+      <details className="collection-portfolio-estimate-note"><summary>About these saved estimates</summary><p className="collection-portfolio-privacy">{summary.knownCount} of {summary.totalCount} purchase records have a saved value. Wants budgets and items for sale are not included. {summary.valuationLabel}. {summary.unknownCount ? `${summary.unknownCount} without usable values are excluded from the total.` : "Values are estimates, not sale proceeds."}{summary.unconvertedCount ? ` ${summary.unconvertedCount} saved in ${summary.unconvertedCurrencies.join(", ")} ${summary.unconvertedCount === 1 ? "is" : "are"} kept as saved and not converted into the USD total.` : ""}</p></details>
+      <details className="collection-portfolio-tools"><summary>Organize & export</summary><div className="collection-portfolio-actions"><button type="button" onClick={() => showDialog("chooser")}>Organize portfolios</button><button type="button" aria-describedby="portfolio-export-disclosure" aria-busy={exporting} disabled={exporting} onClick={() => {if(features.export!==true){onLockedFeature?.("collection_export");return;}setExportScope("portfolio");showDialog("export");}}>{exporting ? "Exporting…" : "Export whole portfolio"}</button><button type="button" disabled={exporting || !shown.length} onClick={() => {if(features.export!==true){onLockedFeature?.("collection_export");return;}setExportScope("results");showDialog("export");}}>Export these results ({shown.length} record{shown.length === 1 ? "" : "s"})</button><button type="button" disabled={shown.length<2} onClick={()=>showDialog("compare")}>Compare purchases</button>{moreActions}</div>
+      <p id="portfolio-export-disclosure">Review the selected records and CSV columns before downloading. Private costs and notes require an explicit choice; hidden monetary values remain excluded.</p></details>
+      {historyAllowed && section === "performance" ? <section className="collection-portfolio-history" aria-label="Portfolio value history">
+        <PortfolioValueChart points={series.points.map(point=>({...point,note:extraPreferences.state.snapshotNotes[point.id]||""}))} hidden={hidden} money={money} periodLabel={PERIODS.find(([key]) => key === period)?.[1]} />
         <div className="collection-portfolio-periods" role="group" aria-label="Value history period">{PERIODS.map(([key, label]) => <button type="button" key={key} aria-pressed={period === key} onClick={() => updateView({ period: key })}>{label}</button>)}</div>
         {!hidden ? <p className="collection-portfolio-privacy">{series.coverageLabel}</p> : null}
-        <div className="collection-portfolio-snapshot"><button type="button" disabled={!saved.writable || !summary.isValid || !summary.knownCount || hidden} onClick={saveSnapshot}>Save value snapshot</button><small>Records the current estimate on this device. No past values are invented.</small></div>
+        <div className="collection-portfolio-snapshot"><label className="collection-snapshot-note">Snapshot note (optional)<input maxLength={240} value={snapshotNote} onChange={event=>setSnapshotNote(event.target.value)} placeholder="e.g. Added two cards" /></label><button type="button" disabled={!saved.writable || !summary.isValid || !summary.knownCount || hidden} onClick={saveSnapshot}>Save value snapshot</button><small>Records the current estimate on this device. No past values are invented.</small></div>
       </section> : null}
-      {section === "overview" ? <PortfolioMostValuable groups={rankedGroups} resolveItemImage={resolveItemImage} onOpenGroup={openGroup} hidden={hidden} valueForItem={valueForItem} money={money} /> : null}
+      {section === "overview" && rankedGroups.length ? <details className="collection-portfolio-highlights"><summary>Most valuable items</summary><PortfolioMostValuable groups={rankedGroups} resolveItemImage={resolveItemImage} onOpenGroup={openGroup} hidden={hidden} valueForItem={valueForItem} money={money} /></details> : section === "performance" ? <PortfolioMostValuable groups={rankedGroups} resolveItemImage={resolveItemImage} onOpenGroup={openGroup} hidden={hidden} valueForItem={valueForItem} money={money} /> : null}
     </div>
     <div className="collection-portfolio-modal">
+<CollectionExportReview open={modal==="export"} onClose={closeDialog} items={exportScope==="results"?shown:portfolioItems} scopeLabel={exportScope==="results"?"Current filtered results":activeName} hidden={hidden} onExport={exportPortfolio} busy={exporting}/><CollectionCopyCompare open={modal==="compare"} onClose={closeDialog} items={shown} hidden={hidden}/>
       <PortfolioChooser open={modal === "chooser"} onClose={closeDialog} notice={modalNotice} portfolios={rows} activeId={selectedId} onSelect={choosePortfolio} onCreate={() => openForm()} onManage={openForm} onToggleFavorite={(id) => save((next) => { const row = next.portfolios.find((entry) => entry.id === id); if (row) row.favorite = !row.favorite; })} onMove={movePortfolio} />
       <BottomSheet open={modal === "form"} title={draft.id ? "Manage portfolio" : "New portfolio"} onClose={closeDialog}>
         <form className="collection-portfolio-form" onSubmit={submitPortfolio}>
           <label>Portfolio name<input required maxLength={60} value={draft.name} onChange={(event) => setDraft((value) => ({ ...value, name: event.target.value }))} /></label>
-          {draft.id === "main" ? <p>Main contains items that have not been assigned to another portfolio. Create or manage another portfolio to move items.</p> : <fieldset aria-label="Portfolio items"><legend>Items in this portfolio</legend><p>Choose existing items to organize here. Their records, purpose and costs stay unchanged.</p>{items.map((item, index) => { const key = getPortfolioItemKey(item); return <label key={key || `unsaved-${index}`} className="collection-portfolio-checkbox"><input type="checkbox" disabled={!key} checked={Boolean(key && draft.keys.includes(key))} onChange={(event) => { const checked = event.target.checked; setDraft((value) => ({ ...value, keys: checked ? [...value.keys, key] : value.keys.filter((entry) => entry !== key) })); }} /><span>{title(item)}{!key ? " — save this item before grouping" : ""}</span></label>; })}{!items.length ? <p>Add an item to your collection first, or save an empty portfolio.</p> : null}</fieldset>}
+          {draft.id === "main" ? <p>Main contains items that have not been assigned to another portfolio. Create or manage another portfolio to move items.</p> : <fieldset aria-label="Portfolio items"><legend>Items in this portfolio</legend><p>Choose existing items to organize here. Their records, purpose and costs stay unchanged.</p><SearchField label="Find records for this portfolio" placeholder="Search item, purchase date or storage" value={membershipQuery} onChange={setMembershipQuery} /><p role="status">{membershipItems.length} of {items.length} records · {draft.keys.length} selected</p>{membershipItems.map((item, index) => { const key = getPortfolioItemKey(item); return <label key={key || `unsaved-${index}`} className="collection-portfolio-checkbox"><input type="checkbox" disabled={!key} checked={Boolean(key && draft.keys.includes(key))} onChange={(event) => { const checked = event.target.checked; setDraft((value) => ({ ...value, keys: checked ? [...value.keys, key] : value.keys.filter((entry) => entry !== key) })); }} /><span><strong>{title(item)}</strong><small>{copyRecognition(item,{hidden}).title}</small><small>{copyRecognition(item,{hidden}).detail} · Qty {item.quantity ?? 1}</small>{!key ? " — save this item before grouping" : ""}</span></label>; })}{!items.length ? <p>Add an item to your collection first, or save an empty portfolio.</p> : null}</fieldset>}
           {modalNotice}
           <div className="collection-portfolio-form-actions"><button type="submit" disabled={!saved.writable}>Save portfolio</button><button type="button" onClick={() => showDialog("chooser")}>Back to portfolios</button></div>
           {draft.id && draft.id !== "main" ? <QuietButton className="ops-button--danger" onClick={() => showDialog("remove")}>Remove portfolio</QuietButton> : null}

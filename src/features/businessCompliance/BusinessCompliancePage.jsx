@@ -1,4 +1,6 @@
-import { useMemo, useState } from "react";
+import { filterDeadlines, monthDays, filterComplianceDocuments } from './complianceBrowse.js';
+import useRecordConfirmation from '../../components/useRecordConfirmation.jsx';
+import { useId, useMemo, useState } from "react";
 import {
   EmptyState,
   MetricCard,
@@ -68,6 +70,9 @@ function SetupCard({ item, onChange }) {
 }
 
 function DeadlineCard({ item, onChange, onComplete }) {
+  const [dateDraft,setDateDraft]=useState({baseline:item.dueDate||'',value:item.dueDate||''});
+  const {confirm,confirmation}=useRecordConfirmation();
+  if(dateDraft.baseline!==(item.dueDate||''))setDateDraft({baseline:item.dueDate||'',value:item.dueDate||''});
   const health = deadlineHealth(item);
   return <RecordCard>
     <div className="compliance-card-heading">
@@ -76,12 +81,12 @@ function DeadlineCard({ item, onChange, onComplete }) {
     </div>
     <p>{item.notes}</p>
     <div className="compliance-inline-fields">
-      <TextField label="Due date" type="date" value={item.dueDate || ""} onChange={(value) => onChange({ ...item, dueDate: value })} />
+      <TextField label="Due date" type="date" value={dateDraft.value} onChange={value=>setDateDraft(current=>({...current,value}))} />
       <SelectField label="Cadence" value={item.cadence} onChange={(value) => onChange({ ...item, cadence: value })} options={DEADLINE_CADENCES} />
       <TextField label="Agency" value={item.agency || ""} onChange={(value) => onChange({ ...item, agency: value })} />
       <TextField label="Last completed" type="date" value={item.lastCompletedDate || ""} onChange={(value) => onChange({ ...item, lastCompletedDate: value })} />
     </div>
-    <div className="compliance-card-actions"><PrimaryButton onClick={() => onComplete(item)}>Mark Complete</PrimaryButton></div>
+    {confirmation}<div className="compliance-card-actions">{dateDraft.value!==(item.dueDate||'')?<><QuietButton onClick={()=>setDateDraft({baseline:item.dueDate||'',value:item.dueDate||''})}>Keep saved date</QuietButton><PrimaryButton onClick={async()=>{if(await confirm({title:'Change deadline date?',message:item.title+': '+(item.dueDate||'No date')+' → '+(dateDraft.value||'No date'),confirmLabel:'Save new date'}))onChange({...item,dueDate:dateDraft.value});}}>Review date change</PrimaryButton></>:null}<PrimaryButton onClick={() => onComplete(item)}>Mark complete</PrimaryButton></div>
   </RecordCard>;
 }
 
@@ -99,15 +104,22 @@ function DocumentCard({ item, onChange, onDelete }) {
   </RecordCard>;
 }
 
-export default function BusinessCompliancePage({ onBack }) {
-  const [state, setState] = useState(() => loadBusinessCompliance());
+export default function BusinessCompliancePage({ onBack, initialState, onSaveState }) {
+  const [state, setState] = useState(() => initialState || loadBusinessCompliance());
   const [tab, setTab] = useState("overview");
+  const tabId=useId();const {confirm,confirmation}=useRecordConfirmation();
+  const [deadlineFilter,setDeadlineFilter]=useState('all'),[deadlineView,setDeadlineView]=useState('agenda'),[calendarMonth,setCalendarMonth]=useState(todayIso().slice(0,7)),[selectedDay,setSelectedDay]=useState('');
+  const [documentQuery,setDocumentQuery]=useState(''),[documentType,setDocumentType]=useState('all'),[documentExpiry,setDocumentExpiry]=useState('all');
   const [deadlineDraft, setDeadlineDraft] = useState(null);
   const [documentDraft, setDocumentDraft] = useState(null);
   const summary = useMemo(() => summarizeBusinessCompliance(state), [state]);
   const deadlines = useMemo(() => sortDeadlines(state.deadlines), [state.deadlines]);
 
-  const persist = (next) => setState(saveBusinessCompliance(next));
+  const shownDeadlines=filterDeadlines(deadlines,deadlineFilter,selectedDay);
+  const shownDocuments=filterComplianceDocuments(state.documents,{query:documentQuery,type:documentType,expiry:documentExpiry});
+  const showDeadlineFilter=filter=>{setDeadlineFilter(filter);setSelectedDay('');setDeadlineView('agenda');setTab('deadlines');window.requestAnimationFrame(()=>document.getElementById(tabId+'-deadlines')?.focus());};
+  const tabKeyboard=event=>{const keys=['overview','setup','deadlines','documents','profile'], index=keys.indexOf(tab);let next;if(event.key==='ArrowRight')next=keys[(index+1)%keys.length];else if(event.key==='ArrowLeft')next=keys[(index+keys.length-1)%keys.length];else if(event.key==='Home')next=keys[0];else if(event.key==='End')next=keys.at(-1);if(next){event.preventDefault();setTab(next);document.getElementById(tabId+'-'+next)?.focus();}};
+  const persist = (next) => setState(onSaveState ? onSaveState(next) : saveBusinessCompliance(next));
   const updateSetup = (item) => persist({ ...state, setup: state.setup.map((row) => row.id === item.id ? item : row) });
   const updateDeadline = (item) => persist({ ...state, deadlines: state.deadlines.map((row) => row.id === item.id ? item : row) });
   const updateDocument = (item) => persist({ ...state, documents: state.documents.map((row) => row.id === item.id ? item : row) });
@@ -138,14 +150,15 @@ export default function BusinessCompliancePage({ onBack }) {
     {onBack ? <button type="button" className="everyday-back-button" onClick={onBack}>Back to Business</button> : null}
     <p className="compliance-privacy-note">Track status, dates, agencies, document locations, and safe references here. Do not save passwords, full EINs, bank account numbers, card numbers, or other secrets in this tracker.</p>
     {complianceStateNeedsReview(state.profile) ? <p className="compliance-privacy-note" role="status">The starter checklist is written for Virginia (Virginia Tax, Virginia SCC, the ST-10 resale certificate and Suffolk renewal dates). Your profile lists {state.profile.state}, so items marked Virginia only do not apply as written. Mark them Not applicable and add your own state and locality requirements.</p> : null}
-    <div className="compliance-tabs" role="tablist" aria-label="Compliance sections">{tabs.map((item) => <button key={item.key} type="button" role="tab" aria-selected={tab === item.key} className={tab === item.key ? "is-active" : ""} onClick={() => setTab(item.key)}>{item.label}</button>)}</div>
+    <div className="compliance-tabs" role="tablist" aria-label="Compliance sections" onKeyDown={tabKeyboard}>{tabs.map((item) => <button key={item.key} type="button" role="tab" id={tabId+"-"+item.key} aria-controls={tabId+"-panel"} tabIndex={tab === item.key ? 0 : -1} aria-selected={tab === item.key} className={tab === item.key ? "is-active" : ""} onClick={() => setTab(item.key)}>{item.label}</button>)}</div>
 
+    {confirmation}<div role="tabpanel" id={tabId+"-panel"} aria-labelledby={tabId+"-"+tab}>
     {tab === "overview" ? <>
       <div className="compliance-metrics">
-        <MetricCard label="Setup complete" value={`${summary.setupComplete}/${summary.setupTotal}`} />
-        <MetricCard label="Overdue" value={summary.overdue} tone={summary.overdue ? "warning" : "neutral"} />
-        <MetricCard label="Due in 30 days" value={summary.dueSoon} tone={summary.dueSoon ? "warning" : "neutral"} />
-        <MetricCard label="Needs a date" value={summary.needsDate} tone={summary.needsDate ? "warning" : "neutral"} />
+        <button type="button" className="compliance-metric-action" aria-label={`Review business setup: ${summary.setupComplete} of ${summary.setupTotal} complete`} onClick={()=>setTab("setup")}><MetricCard label="Setup complete" value={`${summary.setupComplete}/${summary.setupTotal}`} /></button>
+        <button type="button" className="compliance-metric-action" aria-label={`View ${summary.overdue} overdue deadlines`} onClick={()=>showDeadlineFilter('overdue')}><MetricCard label="Overdue" value={summary.overdue} tone={summary.overdue ? "warning" : "neutral"} /></button>
+        <button type="button" className="compliance-metric-action" aria-label={`View ${summary.dueSoon} deadlines due in 30 days`} onClick={()=>showDeadlineFilter('due_soon')}><MetricCard label="Due in 30 days" value={summary.dueSoon} tone={summary.dueSoon ? "warning" : "neutral"} /></button>
+        <button type="button" className="compliance-metric-action" aria-label={`View ${summary.needsDate} deadlines needing a date`} onClick={()=>showDeadlineFilter('needs_date')}><MetricCard label="Needs a date" value={summary.needsDate} tone={summary.needsDate ? "warning" : "neutral"} /></button>
       </div>
       <section><SectionHeader title="Next deadlines" description="Dates stay editable because filing requirements depend on your actual registration, locality, and assigned filing frequency." />
         {deadlines.length ? <div className="compliance-list">{deadlines.slice(0, 6).map((item) => <DeadlineCard key={item.id} item={item} onChange={updateDeadline} onComplete={complete} />)}</div> : <EmptyState title="No deadlines yet">Add deadlines as registrations and policies are established.</EmptyState>}
@@ -159,12 +172,17 @@ export default function BusinessCompliancePage({ onBack }) {
 
     {tab === "deadlines" ? <section><SectionHeader title="Filing and renewal calendar" description="Recurring items advance to their next period when marked complete." actions={<PrimaryButton onClick={() => setDeadlineDraft(newDeadline())}>Add Deadline</PrimaryButton>} />
       {deadlineDraft ? <RecordCard><div className="compliance-form-grid"><TextField label="Deadline name" required value={deadlineDraft.title} onChange={(value) => setDeadlineDraft({ ...deadlineDraft, title: value })} /><SelectField label="Category" value={deadlineDraft.category} onChange={(value) => setDeadlineDraft({ ...deadlineDraft, category: value })} options={DEADLINE_CATEGORIES.map((value) => ({ value, label: value }))} /><TextField label="Agency" value={deadlineDraft.agency} onChange={(value) => setDeadlineDraft({ ...deadlineDraft, agency: value })} /><TextField label="Due date" type="date" value={deadlineDraft.dueDate} onChange={(value) => setDeadlineDraft({ ...deadlineDraft, dueDate: value })} /><SelectField label="Cadence" value={deadlineDraft.cadence} onChange={(value) => setDeadlineDraft({ ...deadlineDraft, cadence: value })} options={DEADLINE_CADENCES} /><TextField className="is-wide" label="Notes" multiline value={deadlineDraft.notes} onChange={(value) => setDeadlineDraft({ ...deadlineDraft, notes: value })} /></div><div className="compliance-card-actions"><QuietButton onClick={() => setDeadlineDraft(null)}>Cancel</QuietButton><PrimaryButton onClick={addDeadline}>Save Deadline</PrimaryButton></div></RecordCard> : null}
-      <div className="compliance-list">{deadlines.map((item) => <DeadlineCard key={item.id} item={item} onChange={updateDeadline} onComplete={complete} />)}</div>
+      <div className="compliance-browse-controls"><SelectField label="Show deadlines" value={deadlineFilter} onChange={value=>{setDeadlineFilter(value);setSelectedDay('');}} options={[{value:'all',label:'All deadlines'},{value:'overdue',label:'Overdue'},{value:'due_soon',label:'Due in 30 days'},{value:'needs_date',label:'Needs a date'},{value:'complete',label:'Complete'}]}/><div role="group" aria-label="Deadline view"><QuietButton aria-pressed={deadlineView==='agenda'} onClick={()=>{setDeadlineView('agenda');setSelectedDay('');}}>Agenda</QuietButton><QuietButton aria-pressed={deadlineView==='month'} onClick={()=>setDeadlineView('month')}>Month</QuietButton></div></div>
+      {deadlineView==='month'?<section aria-label="Deadline month"><TextField label="Month" type="month" value={calendarMonth} onChange={value=>{setCalendarMonth(value);setSelectedDay('');}}/><div className="compliance-calendar">{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(day=><span key={day}>{day}</span>)}{monthDays(calendarMonth).map((day,index)=>{const items=filterDeadlines(deadlines,deadlineFilter,day);return <button type="button" key={day} style={index===0?{gridColumnStart:new Date(day+'T12:00:00').getDay()+1}:undefined} aria-pressed={selectedDay===day} aria-label={day+', '+items.length+' deadlines'} onClick={()=>setSelectedDay(day)}><strong>{Number(day.slice(-2))}</strong>{items.length?<span>{items.length} due</span>:null}</button>;})}</div><p>Dates come from your saved deadlines. Choose a day to view its records.</p></section>:null}
+      {selectedDay?<p role="status">Showing {dateLabel(selectedDay)} <QuietButton onClick={()=>setSelectedDay('')}>Clear selected day</QuietButton></p>:null}
+      <p role="status">{shownDeadlines.length} of {deadlines.length} deadlines</p>{!shownDeadlines.length?<EmptyState title="No deadlines match"><QuietButton onClick={()=>{setDeadlineFilter('all');setSelectedDay('');}}>Show all deadlines</QuietButton></EmptyState>:null}
+      <div className="compliance-list">{shownDeadlines.map((item) => <DeadlineCard key={item.id} item={item} onChange={updateDeadline} onComplete={complete} />)}</div>
     </section> : null}
 
     {tab === "documents" ? <section><SectionHeader title="Document index" description="This indexes where records are stored; it does not store secret credentials." actions={<PrimaryButton onClick={() => setDocumentDraft(newDocument())}>Add Document</PrimaryButton>} />
       {documentDraft ? <RecordCard><div className="compliance-form-grid"><TextField label="Document title" required value={documentDraft.title} onChange={(value) => setDocumentDraft({ ...documentDraft, title: value })} /><SelectField label="Type" value={documentDraft.type} onChange={(value) => setDocumentDraft({ ...documentDraft, type: value })} options={DOCUMENT_TYPES.map((value) => ({ value, label: value }))} /><TextField label="Location / folder" value={documentDraft.location} onChange={(value) => setDocumentDraft({ ...documentDraft, location: value })} /><TextField label="Expiration" type="date" value={documentDraft.expirationDate} onChange={(value) => setDocumentDraft({ ...documentDraft, expirationDate: value })} /><TextField className="is-wide" label="Notes" multiline value={documentDraft.notes} onChange={(value) => setDocumentDraft({ ...documentDraft, notes: value })} /></div><div className="compliance-card-actions"><QuietButton onClick={() => setDocumentDraft(null)}>Cancel</QuietButton><PrimaryButton onClick={addDocument}>Save Document</PrimaryButton></div></RecordCard> : null}
-      {state.documents.length ? <div className="compliance-list">{state.documents.map((item) => <DocumentCard key={item.id} item={item} onChange={updateDocument} onDelete={(document) => persist({ ...state, documents: state.documents.filter((row) => row.id !== document.id) })} />)}</div> : <EmptyState title="No documents indexed">Add formation, tax, license, insurance, banking, or contract records as you create them.</EmptyState>}
+      <div className="compliance-browse-controls"><TextField label="Search documents" type="search" value={documentQuery} onChange={setDocumentQuery} placeholder="Title, type, location or notes"/><SelectField label="Document type" value={documentType} onChange={setDocumentType} options={[{value:'all',label:'All types'},...DOCUMENT_TYPES.map(value=>({value,label:value}))]}/><SelectField label="Expiration" value={documentExpiry} onChange={setDocumentExpiry} options={[{value:'all',label:'Any expiration'},{value:'expired',label:'Expired'},{value:'soon',label:'Expires in 30 days'},{value:'no_date',label:'No date recorded'}]}/><QuietButton onClick={()=>{setDocumentQuery('');setDocumentType('all');setDocumentExpiry('all');}}>Clear document filters</QuietButton></div><p role="status">{shownDocuments.length} of {state.documents.length} documents</p>
+      {shownDocuments.length ? <div className="compliance-list">{shownDocuments.map((item) => <DocumentCard key={item.id} item={item} onChange={updateDocument} onDelete={async document => {if(await confirm({title:"Remove document index?",message:"This removes the saved index entry for "+document.title+". The source document itself is not deleted.",confirmLabel:"Remove index entry"}))persist({ ...state, documents: state.documents.filter(row=>row.id!==document.id) });}} />)}</div> : <EmptyState title={state.documents.length ? "No documents match" : "No documents indexed"}>Add formation, tax, license, insurance, banking, or contract records as you create them.</EmptyState>}
     </section> : null}
 
     {tab === "profile" ? <section><SectionHeader title="Business profile" description="Keep safe administrative details together. Sensitive numbers should remain in their secure source systems." /><RecordCard><div className="compliance-form-grid">
@@ -180,5 +198,6 @@ export default function BusinessCompliancePage({ onBack }) {
       <TextField label="Bookkeeping method / system" value={state.profile.bookkeepingMethod} onChange={(value) => updateProfile("bookkeepingMethod", value)} />
       <TextField className="is-wide" label="Notes" multiline value={state.profile.notes} onChange={(value) => updateProfile("notes", value)} />
     </div></RecordCard></section> : null}
+    </div>
   </main>;
 }

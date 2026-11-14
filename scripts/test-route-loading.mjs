@@ -21,6 +21,7 @@ const storeSeed = read("src/data/virginiaStoresSeed.js");
 const smartSearch = read("src/components/SmartCatalogSearchBox.jsx");
 const smartInventory = read("src/components/SmartAddInventory.jsx");
 const smartCatalog = read("src/components/SmartAddCatalog.jsx");
+const barcodeScanner = read("src/components/BarcodeScanner.jsx");
 const routePages = {
   hearth: read("src/pages/Hearth.jsx"),
   operationsHome: read("src/pages/OperationsHome.jsx"),
@@ -194,8 +195,13 @@ check(
 
 check(
   "Scanner library is dynamically imported only when activated",
-  !/from\s+["']@zxing\/browser["']/.test(app) &&
-    app.includes('await import("@zxing/browser")')
+  !/from\s+["']@zxing\/browser["']/.test(`${app}\n${barcodeScanner}`) &&
+    app.includes('import BarcodeScanner from "./components/BarcodeScanner.jsx"') &&
+    /scanMode === "upc"[\s\S]*?<BarcodeScanner\b/.test(app) &&
+    barcodeScanner.includes('const loadReader = () => import("@zxing/browser")') &&
+    barcodeScanner.includes("readerLoader = loadReader") &&
+    /useEffect\(\(\) => \{[\s\S]*?async function start\(\)[\s\S]*?await readerLoader\(\)/.test(barcodeScanner) &&
+    barcodeScanner.includes("void start();")
 );
 
 check(

@@ -744,7 +744,11 @@ function normalizeTcgCsvGroup(productsPayload, pricesPayload, group, checkedAt =
     const catalogType = isSealedOrAccessory(product) ? "sealed" : "card";
     if (catalogType === "sealed") result.sealedProducts.push(normalizeTcgCsvSealed(product, group, price, checkedAt));
     else result.cards.push(normalizeTcgCsvCard(product, group, price, checkedAt));
-    if (referenceQuote(price).value) result.marketPrices.push(normalizeMarketPrice(product, group, price, catalogType, checkedAt));
+    // Keep each real printing quote. The product's default quote remains picked
+    // by the established policy; adding variants must not change that default.
+    for (const versionPrice of pricesByProduct.get(String(product.productId)) || []) {
+      if (referenceQuote(versionPrice).value) result.marketPrices.push(normalizeMarketPrice(product, group, versionPrice, catalogType, checkedAt));
+    }
   }
   if (!result.marketPrices.length) throw new Error("The group contained no usable price joined to a product ID.");
   return result;

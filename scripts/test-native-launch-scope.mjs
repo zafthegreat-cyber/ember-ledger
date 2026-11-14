@@ -86,6 +86,7 @@ test("turning alerts on asks permission, registers and saves the token", async (
   const client = fakeClient();
   const result = await enableNativePush({ client, appVersion: "1.0.0", load: plugin.load, platform: "android", available: true });
   assert.equal(result.permission, "granted");
+  assert.equal(result.registration, "registered");
   assert.equal(plugin.calls.requested, 1);
   assert.deepEqual(plugin.calls.channels, ["restocks"]);
   assert.deepEqual(client.calls, [["register_push_token", { p_token: "a".repeat(64), p_platform: "android", p_app_version: "1.0.0" }]]);
@@ -93,8 +94,8 @@ test("turning alerts on asks permission, registers and saves the token", async (
 
 test("a declined prompt, a failed registration or a failed save is reported, not hidden", async () => {
   assert.equal((await enableNativePush({ client: fakeClient(), load: fakePlugin({ answer: "denied" }).load, platform: "ios", available: true })).permission, "denied");
-  assert.equal((await enableNativePush({ client: fakeClient(), load: fakePlugin({ fail: true }).load, platform: "ios", available: true })).permission, "error");
-  assert.equal((await enableNativePush({ client: fakeClient({ message: "x" }), load: fakePlugin().load, platform: "ios", available: true })).permission, "error");
+  assert.equal((await enableNativePush({ client: fakeClient(), load: fakePlugin({ fail: true }).load, platform: "ios", available: true })).registration, "failed");
+  assert.equal((await enableNativePush({ client: fakeClient({ message: "x" }), load: fakePlugin().load, platform: "ios", available: true })).registration, "failed");
   assert.equal((await nativePushSupport({ load: fakePlugin({ permission: "granted" }).load, available: true })).permission, "granted");
 });
 

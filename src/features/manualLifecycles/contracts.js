@@ -1,3 +1,4 @@
+import { validWishIdentity } from './wishIdentity.js';
 import { soldQuantityForInventory } from "../flipScout/inventory.js";
 import { effectiveReturnApplication, returnApplications } from "./returnLedger.js";
 
@@ -70,7 +71,8 @@ export function minorUnitsFromInput(value) {
 
 export function validateLifecycleRecord(record, state) {
   if (!record || typeof record !== "object" || Array.isArray(record) || !LIFECYCLE_TYPES[record.type]) fail("Unsupported operational record.");
-  const keys = [...BASE_KEYS, ...LIFECYCLE_TYPES[record.type]];
+  const keys = [...BASE_KEYS, ...LIFECYCLE_TYPES[record.type], ...(record.type === "wish" ? ["catalogIdentity"] : [])];
+  if(record.catalogIdentity!==undefined&&!validWishIdentity(record.catalogIdentity))fail("Invalid wishlist catalog identity.");
   if (Object.keys(record).some((key) => !keys.includes(key))) fail("Operational record contains unsupported fields.");
   text(record.id, "Record identity", true, 160);
   integer(record.recordVersion, "Record version", 1);
@@ -113,7 +115,7 @@ export function validateLifecycleRecord(record, state) {
     const targets = variantTargets(record.variants);
     if (!targets.length || new Set(targets).size !== targets.length) fail("Add unique collector number | variant targets, one per line.");
   }
-  if (record.type === "wish") text(record.collectorNumber, "Collector number");
+  if (record.type === "wish") text(record.collectorNumber, "Collector number", record.catalogIdentity?.kind !== "sealed");
   if (record.type === "grading") {
     integer(record.costMinor, "Grading cost");
     if (record.status !== "Draft" && record.status !== "Cancelled") { text(record.company, "Grading company"); text(record.submissionReference, "Submission reference"); }
@@ -198,6 +200,7 @@ export function validateLifecycleTransition(current, next) {
     if (row.type !== previous.type || row.createdAt !== previous.createdAt || row.recordVersion !== previous.recordVersion + 1 || json(row.history.slice(0, -1)) !== json(previous.history)) fail("Operational history is append-only. Reload before saving.");
     for (const field of FIXED_LINKS[row.type] || []) if (row[field] !== previous[field]) fail("A saved physical identity or source link cannot be reassigned.");
     if (TRANSITIONS[row.type] && !TRANSITIONS[row.type][previous.status]?.includes(row.status)) fail("Complete each lifecycle stage in order.");
+    if (previous.catalogIdentity && json(row.catalogIdentity)!==json(previous.catalogIdentity)) fail("A catalog target identity cannot be changed by an ordinary edit.");
     if (row.type === "saleReturn" && (row.refundMinor < previous.refundMinor || (previous.status === "Closed" && json(row.history.at(-1).values) !== json(previous.history.at(-1).values)))) fail("Recorded refunds cannot be reduced and closed returns cannot be rewritten.");
     if (row.type === "purchaseReturn" && (row.refundMinor < previous.refundMinor || (["Closed", "Cancelled"].includes(previous.status) && json(row.history.at(-1).values) !== json(previous.history.at(-1).values)))) fail("Recorded refunds cannot be reduced and closed returns cannot be rewritten.");
   }
@@ -214,7 +217,7 @@ export function buildLifecycleRecord(type, values, previous, { id, at }) {
   if (Object.keys(values).some((key) => !LIFECYCLE_TYPES[type].includes(key))) fail("Unsupported workflow values.");
   const projection = Object.fromEntries(LIFECYCLE_TYPES[type].map((key) => [key, values[key] ?? previous?.[key] ?? ""]));
   const recordVersion = (previous?.recordVersion || 0) + 1;
-  return { id: previous?.id || id, type, recordVersion, createdAt: previous?.createdAt || at, updatedAt: at, ...projection, history: [...(previous?.history || []), { at, version: recordVersion, values: projection }] };
+  return { ...(previous?.catalogIdentity ? {catalogIdentity:previous.catalogIdentity} : {}), id: previous?.id || id, type, recordVersion, createdAt: previous?.createdAt || at, updatedAt: at, ...projection, history: [...(previous?.history || []), { at, version: recordVersion, values: projection }] };
 }
 
 const normalized = (value) => String(value || "").trim().toLowerCase();

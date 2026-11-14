@@ -1,4 +1,8 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import SaleSavedReceipt from '../components/SaleSavedReceipt.jsx';
+import { createCollectionLifecycleActions } from '../features/manualLifecycles/collectionActions.js';
+import { OWNER_SESSION_STATES } from '../services/ownerSession.js';
+import useRecordConfirmation from '../components/useRecordConfirmation.jsx';
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import WorkspaceTabs, { WorkspaceTabPanel } from "../components/operations/WorkspaceTabs.jsx";
 import { businessRecordMatchesQuery } from "../utils/businessInventorySearch.mjs";
 import { presentAmount } from "../utils/recordPresentation.mjs";
@@ -45,6 +49,9 @@ import { getItemImageUrl } from "../utils/productDisplayUtils.js";
 import ItemPhoto from "../components/ItemPhoto.jsx";
 import CollectionPortfolio from "../components/CollectionPortfolio.jsx";
 import CollectionProductDetail from "../components/CollectionProductDetail.jsx";
+import GradingFields from '../components/GradingFields.jsx';
+import GradedCopyEditor from '../components/GradedCopyEditor.jsx';
+import { gradedCopySeed, gradingDetails, isGradedCopy, applyGradedCopyEdit, gradedCertificateError } from '../utils/gradedCopies.mjs';
 import { groupCollectionCopies } from "../utils/collectionCopyGroups.mjs";
 import { getPortfolioItemKey } from "../utils/collectionPortfolio.mjs";
 import CollectionSets from "../components/CollectionSets.jsx";
@@ -52,9 +59,16 @@ import CollectionGameFilter from "../components/CollectionGameFilter.jsx";
 import { COLLECTIBLE_GAMES, assignCollectibleGame, getRecordGame, getRecordGameLabel, matchesRecordGame } from "../utils/collectibleGames.mjs";
 import { POKEMON_SETS } from "../data/pokemonSetCatalog.js";
 import { buildCollectionSetRows } from "../utils/collectionSets.mjs";
-import { createSetCatalogItemSeed, setCatalogKey } from "../utils/setCatalog.mjs";
+import { createSetCatalogItemSeed, setCatalogKey, setCatalogKind } from "../utils/setCatalog.mjs";
+import { cardVersionOf } from "../utils/cardVersions.mjs";
 import { createCollectionSetsNavigation } from "../utils/collectionSetsNavigation.mjs";
-import { BUSINESS_INVENTORY_STOCK_FILTERS, filterBusinessInventory } from "../utils/businessInventorySearch.mjs";
+import { recordNotePresentation } from "../utils/recordNotes.mjs";
+import { buildCatalogMatchDraft, catalogMatchIdentityPatch } from "../utils/collectionBrowse.mjs";
+import { applyReviewedCatalogMatch } from "../utils/catalogMatchSave.mjs";
+import { reviewedStorageState } from "../utils/inventoryStorageReview.mjs";
+import SaleFormFields from "../components/SaleFormFields.jsx";
+import InventoryBrowser from "../components/InventoryBrowser.jsx";
+import { filterSalesHistory, inventoryStockLabel, saleInventoryChoices } from "../utils/inventoryBrowse.mjs";
 import "./everyday-workspaces.css";
 
 const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
@@ -143,6 +157,7 @@ function activityEntry(title, detail) {
 
 function useBusinessRepository() {
   const [repository] = useState(() => createFlipScoutRepository());
+  const { confirm, confirmation } = useRecordConfirmation();
   const [state, setState] = useState(() => repository.load());
   const [error, setError] = useState(() => repository.getLastError());
 
@@ -156,15 +171,26 @@ function useBusinessRepository() {
     };
   }, [repository]);
 
-  const saveRecord = useCallback(async (collection, record, message = "Record saved") => {
+  const saveRecord = useCallback(async (collection, record, message = "Record saved", { catalogMatchBaseline, gradingBaseline, gradingRecords = [] } = {}) => {
     if (record?.provenanceManaged === true) {
       setError("Owner-confirmed acquisition records use their append-only correction workflow.");
       return null;
     }
     try {
       const result = await repository.runLocked(() => {
-        return repository.upsert(collection, record, {
-          activityRecord: activityEntry(message, recordTitle(record)),
+        const currentState = repository.load();
+        const certificateRecords = [...currentState.inventory, ...gradingRecords.filter(item => item._recordOrigin === 'legacy')];
+        const toSave = gradingBaseline && collection === "inventory"
+          ? applyGradedCopyEdit(currentState.inventory.find(item => item.id === record.id), gradingBaseline, record, certificateRecords)
+          : catalogMatchBaseline && collection === "inventory"
+          ? applyReviewedCatalogMatch(repository.load().inventory.find(item => item.id === record.id), catalogMatchBaseline, record)
+          : record;
+        if (collection === 'inventory' && !record.id && isGradedCopy(toSave)) {
+          const certificateError = gradedCertificateError(toSave, certificateRecords);
+          if (certificateError) throw new Error(certificateError);
+        }
+        return repository.upsert(collection, toSave, {
+          activityRecord: activityEntry(message, recordTitle(toSave)),
         });
       });
       setState(result.state);
@@ -173,6 +199,7 @@ function useBusinessRepository() {
     } catch (saveError) {
       setState(repository.load());
       setError(saveError?.message || "The record could not be saved safely.");
+      if (gradingBaseline || (collection === 'inventory' && !record.id && isGradedCopy(record))) throw saveError;
       return null;
     }
   }, [repository]);
@@ -182,7 +209,7 @@ function useBusinessRepository() {
       setError("Owner-confirmed acquisition records cannot be deleted from the generic editor.");
       return false;
     }
-    if (!window.confirm(`Delete ${recordTitle(record)}? This cannot be undone.`)) return false;
+    if (!await confirm({title: `Delete ${recordTitle(record)}?`, message: "This removes this original record. This cannot be undone.", confirmLabel: "Delete record"})) return false;
     try {
       const result = await repository.runLocked(() => repository.remove(collection, record.id));
       setState(result.state);
@@ -193,7 +220,7 @@ function useBusinessRepository() {
       setError(removeError?.message || "The record could not be deleted safely.");
       return false;
     }
-  }, [repository]);
+  }, [repository, confirm]);
 
   const allocateLot = useCallback(async (lot, method) => {
     const lotItems = state.inventory.filter((item) => item.lotId === lot.id);
@@ -207,7 +234,13 @@ function useBusinessRepository() {
     setError(result.error);
   }, [repository, state]);
 
-  return { state, error, saveRecord, removeRecord, allocateLot };
+  const saveStorage = useCallback(async (changes) => {
+    const result = await repository.runLocked(() => repository.save(reviewedStorageState(repository.load(), changes)));
+    setState(result.state); setError(result.error);
+    if (result.error) throw new Error(result.error);
+    return changes.map(change => `repository:${change.id}`);
+  }, [repository]);
+  return { state, error, saveRecord, removeRecord, allocateLot, saveStorage, confirmation, repository };
 }
 
 function usePreservedDraft(key, initialValue) {
@@ -215,13 +248,17 @@ function usePreservedDraft(key, initialValue) {
   const [value, setValue] = useState(() => {
     try { return { ...initialValue, ...JSON.parse(sessionStorage.getItem(storageKey) || "null") }; } catch { return initialValue; }
   });
+  const [persistence, setPersistence] = useState({ value: null, status: "saving" });
   useEffect(() => {
-    try { sessionStorage.setItem(storageKey, JSON.stringify(value)); } catch { /* Draft preservation is best effort. */ }
+    let canceled = false; let status = "saved";
+    try { sessionStorage.setItem(storageKey, JSON.stringify(value)); } catch { status = "failed"; }
+    queueMicrotask(() => { if (!canceled) setPersistence({ value, status }); });
+    return () => { canceled = true; };
   }, [storageKey, value]);
   const clear = () => {
     try { sessionStorage.removeItem(storageKey); } catch { /* Ignore unavailable session storage. */ }
   };
-  return [value, setValue, clear];
+  return [value, setValue, clear, persistence.value === value ? persistence.status : "saving"];
 }
 
 function WorkspaceMoreMenu({ label = "More", items, active, onChange }) {
@@ -268,10 +305,12 @@ function itemDetailGroups(item, valueLabel = "Projected resale", showValues = tr
   // F16: the Collection "hide values" control also hides copy costs and
   // estimates on the item detail, not only the portfolio total.
   const shownMoney = (value, empty) => showValues ? money(value, empty) : VALUE_HIDDEN;
+  const notePresentation = recordNotePresentation(item);
   return [
-    { title: "Identification", description: "Item and card details.", items: [{ label: "Trading card game", value: getRecordGameLabel(item) }, { label: "Classification", value: item.productClassification }, { label: getRecordGame(item) === "pokemon" ? "Pokémon" : "Character or subject", value: item.pokemonName }, { label: "Set", value: item.setName }, { label: "Card number", value: item.cardNumber }, { label: "Language", value: item.language }, { label: "Condition", value: item.condition }, { label: "Grade", value: [item.gradingCompany, item.grade].filter(Boolean).join(" ") }, { label: "Certification", value: item.certificationNumber }] },
+    { title: "Identification", description: "Item and card details.", items: [{ label: "Trading card game", value: getRecordGameLabel(item) }, { label: "Classification", value: item.productClassification }, { label: getRecordGame(item) === "pokemon" ? "Pokémon" : "Character or subject", value: item.pokemonName }, { label: "Set", value: item.setName }, { label: "Card number", value: item.cardNumber }, { label: "Language", value: item.language }, { label: "Condition", value: item.condition }, { label: "Grade", value: [gradingDetails(item).gradingCompany, gradingDetails(item).grade].filter(Boolean).join(" ") }, { label: "Certification", value: gradingDetails(item).certificationNumber }] },
     { title: "Acquisition and value", description: "Original cost context remains attached.", items: [{ label: "Purchase source", value: item.purchaseSource || item.source }, { label: "Purchase date", value: dateLabel(item.purchaseDate) }, { label: "Original listing", value: item.originalListing }, { label: "Total purchase cost", value: shownMoney(item.totalPurchaseCost), numeric: true }, { label: "Allocated cost", value: shownMoney(acquisitionCost(item)), numeric: true }, { label: valueLabel, value: showValues ? [money(item.projectedResaleLow, ""), money(item.projectedResaleMid, ""), money(item.projectedResaleHigh, "")].filter(Boolean).join(" / ") : VALUE_HIDDEN }] },
-    { title: "Storage and notes", description: "Where the item is and what remains to do.", items: [{ label: "Storage location", value: item.storageLocation }, { label: "Sales channel", value: item.intendedSalesChannel }, { label: "Notes", value: item.notes }] },
+    { title: "Storage and notes", description: "Where the item is and what remains to do.", items: [{ label: "Storage location", value: item.storageLocation }, { label: "Sales channel", value: item.intendedSalesChannel }, { label: "Personal notes", value: notePresentation.notes }] },
+    ...(notePresentation.source ? [{ title: "Data source", description: "Original import context, kept separately from personal notes.", items: [{ label: "Import source", value: notePresentation.source.replaceAll("_", " ") }, { label: "Original source text", value: notePresentation.original }] }] : []),
   ];
 }
 
@@ -302,19 +341,20 @@ function blankForm(type, seed = {}) {
 }
 
 const FORM_CONFIG = {
-  collection: { title: "Add Collection Item", description: "Identify the item, preserve acquisition context, and choose its purpose.", steps: ["Item", "Acquisition", "Purpose"], collection: "inventory", submit: "Save Item" },
+  collection: { title: "Add Collection Item", description: "Identify the item, preserve acquisition context, and choose its purpose.", steps: ["Item", "Acquisition", "Purpose"], collection: "inventory", submit: "Save item" },
   purchase: { title: "Record Purchase", description: "Capture the purchase first; lots and inventory remain related records.", steps: ["Purchase", "Costs"], collection: "purchases", submit: "Save Purchase" },
   lot: { title: "Process Purchase Lot", description: "Connect a lot to its purchase and choose how item cost will be allocated.", steps: ["Lot", "Allocation"], collection: "lots", submit: "Save Lot" },
-  inventory: { title: "Add Resale Inventory", description: "Identify the item, retain its cost basis, and set the resale plan.", steps: ["Item", "Costs", "Plan"], collection: "inventory", submit: "Save Inventory" },
-  sale: { title: "Record Sale", description: "Validate quantity and record real proceeds and selling costs.", steps: ["Sale", "Costs", "Result"], collection: "sales", submit: "Save Sale" },
+  inventory: { title: "Add Resale Inventory", description: "Identify the item, retain its cost basis, and set the resale plan.", steps: ["Item", "Costs", "Plan"], collection: "inventory", submit: "Save inventory" },
+  sale: { title: "Record sale", description: "Validate quantity and record real proceeds and selling costs.", steps: ["Sale", "Costs", "Result"], collection: "sales", submit: "Save sale" },
   expense: { title: "Add Expense", description: "Record a factual business expense and its receipt reference.", steps: ["Expense", "Reference"], collection: "expenses", submit: "Save Expense" },
   mileage: { title: "Add Mileage", description: "Record the actual trip. Mileage remains a bookkeeping estimate.", steps: ["Trip", "Related"], collection: "mileage", submit: "Save Mileage" },
 };
 
-function RecordForm({ type, seed = {}, draftScope = "", state, onSave, onCancel }) {
+function RecordForm({ type, seed = {}, draftScope = "", state, onSave, onCancel, onAddInventory, initialStep = 0 }) {
   const config = FORM_CONFIG[type];
-  const [step, setStep] = useState(0);
-  const [form, setForm, clearDraft] = usePreservedDraft(`${type}.${seed.id || draftScope || "new"}`, blankForm(type, seed));
+  const [step, setStep] = useState(initialStep);
+  const [inventoryQuery, setInventoryQuery] = useState("");
+  const [form, setForm, clearDraft, draftStatus] = usePreservedDraft(`${type}.${draftScope || seed.id || "new"}`, blankForm(type, seed));
   const [error, setError] = useState("");
   const saveInFlightRef = useRef(false);
   const [saving, setSaving] = useState(false);
@@ -325,12 +365,16 @@ function RecordForm({ type, seed = {}, draftScope = "", state, onSave, onCancel 
   };
   const selectedInventory = state.inventory.find((item) => item.id === form.inventoryItemId);
   const quantityCheck = type === "sale" ? validateSaleQuantity({ inventoryItem: selectedInventory, sales: state.sales, saleDraft: form, editingSaleId: form.id }) : { valid: true, message: "" };
+  const saleAvailable = row => availableQuantity(row, soldQuantityForInventory(row.id, state.sales, form.id));
+  const saleChoices = type === "sale" ? saleInventoryChoices(state.inventory, { available: saleAvailable, editingItemId: seed.id ? seed.inventoryItemId : "", selectedId: form.inventoryItemId, query: inventoryQuery }) : [];
+  const quantityPreview = type === "sale" && selectedInventory ? validateSaleQuantity({ inventoryItem: selectedInventory, sales: state.sales, saleDraft: { ...form, status: "Completed" }, editingSaleId: form.id }) : null;
+  const quantityError = quantityPreview && !quantityPreview.valid ? quantityPreview.message : "";
   const suggestedCogs = selectedInventory ? suggestedInventorySaleCogsMajorUnits(selectedInventory, state.sales, Number(form.quantitySold), form.id) : 0;
   const suggestedCogsMinorUnits = selectedInventory?.provenanceManaged === true ? suggestedInventorySaleCogsMinorUnits(selectedInventory, state.sales, Number(form.quantitySold), form.id) : null;
   const authoritativeCogs = selectedInventory?.provenanceManaged === true ? suggestedCogs : form.allocatedCostOfGoodsSold === "" ? suggestedCogs : form.allocatedCostOfGoodsSold;
   const saleResult = calculateSaleResults({ ...form, allocatedCostOfGoodsSold: authoritativeCogs });
   const requiredValue = type === "purchase" ? form.title : type === "lot" ? form.title : ["collection", "inventory"].includes(type) ? form.name : type === "sale" ? form.inventoryItemId : type === "expense" ? form.description || form.merchant : form.purpose;
-  const canContinue = step > 0 || Boolean(String(requiredValue || "").trim());
+  const canContinue = (step > 0 || Boolean(String(requiredValue || "").trim())) && (type !== "sale" || quantityCheck.valid);
 
   const cancel = () => {
     if (saveInFlightRef.current) return;
@@ -359,24 +403,26 @@ function RecordForm({ type, seed = {}, draftScope = "", state, onSave, onCancel 
       if (!saved) return setError("The record was not saved. Review the latest Inventory state and try again.");
       clearDraft();
       onCancel();
+    } catch (failure) {
+      setError(failure.message || "The record could not be saved. Your draft is still here.");
     } finally {
       saveInFlightRef.current = false;
       setSaving(false);
     }
   };
 
-  return <GuidedFormPage title={config.title} description={config.description} steps={config.steps} activeStep={step} onStepChange={setStep} onCancel={cancel} onSubmit={submit} canContinue={canContinue && !saving} submitLabel={saving ? "Saving…" : seed.id ? `Update ${config.submit.replace("Save ", "")}` : config.submit} error={error}>
+  return <GuidedFormPage title={config.title} description={config.description} steps={config.steps} activeStep={step} onStepChange={setStep} onCancel={cancel} onSubmit={submit} canContinue={canContinue && !saving} submitLabel={saving ? "Saving…" : seed.id ? "Save changes" : config.submit} draftLabel={draftStatus === "saved" ? "Draft saved in this tab" : draftStatus === "failed" ? "Draft could not be kept" : "Saving draft…"} error={error}>
+    {draftStatus === "failed" ? <p role="alert" className="ops-form-error">This browser could not keep a recovery draft. Keep this tab open until you save or copy the details you need.</p> : null}
     <div className="ops-form-group"><header><h2>{config.steps[step]}</h2><p>Required fields are marked. Additional detail can be added later.</p></header><div className="ops-form-grid">
       {(["collection", "inventory"].includes(type) && step === 0) ? <><TextField label="Item name" required value={form.name} onChange={set("name")} error={!form.name && error ? "Item name is required." : ""} /><SelectField label="Trading card game" value={getRecordGame(form)} onChange={changeGame} options={[...COLLECTIBLE_GAMES.map((game) => ({ value: game.id, label: game.name })), { value: "unspecified", label: "Unspecified / other" }]} />{seed.id && (form.tcgGameAssignmentHistory?.length || 0) > (seed.tcgGameAssignmentHistory?.length || 0) ? <p className="collection-game-filter-note">Saving will change the game label to {getRecordGameLabel(form)}. Previous game labels are kept in the record's history.</p> : null}<TextField label="Quantity" type="number" inputMode="numeric" min="1" value={form.quantity} onChange={set("quantity")} /><SelectField label="Product classification" value={form.productClassification} onChange={set("productClassification")} options={PRODUCT_CLASSIFICATIONS} /><TextField label={getRecordGame(form) === "pokemon" ? "Pokémon" : "Character or subject"} value={form.pokemonName} onChange={set("pokemonName")} /><TextField label="Set" value={form.setName} onChange={set("setName")} /><TextField label="Card number" value={form.cardNumber} onChange={set("cardNumber")} /><TextField label="Condition" value={form.condition} onChange={set("condition")} /></> : null}
+{(["collection", "inventory"].includes(type) && !seed.id && step === 0 && (isGradedCopy(form) || /card|single|graded|slab/i.test(form.productClassification || "") || form.cardNumber)) ? <GradingFields record={form} disabled={saving} onChange={patch => { setForm(current => ({...current,...patch})); setError(""); }} /> : null}
       {(["collection", "inventory"].includes(type) && step === 1) ? <><SelectField label="Purchase" value={form.purchaseId || ""} onChange={set("purchaseId")} options={[{ value: "", label: "No purchase selected" }, ...state.purchases.map((row) => ({ value: row.id, label: row.title }))]} /><SelectField label="Purchase lot" value={form.lotId || ""} onChange={set("lotId")} options={[{ value: "", label: "No lot selected" }, ...state.lots.map((row) => ({ value: row.id, label: row.title }))]} /><TextField label="Purchase source" value={form.purchaseSource} onChange={set("purchaseSource")} /><TextField label="Purchase date" type="date" value={form.purchaseDate} onChange={set("purchaseDate")} /><TextField label="Allocated item cost" type="number" inputMode="decimal" min="0" step="0.01" value={form.allocatedItemCost} onChange={set("allocatedItemCost")} /></> : null}
       {(["collection", "inventory"].includes(type) && step === 2) ? <><SelectField label="Purpose" value={form.ownedItemPurpose} onChange={set("ownedItemPurpose")} options={OWNED_ITEM_PURPOSE_OPTIONS} /><SelectField label="Status" value={form.status || "In stock"} onChange={set("status")} options={INVENTORY_STATUSES} /><TextField label="Storage location" value={form.storageLocation} onChange={set("storageLocation")} list={STORAGE_LOCATION_LIST_ID} helper="Pick an existing place or type a new one. Capitalization does not create a new place." /><datalist id={STORAGE_LOCATION_LIST_ID}>{knownStorageLocations(state.inventory || []).map((location) => <option key={location} value={location} />)}</datalist><TextField label="Intended sales channel" value={form.intendedSalesChannel || ""} onChange={set("intendedSalesChannel")} /><TextField label="Projected resale low" type="number" inputMode="decimal" min="0" step="0.01" value={form.projectedResaleLow ?? ""} onChange={set("projectedResaleLow")} /><TextField label="Projected resale midpoint" type="number" inputMode="decimal" min="0" step="0.01" value={form.projectedResaleMid ?? ""} onChange={set("projectedResaleMid")} /><TextField label="Projected resale high" type="number" inputMode="decimal" min="0" step="0.01" value={form.projectedResaleHigh ?? ""} onChange={set("projectedResaleHigh")} /><TextField className="is-wide" label="Notes" multiline value={form.notes} onChange={set("notes")} /></> : null}
       {(type === "purchase" && step === 0) ? <><TextField label="Purchase title" required value={form.title} onChange={set("title")} error={!form.title && error ? "Purchase title is required." : ""} /><TextField label="Source" value={form.source} onChange={set("source")} /><TextField label="Purchase date" type="date" value={form.purchaseDate} onChange={set("purchaseDate")} /></> : null}
       {(type === "purchase" && step === 1) ? <><TextField label="Total purchase cost" type="number" inputMode="decimal" min="0" step="0.01" value={form.totalPurchaseCost} onChange={set("totalPurchaseCost")} /><TextField label="Original listing" type="url" value={form.originalListing} onChange={set("originalListing")} /><TextField className="is-wide" label="Notes" multiline value={form.notes} onChange={set("notes")} /></> : null}
       {(type === "lot" && step === 0) ? <><SelectField label="Related purchase" value={form.purchaseId} onChange={set("purchaseId")} options={[{ value: "", label: "No purchase selected" }, ...state.purchases.map((row) => ({ value: row.id, label: row.title }))]} /><TextField label="Lot title" required value={form.title} onChange={set("title")} error={!form.title && error ? "Lot title is required." : ""} /><TextField label="Total lot cost" type="number" inputMode="decimal" min="0" step="0.01" value={form.totalLotCost} onChange={set("totalLotCost")} /></> : null}
       {(type === "lot" && step === 1) ? <><SelectField label="Allocation method" value={form.allocationMethod} onChange={set("allocationMethod")} options={COST_ALLOCATION_METHODS} helper="Automatic methods apply after inventory items are attached to this lot." /><TextField className="is-wide" label="Notes" multiline value={form.notes} onChange={set("notes")} /></> : null}
-      {(type === "sale" && step === 0) ? <><SelectField label="Inventory item" required value={form.inventoryItemId} onChange={set("inventoryItemId")} error={!form.inventoryItemId && error ? "Choose an inventory item." : ""} options={[{ value: "", label: "Choose inventory" }, ...state.inventory.map((row) => ({ value: row.id, label: `${row.name} · qty ${quantityLabel(availableInventoryQuantity(row, state.sales), { unknown: "not saved" })}` }))]} /><TextField label="Quantity sold" type="number" inputMode="numeric" min="1" value={form.quantitySold} onChange={set("quantitySold")} /><TextField label="Sales channel" value={form.salesChannel} onChange={set("salesChannel")} /><TextField label="Sale date" type="date" value={form.saleDate} onChange={set("saleDate")} /><TextField label="Gross sale price" type="number" inputMode="decimal" min="0" step="0.01" value={form.grossSalePrice} onChange={set("grossSalePrice")} /></> : null}
-      {(type === "sale" && step === 1) ? <><TextField label="Discounts" type="number" inputMode="decimal" min="0" step="0.01" value={form.discounts} onChange={set("discounts")} /><TextField label="Selling fees" type="number" inputMode="decimal" min="0" step="0.01" value={form.sellingFees} onChange={set("sellingFees")} /><TextField label="Payment fees" type="number" inputMode="decimal" min="0" step="0.01" value={form.paymentFees} onChange={set("paymentFees")} /><TextField label="Shipping charged to buyer" type="number" inputMode="decimal" min="0" step="0.01" value={form.shippingChargedToBuyer} onChange={set("shippingChargedToBuyer")} /><TextField label="Actual outbound shipping" type="number" inputMode="decimal" min="0" step="0.01" value={form.actualOutboundShipping} onChange={set("actualOutboundShipping")} /><TextField label="Packaging" type="number" inputMode="decimal" min="0" step="0.01" value={form.packaging} onChange={set("packaging")} /><TextField label="Allocated cost of goods sold" helper={selectedInventory?.provenanceManaged === true ? "Exact from the owner-confirmed acquisition lot; this value cannot be overridden." : suggestedCogs ? `Suggested: ${money(suggestedCogs)}` : "Enter the cost assigned to the sold quantity."} type="number" inputMode="decimal" min="0" step="0.01" value={selectedInventory?.provenanceManaged === true ? suggestedCogs : form.allocatedCostOfGoodsSold} onChange={set("allocatedCostOfGoodsSold")} disabled={selectedInventory?.provenanceManaged === true} /></> : null}
-      {(type === "sale" && step === 2) ? <><SelectField label="Sale status" value={form.status} onChange={set("status")} options={SALE_STATUSES} /><div className="sale-result-preview" role="status"><span>Quantity check<strong>{quantityCheck.message || "Choose inventory"}</strong></span><span>Net proceeds<strong>{money(saleResult.netProceeds)}</strong></span><span>Realized profit<strong>{money(saleResult.realizedProfit)}</strong></span><span>Realized ROI<strong>{roi(saleResult.realizedRoi)}</strong></span></div><TextField className="is-wide" label="Notes" multiline value={form.notes} onChange={set("notes")} /></> : null}
+      {type === "sale" ? <SaleFormFields sales={state.sales} step={step} form={form} set={set} selectedInventory={selectedInventory} choices={saleChoices} inventoryQuery={inventoryQuery} onInventoryQuery={setInventoryQuery} quantityError={quantityError} available={selectedInventory ? saleAvailable(selectedInventory) : null} suggestedCogs={suggestedCogs} saleResult={saleResult} onAddInventory={onAddInventory} /> : null}
       {(type === "expense" && step === 0) ? <><TextField label="Date" type="date" value={form.date} onChange={set("date")} /><SelectField label="Category" value={form.category} onChange={set("category")} options={EXPENSE_CATEGORIES} /><TextField label="Merchant" value={form.merchant} onChange={set("merchant")} /><TextField label="Description" required value={form.description} onChange={set("description")} /><TextField label="Amount" type="number" inputMode="decimal" min="0" step="0.01" value={form.amount} onChange={set("amount")} /><TextField label="Payment method" value={form.paymentMethod} onChange={set("paymentMethod")} /></> : null}
       {(type === "expense" && step === 1) ? <><TextField label="Business percentage" type="number" inputMode="decimal" min="0" max="100" value={form.businessPercentage} onChange={set("businessPercentage")} helper="Bookkeeping estimate only." /><TextField label="Receipt reference" value={form.receiptReference} onChange={set("receiptReference")} /><TextField className="is-wide" label="Notes" multiline value={form.notes} onChange={set("notes")} /></> : null}
       {(type === "mileage" && step === 0) ? <><TextField label="Date" type="date" value={form.date} onChange={set("date")} /><TextField label="Start location" value={form.startLocation} onChange={set("startLocation")} /><TextField label="Destination" value={form.destination} onChange={set("destination")} /><TextField label="Purpose" required value={form.purpose} onChange={set("purpose")} /><TextField label="Miles" type="number" inputMode="decimal" min="0" step="0.1" value={form.miles} onChange={set("miles")} /></> : null}
@@ -385,15 +431,16 @@ function RecordForm({ type, seed = {}, draftScope = "", state, onSave, onCancel 
   </GuidedFormPage>;
 }
 
-function CollectionItemDetail({ item, onBack, onPurpose, onEdit, onDelete, valueLabel, resolveItemImage, showValues = true }) {
+function CollectionItemDetail({ item, onBack, backLabel, onPurpose, onEdit, onDelete, valueLabel, resolveItemImage, showValues = true }) {
   const normalized = normalizeOwnedItem(item);
   const cost = acquisitionCost(item);
   const managed = item.provenanceManaged === true;
-  return <RecordDetailPage eyebrow="Collection item" title={recordTitle(item)} status={normalized.ownedItemPurpose.replaceAll("_", " ").toLowerCase()} statusTone={normalized.ownedItemPurpose === OWNED_ITEM_PURPOSES.UNASSIGNED ? "warning" : "info"} image={resolveItemImage(item)} identity={[item.productClassification, item.setName, item.cardNumber].filter(Boolean).join(" · ") || "Identification is incomplete."} summary={[{ label: "Acquisition cost", value: !showValues ? VALUE_HIDDEN : cost == null ? "Not recorded" : money(cost), numeric: true }, { label: valueLabel, value: showValues ? money(item.projectedResaleMid) : VALUE_HIDDEN }, { label: "Condition", value: item.condition || "Not recorded" }, { label: "Storage", value: item.storageLocation || "Not assigned" }]} primaryAction={managed ? null : <PrimaryButton onClick={() => onPurpose(item, OWNED_ITEM_PURPOSES.FOR_RESALE)}>Sell This Item</PrimaryButton>} secondaryActions={managed ? null : <><QuietButton onClick={() => onEdit(item)}>Edit</QuietButton>{item._recordOrigin === "repository" ? <QuietButton className="ops-button--danger" onClick={() => onDelete(item)}>Delete</QuietButton> : null}</>} sections={[...itemDetailSections(item, valueLabel, showValues), ...(managed ? [{ title: "Acquisition provenance", description: "This owner-confirmed lot can be corrected only through append-only Inventory adjustments.", children: <DetailList items={[{ label: "Purchase", value: item.purchaseId }, { label: "Inventory lot", value: item.inventoryLotId }]} /> }] : [{ title: "Purpose assignment", description: "Purpose controls where this owned item appears.", children: <PurposeActions item={item} onChange={onPurpose} /> }])]} timeline={itemTimeline(item)} onBack={onBack} />;
+  const gradingAction = onEdit && !managed && setCatalogKind(item) === 'card' ? <QuietButton onClick={() => onEdit(item, 'grading')}>Edit grading details</QuietButton> : null;
+  return <RecordDetailPage eyebrow="Collection item" title={recordTitle(item)} status={normalized.ownedItemPurpose.replaceAll("_", " ").toLowerCase()} statusTone={normalized.ownedItemPurpose === OWNED_ITEM_PURPOSES.UNASSIGNED ? "warning" : "info"} image={resolveItemImage(item)} imageProduct={item} identity={[item.productClassification, item.setName, item.cardNumber].filter(Boolean).join(" · ") || "Identification is incomplete."} summary={[{ label: "Acquisition cost", value: !showValues ? VALUE_HIDDEN : cost == null ? "Not recorded" : money(cost), numeric: true }, { label: valueLabel, value: showValues ? money(item.projectedResaleMid) : VALUE_HIDDEN }, { label: "Condition", value: item.condition || "Not recorded" }, { label: "Storage", value: item.storageLocation || "Not assigned" }]} primaryAction={managed ? null : <PrimaryButton onClick={() => onPurpose(item, OWNED_ITEM_PURPOSES.FOR_RESALE)}>Sell This Item</PrimaryButton>} secondaryActions={managed ? null : <>{onEdit ? <QuietButton onClick={() => onEdit(item)}>Edit</QuietButton> : null}{item._recordOrigin === "repository" ? <QuietButton className="ops-button--danger" onClick={() => onDelete(item)}>Delete</QuietButton> : null}</>} sections={[...itemDetailSections(item, valueLabel, showValues).map((section,index) => index === 0 && gradingAction ? {...section,children:<>{section.children}{gradingAction}</>} : section), ...(managed ? [{ title: "Acquisition provenance", description: "This owner-confirmed lot can be corrected only through append-only Inventory adjustments.", children: <DetailList items={[{ label: "Purchase", value: item.purchaseId }, { label: "Inventory lot", value: item.inventoryLotId }]} /> }] : [{ title: "Purpose assignment", description: "Purpose controls where this owned item appears.", children: <PurposeActions item={item} onChange={onPurpose} /> }])]} timeline={itemTimeline(item)} backLabel={backLabel} onBack={onBack} />;
 }
 
 function isCollectionCopy(item) {
-  return [OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION, OWNED_ITEM_PURPOSES.HOLD].includes(inferOwnedItemPurpose(item));
+  return [OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION, OWNED_ITEM_PURPOSES.HOLD, OWNED_ITEM_PURPOSES.KIDS_COMMUNITY, OWNED_ITEM_PURPOSES.UNASSIGNED].includes(inferOwnedItemPurpose(item));
 }
 
 function collectionNavigationPosition(opener) {
@@ -401,13 +448,21 @@ function collectionNavigationPosition(opener) {
   return { key: opener?.getAttribute("data-copy-record-key") || opener?.getAttribute("data-collection-product-key"), valuable: opener?.classList.contains("collection-portfolio-valuable-row"), x: window.scrollX, y: window.scrollY, mainX: main?.scrollLeft || 0, mainY: main?.scrollTop || 0 };
 }
 
-export function CollectionWorkspace({ items = [], catalogProducts = EMPTY_CATALOG, initialView = "collection", onViewChange, onChangePurpose, onSellItem, featureControls = EMPTY_FEATURE_CONTROLS, experiencePresentation, resolveItemImage = recordImage, portfolioScope = "", portfolioFeatures = EMPTY_FEATURE_CONTROLS, onLockedFeature }) {
+function createAuthorizationLifetime(identity) { let active=false;return {identity,isAuthorized:()=>active,update:value=>{active=value;}}; }
+
+export function CollectionWorkspace({ items = [], catalogProducts = EMPTY_CATALOG, initialView = "collection", onViewChange, onChangePurpose, onSellItem, featureControls = EMPTY_FEATURE_CONTROLS, experiencePresentation, resolveItemImage = recordImage, portfolioScope = "", portfolioFeatures = EMPTY_FEATURE_CONTROLS, onLockedFeature, onEditLegacyItem, ownerSession }) {
   const presentation = experiencePresentation || resolveExperiencePresentation();
   const valueLabel = presentation.showBusinessTools || presentation.showAdminTools ? "Projected resale" : "Estimated value";
-  const { state, error, saveRecord, removeRecord } = useBusinessRepository();
+  const { state, error, saveRecord, removeRecord, confirmation, repository } = useBusinessRepository();
+  const authorized = ownerSession?.status === OWNER_SESSION_STATES.AUTHORIZED;
+  const authorizationIdentity = JSON.stringify([ownerSession?.provider, ownerSession?.identityKey || ownerSession?.userId || ownerSession?.user?.id || ownerSession?.displayIdentity || "owner"]);
+  const authorizationLifetime = useMemo(() => createAuthorizationLifetime(authorizationIdentity), [authorizationIdentity]);
+  useLayoutEffect(() => {authorizationLifetime.update(authorized);return()=>authorizationLifetime.update(false);},[authorizationLifetime,authorized,ownerSession?.identityKey,ownerSession?.userId]);
+  const lifecycleActions=useMemo(()=>createCollectionLifecycleActions(repository,{isOwnerAuthorized:authorizationLifetime.isAuthorized}),[repository,authorizationLifetime]);
   const [view, setView] = useState(initialView);
   const [selected, setSelected] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [gradingEdit, setGradingEdit] = useState(null);
   const [productDetailTab, setProductDetailTab] = useState("overview");
   const collectionNavigationRef = useRef(null);
   const productOpenerRef = useRef(null);
@@ -430,6 +485,7 @@ export function CollectionWorkspace({ items = [], catalogProducts = EMPTY_CATALO
     setSelected(null);
     setSelectedProduct(null);
     setForm(null);
+    setGradingEdit(null);
     setFiltersOpen(false);
   }
   const allItems = useMemo(() => mergeRecords(state.inventory, items).map(normalizeOwnedItem), [items, state.inventory]);
@@ -479,7 +535,7 @@ export function CollectionWorkspace({ items = [], catalogProducts = EMPTY_CATALO
   }, [selected, selectedProduct, form]);
   const heldItems = visible.filter((item) => item.ownedItemPurpose === OWNED_ITEM_PURPOSES.HOLD);
   const unassigned = allItems.filter((item) => item.ownedItemPurpose === OWNED_ITEM_PURPOSES.UNASSIGNED);
-  const grading = visible.filter((item) => item.gradingCompany || item.grade || /graded/i.test(item.productClassification || ""));
+  const grading = visible.filter(isGradedCopy);
   const setRows = useMemo(() => buildCollectionSetRows({ items: personalCollectionItems, catalogProducts, knownSets: POKEMON_COLLECTION_SETS }), [personalCollectionItems, catalogProducts]);
   useEffect(() => { setRowsRef.current = setRows; }, [setRows]);
   useEffect(() => {
@@ -516,7 +572,7 @@ export function CollectionWorkspace({ items = [], catalogProducts = EMPTY_CATALO
   }, [view, portfolioScope]);
   const secondaryDestinations = [{ key: "sets", label: "Sets & Binders" }, { key: "wishlist", label: "Wishlist" }, featureControls.grading !== false ? { key: "grading", label: "Grading" } : null].filter(Boolean);
   const collectionMoreItems = [...secondaryDestinations, ...(unassigned.length ? [{ key: "unassigned", label: `Unassigned Review (${unassigned.length})` }] : [])];
-  const changeView = (next) => { setSelected(null); setSelectedProduct(null); setSetBrowserState((current) => ({ ...current, selectedId: "" })); setView(next); onViewChange?.(next); };
+  const changeView = (next) => { setSelected(null); setSelectedProduct(null); setGradingEdit(null); setSetBrowserState((current) => ({ ...current, selectedId: "" })); setView(next); onViewChange?.(next); };
   const chooseCollectionUtility = (next) => {
     if (next === "unassigned") {
       changeView("unassigned");
@@ -535,12 +591,29 @@ export function CollectionWorkspace({ items = [], catalogProducts = EMPTY_CATALO
       setSelected({ ...changeOwnedItemPurpose(item, nextPurpose, { changedBy: "owner", reason: "Purpose assigned in Collection" }), _recordOrigin: "legacy" });
     } else if (nextPurpose === OWNED_ITEM_PURPOSES.FOR_RESALE) onSellItem?.(item);
   };
-  if (form) return <RecordForm key={`${form.type}-${form.seed?.id || form.draftScope || "new"}`} type={form.type} seed={form.seed} draftScope={form.draftScope} state={state} onSave={async (collection, record, message) => { const saved = await saveRecord(collection, record, message); if (saved) setSelected(view === "sets" && setBrowserState.selectedId && !form.seed?.id ? null : { ...saved, _recordOrigin: "repository" }); return saved; }} onCancel={() => setForm(null)} />;
-  if (selected) return <div className="manual-lifecycle-detail"><CollectionItemDetail resolveItemImage={resolveItemImage} item={selected} valueLabel={valueLabel} showValues={!portfolioViewState.hidden} onBack={() => { if (view === "sets") setNavigationRef.current?.back({ setId: setBrowserState.selectedId }); else { if (selectedProduct) collectionNavigationRef.current = { kind: "copies-return" }; setSelected(null); } }} onPurpose={changePurpose} onEdit={(item) => setForm({ type: "collection", seed: item })} onDelete={async (item) => { if (await removeRecord("inventory", item)) { if (selectedProduct) collectionNavigationRef.current = { kind: "copies-return" }; setSelected(null); } }} />{selected._recordOrigin === "repository" ? <ManualLifecycles key={selected.id} types={featureControls.grading !== false ? ["assignment", "grading"] : ["assignment"]} title="Item organization" itemId={selected.id} /> : null}</div>;
-  if (selectedProductGroup) return <CollectionProductDetail group={selectedProductGroup} onBack={() => { collectionNavigationRef.current = { kind: "grid-return" }; setSelectedProduct(null); }} onOpenRecord={(item, opener) => { copyOpenerRef.current = collectionNavigationPosition(opener); collectionNavigationRef.current = { kind: "copy" }; setSelected(item); }} resolveItemImage={resolveItemImage} getAcquisitionCost={acquisitionCost} activeTab={productDetailTab} onTabChange={setProductDetailTab} hiddenValues={portfolioViewState.hidden} />;
+  const editCollectionRecord = (record, section) => {
+    if (record.provenanceManaged === true) return;
+    if (record._recordOrigin === "legacy") {
+      if (section === "purpose") { collectionNavigationRef.current = { kind: "copy", section: "purpose" }; setSelected(record); }
+      else onEditLegacyItem?.(record);
+      return;
+    }
+    if (section === "grading" || (section === "purchase" && isGradedCopy(record))) { setGradingEdit(record); return; }
+    setForm({ type: "collection", seed: record, initialStep: section === "purchase" ? 1 : section === "purpose" ? 2 : 0 });
+  };
+  const reviewCatalogMatch = (record, product) => {
+    if (record.provenanceManaged === true) return;
+    if (record._recordOrigin === "legacy") { onEditLegacyItem?.(record, catalogMatchIdentityPatch(product)); return; }
+    const seed = buildCatalogMatchDraft(record, product);
+    setForm({ type: "collection", seed, catalogMatchBaseline: blankForm("collection", seed), draftScope: `catalog-match.${record.id}.${product.id || product.catalogProductId}`, initialStep: 0 });
+  };
+  if (gradingEdit) return <GradedCopyEditor key={gradingEdit.id} record={gradingEdit} onCancel={() => setGradingEdit(null)} onSave={async draft => { const saved = await saveRecord('inventory', draft, 'Graded copy updated', {gradingBaseline:gradingEdit,gradingRecords:allItems}); if(saved){ if(selected?.id===saved.id) setSelected({...saved,_recordOrigin:'repository'}); setGradingEdit(null); } return saved; }} />;
+  if (form) return <RecordForm initialStep={form.initialStep || 0} key={`${form.type}-${form.seed?.id || form.draftScope || "new"}-${form.draftScope || ""}`} type={form.type} seed={form.seed} draftScope={form.draftScope} state={state} onSave={async (collection, record, message) => { const saved = await saveRecord(collection, record, message, { catalogMatchBaseline: form.catalogMatchBaseline, gradingRecords: allItems }); if (saved) setSelected(view === "sets" && setBrowserState.selectedId && !form.seed?.id ? null : { ...saved, _recordOrigin: "repository" }); return saved; }} onCancel={() => setForm(null)} />;
+  if (selected) return <div className="manual-lifecycle-detail">{confirmation}<CollectionItemDetail resolveItemImage={resolveItemImage} item={selected} backLabel={selectedProduct ? "Back to copies" : view === "sets" ? "Back to set" : "Back to Collection"} valueLabel={valueLabel} showValues={!portfolioViewState.hidden} onBack={() => { if (view === "sets") setNavigationRef.current?.back({ setId: setBrowserState.selectedId }); else { if (selectedProduct) collectionNavigationRef.current = { kind: "copies-return" }; setSelected(null); } }} onPurpose={changePurpose} onEdit={selected._recordOrigin !== "legacy" || onEditLegacyItem ? editCollectionRecord : null} onDelete={async (item) => { if (await removeRecord("inventory", item)) { if (selectedProduct) collectionNavigationRef.current = { kind: "copies-return" }; setSelected(null); } }} />{selected._recordOrigin === "repository" ? <ManualLifecycles ownerSession={ownerSession} key={selected.id} types={featureControls.grading !== false ? ["assignment", "grading"] : ["assignment"]} title="Item organization" itemId={selected.id} /> : null}</div>;
+  if (selectedProductGroup) return <CollectionProductDetail allRecords={collectionPortfolioItems} onAddGradedCopy={product => setForm({type:"collection",draftScope:`graded-copy.${portfolioScope}.${product.id || product.catalogProductId || "card"}`,seed:gradedCopySeed(product)})} onEditRecord={editCollectionRecord} canEditRecord={record => record.provenanceManaged !== true && (record._recordOrigin !== "legacy" || Boolean(onEditLegacyItem))} group={selectedProductGroup} onBack={() => { collectionNavigationRef.current = { kind: "grid-return" }; setSelectedProduct(null); }} onOpenRecord={(item, opener) => { copyOpenerRef.current = collectionNavigationPosition(opener); collectionNavigationRef.current = { kind: "copy" }; setSelected(item); }} resolveItemImage={resolveItemImage} getAcquisitionCost={acquisitionCost} activeTab={productDetailTab} onTabChange={setProductDetailTab} hiddenValues={portfolioViewState.hidden} />;
   const cardsFor = (records) => records.map((item) => <RecordListCard key={item.id} resolveItemImage={resolveItemImage} record={item} eyebrow={[item.setName, item.productClassification].filter(Boolean).join(" · ") || "Owned item"} status={item.ownedItemPurpose === OWNED_ITEM_PURPOSES.UNASSIGNED ? "Needs purpose" : ""} statusTone="warning" facts={[{ label: item.condition ? "Condition" : "Quantity", value: item.condition || item.quantity || 1 }, { label: "Estimated value", value: portfolioViewState.hidden ? VALUE_HIDDEN : item.projectedResaleMid !== "" && item.projectedResaleMid != null ? money(item.projectedResaleMid) : "" }]} onOpen={setSelected} />);
   return <main className="everyday-workspace" data-testid="collection-workspace">
-    {view === "sets" && setBrowserState.selectedId ? <h1 className="sr-only">Set catalog</h1> : <PageHeader eyebrow={view === "sets" ? "" : "Made for collecting"} title={view === "sets" ? "Card sets" : view === "collection" ? "Collection" : secondaryDestinations.find((item) => item.key === view)?.label || "Collection"} description={view === "collection" ? "Your personal collection and held copies, grouped by product." : ""} actions={<PrimaryButton onClick={() => setForm({ type: "collection", seed: { ...((view === "sets" ? setBrowserState.game : collectionGame) !== "all" ? { tcgGame: view === "sets" ? setBrowserState.game : collectionGame } : {}) } })}>Add Item</PrimaryButton>} />}
+    {view === "sets" && setBrowserState.selectedId ? <h1 className="sr-only">Set catalog</h1> : <PageHeader eyebrow="" title={view === "sets" ? "Card sets" : view === "collection" ? "Collection" : secondaryDestinations.find((item) => item.key === view)?.label || "Collection"} description="" actions={<PrimaryButton onClick={() => setForm({ type: "collection", seed: { ...((view === "sets" ? setBrowserState.game : collectionGame) !== "all" ? { tcgGame: view === "sets" ? setBrowserState.game : collectionGame } : {}) } })}>Add item</PrimaryButton>} />}
     {view !== "collection" && !(view === "sets" && setBrowserState.selectedId) ? <div className="everyday-secondary-navigation"><button type="button" onClick={() => changeView("collection")}>Back to Collection</button><WorkspaceMoreMenu items={collectionMoreItems} active={view} onChange={chooseCollectionUtility} /></div> : null}
     {error ? <p className="compatibility-note" role="alert">{error}</p> : null}
     {view === "collection" ? <CollectionPortfolio
@@ -553,6 +626,8 @@ export function CollectionWorkspace({ items = [], catalogProducts = EMPTY_CATALO
       query={query}
       onQueryChange={setQuery}
       conditionFilter={conditionFilter}
+      externalFilterState={{game: collectionGame, condition: conditionFilter}}
+      onRestoreExternalFilters={({game,condition}) => { setCollectionGame(game); setConditionFilter(condition); }}
       onOpenFilters={() => setFiltersOpen(true)}
       onClearFilters={() => { setQuery(""); setConditionFilter(""); setCollectionGame("all"); }}
       onOpenItem={setSelected}
@@ -566,17 +641,17 @@ export function CollectionWorkspace({ items = [], catalogProducts = EMPTY_CATALO
       features={portfolioFeatures}
       onLockedFeature={onLockedFeature}
     /> : null}
-    {view === "sets" ? <CollectionSets rows={setRows} viewState={setBrowserState} onViewStateChange={setSetBrowserState} onOpenSet={(row) => { setOpenerRef.current = row.id; setNavigationRef.current?.open({ setId: row.id }); }} onBack={() => setNavigationRef.current?.back()} onOpenItem={(item) => setNavigationRef.current?.open({ setId: setBrowserState.selectedId, itemId: String(item.id), origin: item._recordOrigin })} onAddItem={(row) => setForm({ type: "collection", seed: { setName: row.name, tcgGame: row.gameId === "unspecified" && row.gameName !== "Game not recorded" ? row.gameName : row.gameId } })} onAddCatalogItem={(row, product) => setForm({ type: "collection", draftScope: `set-catalog.${portfolioScope}.${row.key}.${setCatalogKey(product)}`, seed: createSetCatalogItemSeed(row, product) })} onAddManualItem={() => setForm({ type: "collection", seed: setBrowserState.game !== "all" ? { tcgGame: setBrowserState.game } : {} })} resolveItemImage={resolveItemImage} showValues={portfolioFeatures.value === true && !portfolioViewState.hidden} binderTools={<ManualLifecycles key="sets" types={["binder", "assignment", "setPlan"]} title="Binder organization & set coverage" />} /> : null}
+    {view === "sets" ? <CollectionSets onPreviewMissingWishlist={lifecycleActions.previewWants} onAddMissingToWishlist={lifecycleActions.addWants} existingWishlistProducts={state.manualLifecycles.filter(record=>record.type==="wish")} preferenceScope={portfolioScope} onReviewCatalogMatch={reviewCatalogMatch} canMatchRecord={record => record.provenanceManaged !== true && (record._recordOrigin !== "legacy" || Boolean(onEditLegacyItem))} rows={setRows} viewState={setBrowserState} onViewStateChange={setSetBrowserState} onOpenSet={(row) => { setOpenerRef.current = row.id; setNavigationRef.current?.open({ setId: row.id }); }} onBack={() => setNavigationRef.current?.back()} onOpenItem={(item) => setNavigationRef.current?.open({ setId: setBrowserState.selectedId, itemId: String(item.id), origin: item._recordOrigin })} onAddItem={(row) => setForm({ type: "collection", seed: { setName: row.name, tcgGame: row.gameId === "unspecified" && row.gameName !== "Game not recorded" ? row.gameName : row.gameId } })} onAddCatalogItem={(row, product) => setForm({ type: "collection", draftScope: `set-catalog.${portfolioScope}.${row.key}.${setCatalogKey(product)}.${cardVersionOf(product) || "unrecorded"}.${product.graded === true ? "graded" : "raw"}`, seed: product.graded === true ? gradedCopySeed({...product,setName:row.name,tcgGame:row.gameId},{catalogProduct:true}) : createSetCatalogItemSeed(row, product) })} onAddManualItem={() => setForm({ type: "collection", seed: setBrowserState.game !== "all" ? { tcgGame: setBrowserState.game } : {} })} resolveItemImage={resolveItemImage} showValues={portfolioFeatures.value === true && !portfolioViewState.hidden} binderTools={<ManualLifecycles ownerSession={ownerSession} key="sets" types={["binder", "assignment", "setPlan"]} title="Binder organization & set coverage" />} /> : null}
     {view === "wishlist" ? <section><SectionHeader title="On hold" description="Cards and products you own and set aside with the purpose “Hold”." />{heldItems.length ? <div className="everyday-record-list">{cardsFor(heldItems)}</div> : <EmptyState title="Nothing on hold">Open an item in your collection and set its purpose to “Hold” to keep it here. Cards you want but don’t own go in Wanted items below.</EmptyState>}</section> : null}
     {view === "grading" ? <section><SectionHeader title="Grading" description="Recorded grading candidates and graded items only." />{grading.length ? <div className="everyday-record-list">{cardsFor(grading)}</div> : <EmptyState title="No grading records">Add grading company, grade, or a graded classification to an item.</EmptyState>}</section> : null}
-    {view === "wishlist" ? <ManualLifecycles key="wishlist" types={["wish"]} title="Wanted items & exact matches" /> : null}
-    {view === "grading" && featureControls.grading !== false ? <ManualLifecycles key="grading" types={["grading"]} title="Grading journey" /> : null}
+    {view === "wishlist" ? <ManualLifecycles ownerSession={ownerSession} key="wishlist" types={["wish"]} title="Wanted items & exact matches" /> : null}
+    {view === "grading" && featureControls.grading !== false ? <ManualLifecycles ownerSession={ownerSession} key="grading" types={["grading"]} title="Grading journey" /> : null}
     {view === "unassigned" ? <section><SectionHeader title="Unassigned review" description="Give each existing physical record a purpose without duplicating it." />{unassigned.length ? <div className="everyday-record-list">{cardsFor(unassigned)}</div> : <EmptyState title="Every item has a purpose">There are no unassigned records to review.</EmptyState>}</section> : null}
     <BottomSheet open={filtersOpen} title="Filter collection" onClose={() => setFiltersOpen(false)}><SelectField label="Condition" value={conditionFilter} onChange={setConditionFilter} options={[{ value: "", label: "All conditions" }, ...[...new Set(allItems.map((item) => item.condition).filter(Boolean))]]} /><QuietButton onClick={() => { setConditionFilter(""); setFiltersOpen(false); }}>Clear Filter</QuietButton></BottomSheet>
   </main>;
 }
 
-function BusinessDetail({ type, record, state, onBack, onEdit, onDelete, onMoveToCollection, onOpenRelated, onAllocate, resolveItemImage }) {
+function BusinessDetail({ type, record, state, onBack, backLabel, onEdit, onDelete, onMoveToCollection, onRecordSale, onOpenRelated, onAllocate, resolveItemImage }) {
   const purchase = type === "purchase";
   const lot = type === "lot";
   const inventory = type === "inventory";
@@ -613,16 +688,16 @@ function BusinessDetail({ type, record, state, onBack, onEdit, onDelete, onMoveT
   );
   const managed = record.provenanceManaged === true || managedSale || Boolean(record.returnApplications?.length || record.returnSaleAllocation);
   const primaryIsEdit = !inventory && !canApplyAllocation;
-  return <RecordDetailPage eyebrow={typeLabel} title={sale ? record.title || record.itemName || `${recordTitle(state.inventory.find((item) => item.id === record.inventoryItemId) || record)} sale` : recordTitle(record)} status={lot ? reconciliation.reconciled ? "Reconciled" : "Needs allocation" : record.status || "Recorded"} statusTone={lot && !reconciliation.reconciled ? "warning" : "neutral"} image={resolveItemImage(record)} identity={inventory ? [record.productClassification, record.setName, record.cardNumber].filter(Boolean).join(" · ") : record.source || record.salesChannel || record.merchant || record.purpose || "Business record"} summary={summary} primaryAction={managed ? null : inventory ? <PrimaryButton onClick={() => onMoveToCollection(record)}>Move to Collection</PrimaryButton> : canApplyAllocation ? <PrimaryButton onClick={() => onAllocate(record, record.allocationMethod)}>Apply Allocation</PrimaryButton> : <PrimaryButton onClick={() => onEdit(type, record)}>Edit</PrimaryButton>} secondaryActions={managed ? null : <>{!primaryIsEdit ? <QuietButton onClick={() => onEdit(type, record)}>Edit</QuietButton> : null}{record._recordOrigin !== "legacy" ? <QuietButton className="ops-button--danger" onClick={() => onDelete(type, record)}>Delete</QuietButton> : null}</>} sections={[{ title: "Details", description: managed ? "Original acquisition and applied sale/return history are protected from generic editing and deletion." : "Recorded information and assumptions.", children: <DetailList items={details} /> }]} timeline={[record.updatedAt ? { id: "updated", title: "Record updated", date: dateLabel(record.updatedAt) } : null, record.createdAt ? { id: "created", title: "Record created", date: dateLabel(record.createdAt) } : null].filter(Boolean)} related={relatedRows.length ? <div className="related-record-list">{relatedRows.map((row) => <QuietButton key={`${row._type}-${row.id}`} onClick={() => onOpenRelated(row._type, row)}>{recordTitle(row)}</QuietButton>)}</div> : null} onBack={onBack} />;
+  return <RecordDetailPage eyebrow={typeLabel} title={sale ? record.title || record.itemName || `${recordTitle(state.inventory.find((item) => item.id === record.inventoryItemId) || record)} sale` : recordTitle(record)} status={lot ? reconciliation.reconciled ? "Reconciled" : "Needs allocation" : inventory ? inventoryStockLabel([record], row => availableInventoryQuantity(row, linkedSales)) : record.status || "Recorded"} statusTone={lot && !reconciliation.reconciled ? "warning" : "neutral"} image={resolveItemImage(record)} imageProduct={inventory ? record : null} identity={inventory ? [record.productClassification, record.setName, record.cardNumber].filter(Boolean).join(" · ") : record.source || record.salesChannel || record.merchant || record.purpose || "Business record"} summary={summary} primaryAction={inventory ? <PrimaryButton disabled={!(availableInventoryQuantity(record, linkedSales) > 0)} onClick={() => onRecordSale(record)}>Record sale</PrimaryButton> : managed ? null : canApplyAllocation ? <PrimaryButton onClick={() => onAllocate(record, record.allocationMethod)}>Apply Allocation</PrimaryButton> : <PrimaryButton onClick={() => onEdit(type, record)}>Edit</PrimaryButton>} secondaryActions={managed ? null : <>{inventory ? <QuietButton onClick={() => onMoveToCollection(record)}>Move to Collection</QuietButton> : null}{!primaryIsEdit && onEdit ? <QuietButton onClick={() => onEdit(type, record)}>Edit</QuietButton> : null}{record._recordOrigin !== "legacy" ? <QuietButton className="ops-button--danger" onClick={() => onDelete(type, record)}>Delete</QuietButton> : null}</>} sections={inventory ? itemDetailSections(record) : [{ title: "Details", description: managed ? "Original acquisition and applied sale/return history are protected from generic editing and deletion." : "Recorded information and assumptions.", children: <DetailList items={details} /> }]} timeline={[record.updatedAt ? { id: "updated", title: "Record updated", date: dateLabel(record.updatedAt) } : null, record.createdAt ? { id: "created", title: "Record created", date: dateLabel(record.createdAt) } : null].filter(Boolean)} related={relatedRows.length ? <div className="related-record-list">{relatedRows.map((row) => <QuietButton key={`${row._type}-${row.id}`} onClick={() => onOpenRelated(row._type, row)}>{recordTitle(row)}</QuietButton>)}</div> : null} backLabel={backLabel} onBack={onBack} />;
 }
 
-export function BusinessWorkspace({ items = [], purchases = [], sales = [], expenses = [], mileage = [], initialView = "overview", initialMoneyView = "expenses", onViewChange, onMoneyViewChange, onMoveToCollection, ownerSession, experiencePresentation, resolveItemImage = recordImage }) {
+export function BusinessWorkspace({ items = [], purchases = [], sales = [], expenses = [], mileage = [], initialView = "overview", initialMoneyView = "expenses", onViewChange, onMoneyViewChange, onMoveToCollection, onEditLegacyInventory, onUpdateLegacyInventoryStorage, ownerSession, experiencePresentation, resolveItemImage = recordImage }) {
   const presentation = experiencePresentation || resolveExperiencePresentation();
   const showOperationalTools = presentation.showBusinessTools || presentation.showAdminTools;
   const workspaceTitle = showOperationalTools ? presentation.isStore ? "Store" : "Business" : "Sell or trade";
   const moneyTabsId = useId();
   const repository = useBusinessRepository();
-  const { state, error, saveRecord, removeRecord, allocateLot } = repository;
+  const { state, error, saveRecord, removeRecord, allocateLot, saveStorage, confirmation } = repository;
   const [view, setView] = useState(initialView);
   const [moneyView, setMoneyViewState] = useState(initialMoneyView);
   const setMoneyView = (next) => {
@@ -631,10 +706,9 @@ export function BusinessWorkspace({ items = [], purchases = [], sales = [], expe
   };
   const [selected, setSelected] = useState(null);
   const [form, setForm] = useState(null);
-  const [query, setQuery] = useState("");
-  const [inventoryStockFilter, setInventoryStockFilter] = useState("all");
-  const [inventoryVisibleCount, setInventoryVisibleCount] = useState(24);
-  const inventorySearchRef = useRef(null);
+  const [inventoryBrowseState, setInventoryBrowseState] = useState({});
+  const [saleReceipt, setSaleReceipt] = useState(null);
+  const [saleFilters, setSaleFilters] = useState({ query: "", status: "all", from: "", to: "" });
   const [previousView, setPreviousView] = useState(initialView);
   if (previousView !== initialView) {
     setPreviousView(initialView);
@@ -650,20 +724,9 @@ export function BusinessWorkspace({ items = [], purchases = [], sales = [], expe
   const allPurchases = useMemo(() => mergeRecords(state.purchases, purchases), [purchases, state.purchases]);
   const allInventory = useMemo(() => mergeRecords(state.inventory, items).filter((item) => inferOwnedItemPurpose(item) === OWNED_ITEM_PURPOSES.FOR_RESALE), [items, state.inventory]);
   const allSales = useMemo(() => mergeRecords(state.sales, sales), [sales, state.sales]);
-  const matchingInventory = useMemo(() => {
-    // F09/F10: saved identifiers (SKU, barcode, UPC, catalog IDs) and metadata are searchable too.
-    const stockMatches = filterBusinessInventory(allInventory, { stockFilter: inventoryStockFilter, getAvailableQuantity: row => availableInventoryQuantity(row, allSales) });
-    if (!query.trim()) return stockMatches;
-    const textMatches = new Set(filterBusinessInventory(stockMatches, { query }));
-    return stockMatches.filter(row => textMatches.has(row) || businessRecordMatchesQuery(row, query));
-  }, [allInventory, allSales, inventoryStockFilter, query]);
-  const inventoryHasFilters = Boolean(query.trim()) || inventoryStockFilter !== "all";
-  const inventoryShownCount = Math.min(inventoryVisibleCount, matchingInventory.length);
-  const updateInventoryQuery = value => { setQuery(value); setInventoryVisibleCount(24); };
-  const clearInventoryFilters = () => {
-    setQuery(""); setInventoryStockFilter("all"); setInventoryVisibleCount(24);
-    inventorySearchRef.current?.querySelector("input")?.focus();
-  };
+  const browseAvailable = useCallback(row => availableInventoryQuantity(row, allSales), [allSales]);
+  const browseCost = useCallback(row => acquisitionCost(row, allSales), [allSales]);
+  const visibleSales = useMemo(() => filterSalesHistory(allSales, saleFilters, allInventory), [allSales, saleFilters, allInventory]);
   const allExpenses = useMemo(() => mergeRecords(state.expenses, expenses), [expenses, state.expenses]);
   const allMileage = useMemo(() => mergeRecords(state.mileage, mileage), [mileage, state.mileage]);
   const businessDestinations = [{ key: "purchases", label: "Purchases", detail: "Owner-reviewed drafts and receiving" }, { key: "inventory", label: "Inventory", detail: "Items for resale" }, { key: "sales", label: "Sales", detail: "Proceeds and profit" }, { key: "money", label: "Money", detail: "Expenses and records" }, { key: "compliance", label: "Compliance", detail: "Registration, taxes, licenses, deadlines" }];
@@ -685,7 +748,11 @@ export function BusinessWorkspace({ items = [], purchases = [], sales = [], expe
   const openDetail = (type, record) => setSelected({ type, record: findRecord(type, record) });
   const managedSale = (type, record) => type === "sale" && state.inventory.some((item) => item.id === record.inventoryItemId && item.provenanceManaged === true)
     && !["draft", "cancelled"].includes(String(record.status || "").trim().toLowerCase());
-  const editRecord = (type, record) => { if (record.provenanceManaged !== true && !managedSale(type, record)) setForm({ type: type === "purchase" ? "purchase" : type, seed: record }); };
+  const editRecord = (type, record) => {
+    if (record.provenanceManaged === true || managedSale(type, record)) return;
+    if (type === "inventory" && record._recordOrigin === "legacy") { onEditLegacyInventory?.(record); return; }
+    setForm({ type: type === "purchase" ? "purchase" : type, seed: record });
+  };
   const deleteRecord = async (type, record) => { const collection = { purchase: "purchases", lot: "lots", inventory: "inventory", sale: "sales", expense: "expenses", mileage: "mileage" }[type]; if (record._recordOrigin === "legacy" || record.provenanceManaged === true || managedSale(type, record)) return; if (await removeRecord(collection, record)) setSelected(null); };
   const moveToCollection = (record) => {
     if (record.provenanceManaged === true) return;
@@ -693,9 +760,16 @@ export function BusinessWorkspace({ items = [], purchases = [], sales = [], expe
     else onMoveToCollection?.(record);
     setSelected(null);
   };
+  const updateStorage = async changes => {
+    const updatedKeys=[], failures=[];
+    const repositoryChanges=changes.filter(row=>row.origin!=="legacy"),legacyChanges=changes.filter(row=>row.origin==="legacy");
+    if(repositoryChanges.length)try{updatedKeys.push(...await saveStorage(repositoryChanges));}catch(failure){failures.push({message:failure.message});}
+    if(legacyChanges.length&&onUpdateLegacyInventoryStorage)try{const result=await onUpdateLegacyInventoryStorage({changes:legacyChanges.map(({id,previousStorageLocation,storageLocation})=>({id,previousStorageLocation,storageLocation}))});updatedKeys.push(...(result?.updatedIds||[]).map(id=>"legacy:"+id));failures.push(...(result?.failures||[]));}catch(failure){failures.push({message:failure.message});}
+    return {updatedKeys,failures};
+  };
   const formState = useMemo(() => ({ ...state, purchases: allPurchases, inventory: allInventory, sales: allSales, expenses: allExpenses, mileage: allMileage }), [allExpenses, allInventory, allMileage, allPurchases, allSales, state]);
-  if (form) return <RecordForm key={`${form.type}-${form.seed?.id || "new"}`} type={form.type} seed={form.seed} state={formState} onSave={saveRecord} onCancel={() => setForm(null)} />;
-  if (selected) return <div className="manual-lifecycle-detail"><BusinessDetail resolveItemImage={resolveItemImage} type={selected.type} record={findRecord(selected.type, selected.record)} state={formState} onBack={() => setSelected(null)} onEdit={editRecord} onDelete={deleteRecord} onMoveToCollection={moveToCollection} onOpenRelated={openDetail} onAllocate={allocateLot} />{selected.record._recordOrigin !== "legacy" && selected.type === "inventory" ? <><ManualLifecycles key={selected.record.id} types={["processing", "listing"]} title="Prepare, store & list" itemId={selected.record.id} /><InventoryLabelPreview item={findRecord(selected.type, selected.record)} state={state} /></> : null}{selected.record._recordOrigin !== "legacy" && selected.type === "sale" ? <ManualLifecycles key={selected.record.id} types={["shipment", "saleReturn"]} title="Fulfillment & returns" saleId={selected.record.id} ownerSession={ownerSession} /> : null}{selected.record._recordOrigin !== "legacy" && selected.type === "purchase" ? <ManualLifecycles key={`${selected.record.id}-returns`} types={["purchaseReturn"]} title="Returns to the seller" purchaseId={selected.record.id} ownerSession={ownerSession} /> : null}</div>;
+  if (form) return <RecordForm key={`${form.type}-${form.seed?.id || "new"}`} type={form.type} seed={form.seed} state={formState} onSave={async (collection,record,message)=>{const saved=await saveRecord(collection,record,message);if(saved&&collection==="sales"){setSaleReceipt(saved);setView("sales");onViewChange?.("sales");}return saved;}} onCancel={() => setForm(null)} onAddInventory={() => setForm({ type: "inventory", seed: {} })} />;
+  if (selected) return <div className="manual-lifecycle-detail">{confirmation}<BusinessDetail resolveItemImage={resolveItemImage} type={selected.type} record={findRecord(selected.type, selected.record)} state={formState} backLabel={`Back to ${view === "inventory" ? "Inventory" : view === "sales" ? "Sales" : view.replaceAll("_", " ")}`} onBack={() => setSelected(null)} onEdit={selected.type === "inventory" && selected.record._recordOrigin === "legacy" && !onEditLegacyInventory ? null : editRecord} onDelete={deleteRecord} onMoveToCollection={moveToCollection} onRecordSale={record => setForm({ type: "sale", seed: { inventoryItemId: record.id } })} onOpenRelated={openDetail} onAllocate={allocateLot} />{selected.record._recordOrigin !== "legacy" && selected.type === "inventory" ? <><ManualLifecycles ownerSession={ownerSession} key={selected.record.id} types={["processing", "listing"]} title="Prepare, store & list" itemId={selected.record.id} /><InventoryLabelPreview item={findRecord(selected.type, selected.record)} state={state} /></> : null}{selected.record._recordOrigin !== "legacy" && selected.type === "sale" ? <ManualLifecycles ownerSession={ownerSession} key={selected.record.id} types={["shipment", "saleReturn"]} title="Fulfillment & returns" saleId={selected.record.id} /> : null}{selected.record._recordOrigin !== "legacy" && selected.type === "purchase" ? <ManualLifecycles key={`${selected.record.id}-returns`} types={["purchaseReturn"]} title="Returns to the seller" purchaseId={selected.record.id} ownerSession={ownerSession} /> : null}</div>;
   if (view === "compliance") return <BusinessCompliancePage onBack={() => changeView("overview")} />;
   const purchaseCost = allPurchases.reduce((sum, row) => sum + number(row.totalPurchaseCost), 0);
   const inventoryCost = allInventory.reduce((sum, row) => sum + number(acquisitionCost(row, allSales)), 0);
@@ -720,52 +794,32 @@ export function BusinessWorkspace({ items = [], purchases = [], sales = [], expe
     { label: "Expenses missing receipts", count: missingReceipts.length, view: "money", moneyView: "expenses" },
   ].filter((row) => row.count > 0 && (showOperationalTools || row.view === "sales"));
   const recordCard = (type, facts) => (record) => <RecordListCard key={record.id} resolveItemImage={resolveItemImage} record={record} eyebrow={{ purchase: "Purchase", lot: "Purchase lot", inventory: record.productClassification || "Inventory", sale: record.salesChannel || "Sale", expense: record.category || "Expense", mileage: "Mileage" }[type]} status={type === "lot" ? reconcileLotAllocations(record.totalLotCost, state.inventory.filter((item) => item.lotId === record.id)).reconciled ? "Reconciled" : "Needs allocation" : record.status || "Recorded"} statusTone={type === "lot" && !reconcileLotAllocations(record.totalLotCost, state.inventory.filter((item) => item.lotId === record.id)).reconciled ? "warning" : "neutral"} facts={facts(record)} onOpen={(row) => openDetail(type, row)} />;
-  const recordCards = (type, records, facts) => type === "inventory"
-    ? records.slice(0, inventoryVisibleCount).map(recordCard(type, facts))
-    : <RevealMoreList key={type} records={records} label={{ purchase: "purchases", lot: "lots", sale: "sales", expense: "expenses", mileage: "trips" }[type]}>{(rows) => rows.map(recordCard(type, facts))}</RevealMoreList>;
+  const recordCards = (type, records, facts) => <RevealMoreList key={type} records={records} label={{ purchase: "purchases", lot: "lots", sale: "sales", expense: "expenses", mileage: "trips" }[type]}>{(rows) => rows.map(recordCard(type, facts))}</RevealMoreList>;
   return <main className={`everyday-workspace everyday-business-records${view === "inventory" ? " business-inventory-view" : ""}`} data-testid="business-workspace">
     <PageHeader
-      eyebrow={showOperationalTools ? "Keep things moving" : "From your collection"}
+      eyebrow={view === "inventory" ? "Sell" : showOperationalTools ? "Business" : "From your collection"}
       title={view === "overview" ? workspaceTitle : primaryDestinations.find((item) => item.key === view)?.label || businessDestinations.find((item) => item.key === view)?.label || workspaceTitle}
       description={view === "overview"
         ? showOperationalTools ? "From a good find to a completed sale. Your records, in one place." : "Keep track of the items you sell and your completed sales."
         : view === "inventory"
-          ? showOperationalTools ? "Items whose current purpose is For resale." : "Items you have chosen to sell from your collection."
+          ? "Stock, costs, and where to find it."
           : view === "sales" ? "Completed sales and drafts; drafts never remove inventory. Confirmed reconciliations adjust reporting without changing original Sale records." : ""}
       actions={view === "inventory"
-        ? <PrimaryButton onClick={() => setForm({ type: "inventory", seed: {} })}>Add Resale Inventory</PrimaryButton>
-        : view === "sales" ? <PrimaryButton onClick={() => setForm({ type: "sale", seed: {} })}>Record Sale</PrimaryButton> : null}
+        ? <PrimaryButton onClick={() => setForm({ type: "inventory", seed: {} })}>Add inventory</PrimaryButton>
+        : view === "sales" ? <PrimaryButton onClick={() => setForm({ type: "sale", seed: {} })}>Record sale</PrimaryButton> : null}
     />
     {view === "overview" ? <><nav className="business-destination-grid" aria-label={showOperationalTools ? "Business destinations" : "Selling destinations"}>{primaryDestinations.map((item, index) => <button key={item.key} type="button" onClick={() => changeView(item.key)}><span className="business-destination-icon" aria-hidden="true"><AppNavIcon kind={({ purchases: "clipboard", inventory: "inventory", sales: "sell", money: "business", compliance: "admin" })[item.key]} /></span><span className="business-destination-copy"><strong>{item.label}</strong><span>{item.detail}</span></span><span className="business-destination-arrow" aria-hidden="true">↗</span>{showOperationalTools && index < 3 ? <small className="business-destination-step"><span className="business-destination-index" aria-hidden="true">0{index + 1}</span>{["Receive & record", "Prepare & organize", "Sell & track"][index]}</small> : null}</button>)}</nav>{savedRecordDestinations.length ? <div className="everyday-secondary-navigation"><WorkspaceMoreMenu label="More saved records" items={savedRecordDestinations} active={view} onChange={changeView} /></div> : null}{businessAttention.length ? <section className="business-attention-section"><SectionHeader title="Needs Attention" /><div className="business-attention-list">{businessAttention.map((item) => <button key={item.label} type="button" onClick={() => { if (item.moneyView) setMoneyView(item.moneyView); changeView(item.view); }}><span>{item.label}</span><strong>{item.count}</strong><span aria-hidden="true">›</span></button>)}</div></section> : null}</> : <button type="button" className="everyday-back-button" onClick={() => changeView("overview")}>Back to {workspaceTitle}</button>}
     {error ? <p className="compatibility-note" role="alert">{error}</p> : null}
     {view === "purchases" ? <><section className="everyday-action-section"><SectionHeader title="Purchases" description="Acquisitions, lots, and cost allocation." actions={<PrimaryButton onClick={() => setForm({ type: "purchase", seed: {} })}>Record Purchase</PrimaryButton>} /></section>{unallocatedLots.length ? <section className="everyday-attention"><SectionHeader title="Needs attention" description={`${unallocatedLots.length} purchase lot${unallocatedLots.length === 1 ? " has" : "s have"} unreconciled cost.`} actions={<PrimaryButton onClick={() => openDetail("lot", unallocatedLots[0].lot)}>Review Allocation</PrimaryButton>} /></section> : null}<MetricRow items={[{ label: "Purchases", value: allPurchases.length }, { label: "Capital recorded", value: money(purchaseCost), numeric: true }, { label: "Purchase lots", value: state.lots.length }, { label: "Unallocated lots", value: unallocatedLots.length, tone: unallocatedLots.length ? "warning" : "neutral" }]} /><section><SectionHeader title="Recent purchases" description="Open a purchase to process its lots and related inventory." />{allPurchases.length ? recordCards("purchase", allPurchases, (row) => [{ label: "Cost", value: money(row.totalPurchaseCost) }, { label: "Date", value: dateLabel(row.purchaseDate) }, { label: "Source", value: row.source || "Not recorded" }]) : <EmptyState title="No purchases recorded" action={<PrimaryButton onClick={() => setForm({ type: "purchase", seed: {} })}>Record Purchase</PrimaryButton>}>Record a real acquisition when inventory is purchased.</EmptyState>}</section><section><SectionHeader title="Lot processing" description="Split purchases and reconcile cost without changing the original purchase." actions={<QuietButton onClick={() => setForm({ type: "lot", seed: {} })}>Create Lot</QuietButton>} />{state.lots.length ? recordCards("lot", state.lots, (row) => { const result = reconcileLotAllocations(row.totalLotCost, state.inventory.filter((item) => item.lotId === row.id)); return [{ label: "Lot cost", value: money(result.totalCost) }, { label: "Allocated", value: money(result.allocatedCost) }, { label: "Unallocated", value: money(result.unallocatedCost) }]; }) : <EmptyState title="No purchase lots">Create a lot only when a purchase must be split into multiple inventory records.</EmptyState>}</section></> : null}
-    {view === "inventory" ? <>
-      <section className="business-inventory-section" aria-label="Current inventory">
-        <SectionHeader title="Current inventory" description="Find an item or open its details." />
-        <div className="business-inventory-toolbar">
-          <div ref={inventorySearchRef}><SearchField label="Search inventory" value={query} onChange={updateInventoryQuery} placeholder="Name, set, card number or storage" enterKeyHint="search" autoComplete="off" /></div>
-          <QuietButton disabled={!inventoryHasFilters} onClick={clearInventoryFilters}>Clear filters</QuietButton>
-        </div>
-        <div className="business-inventory-filters" role="group" aria-label="Inventory stock filters">
-          {BUSINESS_INVENTORY_STOCK_FILTERS.map(filter => <button key={filter.key} type="button" className="business-inventory-filter" aria-pressed={inventoryStockFilter === filter.key} onClick={() => { setInventoryStockFilter(filter.key); setInventoryVisibleCount(24); }}>{filter.label}</button>)}
-        </div>
-        <p className="business-inventory-filter-help">Availability uses the quantity remaining after recorded sales and returns.</p>
-        <p className="business-inventory-results" role="status">Showing {inventoryShownCount} of {matchingInventory.length} {inventoryHasFilters ? "matching " : ""}inventory records{inventoryHasFilters ? ` · ${allInventory.length} total` : ""}.</p>
-        <details className="business-inventory-totals">
-          <summary><span>All inventory totals</span><span>{allInventory.length} record{allInventory.length === 1 ? "" : "s"}</span></summary>
-          <div role="group" aria-label="All inventory totals">
-            <MetricRow items={[{ label: "Inventory records", value: allInventory.length }, { label: "Units on hand", value: unitsOnHand.missing ? `${unitsOnHand.total} (+${unitsOnHand.missing} item${unitsOnHand.missing === 1 ? "" : "s"} without a saved quantity)` : unitsOnHand.total }, { label: "Recorded cost", value: money(inventoryCost), numeric: true }, { label: "Projected resale", value: projectedResale.hasEstimates ? money(projectedResale.total) : "Not enough data", helper: projectedResaleTotalNote(projectedResale), numeric: true }]} />
-          </div>
-        </details>
-        {missingInventoryCost.length ? <section className="everyday-attention"><SectionHeader title="Needs attention" description={`${missingInventoryCost.length} item${missingInventoryCost.length === 1 ? " across all inventory is" : "s across all inventory are"} missing an acquisition cost.`} actions={<PrimaryButton onClick={() => openDetail("inventory", missingInventoryCost[0])}>Review Item</PrimaryButton>} /></section> : null}
-        {!allInventory.length ? <EmptyState title="No resale inventory" action={<PrimaryButton onClick={() => setForm({ type: "inventory", seed: {} })}>Add Resale Inventory</PrimaryButton>}>Move a Collection item to resale or add acquired inventory.</EmptyState>
-          : matchingInventory.length ? <>
-            <div className="everyday-record-list">{recordCards("inventory", matchingInventory, row => [{ label: "Quantity available", value: quantityLabel(availableInventoryQuantity(row, allSales)) }, { label: "Available cost", value: money(acquisitionCost(row, allSales)) }, { label: "Projected resale (per unit)", value: money(row.projectedResaleMid) }, { label: "Storage", value: row.storageLocation || "Not assigned" }])}</div>
-            {inventoryShownCount < matchingInventory.length ? <div className="business-inventory-more"><QuietButton onClick={() => setInventoryVisibleCount(count => count + 24)}>Show more inventory</QuietButton></div> : null}
-          </> : <EmptyState title="No matching inventory" action={<QuietButton onClick={clearInventoryFilters}>Clear filters</QuietButton>}>Try another search or stock filter. Your {allInventory.length} inventory record{allInventory.length === 1 ? " is" : "s are"} still saved.</EmptyState>}
-      </section>
+    {view === "inventory" ? <InventoryBrowser viewState={inventoryBrowseState} onViewStateChange={setInventoryBrowseState} onUpdateStorage={updateStorage} canUpdateStorage={row=>row.provenanceManaged!==true&&(row._recordOrigin!=="legacy"||Boolean(onUpdateLegacyInventoryStorage))} records={allInventory} available={browseAvailable} cost={browseCost} onOpen={row => openDetail("inventory", row)} onAdd={() => setForm({ type: "inventory", seed: {} })} resolveItemImage={resolveItemImage} totals={<details className="business-inventory-totals"><summary><span>All inventory totals</span><span>{allInventory.length} purchase records</span></summary><div role="group" aria-label="All inventory totals"><p className="business-inventory-filter-help">Availability uses the quantity remaining after recorded sales and inspected returns. Filters do not change these totals.</p><MetricRow items={[{ label: "Purchase records", value: allInventory.length }, { label: "Units on hand", value: unitsOnHand.missing ? unitsOnHand.total + ' (+' + unitsOnHand.missing + ' without a saved quantity)' : unitsOnHand.total }, { label: "Recorded cost", value: money(inventoryCost), numeric: true }, { label: "Projected resale", value: projectedResale.hasEstimates ? money(projectedResale.total) : "Not enough data", helper: projectedResaleTotalNote(projectedResale), numeric: true }]} /></div></details>} /> : null}
+    {view === "sales" ? <>{saleReceipt?<SaleSavedReceipt sale={saleReceipt} item={allInventory.find(item=>item.id===saleReceipt.inventoryItemId)} remaining={(()=>{const row=allInventory.find(item=>item.id===saleReceipt.inventoryItemId);return row?browseAvailable(row):null;})()} onOpen={sale=>{openDetail('sale',sale);setSaleReceipt(null);}} onDismiss={()=>setSaleReceipt(null)}/>:null}
+      <MetricRow items={[{ label: "Completed sales", value: completedSales.length }, { label: "Gross sales", value: money(grossSales) }, { label: "Realized profit", value: money(realizedProfit) }, { label: "COGS adjustments", value: money(realizedCogsAdjustment) }]} />
+      {draftSales.length ? <details className="everyday-attention"><summary>{draftSales.length} sale draft{draftSales.length === 1 ? "" : "s"} to review</summary><div className="inventory-lots">{draftSales.map(row => <QuietButton key={row.id} onClick={() => openDetail("sale", row)}>{recordTitle(allInventory.find(item => item.id === row.inventoryItemId) || row)} · {dateLabel(row.saleDate)} · Qty {row.quantitySold}</QuietButton>)}</div></details> : null}
+      <section><SectionHeader title="Sales history" description="Search your saved sales. Totals above include all completed sales." />
+      <div className="sales-history-filters"><SearchField label="Search sales" value={saleFilters.query} onChange={query => setSaleFilters(current => ({ ...current, query }))} placeholder="Item, channel or reference" /><SelectField label="Sale status" value={saleFilters.status} onChange={status => setSaleFilters(current => ({ ...current, status }))} options={[{ value: "all", label: "All statuses" }, ...SALE_STATUSES.map(label => ({ value: label.toLowerCase(), label }))]} /><TextField label="From date" type="date" value={saleFilters.from} onChange={from => setSaleFilters(current => ({ ...current, from }))} /><TextField label="Through date" type="date" value={saleFilters.to} onChange={to => setSaleFilters(current => ({ ...current, to }))} /></div>
+      <p role="status">{visibleSales.length} of {allSales.length} sales shown</p>{Object.values(saleFilters).some(value => value && value !== "all") ? <QuietButton onClick={() => setSaleFilters({ query: "", status: "all", from: "", to: "" })}>Clear sales filters</QuietButton> : null}
+      {visibleSales.length ? recordCards("sale", visibleSales, row => [{ label: "Item", value: recordTitle(allInventory.find(item => item.id === row.inventoryItemId) || row) }, { label: "Date", value: dateLabel(row.saleDate) }, { label: "Quantity", value: row.quantitySold }, { label: "Transaction total", value: money(row.grossSalePrice) }]) : <EmptyState title={allSales.length ? "No matching sales" : "No sales recorded"}>{allSales.length ? "Try another search, date range or status. Your saved sales are unchanged." : "Record a sale when an item sells."}</EmptyState>}</section>
     </> : null}
-    {view === "sales" ? <>{draftSales.length ? <section className="everyday-attention"><SectionHeader title="Needs attention" description={`${draftSales.length} sale draft${draftSales.length === 1 ? " is" : "s are"} not completed.`} actions={<PrimaryButton onClick={() => openDetail("sale", draftSales[0])}>Review Draft</PrimaryButton>} /></section> : null}<MetricRow items={[{ label: "Completed sales", value: completedSales.length }, { label: "Gross revenue", value: money(grossSales), numeric: true }, { label: "Realized profit", value: money(realizedProfit), numeric: true }, { label: "COGS adjustment", value: money(realizedCogsAdjustment), numeric: true }]} /><section><SectionHeader title="Recent sales" description="Open a sale for original proceeds and cost plus any append-only reporting reconciliation." />{allSales.length ? recordCards("sale", allSales, (row) => { const reporting = getSaleReportingProjection(row, formState); return [{ label: "Gross", value: money(row.grossSalePrice) }, { label: "Net", value: money(reporting.effectiveNetProceeds) }, { label: "Profit", value: money(reporting.effectiveProfit) }, { label: "Date", value: dateLabel(row.saleDate) }]; }) : <EmptyState title="No sales recorded" action={<PrimaryButton onClick={() => setForm({ type: "sale", seed: {} })}>Record Sale</PrimaryButton>}>Record a real transaction or save a draft.</EmptyState>}</section></> : null}
     {view === "money" ? <><div className="everyday-money-navigation"><WorkspaceTabs id={moneyTabsId} label="Money sections" tabs={moneyTabs} active={moneyView} onChange={setMoneyView} /><WorkspaceMoreMenu label="More" items={[{ key: "reconciliation", label: "Reconciliation" }]} active={moneyView} onChange={setMoneyView} /></div><WorkspaceTabPanel id={moneyTabsId} value="expenses" active={moneyView}><section className="everyday-action-section"><SectionHeader title="Expenses" description="Business records and bookkeeping estimates, not tax conclusions." actions={<PrimaryButton onClick={() => setForm({ type: "expense", seed: {} })}>Add Expense</PrimaryButton>} /></section>{missingReceipts.length ? <section className="everyday-attention"><SectionHeader title="Needs attention" description={`${missingReceipts.length} expense${missingReceipts.length === 1 ? " is" : "s are"} missing a receipt reference.`} actions={<PrimaryButton onClick={() => openDetail("expense", missingReceipts[0])}>Review Expense</PrimaryButton>} /></section> : null}<MetricRow items={[{ label: "Expenses", value: allExpenses.length }, { label: "Recorded amount", value: money(allExpenses.reduce((sum, row) => sum + number(row.amount), 0)), numeric: true }, { label: "Missing receipts", value: missingReceipts.length }]} /><section><SectionHeader title="Recent expenses" />{allExpenses.length ? recordCards("expense", allExpenses, (row) => [{ label: "Amount", value: money(row.amount) }, { label: "Merchant", value: row.merchant || "Not recorded" }, { label: "Date", value: dateLabel(row.date) }]) : <EmptyState title="No expenses recorded" action={<PrimaryButton onClick={() => setForm({ type: "expense", seed: {} })}>Add Expense</PrimaryButton>}>Add actual business expenses and receipt references.</EmptyState>}</section></WorkspaceTabPanel><WorkspaceTabPanel id={moneyTabsId} value="mileage" active={moneyView}><section className="everyday-action-section"><SectionHeader title="Mileage" description="Factual trip records for bookkeeping review." actions={<PrimaryButton onClick={() => setForm({ type: "mileage", seed: {} })}>Add Mileage</PrimaryButton>} /></section><MetricRow items={[{ label: "Trips", value: allMileage.length }, { label: "Recorded miles", value: `${allMileage.reduce((sum, row) => sum + number(row.miles), 0).toFixed(1)} mi`, numeric: true }]} /><section><SectionHeader title="Recent trips" />{allMileage.length ? recordCards("mileage", allMileage, (row) => [{ label: "Miles", value: `${number(row.miles)} mi` }, { label: "Date", value: dateLabel(row.date) }, { label: "Destination", value: row.destination || "Not recorded" }]) : <EmptyState title="No mileage recorded" action={<PrimaryButton onClick={() => setForm({ type: "mileage", seed: {} })}>Add Mileage</PrimaryButton>}>Record sourcing, pickup, delivery, or other business trips.</EmptyState>}</section></WorkspaceTabPanel><WorkspaceTabPanel id={moneyTabsId} value="reports" active={moneyView}><section className="everyday-action-section"><SectionHeader title="Reports" description="Summaries use completed real records only." /></section><MetricRow items={[{ label: "Capital recorded", value: money(purchaseCost) }, { label: "Revenue", value: money(grossSales) }, { label: "Realized profit", value: money(realizedProfit) }, { label: "Expenses", value: money(allExpenses.reduce((sum, row) => sum + number(row.amount), 0)) }]} /><EmptyState title="Detailed reporting needs more completed records">Source and time-period reports will remain unavailable until their required records can be reconciled.</EmptyState><BoothStatement state={state} /></WorkspaceTabPanel>{moneyView === "reconciliation" ? <section className="everyday-money-region" role="region" aria-label="Reconciliation" tabIndex={0}><section className="everyday-action-section"><SectionHeader title="Reconciliation" description="Resolve cost and receipt gaps before relying on reports." /></section>{unallocatedLots.length || missingInventoryCost.length || missingReceipts.length ? <div className="reconciliation-list">{unallocatedLots.map(({ lot }) => <RecordCard key={lot.id}><h3>{lot.title}</h3><p>Lot allocation does not reconcile.</p><PrimaryButton onClick={() => openDetail("lot", lot)}>Review Lot</PrimaryButton></RecordCard>)}{missingInventoryCost.map((row) => <RecordCard key={row.id}><h3>{recordTitle(row)}</h3><p>Inventory cost is missing.</p><PrimaryButton onClick={() => openDetail("inventory", row)}>Review Item</PrimaryButton></RecordCard>)}{missingReceipts.map((row) => <RecordCard key={row.id}><h3>{recordTitle(row)}</h3><p>Receipt reference is missing.</p><PrimaryButton onClick={() => openDetail("expense", row)}>Review Expense</PrimaryButton></RecordCard>)}</div> : <EmptyState title="Nothing to reconcile">Recorded lot allocations, inventory costs, and receipt references reconcile.</EmptyState>}</section> : null}</> : null}
   </main>;
 }

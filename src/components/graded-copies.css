@@ -1,0 +1,24 @@
+.graded-copies-panel{margin-block:1.5rem;padding-block:1.25rem;border-block-start:1px solid var(--border-color,#65585b);min-width:0}
+.graded-copies-panel>header,.graded-copies-title{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.graded-copies-panel h2,.graded-copies-panel h3{margin:0;color:inherit}
+.graded-copies-panel h2{font-size:1.15rem}.graded-copies-panel h3{font-size:1rem}
+.graded-copies-panel header p,.graded-copies-note{font-size:.875rem;line-height:1.5;margin:.5rem 0;color:inherit;opacity:.85}
+.graded-copies-panel>ol{list-style:none;margin:1rem 0 0;padding:0;display:grid;gap:1rem}
+.graded-copies-panel>ol>li{padding:1rem;border:1px solid var(--border-color,#65585b);border-radius:.65rem;min-width:0}
+.graded-copies-panel .ops-detail-list dd{overflow-wrap:anywhere}
+.graded-copies-title>span{font-size:.85rem;white-space:nowrap}
+.graded-copies-actions{display:flex;gap:.5rem;flex-wrap:wrap;margin-block-start:1rem}
+.graded-copies-actions button{min-height:44px}
+.grading-fields{grid-column:1/-1;min-width:0;margin:1rem 0;padding:1rem;border:1px solid var(--border-color,#65585b);border-radius:.65rem}
+.grading-fields legend{font-weight:650;padding-inline:.35rem}
+.grading-fields>p{font-size:.875rem;line-height:1.5;margin:0 0 1rem}
+.grading-fields>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}
+.grading-fields>div>label:last-child{grid-column:1/-1}
+.grading-fields input{min-width:0;width:100%;box-sizing:border-box;min-height:44px}
+.graded-copy-editor{max-width:52rem;margin-inline:auto;padding-block:1rem}
+.graded-copy-editor>h1{margin:.75rem 0}.graded-copy-editor fieldset{min-width:0;border:1px solid var(--border-color,#65585b);border-radius:.65rem;padding:1rem}
+.graded-copy-purchase-fields{display:grid;gap:1rem;grid-template-columns:repeat(2,minmax(0,1fr))}
+.graded-copy-purchase-fields>label:last-child{grid-column:1/-1}
+.graded-copy-editor input{min-width:0;box-sizing:border-box;width:100%}
+@media(max-width:480px){.grading-fields>div{grid-template-columns:minmax(0,1fr)}.graded-copies-panel>ol>li{padding:.85rem}}
+@media(max-width:480px){.graded-copy-purchase-fields{grid-template-columns:minmax(0,1fr)}}

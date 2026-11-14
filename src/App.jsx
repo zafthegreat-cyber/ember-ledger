@@ -1,3 +1,18 @@
+import { reconcileLegacyQuoteEdit, mergeLegacySavedQuoteRecord } from "./utils/legacyQuoteEdit.mjs";
+import { readLegacyCatalogIdentity, buildLegacyCatalogIdentityUpdate } from "./utils/legacyCatalogIdentity.mjs";
+import GradingFields from "./components/GradingFields.jsx";
+import ProductPhotoLookup from "./components/ProductPhotoLookup.jsx";
+import { gradingDetails } from "./utils/gradedCopies.mjs";
+import { readLegacyGradingMetadata, reconcileLegacyGradingEdit } from "./utils/legacyGradingMetadata.mjs";
+import PasswordInput from "./features/auth/PasswordInput.jsx";
+import NotificationInbox from "./components/NotificationInbox.jsx";
+import useAlertPauses from './features/notifications/useAlertPauses.js';
+import ReadableTextPreference, {readTextSize,saveTextSize,applyTextSize} from './components/ReadableTextPreference.jsx';
+import { pausedAlertIds } from './utils/notificationBrowse.mjs';
+import {readLegacyStorageLocation,writeLegacyStorageLocation} from './utils/legacyStorageMetadata.mjs';
+import {reviewedScreenshotReportFields} from './utils/screenshotReviewExtras.mjs';
+import BarcodeScanner from "./components/BarcodeScanner.jsx";
+import ItemPhoto from "./components/ItemPhoto.jsx";
 import DeferredModalBoundary from "./features/deferredViews/DeferredModalBoundary";
 import NationwideLocationPicker from './components/NationwideLocationPicker.jsx';
 import { NATIVE_BUILD, isHiddenInNativeApp, nativeAllowsRemoteProductImage } from "./config/nativeLaunchScope.js";
@@ -222,7 +237,6 @@ import {
   buildAiCatalogMatchSummary,
   buildAiReceiptDraftSummary,
   buildMissingProductPrefill,
-  detectPhotoLookupClues,
   draftMarketingCopy,
   draftMarketplaceListingCopy,
   draftNotificationCopy,
@@ -317,11 +331,12 @@ import {
   buildManualFallbackItemSeed,
   catalogIdentifiersForProduct,
   classifyReceiptLineForEntry,
-  findCatalogProductByBarcode,
+  findCatalogProductsByBarcode,
   isLikelyBarcodeValue,
   normalizeBarcodeValue,
   normalizeBulkImportRow,
 } from "./utils/inventoryImportUtils";
+import { verifiedBarcodeEntriesForProduct, isRejectedImportedBarcode, reviewedProductBarcode } from "./utils/catalogBarcodeLookup.mjs";
 import {
   getItemImageUrl,
   getProductImageFallback,
@@ -468,9 +483,6 @@ import {
   NATIVE_ALERT_DISCLOSURE,
   NOTIFICATION_PREFERENCE_ROWS,
   buildNotificationsFromEvents,
-  notificationBadgeClass,
-  notificationCategoryLabel,
-  notificationTrustLabel,
   normalizeNotificationPreferences,
   unreadNotificationCount,
   upsertNotificationState,
@@ -543,6 +555,7 @@ import { APP_SETUP_PAGE_GROUPS, appSetupOptionAllowed, applyAppSetupRecommendati
 
 const HEARTH_FOUNDATION_TRUST_MESSAGE = "We help families collect fairly without exposing harmful restock patterns.";
 
+const ProductInspectViewer = lazy(() => import("./components/ProductInspectViewer.jsx"));
 const ScoutSubmitContent = lazy(() => import("./features/deferredViews/ScoutSubmitContent"));
 const MultiDestinationContent = lazy(() => import("./features/deferredViews/MultiDestinationContent"));
 const AddAnythingContent = lazy(() => import("./features/deferredViews/AddAnythingContent"));
@@ -961,6 +974,9 @@ const PUBLIC_BETA_REASON_OPTIONS = [
   "Join waitlist",
   "Request my state",
   "Report a bug",
+  "Catalog data issue",
+  "Store information issue",
+  "Price information issue",
   "Request a feature",
   "Shop partnership",
   "Sponsor / donate to The Spark",
@@ -6350,111 +6366,6 @@ function LazySmartCatalogSearchBox(props) {
   );
 }
 
-function BarcodeScanner({
-  onScan,
-  onClose,
-  title = "Scan Barcode",
-  helper = "Point your camera at the barcode. Use good lighting and hold the barcode flat.",
-  readyLabel = "",
-  manualLabel = "Enter Manually",
-}) {
-  const videoRef = useRef(null);
-  const controlsRef = useRef(null);
-  const [scannerError, setScannerError] = useState("");
-  const [scannerStatus, setScannerStatus] = useState("starting");
-  const [retryKey, setRetryKey] = useState(0);
-  // #16/#17: the camera used to restart on every parent render because the
-  // inline onScan callback changed identity each time, so the preview never
-  // stayed up long enough to decode. Keep the latest callback in a ref and
-  // start the camera once per mount/retry.
-  const onScanRef = useRef(onScan);
-  useEffect(() => { onScanRef.current = onScan; }, [onScan]);
-
-  useEffect(() => {
-    let mounted = true;
-    let decoded = false;
-
-    async function start() {
-      try {
-        setScannerError("");
-        setScannerStatus("starting");
-        if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
-          throw new Error("Camera access is not available in this browser.");
-        }
-        if (typeof window !== "undefined" && window.isSecureContext === false) {
-          throw new Error("Camera scanning needs a secure (https) connection.");
-        }
-        const { BrowserMultiFormatReader } = await import("@zxing/browser");
-        if (!mounted) return;
-        const reader = new BrowserMultiFormatReader(undefined, { delayBetweenScanAttempts: 150, delayBetweenScanSuccess: 1500 });
-        const handleResult = (result) => {
-          if (!result || !mounted || decoded) return;
-          const text = String(result.getText() || "").trim();
-          if (!text) return;
-          decoded = true;
-          setScannerStatus("found");
-          if (typeof navigator.vibrate === "function") { try { navigator.vibrate(40); } catch { /* ignore */ } }
-          controlsRef.current?.stop();
-          onScanRef.current?.(text);
-        };
-        // Prefer the back camera on phones; fall back to any camera.
-        try {
-          controlsRef.current = await reader.decodeFromConstraints(
-            { audio: false, video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } } },
-            videoRef.current,
-            handleResult
-          );
-        } catch {
-          if (!mounted) return;
-          controlsRef.current = await reader.decodeFromVideoDevice(undefined, videoRef.current, handleResult);
-        }
-        if (mounted) setScannerStatus("scanning");
-      } catch (error) {
-        if (!mounted) return;
-        const message = String(error?.message || "");
-        const denied = /denied|permission|notallowed/i.test(message) || error?.name === "NotAllowedError";
-        setScannerError(denied
-          ? "Camera permission was declined. Allow the camera in your browser settings, or type the barcode number below."
-          : message || "Camera could not start. Check permissions or type the barcode number below.");
-        setScannerStatus("error");
-      }
-    }
-
-    start();
-
-    return () => {
-      mounted = false;
-      controlsRef.current?.stop();
-      controlsRef.current = null;
-    };
-  }, [retryKey]);
-
-  return (
-    <div className="panel scanner-camera-panel">
-      <h2>{title}</h2>
-      {scannerError ? (
-        <div className="scanner-camera-empty">
-          <h3>Camera unavailable</h3>
-          <p>Check browser permissions, or search manually below.</p>
-          <div className="quick-actions">
-            <button type="button" className="primary-button scanner-camera-retry" onClick={() => setRetryKey((current) => current + 1)}>Try Camera Again</button>
-            <button type="button" className="secondary-button scanner-camera-help" onClick={onClose}>{manualLabel}</button>
-          </div>
-        </div>
-      ) : (
-        <>
-          <strong className="scanner-ready-label">
-            {scannerStatus === "starting" ? "Starting camera…" : scannerStatus === "found" ? "Barcode found. Looking it up…" : (readyLabel || "Camera on. Looking for a barcode…")}
-          </strong>
-          <p>{helper}</p>
-          <video ref={videoRef} autoPlay muted playsInline className="scanner-video" />
-          <button type="button" className="secondary-button" onClick={onClose}>{manualLabel}</button>
-        </>
-      )}
-    </div>
-  );
-}
-
 function UpgradeScreen({ featureKey, onBack }) {
   return (
     <LockedFeatureNotice
@@ -7417,6 +7328,9 @@ export default function App() {
   const [workspaceIdentityMessage, setWorkspaceIdentityMessage] = useState("");
 
   const [items, setItems] = useState([]);
+  const latestLegacyItems = useRef(items);
+  latestLegacyItems.current = items;
+  const legacyStorageSaving = useRef(false);
   const [purchasers, setPurchasers] = useState([]);
   const [catalogProducts, setCatalogProducts] = useState([]);
   const [localCatalogSeedProducts, setLocalCatalogSeedProducts] = useState([]);
@@ -7482,6 +7396,7 @@ export default function App() {
   const [scanReview, setScanReview] = useState(null);
   const [scanDestination, setScanDestination] = useState("none");
   const [scanSearchState, setScanSearchState] = useState("idle");
+  const scanLookupRequestRef = useRef(0);
   const [scanMessage, setScanMessage] = useState("");
   const [scanInput, setScanInput] = useState("");
   // #33-#35: business exports can leave out buyer/driver names and notes.
@@ -7553,6 +7468,12 @@ export default function App() {
   const [localDataLoaded, setLocalDataLoaded] = useState(false);
   const [hostedSupplementOwner, setHostedSupplementOwner] = useState("");
   const [localAppStorageGuard] = useState(createLegacyAppStorageGuard);
+  const [readableTextSize, setReadableTextSize] = useState(() => readTextSize());
+  const [readableTextError, setReadableTextError] = useState('');
+  useEffect(() => {applyTextSize(readableTextSize);}, [readableTextSize]);
+  function renderTextSizeControl() {
+    return <><ReadableTextPreference value={readableTextSize} onChange={value => {const choice=saveTextSize(value);setReadableTextSize(choice.value);setReadableTextError(choice.saved?'':"Text size changed for this session. This browser couldn't save your preference.");}} />{readableTextError && <p role="status">{readableTextError}</p>}</>;
+  }
   // Audit 2026-11-14: whole-store saves wait for changes to settle (400 ms) and flush when the page hides.
   const [localStoreSaver] = useState(() => createDebouncedSaver(400));
   useEffect(() => flushSaverOnPageHide(localStoreSaver), [localStoreSaver]);
@@ -7744,6 +7665,8 @@ export default function App() {
   });
 
   const [editingItemId, setEditingItemId] = useState(null);
+  const editingItemBaselineRef = useRef(null);
+  const reviewedCatalogIdentityRef = useRef(null);
   const [editingCatalogId, setEditingCatalogId] = useState(null);
   const [editingExpenseId, setEditingExpenseId] = useState(null);
   const [editingVehicleId, setEditingVehicleId] = useState(null);
@@ -8699,6 +8622,8 @@ export default function App() {
     [workspaces, activeWorkspaceId, user]
   );
   const currentWorkspaceUserId = user?.id || "local-beta";
+  const legacyWriteIdentity = useRef('');
+  legacyWriteIdentity.current = `${currentWorkspaceUserId}:${activeWorkspaceId}`;
   const currentWorkspaceEmail = String(user?.email || "").toLowerCase();
   const workspaceOwnerMatchesUser = useCallback((workspace = {}) =>
     Boolean(currentWorkspaceUserId) &&
@@ -9570,7 +9495,7 @@ export default function App() {
     ];
     const commandQuickActions = [
       { key: "report", label: "Quick Store Report", category: "activity", onClick: () => openCommandCenterAction("scout", "Submit Report") },
-      { key: "add", label: "Add Item", category: "tools", onClick: () => openCommandCenterQuickAdd("vaultItem") },
+      { key: "add", label: "Add item", category: "tools", onClick: () => openCommandCenterQuickAdd("vaultItem") },
       { key: "scan", label: "Scan Product/Card", category: "tools", onClick: () => openCommandCenterQuickAdd("scanProduct") },
       { key: "search", label: "Search", category: "tools", onClick: () => openCommandCenterAction("catalog", "Search Catalog") },
       { key: "import", label: "Import / Bulk Add", category: "manage", onClick: () => openCommandCenterBulkAdd() },
@@ -10466,7 +10391,7 @@ export default function App() {
           <button type="button" className="secondary-button" onClick={() => {
             openProductAddFlow({ product: result.source, source: "global-search-vault", destinations: { vault: true } });
             setSearchExpanded(false);
-          }}>Add Item</button>
+          }}>Add item</button>
           <button type="button" className="secondary-button" onClick={() => {
             openProductAddFlow({
               product: result.source,
@@ -12112,7 +12037,7 @@ export default function App() {
       priority: "normal",
       audience: "all beta users",
       dismissible: true,
-      ctaLabel: "View Details",
+      ctaLabel: "View details",
       ctaDestination: "whatsNew",
     });
     addAuditLog("announcement_create_draft", "announcement", "local-draft", { source: "admin_dashboard" });
@@ -15347,7 +15272,8 @@ export default function App() {
     });
     if (!next.buyer && row.purchaser_name) next.buyer = row.purchaser_name;
     if (metadata.length) {
-      next.action_notes = [next.action_notes, `Catalog/details: ${metadata.join("; ")}`].filter(Boolean).join(" | ");
+      const hasStructuredNotes = Object.keys(readLegacyCatalogIdentity(next.action_notes)).length > 0 || Object.keys(readLegacyGradingMetadata(next.action_notes)).length > 0 || readLegacyStorageLocation(next.action_notes) !== undefined;
+      next.action_notes = [next.action_notes, `Catalog/details: ${metadata.join("; ")}`].filter(Boolean).join(hasStructuredNotes ? "\n" : " | ");
     }
     return next;
   }
@@ -15695,6 +15621,7 @@ export default function App() {
     if (!importAssistantOpen) return null;
     return <LazyToolBoundary label="Loading import review…">
       <InventoryImportContent scope={{
+        preferenceScope: `${currentWorkspaceUserId}:${activeWorkspaceId}`,
         BATCH_INTAKE_MODES,
         Field,
         IMPORT_CONDITION_OPTIONS,
@@ -16024,6 +15951,8 @@ export default function App() {
     const historicalImport = sourceType === "historical_import" || importedByAdmin || Boolean(row.imported_batch);
     const historicalStockPositive = historicalImport && ["stock_seen", "vendor_seen", "leftover_stock"].includes(reportStatus);
     return {
+      ...(context.timezone ? {timezone:context.timezone} : {}),
+      ...(context.sourceUrl ? {sourceUrl:context.sourceUrl} : {}),
       id: row.id || makeId("store-report"),
       reportId: row.id || "",
       userId: row.user_id || "",
@@ -16717,7 +16646,7 @@ export default function App() {
         localCatalogSeedProductsRef.current = seededProducts;
         setLocalCatalogSeedProducts(seededProducts);
         setLocalCatalogProductUpcs(Array.isArray(catalogData.POKEMON_PRODUCT_UPCS) ? catalogData.POKEMON_PRODUCT_UPCS : []);
-        setCatalogProducts((current) => mergeCatalogProductLists(seededProducts, current));
+        setCatalogProducts((current) => mergeCatalogProductLists(current, seededProducts));
         localCatalogSeedStatusRef.current = "ready";
         setLocalCatalogSeedStatus("ready");
         return seededProducts;
@@ -17725,10 +17654,10 @@ export default function App() {
       onSell={() => { prepareRouteNavigation(); setActiveTab("inventory"); }} />;
   }
 
-  function openCommunityRestockReports() {
+  function openCommunityRestockReports(options = {}) {
     prepareRouteNavigation();
     setScoutView("reports");
-    setScoutSubTabTarget({ tab: "reports", id: Date.now() });
+    setScoutSubTabTarget({ tab: "reports", id: Date.now(), storeId: options.storeId || "", followedOnly: options.followedOnly === true });
     setActiveTab("scout");
   }
 
@@ -18733,7 +18662,6 @@ export default function App() {
     const best = matches[0];
     const product = best?.item || null;
     const marketInfo = product ? getTideTradrMarketInfo(product) : {};
-    const normalizedRawCode = isLikelyBarcodeValue(rawValue) ? normalizeBarcodeValue(rawValue) : "";
     return {
       scanId: makeId("scan"),
       rawValue,
@@ -18743,7 +18671,7 @@ export default function App() {
       catalogType: product?.catalogType || "unknown",
       productType: normalizedInventoryProductType(product || {}),
       setName: product?.setName || product?.expansion || "",
-      upc: product?.barcode || product?.upc || normalizedRawCode,
+      upc: product ? reviewedProductBarcode(product, rawValue) : "",
       sku: product?.sku || "",
       imageUrl: product ? getCatalogImage(product) : "",
       msrp: marketInfo.msrp || product?.msrpPrice || "",
@@ -18759,6 +18687,7 @@ export default function App() {
   }
 
   function beginScanProduct(defaultDestination = "none") {
+    scanLookupRequestRef.current += 1;
     setEditingItemId(null);
     setScanMode("upc");
     setScanMatches([]);
@@ -18926,6 +18855,7 @@ export default function App() {
   }
 
   function closeInventoryScanner() {
+    scanLookupRequestRef.current += 1;
     setShowInventoryScanner(false);
     setScanReview(null);
     setScanMatches([]);
@@ -19906,46 +19836,8 @@ export default function App() {
     });
   }
 
-  function handlePictureLookupFile(event) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    setPictureLookup((current) => {
-      if (current.imageUrl?.startsWith("blob:")) URL.revokeObjectURL(current.imageUrl);
-      return {
-        ...current,
-        imageUrl: URL.createObjectURL(file),
-        fileName: file.name,
-        message: `Image preview ready. ${AI_UPLOAD_WARNING} Enter visible text, UPC/SKU, card number, or product name for reviewable matching.`,
-      };
-    });
-  }
-
-  function runPictureLookupSearch() {
-    const lookup = String(pictureLookup.text || scanInput || "").trim();
-    const clues = detectPhotoLookupClues(lookup);
-    void logAiAssistEvent(AI_FEATURE_AREAS.PHOTO_LOOKUP, {
-      inputSummary: lookup ? `Visible text clues: ${lookup}` : "No visible text clues entered",
-      outputSummary: clues.outputSummary,
-      confidenceScore: clues.confidenceScore,
-    });
-    if (!lookup) {
-      setPictureLookup((current) => ({
-        ...current,
-        message: "No match found - add manually, search with fewer words, or submit it for review.",
-      }));
-      setScanSearchState("empty");
-      setScanMessage("No match found - add manually, search with fewer words, or submit it for review.");
-      return;
-    }
-    setPictureLookup((current) => ({
-      ...current,
-      message: `${clues.outputSummary} ${AI_REVIEW_DISCLAIMER}`,
-    }));
-    setScanMode("manual");
-    handleCatalogScanMatch(clues.searchText || lookup);
-  }
-
   async function handleCatalogScanMatch(value) {
+    const requestId = ++scanLookupRequestRef.current;
     const lookupValue = String(value || "").trim();
     if (!lookupValue) {
       setScanMessage("Scan a barcode or enter a product name before searching.");
@@ -19964,17 +19856,18 @@ export default function App() {
     const mode = detectCatalogSearchMode(lookupValue);
     const normalizedLookupCode = normalizeBarcodeValue(lookupValue);
     const exactIdentifier = ["barcode", "id"].includes(mode) || isLikelyBarcodeValue(lookupValue);
-    const localBarcodeProduct = exactIdentifier ? findCatalogProductByBarcode(catalogProducts, lookupValue) : null;
-    if (localBarcodeProduct) {
-      matches = [{
-        item: localBarcodeProduct,
-        score: 1200,
-        confidencePercent: 98,
-        explanation: "Exact UPC/EAN/GTIN or SKU match",
-        reason: "local identifier match",
-      }];
-    }
-    if (isSupabaseConfigured && supabase && lookupValue.length >= 2) {
+    const seedProducts = await loadLocalCatalogSeed("barcode scan");
+    if (requestId !== scanLookupRequestRef.current) return;
+    const searchPool = mergeCatalogProductLists(catalogProducts, seedProducts);
+    const localBarcodeProducts = findCatalogProductsByBarcode(searchPool, lookupValue);
+    matches = localBarcodeProducts.map(item => ({
+      item,
+      score: 1200,
+      confidencePercent: 98,
+      explanation: localBarcodeProducts.length > 1 ? "Shared barcode — choose the matching artwork and package" : "Exact UPC/EAN/GTIN or SKU match — review before saving",
+      reason: "local identifier match",
+    }));
+    if (!matches.length && isSupabaseConfigured && supabase && lookupValue.length >= 2) {
       try {
         const result = await searchPokemonCatalogOnDemand({
           supabase,
@@ -19985,10 +19878,12 @@ export default function App() {
           pageSize: 8,
           force: true,
         });
+        if (requestId !== scanLookupRequestRef.current) return;
         const remoteMatches = (result.rows || []).map((row, index) => {
           const item = mapCatalog(row);
           const identifiers = catalogIdentifiersForProduct(item);
           const exactMatch = exactIdentifier && identifiers.includes(normalizedLookupCode || normalizeBarcodeValue(lookupValue));
+          if (exactIdentifier && !exactMatch) return null;
           return {
             item,
             score: exactMatch ? 1000 : Math.max(400, 850 - index * 40),
@@ -19997,28 +19892,31 @@ export default function App() {
             reason: result.searchPhase || result.searchMode || "catalog search",
           };
         });
-        matches = [...matches, ...remoteMatches].filter((match, index, allMatches) => {
+        matches = [...matches, ...remoteMatches.filter(Boolean)].filter((match, index, allMatches) => {
           const id = String(match.item?.id || match.item?.name || index);
           return allMatches.findIndex((candidate) => String(candidate.item?.id || candidate.item?.name || "") === id) === index;
         });
       } catch (error) {
+        if (requestId !== scanLookupRequestRef.current) return;
         setScanMessage(error?.message ? `Catalog lookup unavailable. Using local fallback: ${error.message}` : "Catalog lookup unavailable. Using local fallback.");
       }
     }
 
     if (!matches.length) {
-      matches = getBestCatalogMatches(lookupValue, catalogProducts);
+      matches = getBestCatalogMatches(lookupValue, searchPool);
     }
+    const requiresPackageChoice = matches.length > 1 && (exactIdentifier || localBarcodeProducts.length > 0);
     const aiSummary = buildAiCatalogMatchSummary({ query: lookupValue, matches });
     void logAiAssistEvent(AI_FEATURE_AREAS.CATALOG_MATCH, {
       ...aiSummary,
       relatedEntityType: "scanner_intake",
     });
+    if (requestId !== scanLookupRequestRef.current) return;
     setScanMatches(matches);
     if (matches.length) {
-      setScanReview({ ...buildScanReview(lookupValue, matches, scanDestination), aiSummary: aiSummary.outputSummary });
+      setScanReview(requiresPackageChoice ? null : { ...buildScanReview(lookupValue, matches, scanDestination), aiSummary: aiSummary.outputSummary });
       setScanSearchState("results");
-      setScanMessage(`${aiSummary.outputSummary} Review every match before saving.`);
+      setScanMessage(requiresPackageChoice ? "This barcode is shared by more than one package. Choose the matching artwork, edition and pack count before saving." : `${aiSummary.outputSummary} Review every match before saving.`);
     } else {
       setScanReview(null);
       setScanSearchState("empty");
@@ -21994,7 +21892,8 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   }
 
   function validateScoutVisitDateTime(form = quickScoutReportForm, options = {}) {
-    const parsed = parseScoutVisitDateTime(form.reportDate, form.reportTime);
+    const reviewed = reviewedScreenshotReportFields(form);
+    const parsed = reviewed.observedAt ? {ok:true,date:form.reportDate,time:form.reportTime,parsed:new Date(reviewed.observedAt),iso:reviewed.observedAt} : parseScoutVisitDateTime(form.reportDate, form.reportTime);
     if (!parsed.ok) return parsed;
     const nowMs = Date.now();
     const futureMs = parsed.parsed.getTime() - nowMs;
@@ -22470,6 +22369,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
 
   function buildQuickScoutReportRecord() {
     const type = quickScoutReportTypeMeta();
+    const reviewedScreenshot = reviewedScreenshotReportFields(quickScoutReportForm);
     const screenshotSource = Boolean(quickScoutReportForm.screenshotImportReviewed || quickScoutReportForm.proofType === "text_screenshot");
     const storeSelection = resolveQuickScoutStoreSelection();
     if (!storeSelection.valid) return null;
@@ -22480,7 +22380,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
         ? quickScoutReportForm.reportDate || getLocalDateInputKey()
         : getLocalDateInputKey();
     const visitValidation = validateScoutVisitDateTime({ reportDate: timestampSourceDate, reportTime: quickScoutReportForm.reportTime }, { allowFutureConfirmation: true });
-    const observedAt = visitValidation.ok ? visitValidation.iso : new Date(`${timestampSourceDate}T${quickScoutReportForm.reportTime || getLocalTimeKey()}`).toISOString();
+    const observedAt = reviewedScreenshot.observedAt || (visitValidation.ok ? visitValidation.iso : new Date(`${timestampSourceDate}T${quickScoutReportForm.reportTime || getLocalTimeKey()}`).toISOString());
     const submittedAt = new Date().toISOString();
     const explicitProductName = quickScoutReportForm.productName.trim()
       || quickScoutReportForm.catalogProductName
@@ -22555,7 +22455,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       quantitySeen: quickScoutReportForm.quantity,
       quantity_estimate: quickScoutReportForm.quantity,
       price: quickScoutReportForm.price,
-      itemsSeen: productName ? [{
+      timezone: reviewedScreenshot.timezone || '',
+      ...(reviewedScreenshot.sourceUrl ? {sourceUrl:reviewedScreenshot.sourceUrl} : {}),
+      itemsSeen: reviewedScreenshot.itemsSeen || (productName ? [{
         productName,
         productId: quickScoutReportForm.catalogProductId || "",
         category: reportProductCategory || "Pokemon TCG",
@@ -22565,7 +22467,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
         quantity: quickScoutReportForm.quantity,
         price: quickScoutReportForm.price,
         note: quickScoutReportForm.note.trim(),
-      }] : [],
+      }] : []),
       reportText: notes || type.label,
       notes,
       photoUrls: quickScoutReportForm.photoUrl ? [normalizePrivateStorageReference(quickScoutReportForm.photoUrl, supabase?.supabaseUrl)] : [],
@@ -23575,19 +23477,19 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       itemImageSourceUrl: row.itemImageSourceUrl || row.item_image_source_url || "",
       itemImageLastUpdated: row.itemImageLastUpdated || row.item_image_last_updated || "",
       itemImageNeedsReview: Boolean(row.itemImageNeedsReview || row.item_image_needs_review),
-      marketPrice: Number(row.marketPrice ?? row.market_price ?? row.marketValue ?? row.market_value ?? 0),
-      marketValue: Number(row.marketValue ?? row.market_value ?? row.marketPrice ?? row.market_price ?? 0),
+      marketPrice: blankToNull(row.marketPrice ?? row.market_price ?? row.marketValue ?? row.market_value),
+      marketValue: blankToNull(row.marketValue ?? row.market_value ?? row.marketPrice ?? row.market_price),
       marketValueSource: row.marketValueSource || row.market_value_source || row.marketPriceSource || row.market_price_source || "",
       marketPriceSource: row.marketPriceSource || row.market_price_source || row.marketValueSource || row.market_value_source || "",
       marketPriceConfidence: row.marketPriceConfidence || row.market_price_confidence || row.priceConfidence || row.price_confidence || "",
       marketPriceReviewedAt: row.marketPriceReviewedAt || row.market_price_reviewed_at || row.priceReviewedAt || row.price_reviewed_at || "",
       marketValueUpdatedAt: row.marketValueUpdatedAt || row.market_value_updated_at || "",
       priceReviewNote: row.priceReviewNote || row.price_review_note || "",
-      lowPrice: Number(row.lowPrice ?? row.low_price ?? 0),
-      midPrice: Number(row.midPrice ?? row.mid_price ?? 0),
-      highPrice: Number(row.highPrice ?? row.high_price ?? 0),
-      msrpPrice: Number(row.msrpPrice ?? row.msrp_price ?? row.msrp ?? 0),
-      msrp: Number(row.msrp ?? row.msrpPrice ?? row.msrp_price ?? 0),
+      lowPrice: blankToNull(row.lowPrice ?? row.low_price),
+      midPrice: blankToNull(row.midPrice ?? row.mid_price),
+      highPrice: blankToNull(row.highPrice ?? row.high_price),
+      msrpPrice: blankToNull(row.msrpPrice ?? row.msrp_price ?? row.msrp),
+      msrp: blankToNull(row.msrp ?? row.msrpPrice ?? row.msrp_price),
       msrpSource: row.msrpSource || row.msrp_source || "",
       setCode: row.setCode || row.set_code || "",
       expansion: row.expansion || row.setName || row.set_name || imported.setName || "",
@@ -23601,7 +23503,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       listingUrl: row.listingUrl || row.listing_url || "",
       listedPrice: Number(row.listedPrice ?? row.listed_price ?? 0),
       actionNotes: row.actionNotes || row.action_notes || "",
-      storageLocation: row.storageLocation || row.storage_location || "",
+      storageLocation: readLegacyStorageLocation(row.action_notes || row.actionNotes) ?? row.storageLocation ?? row.storage_location ?? "",
       location: row.location || row.location_name || "",
       physicalLocation: row.physicalLocation || row.physical_location || "",
       physicalLocationNotes: row.physicalLocationNotes || row.physical_location_notes || "",
@@ -23644,6 +23546,8 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       plannedSalePriceReviewedAt: row.plannedSalePriceReviewedAt || row.planned_sale_price_reviewed_at || "",
       createdAt: row.createdAt || row.created_at,
       updatedAt: row.updatedAt || row.updated_at || row.createdAt || row.created_at,
+      ...readLegacyCatalogIdentity(row.actionNotes || row.action_notes),
+      ...readLegacyGradingMetadata(row.actionNotes || row.action_notes),
     };
   }
 
@@ -24693,11 +24597,88 @@ function mapCatalog(row) {
     }
   }
 
+  async function updateLegacyInventoryStorage({changes = []} = {}) {
+    if (legacyStorageSaving.current) throw new Error('Another storage update is still saving.');
+    if (blockGuestSave()) throw new Error('Sign in before updating storage.');
+    if (localAppStorageGuard.getError()) throw new Error('Resolve the storage warning before changing these records.');
+    const scope = legacyWriteIdentity.current;
+    const updatedIds = []; const failures = [];
+    const seen = new Set();
+    legacyStorageSaving.current = true;
+    try {
+      for (const change of changes) {
+        const id = String(change.id || '');
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        try {
+          if (legacyWriteIdentity.current !== scope) throw new Error('Your account or workspace changed. Review again.');
+          const original = latestLegacyItems.current.find(row => String(row.id) === id);
+          if (!original || !ensureWorkspaceEditor(original.workspaceId || original.workspace_id || activeWorkspace?.id)) throw new Error('This original record is no longer editable.');
+          const reviewedLocation = String(change.previousStorageLocation ?? '');
+          const originalNotes = original.actionNotes || original.action_notes || '';
+          const requireReviewedLocalStorage = (cloudSaved = false) => {
+            const latest = latestLegacyItems.current.find(row => String(row.id) === id);
+            if (!latest || String(latest.storageLocation ?? latest.storage_location ?? '') !== reviewedLocation) {
+              throw new Error(cloudSaved
+                ? 'The reviewed location saved to cloud, but a newer local change was kept. Refresh and review this record again.'
+                : 'Storage changed since review. Review this record again.');
+            }
+          };
+          requireReviewedLocalStorage();
+          let notes = writeLegacyStorageLocation(originalNotes, change.storageLocation);
+          let cloudSaved = false;
+          if (!BETA_LOCAL_MODE && user?.id !== 'local-beta' && supabase) {
+            const current = await supabase.from('inventory_items').select('id,action_notes,workspace_id').eq('id',id).single();
+            if (current.error || !current.data) throw new Error('The latest original could not be checked.');
+            if (legacyWriteIdentity.current !== scope) throw new Error('Your account or workspace changed. Review again.');
+            if (!ensureWorkspaceEditor(current.data.workspace_id || original.workspaceId)) throw new Error('This workspace is no longer editable.');
+            const cloudLocation = readLegacyStorageLocation(current.data.action_notes) ?? '';
+            if (cloudLocation !== reviewedLocation) throw new Error('Cloud storage differs from the reviewed record. Refresh and review again.');
+            requireReviewedLocalStorage();
+            notes = writeLegacyStorageLocation(current.data.action_notes || '',change.storageLocation);
+            let query = supabase.from('inventory_items').update({action_notes:notes}).eq('id',id);
+            query = current.data.action_notes == null ? query.is('action_notes',null) : query.eq('action_notes',current.data.action_notes);
+            const saved = await query.select('id,action_notes').single();
+            if (saved.error || !saved.data) throw new Error('This record changed during the save. Refresh and review again.');
+            cloudSaved = true;
+          }
+          if (legacyWriteIdentity.current !== scope) throw new Error('Saved to the original account. Reopen it to refresh this record.');
+          requireReviewedLocalStorage(cloudSaved);
+          setItems(current => current.map(row => {
+            if (String(row.id) !== id || legacyWriteIdentity.current !== scope || String(row.storageLocation ?? row.storage_location ?? '') !== reviewedLocation) return row;
+            return {...row,storageLocation:change.storageLocation,actionNotes:(row.actionNotes || row.action_notes || '') === originalNotes ? notes : writeLegacyStorageLocation(row.actionNotes || row.action_notes || '',change.storageLocation)};
+          }));
+          updatedIds.push(id);
+        } catch (error) {failures.push({id,message:error.message || 'This storage change was not saved.'});}
+      }
+      return {updatedIds,failures};
+    } finally {legacyStorageSaving.current=false;}
+  }
+
   async function saveEditedItem(event) {
     event.preventDefault();
     if (blockGuestSave()) return;
     const currentEditingItem = items.find((item) => item.id === editingItemId);
     if (!ensureWorkspaceEditor(currentEditingItem?.workspaceId || currentEditingItem?.workspace_id || activeWorkspace?.id)) return;
+    if (!currentEditingItem) return showAppMessage("This item is no longer available. Reopen it before editing.");
+    const baseline = editingItemBaselineRef.current?.id === editingItemId ? editingItemBaselineRef.current.form : currentEditingItem;
+    let quoteEdit;
+    try { quoteEdit = reconcileLegacyQuoteEdit({ baseline, current: currentEditingItem, draft: itemForm, reviewedAt: new Date().toISOString() }); }
+    catch (error) { return showAppMessage(error.message); }
+    const pendingIdentity = reviewedCatalogIdentityRef.current?.id === editingItemId ? reviewedCatalogIdentityRef.current.identity : null;
+    const existingIdentity = readLegacyCatalogIdentity(currentEditingItem.actionNotes || currentEditingItem.action_notes);
+    const changedIdentity = pendingIdentity ? { ...pendingIdentity } : {};
+    if (pendingIdentity || Object.keys(existingIdentity).length) {
+      for (const [formKey, identityKey] of [["name","name"],["expansion","setName"],["catalogProductId","catalogProductId"],["language","language"],["finish","finish"],["printing","printing"]]) {
+        if (String(itemForm[formKey] ?? "") !== String(baseline[formKey] ?? "")) changedIdentity[identityKey] = String(itemForm[formKey] ?? "");
+      }
+      if (String(itemForm.finish ?? "") !== String(baseline.finish ?? "")) changedIdentity.variant = String(itemForm.finish ?? "");
+    }
+    const notes = String(itemForm.actionNotes ?? "") !== String(baseline.actionNotes ?? "") ? itemForm.actionNotes : currentEditingItem.actionNotes || currentEditingItem.action_notes || "";
+    const identityEdit = buildLegacyCatalogIdentityUpdate({ notes, identity: changedIdentity });
+    let gradingEdit;
+    try { gradingEdit = reconcileLegacyGradingEdit({ baseline, current: currentEditingItem, draft: itemForm, notes: identityEdit.actionNotes, records: items }); }
+    catch (error) { return showAppMessage(error.message); }
     const editingVault = isEditingVaultItem();
     if (editingVault) {
       const validationMessage = validateVaultDraft({
@@ -24760,27 +24741,17 @@ function mapCatalog(row) {
         tideTradrProductId: itemForm.catalogProductId,
         externalProductId: itemForm.externalProductId,
         tideTradrUrl: itemForm.tideTradrUrl,
-        marketPrice: Number(itemForm.marketPrice || 0),
-        marketValue: Number(itemForm.marketPrice || 0),
-        lowPrice: Number(itemForm.lowPrice || 0),
-        midPrice: Number(itemForm.midPrice || 0),
-        highPrice: Number(itemForm.highPrice || 0),
-        msrpPrice: Number(itemForm.msrpPrice || 0),
-        msrp: Number(itemForm.msrpPrice || 0),
         setCode: itemForm.setCode || "",
         expansion: itemForm.expansion || "",
         setName: itemForm.expansion || "",
         productLine: itemForm.productLine || "",
         productType: normalizedInventoryProductType(itemForm),
         packCount: Number(itemForm.packCount || 0),
-        lastPriceChecked: itemForm.marketPrice ? new Date().toISOString() : "",
         status: itemForm.status,
         vaultStatus: itemForm.vaultStatus || items.find((item) => item.id === editingItemId)?.vaultStatus || "",
         listingPlatform: itemForm.listingPlatform,
         listingUrl: itemForm.listingUrl,
-        listedPrice: Number(itemForm.listedPrice || 0),
-        actionNotes: itemForm.actionNotes,
-        storageLocation: itemForm.storageLocation || "",
+        listedPrice: Number(itemForm.listedPrice || 0),        storageLocation: itemForm.storageLocation || "",
         physicalLocation: itemForm.physicalLocation || currentEditingItem?.physicalLocation || "",
         physicalLocationNotes: itemForm.physicalLocation === "Other" ? itemForm.physicalLocationNotes || "" : "",
         condition: itemForm.condition || "",
@@ -24802,6 +24773,10 @@ function mapCatalog(row) {
         receivedItemName: itemForm.receivedItemName || "",
         receivedCatalogItemId: itemForm.receivedCatalogItemId || "",
         updatedAt: new Date().toISOString(),
+        ...quoteEdit.localUpdate,
+        ...identityEdit.identity,
+        ...gradingEdit.localUpdate,
+        actionNotes: gradingEdit.actionNotes,
       };
 
       setItems(items.map((item) => (item.id === editingItemId ? updatedItem : item)));
@@ -24833,23 +24808,15 @@ function mapCatalog(row) {
       external_product_source: "TideTradr",
       external_product_id: itemForm.externalProductId,
       tcgplayer_url: itemForm.tideTradrUrl,
-      market_price: Number(itemForm.marketPrice || 0),
-      low_price: Number(itemForm.lowPrice || 0),
-      mid_price: Number(itemForm.midPrice || 0),
-      high_price: Number(itemForm.highPrice || 0),
-      msrp_price: Number(itemForm.msrpPrice || 0),
       set_code: itemForm.setCode || "",
       set_name: itemForm.expansion || "",
       product_line: itemForm.productLine || "",
       product_type: normalizedInventoryProductType(itemForm),
       pack_count: Number(itemForm.packCount || 0),
-      last_price_checked: itemForm.marketPrice ? new Date().toISOString() : null,
       status: itemForm.status,
       listing_platform: itemForm.listingPlatform,
       listing_url: itemForm.listingUrl,
-      listed_price: Number(itemForm.listedPrice || 0),
-      action_notes: itemForm.actionNotes,
-      vault_status: itemForm.vaultStatus || null,
+      listed_price: Number(itemForm.listedPrice || 0),      vault_status: itemForm.vaultStatus || null,
       physical_location: itemForm.physicalLocation || currentEditingItem?.physicalLocation || "",
       physical_location_notes: itemForm.physicalLocation === "Other" ? itemForm.physicalLocationNotes || "" : "",
       condition_name: itemForm.conditionName || itemForm.condition || "Near Mint",
@@ -24857,6 +24824,9 @@ function mapCatalog(row) {
       finish: itemForm.finish || "",
       printing: itemForm.printing || "",
       updated_at: new Date().toISOString(),
+      ...quoteEdit.serverUpdate,
+      ...identityEdit.serverPatch,
+      action_notes: gradingEdit.actionNotes,
     };
 
     const { data, error } = await supabase.from("inventory_items").update(sanitizeInventorySupabaseRow(row)).eq("id", editingItemId).select().single();
@@ -24865,7 +24835,7 @@ function mapCatalog(row) {
       return showAppMessage("Could not save item.");
     }
 
-    setItems(items.map((item) => (item.id === editingItemId ? mapItem(data) : item)));
+    setItems(latest => latest.map(item => item.id === currentEditingItem.id ? mergeLegacySavedQuoteRecord({ atSave: currentEditingItem, current: item, saved: mapItem(data) }) : item));
     setEditingItemId(null);
     setItemForm(blankItem);
     if (activeFlowModal?.type === "addInventory") closeFlowModal({ force: true, reset: false });
@@ -24876,7 +24846,8 @@ function mapCatalog(row) {
   function startEditingItem(item) {
     if (!ensureWorkspaceEditor(item?.workspaceId || item?.workspace_id || activeWorkspace?.id)) return;
     setEditingItemId(item.id);
-    setItemForm({
+    reviewedCatalogIdentityRef.current = null;
+    const editDraft = {
       name: item.name,
       buyer: itemPurchaserName(item),
       purchaserId: item.purchaserId || "",
@@ -24922,6 +24893,8 @@ function mapCatalog(row) {
       conditionCheckedAt: item.conditionCheckedAt || item.condition_checked_at || "",
       conditionMode: item.conditionMode || item.condition_mode || "",
       gradingMode: item.gradingMode || item.grading_mode || "",
+      ...gradingDetails(item),
+      graded: Boolean(item.graded || Object.values(gradingDetails(item)).some(Boolean)),
       sourceType: item.sourceType || item.source || "",
       status: item.status,
       listingPlatform: item.listingPlatform,
@@ -24934,7 +24907,9 @@ function mapCatalog(row) {
       tradeNotes: item.tradeNotes || "",
       receivedItemName: item.receivedItemName || "",
       receivedCatalogItemId: item.receivedCatalogItemId || "",
-    });
+    };
+    editingItemBaselineRef.current = { id: item.id, form: { ...editDraft } };
+    setItemForm(editDraft);
     setActiveTab("inventory");
   }
 
@@ -26438,7 +26413,7 @@ function buildCatalogAutofillDetails(product = {}) {
     setName: catalogExpansionName(product),
     setCode: firstKnownCatalogValue(product.setCode, product.set_code),
     productLine: firstKnownCatalogValue(product.productLine, product.product_line, product.series),
-    upc: firstKnownCatalogValue(product.barcode, product.upc),
+    upc: reviewedProductBarcode(product),
     sku: firstKnownCatalogValue(product.sku, product.retailSku, product.retail_sku),
     externalProductId: firstKnownCatalogValue(product.externalProductId, product.external_product_id, product.tcgplayerProductId, product.tcgplayer_product_id),
     tcgplayerProductId: firstKnownCatalogValue(product.tcgplayerProductId, product.tcgplayer_product_id),
@@ -30228,9 +30203,14 @@ function renderForgeBusinessLedgerPanel() {
   }
 
   async function downloadCSV(filename, rows, message = "Export complete.") {
+    const scope = fileExportScopeRef.current;
+    if (!scope || scope.signal.aborted) return false;
     if (!rows.length) return showAppMessage("No data to export yet.");
     // COULD 37: big exports serialise in a worker so the phone stays responsive.
     const csv = await rowsToCsvAsync(rows);
+    // A worker may finish after sign-out or an account switch. Keep this export
+    // bound to the owner who started it, even if a new scope is now available.
+    if (scope.signal.aborted || fileExportScopeRef.current !== scope) return false;
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     return downloadRecordFile(filename, blob, message);
   }
@@ -31957,13 +31937,13 @@ function renderForgeBusinessLedgerPanel() {
   const signedInWithSupabase = Boolean(user?.id && user.id !== "local-beta");
   const accountStatusTitle = guestPreviewActive ? "Guest Preview" : signedInWithSupabase ? "Signed In" : BETA_LOCAL_MODE ? "Local Development" : "Supabase Sign-In Required";
   const accountStatusDescription = signedInWithSupabase
-    ? currentUserProfile.email || user?.email || "Supabase account"
+    ? currentUserProfile.email || user?.email || "Code 3 TCG account"
     : guestPreviewActive
       ? "Preview mode is read-only. Sign up to save inventory, reports, scans, and settings."
       : BETA_LOCAL_MODE
         ? "Beta data is saved on this device unless you export or connect cloud sync."
         : isSupabaseConfigured
-          ? "Cloud sync is enabled. Sign in with Supabase to save Phase 2 workflows."
+          ? "Sign in to your Code 3 TCG account to sync your saved records."
           : "Cloud sync is enabled, but Supabase URL/key configuration is missing.";
   const adminToolsVisible = adminViewingAsAdmin;
   const roleManagementVisible = adminToolsVisible && canManageRoles({ ...rolePermissionProfile, appRole: actualAdminRole, app_role: actualAdminRole });
@@ -34645,6 +34625,7 @@ function renderForgeBusinessLedgerPanel() {
     currentUserId: currentUserProfile.userId || currentUserProfile.id || user?.id || "local-beta",
     workspaceId: activeWorkspace?.id || "",
   });
+  const alertPauses = useAlertPauses(`${user?.id || 'local-beta'}:${activeWorkspace?.id || 'personal'}`);
   const notificationUnreadCount = unreadNotificationCount(notificationCenterRows);
   // A79: estimate local storage use after saves and warn before a save fails.
   const [storageQuota, setStorageQuota] = useState(() => ({ level: "ok", percent: 0, title: "", message: "" }));
@@ -34660,9 +34641,11 @@ function renderForgeBusinessLedgerPanel() {
   const notificationRowSignature = notificationCenterRows.map((row) => `${row.id}:${row.readAt ? 1 : 0}`).join("|");
   const latestNotificationRows = useRef(notificationCenterRows);
   latestNotificationRows.current = notificationCenterRows;
+  const latestAlertPauses = useRef(alertPauses);
+  latestAlertPauses.current = alertPauses;
   useEffect(() => {
     if (typeof window === "undefined") return;
-    announceNewNotifications(latestNotificationRows.current, { firstRun: deviceNotificationFirstRun.current });
+    announceNewNotifications(latestNotificationRows.current, { firstRun: deviceNotificationFirstRun.current, mutedIds: pausedAlertIds(latestNotificationRows.current, latestAlertPauses.current.rows, Date.now(), { suppressActiveSource: true }) });
     deviceNotificationFirstRun.current = false;
   }, [notificationRowSignature]);
   // Phones use real push notifications (src/native/pushNotifications.js); browsers keep the Notification API.
@@ -34698,7 +34681,8 @@ function renderForgeBusinessLedgerPanel() {
     }
     const next = nativeAlerts ? await enableNativePush({ client: pushAccountClient, appVersion: APP_VERSION }) : await requestDeviceNotifications();
     setDeviceNotificationState(next);
-    setVaultToast(next.permission === "granted" ? (nativeAlerts ? "Phone alerts are on." : "Device alerts are on for this browser.") : next.label);
+    const turnedOn = nativeAlerts ? next.registration === "registered" : next.permission === "granted";
+    setVaultToast(turnedOn ? (nativeAlerts ? "Phone alerts are on." : "Device alerts are on for this browser.") : next.label);
   }
 
 
@@ -35914,7 +35898,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function getCatalogIdentifiers(product = {}) {
-    const explicit = Array.isArray(product.identifiers) ? product.identifiers.map(normalizeCatalogIdentifier).filter((entry) => entry.value) : [];
+    const explicit = [...verifiedBarcodeEntriesForProduct(product), ...(Array.isArray(product.identifiers) ? product.identifiers : [])].map(normalizeCatalogIdentifier).filter(entry => entry.value && !isRejectedImportedBarcode(product, entry.value));
     const retailerSkuEntries = product.retailerSkus && typeof product.retailerSkus === "object"
       ? Object.entries(product.retailerSkus)
           .filter(([, value]) => value)
@@ -35927,7 +35911,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       product.externalProductId && !product.tcgplayerProductId ? { label: "External ID", value: product.externalProductId, source: product.marketSource || "", confidence: "imported" } : null,
     ].filter(Boolean);
     const seen = new Set();
-    return [...explicit, ...retailerSkuEntries, ...fallback].filter((entry) => {
+    return [...explicit, ...retailerSkuEntries, ...fallback].filter(entry => !isRejectedImportedBarcode(product, entry.value)).filter((entry) => {
       const key = `${entry.label}|${entry.value}`;
       if (seen.has(key)) return false;
       seen.add(key);
@@ -36475,22 +36459,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           />
           <div className="catalog-thumb">
             {ownedCount ? <span className="catalog-owned-bubble">x{ownedCount}</span> : null}
-            {productImageSrc ? (
-              <>
-                <PrivateStorageImage
-                  src={productImageSrc}
-                  alt=""
-                  onError={(event) => {
-                    event.currentTarget.style.display = "none";
-                    event.currentTarget.closest(".catalog-thumb")?.classList.add("image-fallback-active");
-                    event.currentTarget.nextElementSibling?.removeAttribute("hidden");
-                  }}
-                />
-                {renderProductImageFallback(product, { hidden: true, title: productTypeLabel, setName: productSetName, badge: "No image yet" })}
-              </>
-            ) : (
-              renderProductImageFallback(product, { title: productTypeLabel, setName: productSetName, badge: "No image yet" })
-            )}
+            <ItemPhoto product={product} src={productImageSrc} sizes="(max-width: 600px) 44vw, 240px" alt="" fallbackClassName="catalog-image-fallback" />
           </div>
           <div className="market-card-body">
             {showRepairMeta ? (
@@ -39008,73 +38977,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function renderNotificationCenter() {
-    const notifications = notificationCenterRows;
-    const unreadCount = notificationUnreadCount;
-    return (
-      <div className="notification-center-shell">
-        <button
-          type="button"
-          className="notification-bell-button"
-          aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`}
-          aria-expanded={notificationCenterOpen}
-          aria-controls={notificationCenterOpen ? "notification-center-panel" : undefined}
-          onClick={() => notificationCenterOpen ? closeNotificationCenter() : setNotificationCenterOpen(true)}
-        >
-          <AppNavIcon kind="bell" />
-          {unreadCount ? <span>{unreadCount}</span> : null}
-        </button>
-        {notificationCenterOpen ? (
-          <section
-            id="notification-center-panel"
-            className="notification-center-panel panel"
-            aria-label="Notification center"
-            onKeyDown={(event) => {
-              if (event.key === "Escape") {
-                event.preventDefault();
-                event.stopPropagation();
-                closeNotificationCenter();
-              }
-            }}
-          >
-            <div className="compact-card-header">
-              <div>
-                <h3>Alerts</h3>
-                <p>{nativeAlerts ? NATIVE_ALERT_DISCLOSURE : IN_APP_ALERT_DISCLOSURE}</p>
-                <p className="compact-subtitle">{deviceNotificationState.label}</p>
-              </div>
-              <div className="quick-actions">
-                {deviceNotificationState.supported && ["default", "prompt", "error"].includes(deviceNotificationState.permission) ? <button type="button" className="secondary-button" onClick={enableDeviceNotifications}>{nativeAlerts ? "Turn on phone alerts" : "Turn on device alerts"}</button> : null}
-                {unreadCount ? <button type="button" className="secondary-button" onClick={markAllNotificationsRead}>Mark all read</button> : null}
-                <button ref={notificationCloseRef} type="button" className="secondary-button" onClick={closeNotificationCenter}>Close</button>
-              </div>
-            </div>
-            {notifications.length ? (
-              <div className="notification-list">
-                {notifications.slice(0, 12).map((entry) => (
-                  <article className={entry.readAt ? "notification-card" : "notification-card unread"} key={entry.id}>
-                    <div className="notification-card-heading">
-                      <span className={notificationBadgeClass(entry)}>{notificationTrustLabel(entry)}</span>
-                      <small>{entry.priority === "urgent" ? "Urgent" : entry.priority === "high" ? "High priority" : notificationCategoryLabel(entry)}</small>
-                    </div>
-                    <strong>{entry.title}</strong>
-                    <p>{entry.message}</p>
-                    <small className="notification-meta">
-                      {entry.createdAt ? new Date(entry.createdAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "Recent"}
-                      {entry.source ? ` | ${entry.source === "in_app_alerts" ? "in-app" : entry.source}` : ""}
-                    </small>
-                    <div className="drawer-inline-actions">
-                      {!entry.readAt ? <button type="button" className="secondary-button" onClick={() => markNotificationRead(entry.id)}>Mark read</button> : null}
-                      {entry.route ? <button type="button" className="secondary-button" onClick={() => openNotificationTarget(entry)}>{entry.actionLabel || "Open"}</button> : null}
-                      <button type="button" className="ghost-button" onClick={() => dismissNotification(entry.id)}>Archive</button>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            ) : renderGuidedEmptyState("notifications")}
-          </section>
-        ) : null}
-      </div>
-    );
+    return <div className="notification-center-shell">
+      <button type="button" className="notification-bell-button" aria-label={`Notifications${notificationUnreadCount ? `, ${notificationUnreadCount} unread` : ""}`} aria-expanded={notificationCenterOpen} aria-controls={notificationCenterOpen ? "notification-center-panel" : undefined} onClick={() => notificationCenterOpen ? closeNotificationCenter() : setNotificationCenterOpen(true)}><AppNavIcon kind="bell" />{notificationUnreadCount ? <span>{notificationUnreadCount}</span> : null}</button>
+      {notificationCenterOpen && <NotificationInbox key={`${user?.id || 'local-beta'}:${activeWorkspace?.id || 'personal'}`} notifications={notificationCenterRows} unreadCount={notificationUnreadCount} deviceState={deviceNotificationState} disclosure={nativeAlerts ? NATIVE_ALERT_DISCLOSURE : IN_APP_ALERT_DISCLOSURE} enableLabel={nativeAlerts ? "Turn on phone alerts" : "Turn on device alerts"} onEnableDevice={enableDeviceNotifications} onRead={markNotificationRead} onReadAll={markAllNotificationsRead} onOpen={openNotificationTarget} onArchive={dismissNotification} onClose={closeNotificationCenter} closeRef={notificationCloseRef} pauses={alertPauses.rows} now={alertPauses.now} onPauseSource={alertPauses.pause} onResumeSource={alertPauses.resume} />}
+    </div>;
   }
 
   function renderNotificationCenterPanel() {
@@ -39952,7 +39858,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <input value={sponsorForm.businessName} onChange={(event) => updateSponsorForm("businessName", event.target.value)} />
             </Field>
             <div className="inline-input-grid">
-              <Field label="Email">
+              <Field label="Email (required)">
                 <input type="email" value={sponsorForm.email} onChange={(event) => updateSponsorForm("email", event.target.value)} />
               </Field>
               <Field label="Phone optional">
@@ -40224,7 +40130,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               {adminToolsVisible ? <button type="button" className="secondary-button" onClick={() => void runRoadmapChangelogAiAssist()}>Draft changelog</button> : null}
               <button type="button" onClick={() => setActiveTab("dailyTide")}>Open Control Panel</button>
               <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Go Home</button>
-              <button type="button" className="ghost-button" onClick={openAnnouncementsDetail}>View Details</button>
+              <button type="button" className="ghost-button" onClick={openAnnouncementsDetail}>View details</button>
               {heroAnnouncement?.id && heroAnnouncement.dismissible !== false ? <button type="button" className="ghost-button" onClick={() => dismissNotification(heroAnnouncement.id)}>Dismiss</button> : null}
             </>
           )}
@@ -44728,6 +44634,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         createQuickAddWizardState,
         detectCollectorItemVisualType,
         getCatalogIdentifiers,
+        findCatalogProductsByBarcode,
+        onOpenBarcodeScanner: () => { const destination = quickAddWizard.destination; closeFlowModal(); beginScanProduct(destination); },
+        onOpenItemPhoto: () => { const destination = quickAddWizard.destination; closeFlowModal(); openPictureLookupFlow(destination); },
         getCatalogPickerResults,
         getTideTradrMarketInfo,
         handleQuickAddPhotoFile,
@@ -44821,6 +44730,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           applyCatalogProduct={applyCatalogProduct}
           handleImageUpload={handleImageUpload}
           onSubmit={editingItemId ? saveEditedItem : addItem}
+          allowGrading={Boolean(editingItemId)}
           submitLabel={editingItemId ? "Save Item" : "Add Item"}
         />
       </div>
@@ -45875,7 +45785,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             if (!closeFlowModal({ force: true })) return;
             openVaultQuickAdd({ category: "Personal collection", subTab: "collection" });
           }}>
-            Add Item
+            Add item
           </button>
         </div>
       );
@@ -46261,35 +46171,25 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         </header>
         <main className="main auth-main">
           <section className="panel auth-panel">
-            <h2>Update Password</h2>
+            <h2>Update password</h2>
             {emailLinkExpired && <aside className="member-help" role="alert"><p>This reset link has expired or is no longer valid. Return to Log In, choose Forgot password, and request a fresh reset link. Use only the newest email.</p><a href="/">Return to Log In</a></aside>}
-            <p className="compact-subtitle">Enter a new password for your account. Passwords are sent directly to Supabase Auth and are not stored by this app.</p>
+            <p className="compact-subtitle">Enter a new password for your account. Use at least eight characters.</p>
             <form onSubmit={handleUpdatePassword} className="form auth-form" noValidate>
-              <Field label="New password">
-                <input
-                  type="password"
-                  value={newPasswordForm.password}
+              <PasswordInput label="New password" required value={newPasswordForm.password}
                   minLength={8}
                   autoComplete="new-password"
-                  onChange={(event) => setNewPasswordForm((current) => ({ ...current, password: event.target.value }))}
-                />
-              </Field>
-              <Field label="Confirm new password">
-                <input
-                  type="password"
-                  value={newPasswordForm.confirm}
+                  onChange={(event) => setNewPasswordForm((current) => ({ ...current, password: event.target.value }))} />
+              <PasswordInput label="Confirm new password" required value={newPasswordForm.confirm}
                   minLength={8}
                   autoComplete="new-password"
-                  onChange={(event) => setNewPasswordForm((current) => ({ ...current, confirm: event.target.value }))}
-                />
-              </Field>
+                  onChange={(event) => setNewPasswordForm((current) => ({ ...current, confirm: event.target.value }))} />
               {newPasswordError ? <p className="auth-status-message error" role="alert">{newPasswordError}</p> : null}
               {newPasswordMessage ? <p className="auth-status-message success" role="status">{newPasswordMessage}</p> : null}
               <button type="submit" disabled={newPasswordLoading || !isSupabaseConfigured}>
                 {newPasswordLoading ? "Updating..." : "Update password"}
               </button>
             </form>
-            {!isSupabaseConfigured ? <p className="compact-subtitle danger-text">Supabase auth is not configured in this frontend.</p> : null}
+            {!isSupabaseConfigured ? <p className="compact-subtitle danger-text">Account sign-in is temporarily unavailable. Please try again later.</p> : null}
             <button type="button" className="secondary-button" onClick={goToSignInAfterPasswordReset}>
               Go to sign in
             </button>
@@ -46424,8 +46324,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           ) : null}
           {signedOut ? (
             <div className="quick-actions auth-choice-row">
-              <button type="button" className="ember-gradient-button auth-choice-button" onClick={() => openAuthPanel("signup")}>Create Account</button>
-              <button type="button" className="secondary-button auth-choice-button" onClick={() => openAuthPanel("login")}>Log In</button>
+              <button type="button" className="ember-gradient-button auth-choice-button" onClick={() => openAuthPanel("signup")}>Create account</button>
+              <button type="button" className="secondary-button auth-choice-button" onClick={() => openAuthPanel("login")}>Sign in</button>
             </div>
           ) : null}
           {failed ? (
@@ -46442,7 +46342,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 Try Again
               </button>
               <button type="button" className="secondary-button auth-choice-button" onClick={() => { setBetaInviteToken(""); storeBetaInviteToken(""); setActiveTab("dashboard"); }}>
-                Create Account
+                Create account
               </button>
               <button type="button" className="auth-text-button auth-help-link" onClick={() => window.location.assign(`mailto:${SUPPORT_EMAIL}`)}>Need help?</button>
             </div>
@@ -46506,8 +46406,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           ) : null}
           {signedOut ? (
             <div className="quick-actions auth-choice-row">
-              <button type="button" className="ember-gradient-button auth-choice-button" onClick={() => openAuthPanel("login")}>Log In</button>
-              <button type="button" className="secondary-button auth-choice-button" onClick={() => openAuthPanel("signup")}>Create Account</button>
+              <button type="button" className="ember-gradient-button auth-choice-button" onClick={() => openAuthPanel("login")}>Sign in</button>
+              <button type="button" className="secondary-button auth-choice-button" onClick={() => openAuthPanel("signup")}>Create account</button>
             </div>
           ) : null}
           {failed ? (
@@ -46893,7 +46793,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <h2>Reset Password</h2>
                 <p className="compact-subtitle">Enter your account email and we&apos;ll send a password reset link.</p>
                 <form onSubmit={handlePasswordResetRequest} className="form auth-form" noValidate>
-                  <Field label="Email">
+                  <Field label="Email (required)">
                     <input
                       type="email"
                       value={passwordResetEmail}
@@ -46916,7 +46816,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     setAuthMode("login");
                   }}
                 >
-                  Back to Log In
+                  Back to sign in
                 </button>
               </>
             ) : (
@@ -46929,7 +46829,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <h2>{authMode === "login" ? "Welcome back!" : "Create your account"}</h2>
                   <p>{authMode === "login" ? "Log in to continue your collection journey." : "Join Code 3 TCG and start your collection journey."}</p>
                 </div>
-                <h3 className="auth-mode-title">{authMode === "login" ? "Log In" : "Create Account"}</h3>
+                <h3 className="auth-mode-title">{authMode === "login" ? "Sign in" : "Create account"}</h3>
                 <SocialSignInButtons />
                 {authMode === "signup" ? (
                   <p className="compact-subtitle">Create a free account. Confirm your email, then start using Code 3.</p>
@@ -46939,7 +46839,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <form onSubmit={handleAuth} className="form auth-form" noValidate>
                   {authMode === "signup" ? (
                     <div className="auth-name-grid">
-                      <Field label="First name">
+                      <Field label="First name (required)">
                         <input
                           type="text"
                           value={authFirstName}
@@ -46947,7 +46847,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                           onChange={(event) => setAuthFirstName(event.target.value)}
                         />
                       </Field>
-                      <Field label="Last name">
+                      <Field label="Last name (required)">
                         <input
                           type="text"
                           value={authLastName}
@@ -46955,7 +46855,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                           onChange={(event) => setAuthLastName(event.target.value)}
                         />
                       </Field>
-                      <Field label="Public username">
+                      <Field label="Public username (required)">
                         <input
                           type="text"
                           value={authPublicUsername}
@@ -46968,8 +46868,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       {renderUsernameRulesCard({ compact: true })}
                     </div>
                   ) : null}
-                  <Field label="Email"><input type="email" value={authEmail} autoComplete="email" onChange={(e) => setAuthEmail(e.target.value)} /></Field>
-                  <Field label="Password"><input type="password" value={authPassword} autoComplete={authMode === "login" ? "current-password" : "new-password"} onChange={(e) => setAuthPassword(e.target.value)} /></Field>
+                  <Field label="Email (required)"><input type="email" value={authEmail} autoComplete="email" onChange={(e) => setAuthEmail(e.target.value)} /></Field>
+                  <PasswordInput required value={authPassword} autoComplete={authMode === "login" ? "current-password" : "new-password"} onChange={(e) => setAuthPassword(e.target.value)} />
                   {authMode === "signup" ? (
                     <div className="signup-consent-box">
                       <label className="checkbox-row">
@@ -46981,13 +46881,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       </label>
                       <label className="checkbox-row">
                         <input type="checkbox" checked={authBetaAcknowledged} onChange={(event) => setAuthBetaAcknowledged(event.target.checked)} />
-                        <span>{SIGNUP_BETA_ACK_TEXT}</span>
+                        <span>{SIGNUP_BETA_ACK_TEXT} (optional)</span>
                       </label>
                     </div>
                   ) : null}
                   {authError ? <p className="auth-status-message error" role="alert">{authError}</p> : null}
                   {authMessage ? <p className="auth-status-message success" role="status">{authMessage}</p> : null}
-                  <button type="submit" disabled={authLoading || !isSupabaseConfigured}>{authLoading ? "Working..." : authMode === "login" ? "Log In" : "Create Account"}</button>
+                  <button type="submit" disabled={authLoading || !isSupabaseConfigured}>{authLoading ? "Working..." : authMode === "login" ? "Sign in" : "Create account"}</button>
                 </form>
                 <p className="auth-beta-note">Anyone can create an account. Your collection and workspace records stay private.</p>
                 <div className="auth-link-stack" aria-label="Account options">
@@ -47008,7 +46908,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                           setAuthBetaAcknowledged(false);
                         }}
                       >
-                        Create Account
+                        Create account
                       </button>
                       <button type="button" className="auth-text-button" onClick={() => window.location.assign(`mailto:${SUPPORT_EMAIL}`)}>
                         Need help?
@@ -47033,7 +46933,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                           setAuthBetaAcknowledged(false);
                         }}
                       >
-                        Back to Log In
+                        Back to sign in
                       </button>
                       <button type="button" className="auth-text-button" onClick={() => window.location.assign(`mailto:${SUPPORT_EMAIL}`)}>
                         Need help?
@@ -47689,8 +47589,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <strong>Preview mode</strong>
               <p className="compact-subtitle">You can browse the app, but saving inventory, reports, scans, and settings requires a free account.</p>
               <div className="drawer-inline-actions">
-                <button type="button" className="drawer-link" onClick={exitGuestPreview}>Back to Log In</button>
-                <button type="button" className="drawer-link" onClick={() => { exitGuestPreview(); setAuthMode("signup"); }}>Sign Up</button>
+                <button type="button" className="drawer-link" onClick={exitGuestPreview}>Back to sign in</button>
+                <button type="button" className="drawer-link" onClick={() => { exitGuestPreview(); setAuthMode("signup"); }}>Sign up</button>
               </div>
             </div>
           ) : !signedInWithSupabase ? (
@@ -47698,42 +47598,42 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <form className="drawer-info-card utility-card" onSubmit={handlePasswordResetRequest} noValidate>
                 <strong>Reset password</strong>
                 <p className="compact-subtitle">Enter your account email and we&apos;ll send a password reset link.</p>
-                {!isSupabaseConfigured ? <p className="compact-subtitle danger-text">Supabase anon auth is not configured in this frontend.</p> : null}
-                <input className="drawer-field" type="email" value={passwordResetEmail} onChange={(event) => setPasswordResetEmail(event.target.value)} placeholder="Email" autoComplete="email" />
+                {!isSupabaseConfigured ? <p className="compact-subtitle danger-text">Account sign-in is temporarily unavailable. Please try again later.</p> : null}
+                <label>Email (required)<input required className="drawer-field" type="email" value={passwordResetEmail} onChange={(event) => setPasswordResetEmail(event.target.value)} placeholder="Email" autoComplete="email" /></label>
                 {passwordResetError ? <p className="auth-status-message error" role="alert">{passwordResetError}</p> : null}
                 {passwordResetMessage ? <p className="auth-status-message success" role="status">{passwordResetMessage}</p> : null}
                 <div className="drawer-inline-actions">
                   <button type="submit" className="drawer-link" disabled={passwordResetLoading || !isSupabaseConfigured}>{passwordResetLoading ? "Sending..." : "Send reset link"}</button>
-                  <button type="button" className="drawer-link" onClick={() => { setPasswordResetError(""); setPasswordResetMessage(""); setAuthMode("login"); }}>Back to Sign In</button>
+                  <button type="button" className="drawer-link" onClick={() => { setPasswordResetError(""); setPasswordResetMessage(""); setAuthMode("login"); }}>Back to sign in</button>
                 </div>
               </form>
             ) : (
               <form className="drawer-info-card utility-card" onSubmit={handleAuth} noValidate>
                 <SocialSignInButtons />
-                <strong>{authMode === "login" ? "Log in" : "Create your free account"}</strong>
+                <strong>{authMode === "login" ? "Sign in" : "Create account"}</strong>
                 <p className="compact-subtitle">Everything is free. Your account works right away once you confirm your email.</p>
-                {!isSupabaseConfigured ? <p className="compact-subtitle danger-text">Supabase anon auth is not configured in this frontend.</p> : null}
+                {!isSupabaseConfigured ? <p className="compact-subtitle danger-text">Account sign-in is temporarily unavailable. Please try again later.</p> : null}
                 {authMode === "signup" ? (
                   <>
                     <div className="drawer-two-column">
-                      <input className="drawer-field" type="text" value={authFirstName} onChange={(event) => setAuthFirstName(event.target.value)} placeholder="First name" autoComplete="given-name" />
-                      <input className="drawer-field" type="text" value={authLastName} onChange={(event) => setAuthLastName(event.target.value)} placeholder="Last name" autoComplete="family-name" />
+                      <label>First name (required)<input required className="drawer-field" type="text" value={authFirstName} onChange={(event) => setAuthFirstName(event.target.value)} placeholder="First name" autoComplete="given-name" /></label>
+                      <label>Last name (required)<input required className="drawer-field" type="text" value={authLastName} onChange={(event) => setAuthLastName(event.target.value)} placeholder="Last name" autoComplete="family-name" /></label>
                     </div>
-                    <input className="drawer-field" type="text" value={authPublicUsername} onChange={(event) => setAuthPublicUsername(normalizePublicUsername(event.target.value))} placeholder="public_username" autoComplete="nickname" />
+                    <label>Public username (required)<input required className="drawer-field" type="text" value={authPublicUsername} onChange={(event) => setAuthPublicUsername(normalizePublicUsername(event.target.value))} placeholder="public_username" autoComplete="nickname" /></label>
                     <p className="compact-subtitle">{SIGNUP_NAME_HELPER}</p><SignupFieldPrivacy />
                     {renderUsernameRulesCard({ compact: true })}
-                    <label className="checkbox-row"><input type="checkbox" checked={authTermsAccepted} onChange={(event) => setAuthTermsAccepted(event.target.checked)} /><span>{SIGNUP_TERMS_TEXT}</span></label>
-                    <label className="checkbox-row"><input type="checkbox" checked={authBetaAcknowledged} onChange={(event) => setAuthBetaAcknowledged(event.target.checked)} /><span>{SIGNUP_BETA_ACK_TEXT}</span></label>
+                    <label className="checkbox-row"><input type="checkbox" checked={authTermsAccepted} onChange={(event) => setAuthTermsAccepted(event.target.checked)} /><span>{SIGNUP_TERMS_TEXT} (required)</span></label>
+                    <label className="checkbox-row"><input type="checkbox" checked={authBetaAcknowledged} onChange={(event) => setAuthBetaAcknowledged(event.target.checked)} /><span>{SIGNUP_BETA_ACK_TEXT} (optional)</span></label>
                   </>
                 ) : null}
-                <input className="drawer-field" type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder="Email" autoComplete="email" />
-                <input className="drawer-field" type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} placeholder="Password" autoComplete={authMode === "login" ? "current-password" : "new-password"} />
+                <label>Email (required)<input required className="drawer-field" type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder="Email" autoComplete="email" /></label>
+                <PasswordInput required className="drawer-field" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} autoComplete={authMode === "login" ? "current-password" : "new-password"} />
                 {authError ? <p className="auth-status-message error" role="alert">{authError}</p> : null}
                 {authMessage ? <p className="auth-status-message success" role="status">{authMessage}</p> : null}
                 {authMode === "login" ? <button type="button" className="auth-text-button drawer-auth-link" onClick={openPasswordResetRequest}>Forgot password?</button> : null}
                 <div className="drawer-inline-actions">
-                  <button type="submit" className="drawer-link" disabled={authLoading || !isSupabaseConfigured}>{authLoading ? "Working..." : authMode === "login" ? "Log In" : "Create your free account"}</button>
-                  <button type="button" className="drawer-link" onClick={() => { setAuthError(""); setAuthMessage(""); setAuthMode(authMode === "login" ? "signup" : "login"); }}>{authMode === "login" ? "Create Account" : "Use Login"}</button>
+                  <button type="submit" className="drawer-link" disabled={authLoading || !isSupabaseConfigured}>{authLoading ? "Working..." : authMode === "login" ? "Sign in" : "Create account"}</button>
+                  <button type="button" className="drawer-link" onClick={() => { setAuthError(""); setAuthMessage(""); setAuthMode(authMode === "login" ? "signup" : "login"); }}>{authMode === "login" ? "Create account" : "Use sign in"}</button>
                 </div>
               </form>
             )
@@ -48431,6 +48331,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     personalizationPreferences,
     onReportRestock: (options = {}) => openScoutSubmitFlow({ source: "home-restock", ...options }),
     onOpenRestockReports: openCommunityRestockReports,
+    onOpenStoreReports: store => openCommunityRestockReports({ storeId: store.id }),
+    onOpenFollowedReports: () => openCommunityRestockReports({ followedOnly: true }),
+    onOpenReport: report => openScoutReportDetail(report),
+    onOpenCollectionItem: item => { prepareRouteNavigation(); setVaultSubTab("collection"); setSelectedVaultDetailId(item.id); setActiveTab("vault"); },
+    onOpenInventoryItem: item => { prepareRouteNavigation(); setSelectedForgeDetailId(item.id); setActiveTab("inventory"); },
+    onSaveHomeShortcuts: keys => { if (guestPreviewActive || experiencePresentation.isPreview) return false; updateAppSetupPersonalization((current, context) => ({ ...current, pagePreferences: { ...current.pagePreferences, hearth: { ...(current.pagePreferences?.hearth || {}), visibleKeys: sanitizeAppSetupVisibleKeys("hearth", keys, context), updatedAt: new Date().toISOString() } } }), "Home shortcuts saved."); return true; },
     onOpenFind: openFlipScoutView,
     BETA_LOCAL_MODE,
     GRADE_ASSIST_LOCAL_STORAGE_KEY,
@@ -48951,7 +48857,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <div className="app-search-result" key={result.id}>
                 <button type="button" className="app-search-result-main" onClick={() => viewSearchResult(result)}>
                   {(result.category === "Products" || result.category === "Cards") && getCatalogImage(result.source) ? (
-                    <PrivateStorageImage className="app-search-thumb" src={getCatalogImage(result.source)} alt="" />
+                    <ItemPhoto className="app-search-thumb" sizes="56px" product={result.source} src={getCatalogImage(result.source)} alt="" />
                   ) : null}
                   <span>{result.category}</span>
                   <strong>{result.title}</strong>
@@ -49262,6 +49168,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         renderMenuPullDown,
         renderOnboardingSettingsCard,
         renderThemeChoiceControl,
+        renderTextSizeControl,
         renderUsernameRulesCard,
         requestLockedFeatureAccess,
         resetBetaLocalData,
@@ -50103,6 +50010,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <strong>Local tester note</strong>
                   <p>This note is saved in this browser only. It is not a support ticket, not live chat, not a notification, and not a cloud submission.</p>
                 </div>
+                <Field label="Feedback type"><select value={feedbackDialog} onChange={event => { const type = event.target.value; setFeedbackDialog(type); setFeedbackForm(current => ({ ...current, metadata: { ...current.metadata, feedbackCategory: type } })); }}><option value="feedback">General feedback</option><option value="bug">Bug</option><option value="feature">Feature request</option><option value="catalog_data">Catalog issue</option><option value="store_data">Store issue</option><option value="market_data">Price issue</option></select></Field>
                 <Field label={feedbackDialogCopy.label}>
                   <textarea
                     value={feedbackForm.whatHappened}
@@ -51053,6 +50961,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   aria-selected={scanMode === key}
                   className={`scan-product-mode-button scan-product-mode-button--${tone} ${scanMode === key ? "is-selected" : ""}`}
                   onClick={() => {
+                    scanLookupRequestRef.current += 1;
+                    setScanReview(null);
+                    setScanMatches([]);
+                    setScanSearchState("idle");
                     setScanMode(key);
                     setScanMessage("");
                   }}
@@ -51065,45 +50977,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
             {scanMode === "picture" ? (
               <div className="scan-product-mode-panel scan-product-mode-panel--photo">
-                <div className="scan-product-section-heading">
-                  <strong>Photo Lookup</strong>
-                  <span>Use this for sealed products, boxes, tins, packs, or accessories.</span>
-                </div>
-                <div className="scan-product-photo-actions">
-                  <label className="secondary-button file-action-label scan-product-file-action">
-                    <span className="scan-product-file-icon scan-product-file-icon--camera" aria-hidden="true" />
-                    <strong>Take Photo</strong>
-                    <small>Use camera</small>
-                    <input type="file" accept="image/*" capture="environment" onChange={handlePictureLookupFile} />
-                  </label>
-                  <label className="secondary-button file-action-label scan-product-file-action">
-                    <span className="scan-product-file-icon scan-product-file-icon--gallery" aria-hidden="true" />
-                    <strong>Choose from Gallery</strong>
-                    <small>Upload image</small>
-                    <input type="file" accept="image/*" onChange={handlePictureLookupFile} />
-                  </label>
-                </div>
-                <Field label="Visible text or UPC/SKU from picture">
-                  <input
-                    value={pictureLookup.text}
-                    onChange={(event) => setPictureLookup((current) => ({ ...current, text: event.target.value }))}
-                    placeholder="Product name, set, UPC, SKU, TCIN, or shorthand"
-                  />
-                </Field>
-                {pictureLookup.imageUrl ? (
-                  <div className="picture-lookup-preview scan-product-photo-preview">
-                    <PrivateStorageImage src={pictureLookup.imageUrl} alt="Uploaded product reference" />
-                    <span>{pictureLookup.fileName || "Selected photo"}</span>
-                  </div>
-                ) : null}
-                <div className="scan-product-helper-card">
-                  <strong>We’ll suggest the closest match before anything is saved.</strong>
-                  <span>You review every match and can edit details before saving.</span>
-                </div>
-                <button type="button" className="primary-button scan-product-primary-button scan-product-primary-button--photo" disabled={scanSearchState === "loading"} onClick={runPictureLookupSearch}>
-                  {scanSearchState === "loading" ? "Checking..." : "Continue"}
-                </button>
-                {pictureLookup.message ? <p className="compact-subtitle scan-product-message">{pictureLookup.message}</p> : null}
+                <ProductPhotoLookup key="item" kind="item" initialQuery={scanInput} disabled={scanSearchState === "loading"} onDraftChange={() => { scanLookupRequestRef.current += 1; setScanReview(null); setScanMatches([]); setScanSearchState("idle"); setScanMessage(""); }} onQuery={async query => {
+                  setPictureLookup(current => ({ ...current, text: query }));
+                  await handleCatalogScanMatch(query);
+                }} />
               </div>
             ) : scanMode === "receipt" ? (
               <div className="scan-product-mode-panel scan-product-mode-panel--receipt">
@@ -51149,52 +51026,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
             ) : scanMode === "card" ? (
               <div className="scan-product-mode-panel scan-product-mode-panel--card">
-                <div className="scan-product-section-heading">
-                  <strong>Card</strong>
-                  <span>Take or upload a clear photo of the card.</span>
-                </div>
-                <div className="scan-product-photo-actions">
-                  <label className="secondary-button file-action-label scan-product-file-action">
-                    <span className="scan-product-file-icon scan-product-file-icon--camera" aria-hidden="true" />
-                    <strong>Take Photo</strong>
-                    <small>Use camera</small>
-                    <input type="file" accept="image/*" capture="environment" onChange={handlePictureLookupFile} />
-                  </label>
-                  <label className="secondary-button file-action-label scan-product-file-action">
-                    <span className="scan-product-file-icon scan-product-file-icon--gallery" aria-hidden="true" />
-                    <strong>Choose from Gallery</strong>
-                    <small>Upload image</small>
-                    <input type="file" accept="image/*" onChange={handlePictureLookupFile} />
-                  </label>
-                </div>
-                <Field label="Card name, number, set, or visible text">
-                  <input
-                    value={scanInput}
-                    onChange={(event) => {
-                      const nextValue = event.target.value;
-                      setScanInput(nextValue);
-                      setScanMatches([]);
-                      setScanReview(null);
-                      setScanSearchState("idle");
-                    }}
-                    placeholder="Charizard ex 199/165, SV8 159, or card name"
-                  />
-                </Field>
-                {pictureLookup.imageUrl ? (
-                  <div className="picture-lookup-preview scan-product-photo-preview">
-                    <PrivateStorageImage src={pictureLookup.imageUrl} alt="Uploaded card reference" />
-                    <span>{pictureLookup.fileName || "Selected card photo"}</span>
-                  </div>
-                ) : null}
-                <ul className="scan-product-tip-list">
-                  <li>Place card on a plain background</li>
-                  <li>Avoid glare</li>
-                  <li>Include the full card</li>
-                  <li>Make sure it is in focus</li>
-                </ul>
-                <button type="button" className="primary-button scan-product-primary-button scan-product-primary-button--card" disabled={scanSearchState === "loading"} onClick={() => handleCatalogScanMatch(scanInput || pictureLookup.text)}>
-                  {scanSearchState === "loading" ? "Checking..." : "Continue"}
-                </button>
+                <ProductPhotoLookup key="card" kind="card" initialQuery={scanInput} disabled={scanSearchState === "loading"} onDraftChange={() => { scanLookupRequestRef.current += 1; setScanReview(null); setScanMatches([]); setScanSearchState("idle"); setScanMessage(""); }} onQuery={async query => {
+                  setPictureLookup(current => ({ ...current, text: query }));
+                  await handleCatalogScanMatch(query);
+                }} />
               </div>
             ) : scanMode === "manual" ? (
               <div className="scan-product-mode-panel scan-product-mode-panel--manual">
@@ -51305,6 +51140,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       value={scanReview?.rawValue || scanInput}
                       onChange={(event) => {
                         const nextValue = event.target.value;
+                        scanLookupRequestRef.current += 1;
                         setScanInput(nextValue);
                         setScanMatches([]);
                         setScanReview(null);
@@ -51450,8 +51286,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
             {scanMatches.length > 1 ? (
               <div className="inventory-list compact-inventory-list">
-                <h3>Other Matches</h3>
-                {scanMatches.slice(0, 5).map((match) => (
+                <h3>{scanReview ? "Other matches" : "Choose your package"}</h3>
+                {!scanReview && <p role="status">{scanMessage}</p>}
+                {scanMatches.map((match) => (
                   <button type="button" className="catalog-picker-card scanner-match-row" key={match.item.id} onClick={() => confirmScanMatch(match.item.id)}>
                     <div className="catalog-thumb">
                       {catalogImage(match.item) ? (
@@ -52062,6 +51899,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         {!activeTabLocked && activeTab === "collectionWorkspace" && (
           <LazyToolBoundary label="Loading Collection...">
             <CollectionWorkspace
+              ownerSession={ownerSession}
               key={`${currentWorkspaceUserId}:${activeWorkspaceId}`}
               experiencePresentation={experiencePresentation}
               portfolioScope={`${currentWorkspaceUserId}:${activeWorkspaceId}`}
@@ -52073,6 +51911,20 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               catalogProducts={catalogProducts}
               onViewChange={(view) => { prepareRouteNavigation(); setCollectionWorkspaceView(view); }}
               onAddItem={() => openProductAddFlow({ source: "collection-workspace", seed: { ownedItemPurpose: OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION }, destinations: { vault: true } })}
+              onEditLegacyItem={(item, identityPatch = {}) => {
+                const original = workspaceItems.find(record => String(record.id) === String(item.id));
+                if (!original || !ensureWorkspaceEditor(original.workspaceId || original.workspace_id || activeWorkspace?.id)) return false;
+                startEditingVaultItem(original);
+                if (Object.keys(identityPatch).length) reviewedCatalogIdentityRef.current = { id: original.id, identity: identityPatch };
+                const approved = {};
+                for (const key of ["name", "catalogProductId", "language", "finish", "printing"]) if (identityPatch[key] != null) approved[key] = String(identityPatch[key]);
+                if (identityPatch.variant && !identityPatch.finish) approved.finish = String(identityPatch.variant);
+                if (identityPatch.setName) approved.expansion = String(identityPatch.setName);
+                if (identityPatch.tcgplayerProductId) approved.externalProductId = String(identityPatch.tcgplayerProductId);
+                if (identityPatch.imageUrl || identityPatch.photoUrl) { approved.itemImage = identityPatch.imageUrl || identityPatch.photoUrl; approved.itemImageSource = "catalog"; approved.itemImageStatus = "catalog"; }
+                if (Object.keys(approved).length) { setItemForm(current => ({ ...current, ...approved })); setVaultToast("Catalog identity prepared for review. Save the existing record when ready."); }
+                return true;
+              }}
               onChangePurpose={(item, nextPurpose) => updateOwnedItemPurpose(item, nextPurpose, "Purpose assigned in Collection")}
               onSellItem={(item) => updateOwnedItemPurpose(item, OWNED_ITEM_PURPOSES.FOR_RESALE, "Sell This Item from Collection")}
               onOpenLegacyCollection={() => { setVaultSubTab("collection"); setActiveTab("vault"); }}
@@ -52094,6 +51946,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         {!activeTabLocked && activeTab === "businessWorkspace" && businessWorkspaceView !== "purchases" && (
           <LazyToolBoundary label="Loading Business...">
             <BusinessWorkspace
+              onUpdateLegacyInventoryStorage={updateLegacyInventoryStorage}
               experiencePresentation={experiencePresentation}
               resolveItemImage={resolveWorkspaceItemImage}
               ownerSession={ownerSession}
@@ -52106,6 +51959,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               initialMoneyView={businessMoneyView}
               onViewChange={(view) => { prepareRouteNavigation(); setBusinessWorkspaceView(view); }}
               onMoneyViewChange={(view) => { prepareRouteNavigation(); setBusinessMoneyView(view); }}
+              onEditLegacyInventory={(item) => { const original = workspaceItems.find(record => String(record.id) === String(item.id)); if (!original || !ensureWorkspaceEditor(original.workspaceId || original.workspace_id || activeWorkspace?.id)) return false; prepareRouteNavigation(); startEditingItem(original); return true; }}
               onAddPurchase={() => openFlipScoutView("records", "purchases")}
               onAddInventory={() => openProductAddFlow({ source: "business-workspace", seed: { ownedItemPurpose: OWNED_ITEM_PURPOSES.FOR_RESALE }, destinations: { forge: Boolean(activeForgeWorkspace), vault: !activeForgeWorkspace } })}
               onAddSale={() => openFlipScoutView("records", "sales")}
@@ -52330,6 +52184,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         {activeTab === "scout" && (
           <LazyToolBoundary label="Loading Restocks command center...">
             <Scout
+              preferenceScope={`${user?.id || 'local-beta'}:${activeWorkspaceId}`}
               targetSubTab={{
                 ...scoutSubTabTarget,
                 tab: activeScoutPage === "reports" || normalizedScoutView === "submit" || normalizedScoutView === "addReport" || normalizedScoutView === "scanScreenshot" || normalizedScoutView === "reviewReport"
@@ -52548,7 +52403,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       applyCatalogProduct={applyCatalogProduct}
       handleImageUpload={handleImageUpload}
       onSubmit={addItem}
-      submitLabel="Add Item"
+      submitLabel="Add item"
     />
   </section>
 )}
@@ -52613,7 +52468,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             ) : null}
             {renderForgeBusinessCommandPanel()}
             <div className="quick-actions forge-action-strip" aria-label="Business quick actions">
-              <button type="button" onClick={() => openProductAddFlow({ source: "forge-action-strip", destinations: { forge: true } })}>Add Inventory</button>
+              <button type="button" onClick={() => openProductAddFlow({ source: "forge-action-strip", destinations: { forge: true } })}>Add inventory</button>
               <button type="button" className="secondary-button" onClick={() => openAddSaleFlow()}>Add Sale</button>
               <button type="button" className="secondary-button" onClick={() => openTradeCompassFlow({ source: "forge-action-strip" })}>Trade Compass</button>
               <button type="button" className="secondary-button" onClick={() => openAddTradeFlow({ source: "forge-action-strip" })}>Log a Trade</button>
@@ -52844,7 +52699,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   applyCatalogProduct={applyCatalogProduct}
                   handleImageUpload={handleImageUpload}
                   onSubmit={saveEditedItem}
-                  submitLabel="Save Changes"
+                  allowGrading
+                  submitLabel="Save changes"
                 />
               </section>
             )}
@@ -53378,65 +53234,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <div className="catalog-detail-body">
                 <section className="catalog-detail-hero">
                   <div className="catalog-detail-media-panel">
-                    <CollectorFlipDetailCard
-                      title={catalogTitle(selectedCatalogDetailProduct)}
-                      subtitle={catalogExpansionName(selectedCatalogDetailProduct) || catalogProductTypeLabel(selectedCatalogDetailProduct)}
-                      image={catalogImage(selectedCatalogDetailPricingProduct)}
-                      kind={detectCollectorItemVisualType(selectedCatalogDetailProduct)}
-                      mode="display"
-                      valueLabel={hasCatalogMarketPrice(selectedCatalogDetailPricingProduct) ? `${money(selectedCatalogDetailMarketInfo?.currentMarketValue)} saved estimate` : "Market data unavailable"}
-                      rarity={selectedCatalogDetailProduct.rarity || selectedCatalogDetailVariant?.variantName || selectedCatalogDetailProduct.priceSubtype || ""}
-                      meta={[
-                        getCatalogKindLabel(selectedCatalogDetailProduct),
-                        selectedCatalogDetailIsCard && selectedCatalogDetailProduct.rarity ? selectedCatalogDetailProduct.rarity : "",
-                        selectedCatalogDetailMarketInfo?.marketDataLabel || "Not Live Pricing",
-                      ].filter(Boolean)}
-                      helper="Market display only. Not Live Pricing, checkout, stock status, grading, authentication, or product verification."
-                      className="catalog-detail-flip-showcase"
-                      noteRows={[
-                        ["Collector notes", selectedCatalogDetailProduct.notes || "No collector notes saved from Market yet."],
-                        ["Source / value", hasCatalogMarketPrice(selectedCatalogDetailPricingProduct) ? `${getCatalogMarketSourceLabel(selectedCatalogDetailPricingProduct)} | ${selectedCatalogDetailMarketInfo?.marketDataLabel || "Data limit unknown"}` : "Market data unavailable. Save a Manual Estimate if you want to remember this."],
-                        ["Condition / status", selectedCatalogDetailIsSealed ? "Check condition and sealed status manually." : selectedCatalogDetailCondition || "Condition not selected yet."],
-                      ]}
-                      actions={[
-                        { label: "Open Profile", variant: "primary", onClick: () => document.querySelector(".catalog-detail-core-panel")?.scrollIntoView?.({ block: "start", behavior: "smooth" }) },
-                        { label: "Save Price", onClick: () => openMarketPriceMemoryFlow(selectedCatalogDetailPricingProduct || selectedCatalogDetailProduct, { source: "market-detail-flip-save-price" }) },
-                        { label: adaptiveSellerToolsVisible && activeForgeWorkspace ? "Add to Business" : "Add to Vault", onClick: () => openMarketProductAddFlow(selectedCatalogDetailPricingProduct || selectedCatalogDetailProduct, "market-detail-flip", { defaultDestination: adaptiveSellerToolsVisible && activeForgeWorkspace ? "forge" : "vault" }) },
-                      ]}
-                    />
-                    {catalogImage(selectedCatalogDetailPricingProduct) ? (
-                      <>
-                        <PrivateStorageImage
-                          className="catalog-detail-image"
-                          src={catalogImage(selectedCatalogDetailPricingProduct)}
-                          alt={catalogTitle(selectedCatalogDetailProduct)}
-                          role="button"
-                          tabIndex={0}
-                          title="Open larger image"
-                          onClick={() => window.open(catalogImage(selectedCatalogDetailPricingProduct), "_blank", "noopener,noreferrer")}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter" || event.key === " ") {
-                              event.preventDefault();
-                              window.open(catalogImage(selectedCatalogDetailPricingProduct), "_blank", "noopener,noreferrer");
-                            }
-                          }}
-                          onError={(event) => {
-                            event.currentTarget.style.display = "none";
-                            event.currentTarget.nextElementSibling?.removeAttribute("hidden");
-                          }}
-                        />
-                        {renderProductImageFallback(selectedCatalogDetailProduct, {
-                          className: "catalog-detail-image placeholder",
-                          hidden: true,
-                          badge: "Image fallback",
-                        })}
-                      </>
-                    ) : (
-                      renderProductImageFallback(selectedCatalogDetailProduct, {
-                        className: "catalog-detail-image placeholder",
-                        badge: "Image fallback",
-                      })
-                    )}
+                    <LazyToolBoundary label="Loading item viewer…">
+                      <ProductInspectViewer
+                        product={{ ...(selectedCatalogDetailPricingProduct || selectedCatalogDetailProduct), ...(selectedCatalogDetailVariant?.finish ? { finish: selectedCatalogDetailVariant.finish } : {}), ...(selectedCatalogDetailVariant?.language ? { language: selectedCatalogDetailVariant.language } : {}) }}
+                        src={catalogImage(selectedCatalogDetailPricingProduct)}
+                        title={catalogTitle(selectedCatalogDetailProduct)}
+                      />
+                    </LazyToolBoundary>
                     <div className="image-source-panel">
                       {shouldShowCatalogRepairLabels() ? <span>Image source: {getImageSourceLabel(selectedCatalogDetailPricingProduct)}</span> : null}
                       {shouldShowCatalogRepairLabels() && selectedCatalogDetailPricingProduct?.imageNeedsReview ? <strong>Image needs review</strong> : null}
@@ -53550,6 +53354,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 	                <details className="catalog-source-details catalog-detail-more-actions">
 	                  <summary>More actions</summary>
 	                  <div className="catalog-detail-action-group catalog-detail-secondary-actions">
+	                    <button type="button" onClick={() => openMarketPriceMemoryFlow(selectedCatalogDetailPricingProduct || selectedCatalogDetailProduct, { source: "market-detail-save-price" })}>Save price</button>
 	                    <button type="button" onClick={() => markCatalogDetailOwned(selectedCatalogDetailProduct)}>Mark Owned</button>
 	                    <button type="button" onClick={() => markCatalogDetailMissing(selectedCatalogDetailProduct)}>Mark Missing</button>
 	                    <button type="button" onClick={() => addCatalogDetailToScoutSighting(selectedCatalogDetailProduct)}>Add to Restocks Sighting</button>
@@ -54992,7 +54797,7 @@ function VaultItemDetailContent({ item, marketItem, masterCard, setSummary, link
           <p>Bring this item into Business when you want to compare, trade, or think through its value. Set assignment is still local-preview planning and will not change this item automatically.</p>
         </div>
         <div className="vault-detail-primary-actions">
-          <button type="button" onClick={() => onEdit(item)}>Edit Profile</button>
+          <button type="button" onClick={() => onEdit(item)}>Edit profile</button>
           <button type="button" className="secondary-button" onClick={() => onAddToDisplayCase?.(item)}>Add to Display Case</button>
           <button type="button" className="secondary-button" onClick={() => onEdit(item)}>Add note</button>
           {!itemIsWishlist ? <button type="button" className="secondary-button" onClick={() => onStartTrade?.(item)}>Add to trade</button> : null}
@@ -55828,7 +55633,7 @@ function VaultEditForm({
         ))}
 
         <div className="vault-form-actions">
-          <button type="submit">Save Changes</button>
+          <button type="submit">Save changes</button>
           <button type="button" className="secondary-button" onClick={onCancel}>Cancel</button>
         </div>
       </form>
@@ -55848,6 +55653,7 @@ function InventoryForm({
   onSubmit,
   submitLabel,
   statusOptions = STATUSES,
+  allowGrading = false,
 }) {
   const quantity = Number(form.quantity || 0);
   const unitCost = Number(form.unitCost || 0);
@@ -56099,6 +55905,7 @@ function InventoryForm({
       <Field label="Shelf / bin label"><input value={form.storageLocation || ""} onChange={(e) => setForm("storageLocation", e.target.value)} placeholder="Shelf, tote, case, storage bin..." /></Field>
       <Field label="Notes"><input value={form.notes || ""} onChange={(e) => setForm("notes", e.target.value)} /></Field>
       <Field label="Condition"><input value={form.condition || ""} onChange={(e) => setForm("condition", e.target.value)} placeholder="Sealed, damaged box, NM, LP..." /></Field>
+      {allowGrading && (isCatalogCardProduct(form) || form.graded || Object.values(gradingDetails(form)).some(Boolean)) ? <GradingFields record={form} onChange={patch => Object.entries(patch).forEach(([key,value]) => setForm(key,value))} /> : null}
       <Field label="Tags"><input value={form.tags || ""} onChange={(e) => setForm("tags", e.target.value)} placeholder="restock, promo, hold, bundle..." /></Field>
       <Field label="Market Watch Product ID"><input value={form.externalProductId} onChange={(e) => setForm("externalProductId", e.target.value)} /></Field>
       <Field label="Market Source URL"><input value={form.tideTradrUrl} onChange={(e) => setForm("tideTradrUrl", e.target.value)} /></Field>

@@ -26,7 +26,13 @@ const LABELS = {
   unavailable: "Phone alerts aren't available in this version. Alerts still appear inside the app.",
   error: "Phone alerts couldn't be turned on. Try again in a moment.",
 };
-const state = (permission) => ({ supported: permission !== "unavailable", permission, label: LABELS[permission] });
+// "error" means permission is fine but registering this device failed; the inbox offers a retry.
+const state = (permission) => ({
+  supported: permission !== "unavailable",
+  permission: permission === "error" ? "granted" : permission,
+  registration: permission === "granted" ? "registered" : permission === "error" ? "failed" : "",
+  label: LABELS[permission],
+});
 
 async function plugin() {
   const { PushNotifications } = await import("@capacitor/push-notifications");

@@ -1,4 +1,4 @@
-import { PrivateStorageImage } from "./PrivateReceipt.jsx";
+import ItemPhoto from "./ItemPhoto.jsx";
 import { useCallback, useDeferredValue, useEffect, useId, useMemo, useRef, useState } from "react";
 import { getCatalogHighlightParts } from "../utils/catalogSearchPresentation.mjs";
 import "./smart-catalog-search.css";
@@ -32,9 +32,8 @@ function renderHighlighted(label, query) {
 }
 
 function CatalogSuggestionThumbnail({ suggestion }) {
-  const [failed, setFailed] = useState(false);
   const product = suggestion.product || {};
-  const imageUrl = !failed ? suggestion.imageUrl || getProductImageUrl(product) : "";
+  const imageUrl = suggestion.imageUrl || getProductImageUrl(product);
   if (suggestion.iconText && !suggestion.product) {
     return (
       <span className="smart-catalog-suggestion-thumb smart-catalog-scope-thumb">
@@ -48,21 +47,11 @@ function CatalogSuggestionThumbnail({ suggestion }) {
     productType: suggestion.type || getProductTypeLabel(product),
   });
 
-  if (imageUrl) {
-    return (
-      <PrivateStorageImage
-        src={imageUrl}
-        alt=""
-        onError={() => setFailed(true)}
-      />
-    );
-  }
-
   return (
-    <span className="smart-catalog-suggestion-thumb branded-product-fallback">
+    <ItemPhoto src={imageUrl} product={product} sizes="56px" alt="" fallback={<span className="smart-catalog-suggestion-thumb branded-product-fallback">
       <strong>{fallback.title}</strong>
       <small>{fallback.meta}</small>
-    </span>
+    </span>} />
   );
 }
 

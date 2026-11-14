@@ -566,10 +566,11 @@ export default function ScoutSubmitContent({ scope }) {
         {!currentType.isGuess && ["where", "essentials"].includes(quickScoutReportStep) ? (
           <StockScreenshotImport
             stores={stores}
+            preferenceScope={scoutReporterId || ""}
             reportDraft={quickScoutReportForm}
             onApply={(patch) => {
-              setQuickScoutReportForm((current) => ({ ...current, ...patch }));
-              setQuickScoutReportMessage("Screenshot details added to your draft. Confirm the store and observed time before posting.");
+              setQuickScoutReportForm((current) => ({ ...current, ...(typeof patch === "function" ? patch(current) : patch) }));
+              setQuickScoutReportMessage(typeof patch === "function" ? "Screenshot changes undone where no later edits were made." : "Screenshot details added to your draft. Confirm the store and observed time before posting.");
             }}
           />
         ) : null}

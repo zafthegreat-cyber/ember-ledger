@@ -1,13 +1,18 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { transformSync } from "esbuild";
+import { buildSync } from "esbuild";
 
 // Render the actual deferred view with inert state and storage boundaries.
 const require = createRequire(import.meta.url);
-const code = transformSync(readFileSync("src/features/deferredViews/ScoutSubmitContent.jsx", "utf8"), { loader: "jsx", format: "cjs", jsx: "automatic" }).code;
+// Bundle local child components while retaining the existing inert upload boundary.
+const code = buildSync({
+  entryPoints: ["src/features/deferredViews/ScoutSubmitContent.jsx"],
+  bundle: true, platform: "node", format: "cjs", jsx: "automatic", write: false,
+  packages: "external", external: ["*PrivateReceipt.jsx", "*StockScreenshotImport.jsx"],
+  loader: { ".css": "empty" }, define: { "import.meta.env": "{}" },
+}).outputFiles[0].text;
 const module = { exports: {} };
 const viewRequire = (id) => id === "react" ? { ...React, useRef: () => ({ current: null }), useEffect: () => {} }
   : id.endsWith(".css") ? {}

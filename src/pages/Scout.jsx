@@ -1296,6 +1296,7 @@ function canViewerSeeScoutReport(report = {}, adminMode = false, ownsReport = is
   }
 
 export default function Scout({
+  preferenceScope = "",
   targetSubTab = { tab: "overview", id: 0 },
   compact = false,
   onLocationRequired = () => true,
@@ -5575,7 +5576,7 @@ async function handleUpdateStore(e) {
         ) : null}
 
         {reportsBrowseMode ? (
-          <RestockReportBrowser reports={restockHistory} getStore={getReportStore} renderReport={renderCompactReportCard} now={scoutNow} onReport={() => onQuickReport({})} showLocation={false} />
+          <RestockReportBrowser key={preferenceScope || "anonymous"} preferenceScope={preferenceScope} reports={restockHistory} getStore={getReportStore} renderReport={renderCompactReportCard} now={scoutNow} onReport={() => onQuickReport({})} showLocation={false} initialStoreId={targetSubTab?.storeId || ""} initialFollowedOnly={targetSubTab?.followedOnly === true} followedStoreIds={watchedStoreOverviewRows.map(store => String(store.id))} />
         ) : null}
 
         {scoutSubTab === "reports" && !reportsBrowseMode ? (
@@ -7071,6 +7072,7 @@ async function handleUpdateStore(e) {
               </div>
               <div className="scout-report-detail-body">
                 <RestockReportDetails
+                  preferenceScope={preferenceScope} relatedReports={restockHistory} getStore={getReportStore}
                   key={selectedReportTarget.id || selectedReportTarget.reportId}
                   report={selectedReportTarget}
                   store={getReportStore(selectedReportTarget)}

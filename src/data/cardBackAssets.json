@@ -1,0 +1,11 @@
+{
+  "pokemonInternational": {
+    "src": "/assets/inspection/pokemon-standard-back.jpg",
+    "reference": true,
+    "label": "Standard Pokémon card back",
+    "sourcePage": "https://tcg.pokemon.com/en-us/",
+    "sourceImage": "https://tcg.pokemon.com/assets/img/global/tcg-card-back-2x.jpg",
+    "sha256": "37a4df719ed9134a4652c639fea545f549c6cce40647ad5d82909be02a6afeb3",
+    "checkedAt": "2026-11-10"
+  }
+}
