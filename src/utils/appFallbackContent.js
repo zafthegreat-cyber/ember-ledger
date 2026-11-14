@@ -8,10 +8,11 @@ export function readAppLoadFallbackTheme() {
     const inspectionTheme = new URLSearchParams(window.location.search).get("themeInspect");
     if (inspectionTheme === "light" || inspectionTheme === "dark") return inspectionTheme;
     const direct = window.localStorage.getItem("et-tcg-app-theme");
-    if (direct) return direct.trim().toLowerCase() === "dark" ? "dark" : "light";
-    const saved = JSON.parse(window.localStorage.getItem("et-tcg-beta-data") || "{}");
-    const choice = saved?.appThemeChoice || saved?.themeChoice || saved?.settings?.appThemeChoice;
-    return String(choice || "").trim().toLowerCase() === "dark" ? "dark" : "light";
+    const saved = !direct ? JSON.parse(window.localStorage.getItem("et-tcg-beta-data") || "{}") : null;
+    const choice = String(direct || saved?.appThemeChoice || saved?.themeChoice || saved?.settings?.appThemeChoice || "").trim().toLowerCase();
+    if (choice === "dark" || choice === "light") return choice;
+    // No explicit choice (or "system"): follow the device, same as index.html's boot screen.
+    return window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ? "dark" : "light";
   } catch {
     return "light";
   }
@@ -57,7 +58,9 @@ export function getAppLoadFallbackCopy(kind = "error") {
 export function isLikelyChunkLoadError(error = {}) {
   const message = String(error?.message || error || "");
   const name = String(error?.name || "");
-  return /ChunkLoadError|Loading chunk|Failed to fetch dynamically imported module|Importing a module script failed|dynamically imported module/i.test(`${name} ${message}`);
+  // "Unable to preload CSS" is Vite's error when a lazy route's stylesheet was
+  // removed by a newer deploy; it is the same stale-build case as a missing JS chunk.
+  return /ChunkLoadError|Loading chunk|Loading CSS chunk|Unable to preload CSS|Failed to fetch dynamically imported module|Importing a module script failed|dynamically imported module/i.test(`${name} ${message}`);
 }
 
 export function shouldExposeFallbackErrorDetails(mode = "") {
