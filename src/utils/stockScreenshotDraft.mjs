@@ -1,4 +1,4 @@
-import { resolveScreenshotTime, normalizeScreenshotRows, safeScreenshotSourceUrl } from "./screenshotReviewExtras.mjs";
+import { resolveScreenshotTime, screenshotTimeOccurrence, normalizeScreenshotRows, safeScreenshotSourceUrl } from "./screenshotReviewExtras.mjs";
 import { COLLECTIBLE_GAMES } from "./collectibleGames.mjs";
 import { normalizeStoreStateCode, storeStateName } from "../data/storeStates.js";
 
@@ -296,7 +296,12 @@ export function createStockScreenshotPatch(draft = {}, choices = {}, { stores = 
   if (!draft || typeof draft !== "object" || Array.isArray(draft)) return failure("Open a stock-report draft before applying screenshot details.");
   if (!choices || typeof choices !== "object") return failure("Review the screenshot details before applying them.");
   const decisions = choices.fieldDecisions || {};
-  if (decisions.time === "keep" && draft.reportDate && draft.reportTime) choices = { ...choices, reportDate: draft.reportDate, reportTime: draft.reportTime, observedTimeConfirmed: Boolean(draft.reportDate && draft.reportTime), timezone: draft.screenshotTimezone || draft.timezone || choices.timezone };
+  if (decisions.time === "keep" && draft.reportDate && draft.reportTime) {
+    const local = `${draft.reportDate}T${draft.reportTime}`;
+    const timezone = draft.screenshotTimezone || draft.timezone || choices.timezone;
+    const retainedChoice = draft.screenshotLocalTime === local ? screenshotTimeOccurrence(local, timezone, draft.screenshotObservedAt, {now:Number(now)}) : '';
+    choices = { ...choices, reportDate: draft.reportDate, reportTime: draft.reportTime, observedTimeConfirmed: true, timezone, timeChoice: retainedChoice || choices.timeChoice };
+  }
   if (choices.observedTimeConfirmed !== true) return failure("Confirm when the stock was actually observed. A post time or screenshot clock is not the observed time.");
   const reportDate = text(choices.reportDate, 40);
   const reportTime = text(choices.reportTime, 40);

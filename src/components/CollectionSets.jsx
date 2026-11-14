@@ -11,11 +11,12 @@ import './collection-next.css';
 import { COLLECTIBLE_GAMES } from "../utils/collectibleGames.mjs";
 
 const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+function deviceStorage() { try { return globalThis.localStorage; } catch { return undefined; } }
 
 export default function CollectionSets({ rows, viewState, onViewStateChange, onOpenSet, onBack, onOpenItem, onAddItem, onAddCatalogItem, onAddManualItem, onReviewCatalogMatch, canMatchRecord = () => true, resolveItemImage, showValues, binderTools, loadCatalog, preferenceScope, onAddMissingToWishlist, onPreviewMissingWishlist, existingWishlistProducts }) {
   const { query, scope, sort, language, selectedId, limit, game = "all" } = viewState;
   const update = (patch) => onViewStateChange((current) => ({ ...current, ...patch }));
-  const [prefStore]=useState(()=>collectionPreferenceStore(globalThis.localStorage,preferenceScope));
+  const [prefStore]=useState(()=>collectionPreferenceStore(deviceStorage(),preferenceScope));
   const [preferences,setPreferences]=useState(()=>prefStore.load());
   const pins=preferences.state.pinnedSets;
   const togglePin=id=>setPreferences(prefStore.save({...preferences.state,pinnedSets:pins.includes(id)?pins.filter(key=>key!==id):[...pins,id].slice(0,100)}));

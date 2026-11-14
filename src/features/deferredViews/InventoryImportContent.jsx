@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { IMPORT_REVIEW_FILTERS, importReviewCategory, filterImportReview, importBulkPreview, importColumnSamples, mappingPreset, mappingPresetKey } from '../../utils/importReviewPresentation.mjs';
 import './import-review.css';
 import { PrivateStorageImage } from "../../components/PrivateReceipt.jsx";
@@ -68,10 +68,15 @@ export default function InventoryImportContent({ scope }) {
   const [reviewQuery,setReviewQuery]=useState(''), [reviewStatus,setReviewStatus]=useState('all'), [expanded,setExpanded]=useState({}), [bulkReview,setBulkReview]=useState(null), [reviewNotice,setReviewNotice]=useState('');
   const [presetName,setPresetName]=useState(''), [presetState,setPresetState]=useState({key:null,rows:[]}), [presetChoice,setPresetChoice]=useState('');
   const [focusTarget,setFocusTarget]=useState(null);
+  const focusedIssue=useRef(null);
   const presetKey=mappingPresetKey(scope.preferenceScope);
   if(presetState.key!==presetKey){let rows=[];try{const saved=JSON.parse(localStorage.getItem(presetKey)||'[]');if(Array.isArray(saved))rows=saved.filter(row=>row&&typeof row.name==='string'&&Array.isArray(row.headers)&&row.mapping);}catch{/* Keep current import independent of saved preferences. */}setPresetState({key:presetKey,rows});}
   const presets=presetState.rows;const setPresets=rows=>setPresetState({key:presetKey,rows});
-  useEffect(()=>{if(focusTarget){const target=document.getElementById(focusTarget.id);target?.focus();target?.scrollIntoView?.({block:'center'});}},[expanded,focusTarget,reviewQuery,reviewStatus]);
+  useEffect(()=>{
+    if(!focusTarget||focusedIssue.current===focusTarget)return;
+    const target=document.getElementById(focusTarget.id);
+    if(target){focusedIssue.current=focusTarget;target.focus();target.scrollIntoView?.({block:'center'});}
+  },[expanded,focusTarget,reviewQuery,reviewStatus]);
   const samples=useMemo(()=>importColumnSamples(importText),[importText]);
   const reviewBulk=(overrides={})=>{const source={...importBulkApply,...overrides};setBulkReview({...importBulkPreview(importRows,source),source,snapshot:JSON.stringify(importRows)});setReviewNotice('');};
   const applyReviewedBulk=()=>{if(bulkReview.snapshot!==JSON.stringify(importRows)){setReviewNotice('Rows changed. Review the bulk update again.');setBulkReview(null);return;}applyImportBulkUpdates(bulkReview.source);setBulkReview(null);setReviewNotice('Changes applied to review rows. Confirm import separately when ready.');};

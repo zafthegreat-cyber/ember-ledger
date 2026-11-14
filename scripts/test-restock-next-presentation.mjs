@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {resolveScreenshotTime,relativeScreenshotTime,normalizeScreenshotRows,reviewedScreenshotReportFields,createScreenshotUndo,screenshotOcrReadiness} from '../src/utils/screenshotReviewExtras.mjs';
+import {resolveScreenshotTime,relativeScreenshotTime,screenshotTimeOccurrence,normalizeScreenshotRows,reviewedScreenshotReportFields,createScreenshotUndo,screenshotOcrReadiness} from '../src/utils/screenshotReviewExtras.mjs';
 import {createStockScreenshotPatch} from '../src/utils/stockScreenshotDraft.mjs';
 import {prepareRestockFeedEntries,filterRestockFeed} from '../src/utils/restockFeedPresentation.mjs';
 import {conflictingObservations,groupRestockEntries,matchedReportProducts,readRestockPreferences,updateRestockPreferences} from '../src/utils/restockBrowseExtras.mjs';
@@ -13,3 +13,25 @@ test('151/152/155: per-field review carries structured unknown/zero amounts and 
 test('151/158: repeated products remain distinct; invalid numbers never become zero',()=>{const rows=[{productName:'Box',quantity:'',price:''},{productName:'Box',quantity:'2',price:'49.99'}];assert.deepEqual(normalizeScreenshotRows(rows).rows,rows);assert.equal(normalizeScreenshotRows([{productName:'Box',quantity:'-1'}]).ok,false);assert.equal(normalizeScreenshotRows([{productName:'Box',price:'not known'}]).ok,false);});
 test('159/160: Undo preserves later edits and readiness never claims an unverified offline cache',()=>{const before={productName:'Original',notes:'mine',marketPrice:81.05},patch={productName:'Reviewed',reportType:'no_stock'},current={...before,...patch,productName:'Later edit'};assert.deepEqual(createScreenshotUndo(before,patch,current),{reportType:undefined});assert.equal(screenshotOcrReadiness({online:false,worker:'function',wasm:'object',native:false}).state,'unavailable');assert.equal(screenshotOcrReadiness({online:true,worker:'function',wasm:'object',native:false}).state,'not-prepared');assert.equal(screenshotOcrReadiness({online:false,worker:'undefined',wasm:'object',native:true}).state,'unavailable');});
 test('172/173: long primitive values expand within bounds; secrets and nested values remain redacted',()=>{const left={data:{notes:'a'.repeat(13000),access_token:'s'.repeat(400),nested:{value:'ok'}}},right={data:{notes:'b'.repeat(400),access_token:'new secret',nested:{value:'changed'}}};const before=JSON.stringify([left,right]),result=buildCloudConflictDifferences(left,right);const note=result.rows.find(row=>row.path.endsWith('notes'));assert.ok(note.deviceFull.length<12100);assert.match(note.deviceFull,/preview limit/);const sensitive=result.rows.find(row=>row.path.endsWith('access_token'));assert.equal(sensitive.device,'Hidden sensitive field');assert.equal(sensitive.deviceFull,null);assert.equal(JSON.stringify([left,right]),before);});
+
+test('153/154: relative sightings across a repeated hour retain their exact reviewed instant',()=>{
+  assert.equal(relativeScreenshotTime('2026-11-01T02:30','America/New_York','60.5').ok,false,'Minute-precision review must not silently discard seconds from fractional minutes');
+  const zone='America/New_York',capture='2026-11-01T01:30';
+  const ambiguous=relativeScreenshotTime(capture,zone,60,{now});
+  assert.equal(ambiguous.ok,false);assert.equal(ambiguous.ambiguous,true);
+  const earlier=relativeScreenshotTime(capture,zone,60,{choice:'later',now});
+  assert.equal(earlier.local,capture);assert.equal(earlier.observedAt,'2026-11-01T05:30:00.000Z');assert.equal(earlier.choice,'earlier');
+  assert.equal(resolveScreenshotTime(earlier.local,zone,{choice:earlier.choice,now}).observedAt,earlier.observedAt);
+  const ordinaryCapture=relativeScreenshotTime('2026-11-01T02:30',zone,60,{now});
+  assert.equal(ordinaryCapture.choice,'later');assert.equal(ordinaryCapture.observedAt,'2026-11-01T06:30:00.000Z');
+  assert.equal(resolveScreenshotTime(capture,zone,{choice:'later',now}).ambiguous,true,'both occurrences stay available after choosing');
+  assert.equal(screenshotTimeOccurrence(capture,zone,'2026-11-01T07:30:00Z',{now}),'','unrelated metadata never selects a clock occurrence');
+});
+test('152/153: keeping a draft observation preserves its reviewed zone and repeated-hour instant',()=>{
+  const draft={storeId:'a',productName:'151 Box',productCategory:'Pokemon TCG',reportType:'stock_on_shelf',reportTypeTouched:true,reportDate:'2026-11-01',reportTime:'01:30',screenshotLocalTime:'2026-11-01T01:30',screenshotTimezone:'America/New_York',screenshotObservedAt:'2026-11-01T06:30:00.000Z',marketPrice:81.05,photos:['original'],notes:'Keep this'};
+  const before=JSON.stringify(draft);
+  const result=createStockScreenshotPatch(draft,{fieldDecisions:{time:'keep'},productName:'151 Box',productCategory:'Pokemon TCG',reportType:'stock_on_shelf',platform:'other',timezone:'America/Los_Angeles',timeChoice:'earlier'},{now,stores:[{id:'a'}]});
+  assert.equal(result.ok,true,result.error);assert.equal(result.patch.screenshotObservedAt,draft.screenshotObservedAt);assert.equal(result.patch.screenshotTimezone,draft.screenshotTimezone);
+  for(const key of ['marketPrice','photos','notes'])assert.equal(Object.hasOwn(result.patch,key),false);
+  assert.equal(JSON.stringify(draft),before);
+});

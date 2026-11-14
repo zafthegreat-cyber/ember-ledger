@@ -3,6 +3,7 @@ import { BottomSheet } from './operations/OperationsUI.jsx';
 import { COLLECTION_EXPORT_FIELDS, DEFAULT_COLLECTION_EXPORT_FIELDS, collectionExportRows } from '../utils/collectionNext.mjs';
 import { copyRecognition } from '../utils/collectionBrowse.mjs';
 import { inferOwnedItemPurpose } from '../features/ownedItems/ownedItemPurpose.js';
+import { getPortfolioItemKey } from '../utils/collectionPortfolio.mjs';
 export function CollectionExportReview({open,onClose,items=[],scopeLabel,hidden,onExport,busy}) {
  const [fields,setFields]=useState(DEFAULT_COLLECTION_EXPORT_FIELDS),[privateDetails,setPrivate]=useState(false);
  const data=collectionExportRows(items,fields,{privateDetails,hiddenValues:hidden});
@@ -10,7 +11,7 @@ export function CollectionExportReview({open,onClose,items=[],scopeLabel,hidden,
 }
 export function CollectionCopyCompare({open,onClose,items=[],hidden}) {
  const [first,setFirst]=useState(''),[second,setSecond]=useState('');
- const key=(item,index)=>String(item.id||item.recordId||index);
+ const key=(item,index)=>getPortfolioItemKey(item)||'record:'+String(item.id??item.recordId??index)+':'+index;
  const choices=items.map((item,index)=>({item,key:key(item,index)}));
  const selected=[choices.find(row=>row.key===first),choices.find(row=>row.key===second)];
  return <BottomSheet open={open} title="Compare purchase records" onClose={onClose}><div className="collection-record-tools"><p>Compare original records without combining their costs or quantities.</p><div className="collection-copy-comparison">{selected.map((row,index)=><section key={index}><label>Purchase {index+1}<select value={index?second:first} onChange={event=>(index?setSecond:setFirst)(event.target.value)}><option value="">Choose a record</option>{choices.map(choice=><option key={choice.key} value={choice.key} disabled={choice.key===(index?first:second)}>{choice.item.name||choice.item.title} · {copyRecognition(choice.item,{hidden}).title} · ID {choice.key}</option>)}</select></label>{row&&<><h3>{row.item.name||row.item.title}</h3><p>{copyRecognition(row.item,{hidden}).detail}</p><dl><dt>Original record</dt><dd>{row.key}</dd><dt>Purchased</dt><dd>{row.item.purchaseDate||row.item.acquiredAt||'Not recorded'}</dd><dt>Condition</dt><dd>{row.item.condition||'Not recorded'}</dd><dt>Purpose</dt><dd>{inferOwnedItemPurpose(row.item).replaceAll('_',' ')}</dd><dt>Quantity</dt><dd>{row.item.quantity??'Not recorded'}</dd><dt>Cost</dt><dd>{hidden?'Hidden by you':copyRecognition(row.item,{hidden}).detail}</dd></dl></>}</section>)}</div></div></BottomSheet>;

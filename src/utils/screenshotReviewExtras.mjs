@@ -12,14 +12,21 @@ export function resolveScreenshotTime(local, zone, { choice = '', now = Date.now
   if(candidates.length>1&&!['earlier','later'].includes(choice))return {ok:false,ambiguous:true,candidates:candidates.map(value=>new Date(value).toISOString()),error:'This time occurs twice when the clock changes. Choose the earlier or later occurrence.'};
   const timestamp=choice==='later'?candidates.at(-1):candidates[0];
   if(timestamp>now+900000)return {ok:false,error:'The observation cannot be more than 15 minutes in the future.'};
-  return {ok:true,observedAt:new Date(timestamp).toISOString(),timezone:zone,local,label:`${formatter.format(timestamp)} (${zone}) · ${new Date(timestamp).toISOString()}`};
+  return {ok:true,observedAt:new Date(timestamp).toISOString(),timezone:zone,local,ambiguous:candidates.length>1,candidates:candidates.map(value=>new Date(value).toISOString()),choice:candidates.length>1?choice:'',label:`${formatter.format(timestamp)} (${zone}) · ${new Date(timestamp).toISOString()}`};
+}
+export function screenshotTimeOccurrence(local, zone, observedAt, options = {}) {
+  const result=resolveScreenshotTime(local,zone,options),instant=Date.parse(observedAt);
+  if(!result.ambiguous||!Number.isFinite(instant))return '';
+  const index=result.candidates.indexOf(new Date(instant).toISOString());
+  return index===0?'earlier':index===result.candidates.length-1?'later':'';
 }
 export function relativeScreenshotTime(capture, zone, minutes, options) {
-  if(clean(String(minutes))===''||!Number.isFinite(Number(minutes))||Number(minutes)<0||Number(minutes)>525600)return {ok:false,error:'Enter minutes ago between 0 and 525,600.'};
+  if(clean(String(minutes))===''||!Number.isInteger(Number(minutes))||Number(minutes)<0||Number(minutes)>525600)return {ok:false,error:'Enter whole minutes ago between 0 and 525,600.'};
   const result=resolveScreenshotTime(capture,zone,options);if(!result.ok)return result;
   const instant=Date.parse(result.observedAt)-Number(minutes)*60000;
   const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(instant).map(row=>[row.type,row.value]));
-  return {ok:true,local:`${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`,observedAt:new Date(instant).toISOString()};
+  const local=`${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`,observedAt=new Date(instant).toISOString();
+  return {ok:true,local,observedAt,choice:screenshotTimeOccurrence(local,zone,observedAt,{now:options?.now})};
 }
 export function normalizeScreenshotRows(rows) {
   if(!Array.isArray(rows)||rows.length>40)return {ok:false,error:'Review up to 40 products in one report.'};

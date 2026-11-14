@@ -25,7 +25,7 @@ export default function RestockReportBrowser({ reports = [], getStore, renderRep
   const preferences = useRestockPreferences(preferenceScope);
   const [grouped,setGrouped] = useState(savedView?.grouped || false);
   const [bookmarkedOnly,setBookmarkedOnly] = useState(savedView?.bookmarkedOnly || false);
-  const [unlocatedOnly,setUnlocatedOnly] = useState(false);
+  const [unlocatedOnly,setUnlocatedOnly] = useState(savedView?.unlocatedOnly || false);
   const searchRef = useRef(null);
   const [filters, setFilters] = useState(savedView?.filters || EMPTY_FILTERS);
   const [limit, setLimit] = useState(savedView?.limit || PAGE_SIZE);
@@ -46,7 +46,8 @@ export default function RestockReportBrowser({ reports = [], getStore, renderRep
   const withoutArea = useMemo(() => restockFeedBrowseState(eligibleEntries, {...filters,location:{mode:'all'}},now).matches,[eligibleEntries,filters,now]);
   const unlocated = location.mode === 'nearby' ? withoutArea.filter(entry => restockEntryDistance(entry,location.area) === null) : [];
   const locatedEntries = location.mode === 'nearby' ? eligibleEntries.filter(entry => restockEntryDistance(entry,location.area) !== null) : eligibleEntries;
-  const { matches, counts, recentCount, undatedCount } = restockFeedBrowseState(unlocatedOnly && location.mode === 'nearby' ? unlocated : locatedEntries, {...filters,location:unlocatedOnly ? {mode:'all'} : location},now);
+  const showingUnlocated = unlocatedOnly && location.mode === 'nearby';
+  const { matches, counts, recentCount, undatedCount } = restockFeedBrowseState(showingUnlocated ? unlocated : locatedEntries, {...filters,location:showingUnlocated ? {mode:'all'} : location},now);
   const viewState = useRef(null);
   useEffect(()=>{viewState.current={filters,limit,order,grouped,bookmarkedOnly,unlocatedOnly,scopeOverride};},[filters,limit,order,grouped,bookmarkedOnly,unlocatedOnly,scopeOverride]);
   useEffect(() => {

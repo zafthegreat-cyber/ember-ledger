@@ -7,7 +7,7 @@ import { readLegacyGradingMetadata, reconcileLegacyGradingEdit } from "./utils/l
 import PasswordInput from "./features/auth/PasswordInput.jsx";
 import NotificationInbox from "./components/NotificationInbox.jsx";
 import useAlertPauses from './features/notifications/useAlertPauses.js';
-import ReadableTextPreference, {readTextSize,applyTextSize,READABLE_TEXT_KEY} from './components/ReadableTextPreference.jsx';
+import ReadableTextPreference, {readTextSize,saveTextSize,applyTextSize} from './components/ReadableTextPreference.jsx';
 import { pausedAlertIds } from './utils/notificationBrowse.mjs';
 import {readLegacyStorageLocation,writeLegacyStorageLocation} from './utils/legacyStorageMetadata.mjs';
 import {reviewedScreenshotReportFields} from './utils/screenshotReviewExtras.mjs';
@@ -7442,11 +7442,11 @@ export default function App() {
   const [localDataLoaded, setLocalDataLoaded] = useState(false);
   const [hostedSupplementOwner, setHostedSupplementOwner] = useState("");
   const [localAppStorageGuard] = useState(createLegacyAppStorageGuard);
-  const [readableTextSize, setReadableTextSize] = useState(() => readTextSize(globalThis.localStorage));
+  const [readableTextSize, setReadableTextSize] = useState(() => readTextSize());
   const [readableTextError, setReadableTextError] = useState('');
   useEffect(() => {applyTextSize(readableTextSize);}, [readableTextSize]);
   function renderTextSizeControl() {
-    return <><ReadableTextPreference value={readableTextSize} onChange={value => {try {localStorage.setItem(READABLE_TEXT_KEY,value);setReadableTextSize(value);setReadableTextError('');} catch {setReadableTextError('Text size could not be saved. Check this browser’s storage and try again.');}}} />{readableTextError && <p role="alert">{readableTextError}</p>}</>;
+    return <><ReadableTextPreference value={readableTextSize} onChange={value => {const choice=saveTextSize(value);setReadableTextSize(choice.value);setReadableTextError(choice.saved?'':"Text size changed for this session. This browser couldn't save your preference.");}} />{readableTextError && <p role="status">{readableTextError}</p>}</>;
   }
   const localAppStorageError = useSyncExternalStore(localAppStorageGuard.subscribe, localAppStorageGuard.getError, localAppStorageGuard.getError);
   const [scoutSnapshot, setScoutSnapshot] = useState(createEmptyScoutSnapshot);
