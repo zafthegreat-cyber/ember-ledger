@@ -1,6 +1,6 @@
 import { canonicalStringify, hashCanonicalJson, parseUntrustedJsonValue } from "../backup/canonicalJson.js";
-import { WORKSPACE_CHECKPOINT_KEY, WORKSPACE_RECOVERY_KEY, withWorkspaceStorageLock } from "../backup/workspaceRecovery.js";
-import { WORKSPACE_SYNC_KEYS, workspaceFail } from "./cloudWorkspaceSources.js";
+import { WORKSPACE_CHECKPOINT_KEY, WORKSPACE_RECOVERY_KEY, withWorkspaceStorageLock } from "../backup/workspaceRecoveryState.js";
+import { WORKSPACE_SYNC_KEYS, workspaceFail } from "./cloudWorkspaceKeys.js";
 import { createWorkspacePayloadStore } from "./workspacePayloadStore.js";
 
 export const WORKSPACE_BINDING_KEY = "code3.workspace-owner.v1";

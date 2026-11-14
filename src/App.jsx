@@ -15,7 +15,9 @@ import CommunityWelcome, { MemberAccessNotice } from "./features/auth/CommunityW
 import { hasServerAppAccessDecision } from "./features/auth/memberAccess.mjs";
 import { isNativePlatform, getNativeAuthRedirect } from "./native/nativeRuntime.js";
 import { exportFile, exportFileStatus, exportFileError } from "./native/nativeFiles.js";
-import CloudSyncPanel from "./features/persistence/CloudSyncPanel.jsx";
+// Audit 2026-11-14: loaded only when the cloud-saving page opens; it pulls in the backup,
+// restore and validation code (~490 KB) that the first page does not need.
+const CloudSyncPanel = lazy(() => import("./features/persistence/CloudSyncPanel.jsx"));
 // Keep Settings and sync recovery available for already-open sessions after a deploy.
 import MenuPage from "./pages/Menu.jsx";
 import AccountDeletionPage from "./features/privacy/AccountDeletionPage.jsx";
@@ -57,10 +59,12 @@ import {
 import { observePlainLanguage } from "./config/plainLanguage";
 import { LEGACY_BACKUP_MAX_BYTES, parseLegacyBetaBackup } from "./features/backup/legacyBackupValidation.js";
 import { createLegacyAppStorageGuard } from "./features/persistence/legacyAppStorage.js";
+import { createDebouncedSaver, flushSaverOnPageHide } from "./utils/debouncedSave.js";
 import { AppShell, DesktopSidebar, MobileBottomNavigation } from "./components/operations/OperationsUI";
 import WorkspaceSwitcher from "./features/workspaces/WorkspaceSwitcher";
 import AppTour, { appTourSeen } from "./features/tour/AppTour.jsx";
 import QuickFeedback, { openQuickFeedback } from "./features/feedback/QuickFeedback.jsx";
+import AgeConfirmationGate from "./features/auth/AgeConfirmationGate.jsx";
 import { crashReportingAllowed, setCrashReportingAllowed, setCrashReportingKidSafe } from "./features/monitoring/crashReporting.js";
 import { rowsToCsvAsync } from "./features/exports/csv.js";
 import { RELEASE_NOTES } from "./features/tour/releaseNotes.js";
@@ -7545,6 +7549,9 @@ export default function App() {
   const [localDataLoaded, setLocalDataLoaded] = useState(false);
   const [hostedSupplementOwner, setHostedSupplementOwner] = useState("");
   const [localAppStorageGuard] = useState(createLegacyAppStorageGuard);
+  // Audit 2026-11-14: whole-store saves wait for changes to settle (400 ms) and flush when the page hides.
+  const [localStoreSaver] = useState(() => createDebouncedSaver(400));
+  useEffect(() => flushSaverOnPageHide(localStoreSaver), [localStoreSaver]);
   const localAppStorageError = useSyncExternalStore(localAppStorageGuard.subscribe, localAppStorageGuard.getError, localAppStorageGuard.getError);
   const [scoutSnapshot, setScoutSnapshot] = useState(createEmptyScoutSnapshot);
   const [scoutRestockIntelBundle, setScoutRestockIntelBundle] = useState(EMPTY_SCOUT_RESTOCK_INTEL_BUNDLE);
@@ -17074,11 +17081,12 @@ export default function App() {
     if (!canUseHostedAppSupplement({ localDevelopment: BETA_LOCAL_MODE, contextOwnerId: cloudWorkspace?.user?.id,
       sessionOwnerId: user?.id, guestPreview: guestPreviewActive, profileReady: profileReadyForEffects, appAccess: betaAccessForEffects })
       || hostedSupplementOwner !== user.id) return;
-    localAppStorageGuard.save(localStorage, selectHostedAppSupplement({ purchasers, tideTradrWatchlist, tideTradrLookupId,
+    const hostedSupplement = selectHostedAppSupplement({ purchasers, tideTradrWatchlist, tideTradrLookupId,
       marketPriceCache, marketPriceMemories, itemComparisons, vaultCollectionSets, vaultDisplayCase, userSearchAliases,
-      tradeRecords, sparkGifts, sparkKidPacks, sparkEventPlans, collectorEventPlans, dealForm, locationSettings, dashboardCardStyle, appSetupPersonalization }));
+      tradeRecords, sparkGifts, sparkKidPacks, sparkEventPlans, collectorEventPlans, dealForm, locationSettings, dashboardCardStyle, appSetupPersonalization });
+    localStoreSaver.schedule(() => localAppStorageGuard.save(localStorage, hostedSupplement));
   }, [cloudWorkspace?.user?.id, user?.id, guestPreviewActive, profileReadyForEffects, betaAccessForEffects, hostedSupplementOwner,
-    localAppStorageGuard, purchasers, tideTradrWatchlist, tideTradrLookupId, marketPriceCache, marketPriceMemories, itemComparisons,
+    localAppStorageGuard, localStoreSaver, purchasers, tideTradrWatchlist, tideTradrLookupId, marketPriceCache, marketPriceMemories, itemComparisons,
     vaultCollectionSets, vaultDisplayCase, userSearchAliases, tradeRecords, sparkGifts, sparkKidPacks, sparkEventPlans, collectorEventPlans, dealForm, locationSettings, dashboardCardStyle, appSetupPersonalization]);
 
   useEffect(() => {
@@ -17328,7 +17336,7 @@ export default function App() {
       String(persistedLocationSettings?.selectedSavedLocation || "").trim() ||
       persistedLocationSettings?.trackingEnabled
     );
-    localAppStorageGuard.save(localStorage, {
+    const localStorePayload = {
         items,
         purchasers,
         catalogProducts: catalogProducts.filter(shouldPersistLocalCatalogProduct),
@@ -17380,8 +17388,9 @@ export default function App() {
           publicUsername: currentPublicUsername(),
           public_username: currentPublicUsername(),
         },
-    });
-  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, marketPriceMemories, itemComparisons, vaultCollectionSets, vaultDisplayCase, userSearchAliases, expenses, sales, tradeRecords, sparkGifts, sparkKidPacks, sparkEventPlans, collectorEventPlans, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, forgeModeSettings, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, resolvedAppTheme, appSetupPersonalization, cloudSyncPreference, locationSettings, subscriptionProfile, currentUserProfile, actualAdminUser, localDataLoaded, localAppStorageGuard, currentPublicUsername]);
+    };
+    localStoreSaver.schedule(() => localAppStorageGuard.save(localStorage, localStorePayload));
+  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, marketPriceMemories, itemComparisons, vaultCollectionSets, vaultDisplayCase, userSearchAliases, expenses, sales, tradeRecords, sparkGifts, sparkKidPacks, sparkEventPlans, collectorEventPlans, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, forgeModeSettings, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, resolvedAppTheme, appSetupPersonalization, cloudSyncPreference, locationSettings, subscriptionProfile, currentUserProfile, actualAdminUser, localDataLoaded, localAppStorageGuard, localStoreSaver, currentPublicUsername]);
 
   useEffect(() => {
     if (!BETA_LOCAL_MODE || !localDataLoaded) return;
@@ -17946,6 +17955,8 @@ export default function App() {
               publicUsername: signupPublicUsername,
               terms_accepted_at: consentTimestamp,
               privacy_accepted_at: consentTimestamp,
+              // The required consent box includes "I am 13 or older" (audit 2026-11-14).
+              age_confirmed_at: consentTimestamp,
               beta_acknowledged_at: authBetaAcknowledged ? consentTimestamp : null,
               consent_text: {
                 terms: SIGNUP_TERMS_TEXT,
@@ -47912,7 +47923,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <button type="button" className={cloudSyncPreference === "cloud" ? "drawer-link active" : "drawer-link"} onClick={() => updateCloudSyncPreference("cloud")}>Request Cloud Sync Access</button>
             </div>
           </div>}
-          <CloudSyncPanel />
+          <LazyToolBoundary label="Loading cloud saving…"><CloudSyncPanel /></LazyToolBoundary>
           {renderArchiveProofHistoryPanel()}
           {!cloudWorkspace && <div className="utility-card-wide">
             <LazyToolBoundary label="Loading backup tools...">
@@ -53697,6 +53708,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <MobileBottomNavigation items={mobileBottomTabs} activeKey={activeMobileTabKey} onSelect={(tab) => tab.action ? tab.action() : navigateMainTab(tab)} />
       ) : null}
     <AppTour open={appTourOpen} onClose={() => setAppTourOpen(false)} />
+    {isSupabaseConfigured && !guestPreviewActive ? (
+      <AgeConfirmationGate
+        user={user}
+        supabase={supabase}
+        onConfirmed={(updated) => setUser((current) => updated || (current ? { ...current, user_metadata: { ...(current.user_metadata || {}), age_confirmed_at: new Date().toISOString() } } : current))}
+        onSignOut={signOut}
+      />
+    ) : null}
     <QuickFeedback supabase={isSupabaseConfigured ? supabase : null} user={user?.id && user.id !== "local-beta" ? user : null} route={String(activeTab || "")} appVersion={PUBLIC_APP_VERSION_LABEL} workspaceId={activeWorkspace?.id || null} hidden={appTourOpen || Boolean(menuOpen)} kidSafe={kidSafeView} />
     </AppShell>
     </ExperiencePresentationContext.Provider>

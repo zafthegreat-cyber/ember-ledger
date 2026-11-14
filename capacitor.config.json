@@ -2,7 +2,7 @@
   "appId": "app.code3tcg.mobile",
   "appName": "Code 3 TCG",
   "webDir": "dist-native",
-  "loggingBehavior": "debug",
+  "loggingBehavior": "none",
   "backgroundColor": "#F7F8F5",
   "zoomEnabled": true,
   "server": {

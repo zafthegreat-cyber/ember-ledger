@@ -1,7 +1,8 @@
-import { useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import { AppNavIcon } from "../components/command-system/AppNavIcon.jsx";
 import { PageHeader, SecondaryButton } from "../components/operations/OperationsUI.jsx";
-import CloudSyncPanel from "../features/persistence/CloudSyncPanel.jsx";
+// Audit 2026-11-14: loaded when Settings opens, not with the first page (it pulls in backup/restore code).
+const CloudSyncPanel = lazy(() => import("../features/persistence/CloudSyncPanel.jsx"));
 import BlockedUsersPanel from "../components/BlockedUsersPanel.jsx";
 import { useCloudWorkspace } from "../features/persistence/CloudWorkspaceContext.js";
 import { resolveExperiencePresentation } from "../utils/experiencePresentation.js";
@@ -157,7 +158,7 @@ export default function MenuPage(props) {
             </SettingsGroup>
 
             <SettingsGroup id="settings-support-heading" title="Records & support">
-              {cloudWorkspace && <SettingsDisclosure icon="data" title="Cloud saving & recovery" description="Account backups, device sync, and signed-in devices" reviewRequested={cloudSyncReviewRequested} onReviewShown={onCloudSyncReviewShown}><CloudSyncPanel /></SettingsDisclosure>}
+              {cloudWorkspace && <SettingsDisclosure icon="data" title="Cloud saving & recovery" description="Account backups, device sync, and signed-in devices" reviewRequested={cloudSyncReviewRequested} onReviewShown={onCloudSyncReviewShown}><Suspense fallback={<p className="compact-subtitle">Loading cloud saving…</p>}><CloudSyncPanel /></Suspense></SettingsDisclosure>}
               <SettingsRow icon="data" title="Archive & backups" description="Receipts, proof, exports, and private records" status={commandDeskSellerAccess ? "Seller records" : undefined} onClick={() => openUtilityPage("dataBackup")} />
               <SettingsRow icon="help" title="Help & app status" description="Get help, share feedback, or check known issues" onClick={() => openUtilityPage("help")} />
               {typeof renderAppBuildDetails === "function" ? (

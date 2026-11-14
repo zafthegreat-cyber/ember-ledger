@@ -115,3 +115,11 @@ check("App Store package settings: no alpha in the icon, encryption declared, iP
 });
 
 console.log(`Native build readiness: ${checks} checks passed; no build, account, network, signing or upload performed.`);
+
+// Audit 2026-11-14: release builds do not write Capacitor debug logs or allow WebView debugging.
+{
+  const { readFileSync } = await import("node:fs");
+  const capacitorConfig = JSON.parse(readFileSync(new URL("../capacitor.config.json", import.meta.url), "utf8"));
+  if (capacitorConfig.loggingBehavior !== "none") throw new Error("capacitor.config.json loggingBehavior must be \"none\" for release builds");
+  if (capacitorConfig.android?.webContentsDebuggingEnabled !== false || capacitorConfig.ios?.webContentsDebuggingEnabled !== false) throw new Error("WebView debugging must stay off");
+}

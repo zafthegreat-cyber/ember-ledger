@@ -19,6 +19,7 @@ import { vaultRouter } from "./routes/vault.routes";
 import { authRouter } from "./routes/auth.routes";
 import { createProtectedCors } from "./security/corsPolicy";
 import { createLegacyApiBoundary } from "./security/legacyApiBoundary";
+import { createIpRateLimit } from "./security/ipRateLimit";
 import { code3Router } from "./routes/code3.routes";
 import { providerConnectionsRouter } from "./routes/providerConnections.routes";
 import { mailboxImportRouter } from "./routes/mailboxImport.routes";
@@ -69,7 +70,9 @@ app.use("/api/scout", scoutRouter);
 app.use("/api/tidepool", tidepoolRouter);
 app.use("/api/market", marketRouter);
 app.use("/api/scan", scanRouter);
-app.use("/api/bestbuy", bestBuyRouter);
+// Audit 2026-11-14: Best Buy lookups spend the server's API quota. Only the app's own origins
+// (browsers elsewhere get 403) and at most 60 lookups per minute per client address.
+app.use("/api/bestbuy", protectedCors, createIpRateLimit({ maximumRequests: 60, label: "Best Buy lookups" }), bestBuyRouter);
 
 type Day = "Sun" | "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat";
 type Confidence = "Low" | "Medium" | "High";

@@ -1,4 +1,3 @@
-import { BACKUP_SOURCE_REGISTRY, BACKUP_STORAGE_TYPES } from "../backup/backupSourceRegistry.js";
 import { canonicalStringify, hashCanonicalJson, parseUntrustedJsonValue } from "../backup/canonicalJson.js";
 import { findProhibitedData } from "../backup/backupSecurity.js";
 import { resolveSourceSchemaVersion, validateBackupSourceData, validateBackupCrossSourceRelationships } from "../backup/backupValidation.js";
@@ -8,20 +7,10 @@ import { projectSourceData } from "../backup/sourceProjection.js";
 
 export const WORKSPACE_CLOUD_FORMAT = "code3-workspace-v1";
 export const WORKSPACE_MAX_BYTES = 8 * 1024 * 1024;
-export const WORKSPACE_SYNC_SOURCES = Object.freeze(BACKUP_SOURCE_REGISTRY.filter((source) =>
-  source.storageType === BACKUP_STORAGE_TYPES.LOCAL_STORAGE && source.includedInPhase1AExport));
-export const WORKSPACE_SYNC_KEYS = Object.freeze(WORKSPACE_SYNC_SOURCES.flatMap((source) => source.storageKeys || [source.storageKey]));
+// Light pieces live in cloudWorkspaceKeys.js so startup checks can use them without this file.
+import { WORKSPACE_SYNC_SOURCES, WORKSPACE_SYNC_KEYS, WorkspaceSyncError, workspaceFail } from "./cloudWorkspaceKeys.js";
+export { WORKSPACE_SYNC_SOURCES, WORKSPACE_SYNC_KEYS, WorkspaceSyncError, workspaceFail };
 
-export class WorkspaceSyncError extends Error {
-  constructor(code, message, details = {}) {
-    super(message);
-    this.name = "WorkspaceSyncError";
-    this.code = code;
-    this.details = details;
-  }
-}
-
-export function workspaceFail(code, message, details) { throw new WorkspaceSyncError(code, message, details); }
 export function cloneWorkspaceJson(value) { return JSON.parse(canonicalStringify(value)); }
 
 function readJson(raw, allowText = false) {

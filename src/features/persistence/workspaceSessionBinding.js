@@ -1,6 +1,6 @@
 import { BACKUP_SOURCE_REGISTRY, BACKUP_STORAGE_TYPES } from "../backup/backupSourceRegistry.js";
 import { canonicalStringify, hashCanonicalJson, parseUntrustedJsonValue } from "../backup/canonicalJson.js";
-import { workspaceFail } from "./cloudWorkspaceSources.js";
+import { workspaceFail } from "./cloudWorkspaceKeys.js";
 
 export const SESSION_DRAFT_OWNER_KEY = "code3.session-draft-owner.v1";
 export const SESSION_DRAFT_SWITCH_KEY = "code3.session-draft-switch.v1";

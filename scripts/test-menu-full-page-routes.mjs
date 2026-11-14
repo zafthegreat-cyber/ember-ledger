@@ -90,7 +90,7 @@ const expectedRenderers = [
   '<BusinessWorkspace',
   'activeTab === "ownerCenter" && (',
   '<OwnerCenterPage',
-  'activeTab === "accountOps" && (',
+  'activeTab === "accountOps" && AccountOpsPage && (',
   '<AccountOpsPage',
   'activeTab === "dailyTide" && renderTodaysTideCommandCenter()',
   'activeTab === "dashboard" && (',
