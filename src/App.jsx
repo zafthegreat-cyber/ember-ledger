@@ -30198,9 +30198,14 @@ function renderForgeBusinessLedgerPanel() {
   }
 
   async function downloadCSV(filename, rows, message = "Export complete.") {
+    const scope = fileExportScopeRef.current;
+    if (!scope || scope.signal.aborted) return false;
     if (!rows.length) return showAppMessage("No data to export yet.");
     // COULD 37: big exports serialise in a worker so the phone stays responsive.
     const csv = await rowsToCsvAsync(rows);
+    // A worker may finish after sign-out or an account switch. Keep this export
+    // bound to the owner who started it, even if a new scope is now available.
+    if (scope.signal.aborted || fileExportScopeRef.current !== scope) return false;
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     return downloadRecordFile(filename, blob, message);
   }
