@@ -1,5 +1,5 @@
 import { loadEnv, build } from "vite";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { resolveNativeBuildNumber } from "./native-build-number.mjs";
 import { releasedProviders } from "../src/features/auth/socialAuth.mjs";
@@ -41,6 +41,15 @@ await build({
   plugins: [{ name: "code3-native-safe-viewport", transformIndexHtml: html => html.replace("viewport-fit=cover", "viewport-fit=contain") }],
   build: { outDir: "dist-native", rollupOptions: { input: "index.html" } },
 });
+// Product inspection photos stay on the website only: they are official product
+// photography and would push the Android bundle past Play's 200 MB limit. The
+// small SVG foil masks stay; the phone app's viewer never asks for the photos.
+const inspectionDir = resolve("dist-native/assets/inspection");
+if (existsSync(inspectionDir)) {
+  for (const entry of readdirSync(inspectionDir, { recursive: true })) {
+    if (/\.(jpe?g|png|webp|avif)$/i.test(String(entry))) rmSync(resolve(inspectionDir, String(entry)), { force: true });
+  }
+}
 const screenshotOcrModel = prepareNativeOcrModel(resolve("dist-native"));
 mkdirSync(resolve("artifacts/native"), { recursive: true });
 writeFileSync(resolve("artifacts/native/web-build.json"), JSON.stringify({

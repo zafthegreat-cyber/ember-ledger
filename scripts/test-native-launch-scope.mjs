@@ -109,6 +109,17 @@ test("tapping a notification opens only an in-app path", async () => {
   assert.deepEqual(opened, ["/find/restocks"]);
 });
 
+test("phone apps ship without product inspection photos", async () => {
+  const { resolveInspectionArtwork } = await import("../src/utils/productInspection.mjs");
+  const { inspectionCardBack, inspectionCardFront } = await import("../src/utils/cardBacks.mjs");
+  const registry = { "tcgplayer:1": { name: "Test Box", identity: {} } };
+  assert.ok(resolveInspectionArtwork({ tcgplayerProductId: "1" }, registry, { native: false }));
+  assert.equal(resolveInspectionArtwork({ tcgplayerProductId: "1" }, registry, { native: true }), null);
+  assert.equal(inspectionCardBack({ name: "Pikachu", cardNumber: "1" }, { native: true }), null);
+  assert.equal(inspectionCardFront({ tcgplayerProductId: "1" }, { native: true }), null);
+  assert.match(read("scripts/native-build.mjs"), /\/\\\.\(jpe\?g\|png\|webp\|avif\)\$\/i/, "the phone build removes inspection photos");
+});
+
 test("native projects, server and kid safety are wired", () => {
   assert.match(read("ios/App/App/AppDelegate.swift"), /capacitorDidRegisterForRemoteNotifications/);
   assert.match(read("ios/App/App/App.entitlements"), /<key>aps-environment<\/key>/);

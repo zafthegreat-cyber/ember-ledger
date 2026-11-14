@@ -1,5 +1,6 @@
 import { cardSurfaceProfile } from "./cardSurface.mjs";
 import { nonCardProduct, inspectionCardBack } from "./cardBacks.mjs";
+import { NATIVE_BUILD } from "../config/nativeLaunchScope.js";
 
 const text = value => typeof value === "string" ? value.trim() : "";
 const normalize = value => text(value).toLowerCase().replace(/[-_]+/g, " ").replace(/\s+/g, " ");
@@ -14,7 +15,10 @@ const packageMarkers = value => {
 
 // An exact catalog identity is necessary but not sufficient when an owner has edited
 // the record's language or packaging. Contradictory metadata must not borrow art.
-export function resolveInspectionArtwork(product = {}, registry = {}) {
+export function resolveInspectionArtwork(product = {}, registry = {}, { native = NATIVE_BUILD } = {}) {
+  // The phone apps ship without these product photos (rights, and Play's 200 MB
+  // bundle limit); scripts/native-build.mjs removes them from dist-native.
+  if (native) return null;
   const id = String(product.tcgplayerProductId ?? "").trim();
   // A small number of catalog entries have no provider ID. They may only use
   // an explicitly registered internal catalog ID; names never grant artwork.
@@ -108,7 +112,7 @@ export function productInspectionProfile(product = {}, artwork = null) {
     wrapperEligible: shape === "pack" && (artwork?.geometry === "wrapper" || (!artwork && Boolean(namedFaces.front && namedFaces.back))),
     cuboidEligible: !/\b(tin|chest|ball|blister|code card)\b/.test(identityText(product.productType) + " " + identityText(name)),
     surface: cardSurfaceProfile(product, { fullArt }),
-    inkMask: String(product.tcgplayerProductId) === "85317" ? "/assets/inspection/espeon-h9-ink-mask.svg" : "",
+    inkMask: String(product.tcgplayerProductId) === "85317" && !NATIVE_BUILD ? "/assets/inspection/espeon-h9-ink-mask.svg" : "",
     faces: namedFaces, dimensions: artwork?.dimensions, surfaceColor: artwork?.surfaceColor,
     back: text(namedFaces.back?.src),
     left: text(product.leftImageUrl || product.left_image_url),
