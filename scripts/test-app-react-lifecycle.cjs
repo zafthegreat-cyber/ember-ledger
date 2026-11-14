@@ -6,8 +6,8 @@ const { transformSync } = require('esbuild');
 const { chromium } = require('@playwright/test');
 
 const root = path.resolve(__dirname, '..');
-const source = fs.readFileSync(path.join(root, 'src/App.jsx'), 'utf8');
-const ast = espree.parse(source, { ecmaVersion: 'latest', sourceType: 'module', ecmaFeatures: { jsx: true }, range: true });
+// App.jsx plus the Vault modules split out of it (Nov 15, 2026).
+const { source, ast } = require('./helpers/app-source-ast.cjs').parseAppSources(root);
 const functions = new Map();
 function walk(node) {
   if (!node || typeof node !== 'object') return;

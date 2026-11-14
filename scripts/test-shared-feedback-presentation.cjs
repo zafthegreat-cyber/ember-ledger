@@ -8,8 +8,8 @@ const base = new URL(process.env.APP_URL || "http://127.0.0.1:5217");
 assert.ok(["127.0.0.1", "localhost", "[::1]"].includes(base.hostname));
 const captureOnly = process.argv.includes("--capture-before");
 const output = path.resolve(__dirname, "../artifacts/qa/release-readiness/shared-feedback");
-const source = fs.readFileSync(path.resolve(__dirname, "../src/App.jsx"), "utf8");
-const ast = espree.parse(source, { ecmaVersion: "latest", sourceType: "module", ecmaFeatures: { jsx: true }, range: true });
+// App.jsx plus the Vault modules split out of it (Nov 15, 2026).
+const { source, ast } = require("./helpers/app-source-ast.cjs").parseAppSources(path.resolve(__dirname, ".."));
 const names = ["renderToastViewport", "renderConfirmationModal", "renderRoleManagementSection", "Field", "DetailItem", "maskEmail"];
 const extracted = {};
 function walk(node) {

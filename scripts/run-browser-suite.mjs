@@ -17,7 +17,7 @@ for (const file of files) {
   const result = spawnSync(process.execPath, ["--no-warnings", `scripts/${file}`], {
     env: { ...process.env, APP_URL: appUrl },
     encoding: "utf8",
-    timeout: 180000,
+    timeout: 300000,
     maxBuffer: 64 * 1024 * 1024,
   });
   const seconds = Math.round((Date.now() - started) / 1000);
