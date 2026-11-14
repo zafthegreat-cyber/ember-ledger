@@ -137,7 +137,7 @@ test("A82/A83/A85/A88/A90–A95/A99/A102–A109/A113 copy and UI guards are in p
   assert.match(src("src/features/botOps/BotOperationsPage.jsx"), /does not start, stop or configure bots/);
   assert.match(src("src/features/botOps/BotProviderSetup.jsx"), /Tracking only/);
   assert.match(src("src/data/bestBuyStockSeed.js"), /enabled: false/);
-  assert.match(src("src/pages/Scout.jsx"), /Best Buy monitoring is paused during beta/);
+  assert.match(src("src/pages/Scout.jsx"), /Best Buy monitoring is paused. These settings are saved/);
   assert.match(src("src/features/deferredViews/ScoutSubmitContent.jsx"), /scout-proof-disclosure" open>/);
   assert.match(src("src/pages/Scout.jsx"), /your confirmation counts/);
   assert.match(src("src/pages/Scout.jsx"), /MISSING_STORE_STATES\.map/);

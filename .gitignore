@@ -43,3 +43,7 @@ android/app/src/main/assets/capacitor.config.json
 *.p8
 **/xcuserdata/
 native-signing.local.json
+
+# Firebase config for push (added from a secret at build time; never commit)
+android/app/google-services.json
+ios/App/App/GoogleService-Info.plist

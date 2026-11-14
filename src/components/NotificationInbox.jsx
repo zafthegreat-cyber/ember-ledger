@@ -6,7 +6,7 @@ import { dateGroup, relativeUiTime } from "../utils/uiTime.mjs";
 import "./ui-workflow-details.css";
 
 
-export default function NotificationInbox({ notifications = [], unreadCount = 0, deviceState = {}, disclosure = "", onEnableDevice, onRead, onReadAll, onOpen, onArchive, onClose, closeRef, archiveDelay = 8000, now: suppliedNow, pauses = [], onPauseSource, onResumeSource }) {
+export default function NotificationInbox({ notifications = [], unreadCount = 0, deviceState = {}, disclosure = "", enableLabel = "Turn on device alerts", onEnableDevice, onRead, onReadAll, onOpen, onArchive, onClose, closeRef, archiveDelay = 8000, now: suppliedNow, pauses = [], onPauseSource, onResumeSource }) {
   const [openedAt] = useState(() => Date.now());
   const now = suppliedNow ?? openedAt;
   const [filter, setFilter] = useState("all");
@@ -64,7 +64,7 @@ export default function NotificationInbox({ notifications = [], unreadCount = 0,
   }
   return <section id="notification-center-panel" className="notification-center-panel panel" aria-label="Notification center" onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); onClose?.(); } }}>
     <div className="compact-card-header"><div><h3>Alerts</h3>{disclosure && <p>{disclosure}</p>}<p className="compact-subtitle">{deviceState.label}</p></div>
-      <div className="quick-actions">{deviceState.supported && deviceState.permission === "default" && <button type="button" className="secondary-button" onClick={onEnableDevice}>Turn on device alerts</button>}{unreadCount > 0 && <button type="button" className="secondary-button" onClick={onReadAll}>Mark all read</button>}<button ref={closeRef} type="button" className="secondary-button" onClick={onClose}>Close</button></div>
+      <div className="quick-actions">{deviceState.supported && ["default", "prompt"].includes(deviceState.permission) && <button type="button" className="secondary-button" onClick={onEnableDevice}>{enableLabel}</button>}{unreadCount > 0 && <button type="button" className="secondary-button" onClick={onReadAll}>Mark all read</button>}<button ref={closeRef} type="button" className="secondary-button" onClick={onClose}>Close</button></div>
     </div>
     <div className="notification-delivery" aria-label="Notification delivery status"><span>{delivery.permission}</span><span>{delivery.delivery}</span>{deviceState.registration === 'failed' && <button type="button" className="secondary-button" onClick={onEnableDevice}>Retry notification setup</button>}</div>
     {deviceState.permission === "denied" && <details className="notification-inbox-help"><summary>How to enable notifications</summary><p>{blockedNotificationHelp(typeof navigator === "undefined" ? "" : navigator.userAgent)}</p><p>In-app alerts remain available here.</p></details>}

@@ -14,6 +14,7 @@ import {
   normalizeStoreExpansionFields,
 } from "./storeExpansionUtils.js";
 
+export const NATIVE_ALERT_DISCLOSURE = "Alerts appear here in the app. Turn on phone alerts to also get a notification when a watched store restocks, even when Code 3 TCG is closed. You can turn them off any time in your phone's settings.";
 export const IN_APP_ALERT_DISCLOSURE = "Alerts appear here in the app. Turn on device alerts to also get a notification on this device while Code 3 TCG is open or installed to your home screen. Nothing is sent while the app is fully closed, and email and SMS are not connected yet.";
 
 export const NOTIFICATION_CATEGORIES = {

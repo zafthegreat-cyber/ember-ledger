@@ -1,8 +1,14 @@
-// send-push — sends a push notification to a member's devices through
-// Firebase Cloud Messaging (HTTP v1). Nov 15 2026.
+// send-push — sends a push notification to a member's devices. Android tokens go
+// through Firebase Cloud Messaging (HTTP v1); iOS tokens go straight to Apple
+// (APNs), because the iPhone app registers an APNs device token. Nov 15 2026,
+// APNs added Nov 14 2026 (store audit).
 //
-// Secrets (Supabase → Edge Functions → Secrets):
+// Secrets (Supabase → Edge Functions → Secrets); each platform needs only its own:
 //   FCM_SERVICE_ACCOUNT  the Firebase service-account JSON (whole file contents)
+//   APNS_KEY             the Apple .p8 auth key (whole file contents)
+//   APNS_KEY_ID, APNS_TEAM_ID   from developer.apple.com → Keys / Membership
+//   APNS_BUNDLE_ID       optional, defaults to app.code3tcg.mobile
+//   APNS_ENVIRONMENT     optional, "production" (default) or "sandbox"
 // Callers: server-side only. The request must carry the project's service-role
 // key as its bearer token (other edge functions or scheduled jobs). Members
 // cannot call it directly, so nobody can push to someone else's phone.
@@ -43,6 +49,21 @@ async function googleAccessToken(account: { client_email: string; private_key: s
   return cachedToken.value;
 }
 
+let cachedApns: { value: string; expiresAt: number } | null = null;
+async function apnsAuthToken(keyPem: string, keyId: string, teamId: string) {
+  // Apple accepts the same token for up to an hour; refresh after 50 minutes.
+  if (cachedApns && cachedApns.expiresAt > Date.now()) return cachedApns.value;
+  const header = b64url(JSON.stringify({ alg: "ES256", kid: keyId }));
+  const claims = b64url(JSON.stringify({ iss: teamId, iat: Math.floor(Date.now() / 1000) }));
+  const pem = keyPem.replace(/-----[^-]+-----/g, "").replace(/\s+/g, "");
+  const der = Uint8Array.from(atob(pem), (c) => c.charCodeAt(0));
+  const key = await crypto.subtle.importKey("pkcs8", der, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
+  // WebCrypto returns the raw r||s signature that ES256 JWTs use.
+  const signature = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(`${header}.${claims}`));
+  cachedApns = { value: `${header}.${claims}.${b64url(signature)}`, expiresAt: Date.now() + 50 * 60_000 };
+  return cachedApns.value;
+}
+
 const clean = (value: unknown, max: number) => String(value ?? "").replace(/[\u0000-\u001f]/g, " ").slice(0, max);
 
 Deno.serve(async (req) => {
@@ -51,9 +72,12 @@ Deno.serve(async (req) => {
     return Response.json({ ok: false, reason: "server_only" }, { status: 403 });
   }
   const raw = Deno.env.get("FCM_SERVICE_ACCOUNT");
-  if (!raw) return Response.json({ ok: false, reason: "fcm_not_configured" }, { status: 200 });
-  let account: { project_id: string; client_email: string; private_key: string; token_uri?: string };
-  try { account = JSON.parse(raw); } catch { return Response.json({ ok: false, reason: "fcm_secret_invalid" }, { status: 200 }); }
+  let account: { project_id: string; client_email: string; private_key: string; token_uri?: string } | null = null;
+  if (raw) { try { account = JSON.parse(raw); } catch { return Response.json({ ok: false, reason: "fcm_secret_invalid" }, { status: 200 }); } }
+  const apns = { key: Deno.env.get("APNS_KEY") ?? "", keyId: Deno.env.get("APNS_KEY_ID") ?? "", teamId: Deno.env.get("APNS_TEAM_ID") ?? "",
+    bundleId: Deno.env.get("APNS_BUNDLE_ID") || "app.code3tcg.mobile", host: Deno.env.get("APNS_ENVIRONMENT") === "sandbox" ? "api.sandbox.push.apple.com" : "api.push.apple.com" };
+  const apnsReady = Boolean(apns.key && apns.keyId && apns.teamId);
+  if (!account && !apnsReady) return Response.json({ ok: false, reason: "push_not_configured" }, { status: 200 });
 
   let body: Record<string, unknown> = {};
   try { body = await req.json(); } catch { return Response.json({ ok: false, reason: "bad_json" }, { status: 400 }); }
@@ -65,14 +89,28 @@ Deno.serve(async (req) => {
   if (body.data && typeof body.data === "object") for (const [k, v] of Object.entries(body.data as Record<string, unknown>).slice(0, 10)) data[clean(k, 40)] = clean(v, 300);
   if (typeof body.url === "string" && /^\/[A-Za-z0-9/_\-?=&.%]*$/.test(body.url)) data.url = body.url.slice(0, 300);
 
-  const tokensRes = await rest(`device_push_tokens?select=id,token&disabled_at=is.null&user_id=in.(${userIds.join(",")})`);
-  const tokens = tokensRes.ok ? await tokensRes.json() as { id: string; token: string }[] : [];
+  const tokensRes = await rest(`device_push_tokens?select=id,token,platform&disabled_at=is.null&user_id=in.(${userIds.join(",")})`);
+  const tokens = tokensRes.ok ? await tokensRes.json() as { id: string; token: string; platform: string }[] : [];
   if (!tokens.length) return Response.json({ ok: true, sent: 0, reason: "no_devices" }, { status: 200 });
 
-  const accessToken = await googleAccessToken(account);
-  let sent = 0; const disabled: string[] = [];
-  for (const { id, token } of tokens) {
-    const res = await fetch(`https://fcm.googleapis.com/v1/projects/${account.project_id}/messages:send`, {
+  const accessToken = account && tokens.some((t) => t.platform !== "ios") ? await googleAccessToken(account) : "";
+  const apnsToken = apnsReady && tokens.some((t) => t.platform === "ios") ? await apnsAuthToken(apns.key, apns.keyId, apns.teamId) : "";
+  let sent = 0; let skipped = 0; const disabled: string[] = [];
+  for (const { id, token, platform } of tokens) {
+    if (platform === "ios") {
+      if (!apnsToken || !/^[0-9a-f]{64,200}$/i.test(token)) { skipped += 1; continue; }
+      const res = await fetch(`https://${apns.host}/3/device/${token}`, {
+        method: "POST",
+        headers: { authorization: `bearer ${apnsToken}`, "apns-topic": apns.bundleId, "apns-push-type": "alert", "apns-priority": "10", "content-type": "application/json" },
+        body: JSON.stringify({ aps: { alert: { title, body: text }, sound: "default" }, ...data }),
+      });
+      if (res.ok) { sent += 1; continue; }
+      const err = await res.json().catch(() => ({}));
+      if (res.status === 410 || /BadDeviceToken|Unregistered|DeviceTokenNotForTopic/.test(JSON.stringify(err))) disabled.push(id);
+      continue;
+    }
+    if (!accessToken) { skipped += 1; continue; }
+    const res = await fetch(`https://fcm.googleapis.com/v1/projects/${account?.project_id}/messages:send`, {
       method: "POST",
       headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
       body: JSON.stringify({ message: { token, notification: { title, body: text }, data, android: { priority: "high", notification: { channel_id: "restocks" } } } }),
@@ -83,5 +121,5 @@ Deno.serve(async (req) => {
     if (res.status === 404 || /UNREGISTERED|INVALID_ARGUMENT/.test(code)) disabled.push(id);
   }
   if (disabled.length) await rest(`device_push_tokens?id=in.(${disabled.join(",")})`, { method: "PATCH", body: JSON.stringify({ disabled_at: new Date().toISOString() }) });
-  return Response.json({ ok: true, sent, disabled: disabled.length }, { status: 200 });
+  return Response.json({ ok: true, sent, skipped, disabled: disabled.length }, { status: 200 });
 });

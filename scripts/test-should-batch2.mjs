@@ -449,7 +449,7 @@ test("plans: Rule A gates and the open-beta unlock", async () => {
   assert.equal(access.canAccessAdminModeration, false);
   assert.equal(gates.getTierAccess({ tier: "free" }, { openBeta: false }).scoutStoreSlots, 1);
   assert.equal(gates.TIER_PRICING.free.cta, "Included for everyone");
-  assert.equal(gates.TIER_PRICING.collector.cta, "On for everyone during beta");
+  assert.equal(gates.TIER_PRICING.collector.cta, "On for everyone");
   assert.doesNotMatch(gates.TIER_PRICING.free.features.join(" "), /Not included: total collection value/);
   assert.ok(src("docs/PLANS_AND_SERVICES.md").includes("Free covers everything an ordinary collector needs"));
 });

@@ -511,7 +511,6 @@ export default function VaultWorkspaceContent({ scope }) {
                             { label: "Open Profile", variant: "primary", onClick: () => setSelectedVaultDetailId(item.id) },
                             !isWishlistLikeVaultItem(item) ? { label: "Add to Trade Binder", onClick: () => openTradeValueFlow(item, { source: "vault-showcase-flip", sourceKind: "vault" }) } : null,
                             { label: "Save Price", onClick: () => openMarketPriceMemoryFlow(item, { source: "vault-showcase-save-price", seed: { itemName: item.name, price: totalValue || "", condition: conditionLabel } }) },
-                            { label: "Add to Set", disabled: true, title: "Add to Set is coming soon." },
                           ]}
                         />
                       );

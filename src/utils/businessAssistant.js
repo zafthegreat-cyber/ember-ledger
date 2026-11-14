@@ -264,7 +264,7 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
   }
 
   if (TIER_WORDS.test(text)) {
-    return response("Code 3 TCG public plans are Free, Collector, Family, Seller, and Shop. Everything is free during beta: there is nothing to pay and no checkout yet. Prices are set when beta closes, and you will be told before anything costs money. To turn on Collector, Family, Seller or Shop features now, ask the Code 3 team from Settings or the Membership page and we enable it by hand. Raw restock history and restock pattern tools stay private on every plan.", {
+    return response("Code 3 TCG public plans are Free, Collector, Family, Seller, and Shop. Everything is free: there is nothing to pay and no checkout. You will be told before anything costs money. To turn on Collector, Family, Seller or Shop features now, ask the Code 3 team from Settings or the Membership page and we enable it by hand. Raw restock history and restock pattern tools stay private on every plan.", {
       actions: ["Open Membership Foundation", "Message Admin", "Open Restocks Report"],
       category: "Account/beta access question",
     });

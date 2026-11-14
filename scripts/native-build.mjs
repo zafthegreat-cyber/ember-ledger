@@ -1,5 +1,5 @@
 import { loadEnv, build } from "vite";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { resolveNativeBuildNumber } from "./native-build-number.mjs";
 import { releasedProviders } from "../src/features/auth/socialAuth.mjs";
@@ -27,6 +27,8 @@ Object.assign(process.env, {
   VITE_BETA_LOCAL_MODE: "false",
   VITE_CODE3_LOCAL_AUTH_ENABLED: "false",
   VITE_NATIVE_BUILD: "true",
+  // Android push needs Firebase (google-services.json); without it the app must not register.
+  VITE_ANDROID_PUSH_CONFIGURED: !smoke && (existsSync(resolve("android/app/google-services.json")) || settings.CODE3_ANDROID_PUSH_CONFIGURED === "true") ? "true" : "false",
   VITE_SUPABASE_URL: smoke ? "" : settings.VITE_SUPABASE_URL,
   VITE_SUPABASE_ANON_KEY: smoke ? "" : settings.VITE_SUPABASE_ANON_KEY,
   VITE_AUTH_VERIFIED_PROVIDERS: smoke ? "" : releasedProviders(settings.VITE_AUTH_VERIFIED_PROVIDERS).join(","),
@@ -39,6 +41,15 @@ await build({
   plugins: [{ name: "code3-native-safe-viewport", transformIndexHtml: html => html.replace("viewport-fit=cover", "viewport-fit=contain") }],
   build: { outDir: "dist-native", rollupOptions: { input: "index.html" } },
 });
+// Product inspection photos stay on the website only: they are official product
+// photography and would push the Android bundle past Play's 200 MB limit. The
+// small SVG foil masks stay; the phone app's viewer never asks for the photos.
+const inspectionDir = resolve("dist-native/assets/inspection");
+if (existsSync(inspectionDir)) {
+  for (const entry of readdirSync(inspectionDir, { recursive: true })) {
+    if (/\.(jpe?g|png|webp|avif)$/i.test(String(entry))) rmSync(resolve(inspectionDir, String(entry)), { force: true });
+  }
+}
 const screenshotOcrModel = prepareNativeOcrModel(resolve("dist-native"));
 mkdirSync(resolve("artifacts/native"), { recursive: true });
 writeFileSync(resolve("artifacts/native/web-build.json"), JSON.stringify({

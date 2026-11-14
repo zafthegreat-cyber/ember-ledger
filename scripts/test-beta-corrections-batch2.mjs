@@ -46,7 +46,7 @@ test("A52–A55 plans read free during beta and name the team, not 'admin'", () 
   assert.ok(gates.TIER_ADD_ONS.find((addOn) => addOn.id === "seller_business_partner").status.includes("partner"));
   const locked = JSON.stringify(gates.getLockedFeatureDetails("forge_inventory"));
   assert.ok(!/ask admin/i.test(locked));
-  assert.match(gates.getUpgradePrompt("forge_inventory"), /free during beta/i);
+  assert.match(gates.getUpgradePrompt("forge_inventory"), /Everything is free/i);
 });
 
 test("A57–A59 sales carry channel fee defaults, shipping and returns", () => {

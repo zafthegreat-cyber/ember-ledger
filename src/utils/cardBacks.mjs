@@ -1,4 +1,5 @@
 import assets from "../data/cardBackAssets.json" with { type: "json" };
+import { NATIVE_BUILD } from "../config/nativeLaunchScope.js";
 import reviewed from "../data/reviewedCardBacks.json" with { type: "json" };
 import reviewedFronts from "../data/reviewedCardFronts.json" with { type: "json" };
 import { getRecordGame } from "./collectibleGames.mjs";
@@ -67,13 +68,16 @@ function reviewedCardArtwork(product, match, artworkAssets) {
   return artworkAssets[match.asset] || null;
 }
 
-export function inspectionCardBack(product = {}) {
+export function inspectionCardBack(product = {}, { native = NATIVE_BUILD } = {}) {
+  // Phone apps ship without /assets/inspection (official artwork; see native-build.mjs).
+  if (native) return null;
   const match = reviewed.products[String(product.tcgplayerProductId ?? "")];
   return match ? reviewedCardArtwork(product, match, reviewed.assets) : standardCardBack(product);
 }
 
 // Used only after existing front-image candidates fail. An exact signed printing
 // can never lend its photographed front to an ordinary or gold-stamped variant.
-export function inspectionCardFront(product = {}) {
+export function inspectionCardFront(product = {}, { native = NATIVE_BUILD } = {}) {
+  if (native) return null;
   return reviewedCardArtwork(product, reviewedFronts.products[String(product.tcgplayerProductId ?? "")], reviewedFronts.assets);
 }

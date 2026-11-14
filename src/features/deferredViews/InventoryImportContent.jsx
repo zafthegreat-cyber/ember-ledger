@@ -154,7 +154,7 @@ export default function InventoryImportContent({ scope }) {
           </div>
           {batchIntakeMode === BATCH_INTAKE_MODES.BULK_ADD ? (
             <div className="small-empty-state">
-              <strong>Bulk import mapping is coming soon.</strong>
+              <strong>Add several items at once.</strong>
               <span>You can paste rows or add multiple manual items now; each row still gets reviewed before anything saves.</span>
             </div>
           ) : null}
@@ -198,7 +198,7 @@ export default function InventoryImportContent({ scope }) {
           {importSourceType === "link" ? (
             <div className="empty-state">
               <h3>Link import beta</h3>
-              <p>Save source link, then attempt import if supported. Automatic link import is coming soon. You can paste the list or upload a CSV for now.</p>
+              <p>Save source link, then attempt import if supported. Links can't be imported automatically. Paste the list or upload a CSV instead.</p>
               <p className="compact-subtitle">Later examples: Google Sheets, Excel/OneDrive, TCGPlayer collection/export, PriceCharting collection/export, Collectr export, eBay inventory/drafts export, and Whatnot inventory/export if available.</p>
             </div>
           ) : null}

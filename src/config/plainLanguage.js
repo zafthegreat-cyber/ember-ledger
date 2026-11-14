@@ -1,4 +1,5 @@
 import { BRAND_CONFIG, formatBrandText } from "./brand.js";
+import { NATIVE_BUILD } from "./nativeLaunchScope.js";
 
 const EXACT_VISIBLE_LABELS = new Map([
   ["Ember & Tide", BRAND_CONFIG.applicationDisplayName],
@@ -152,12 +153,34 @@ export function renameLegacyProductNames(value = "") {
   return LEGACY_NAME_REPLACEMENTS.reduce((result, [pattern, replacement]) => result.replace(pattern, replacement), String(value ?? ""));
 }
 
-export function plainLanguageText(value = "") {
+// The store apps must not describe themselves as a beta (App Store guideline
+// 2.2), so the Android/iOS build drops "beta" from visible text. Card names such
+// as "Limited Edition Beta" are left alone.
+const keepCase = (match, word) => (match[0] === match[0].toUpperCase() ? word[0].toUpperCase() + word.slice(1) : word);
+const BETA_WORDING_REPLACEMENTS = [
+  [/\bbeta (feedback|access|users?|requests?|invites?|approvals?|status|path|launch|limitation|roadmap|readiness|data|build|ui|app|web app|preview|planning|helper|note|mode|reports?|records?|testers?|questions?)\b/gi, (match, word) => (/^[A-Z]{2,}$/.test(word) ? word : keepCase(match, word.toLowerCase()))],
+  [/\b(?:joining|join|in|into|to) the (?:private |public |open )?beta\b/gi, (match) => match.replace(/(?:private |public |open )?beta$/i, "app")],
+  [/\s*\b(?:during|in|for) (?:the )?(?:private |public |open )?beta\b/gi, ""],
+  [/\b(private|public|open|local|current|approved) beta\b/gi, (match, word) => word],
+  [/\b(the|this|our) beta\b/gi, (match, article) => `${article} app`],
+  [/\s*\bbeta\b/gi, ""],
+];
+export function removeBetaWording(value = "") {
+  const source = String(value ?? "");
+  if (!/\bbeta\b/i.test(source) || /\b(alpha|edition|unlimited)\b/i.test(source)) return source;
+  if (/^\s*beta\s*$/i.test(source)) return source.replace(/beta/i, "New");
+  const next = BETA_WORDING_REPLACEMENTS.reduce((result, [pattern, replacement]) => result.replace(pattern, replacement), source);
+  const tidy = next.replace(/ {2,}/g, " ").replace(/ ([.,;:!?)])/g, "$1");
+  return /^\s/.test(source) ? tidy : tidy.replace(/^\s+/, "").replace(/^[a-z]/, (letter) => (/^[A-Z]/.test(source) ? letter.toUpperCase() : letter));
+}
+
+export function plainLanguageText(value = "", { native = NATIVE_BUILD } = {}) {
   const source = String(value ?? "");
   const exact = EXACT_VISIBLE_LABELS.get(source.trim());
   if (exact && source.trim() === source) return exact;
   const phrased = VISIBLE_PHRASE_REPLACEMENTS.reduce((result, [pattern, replacement]) => result.replace(pattern, replacement), formatBrandText(source));
-  return renameLegacyProductNames(phrased);
+  const renamed = renameLegacyProductNames(phrased);
+  return native ? removeBetaWording(renamed) : renamed;
 }
 
 const VISIBLE_ATTRIBUTES = ["aria-label", "title", "placeholder", "alt"];

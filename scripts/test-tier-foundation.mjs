@@ -24,12 +24,12 @@ assert.deepEqual(
 assert.equal(TIER_PRICING.free.price, "$0");
 // Billing is off during beta (83884c3): paid tiers show "Free during beta" and
 // promise notice before anything is charged, instead of beta dollar prices.
-assert.match(TIER_PRICING.collector.price, /Free during beta/);
+assert.equal(TIER_PRICING.collector.price, "Free");
 assert.match(TIER_PRICING.collector.trialCopy, /told before anything costs money/i);
-assert.match(TIER_PRICING.family.price, /Free during beta/);
+assert.equal(TIER_PRICING.family.price, "Free");
 assert.match(TIER_PRICING.family.features.join(" "), /2 kid profiles — not available yet/i);
-assert.match(TIER_PRICING.seller.price, /Free during beta/);
-assert.match(TIER_PRICING.shop.price, /Free during beta for approved shops/);
+assert.equal(TIER_PRICING.seller.price, "Free");
+assert.equal(TIER_PRICING.shop.price, "Free for approved shops");
 assert.match(TIER_PRICING.shop.trialCopy, /reviewed by the Code 3 team/i);
 assert.match(TIER_PRICING.shop.futurePrice, /no checkout yet/i);
 assert.match(TIER_PRICING.shop.features.join(" "), /admin-reviewed, not automatic payment-based/i);
@@ -39,16 +39,16 @@ for (const planId of [PLAN_IDS.COLLECTOR, PLAN_IDS.FAMILY, PLAN_IDS.SELLER, PLAN
 
 assert.match(TIER_DISPLAY_GUIDANCE.free.gateCopy, /1 watched store/i);
 assert.match(TIER_DISPLAY_GUIDANCE.free.gateCopy, /30 days/i);
-assert.match(TIER_DISPLAY_GUIDANCE.collector.gateCopy, /free during beta/i);
+assert.match(TIER_DISPLAY_GUIDANCE.collector.gateCopy, /| free.$/);
 assert.match(TIER_DISPLAY_GUIDANCE.seller.gateCopy, /do not unlock raw restock history/i);
 assert.match(TIER_DISPLAY_GUIDANCE.shop.gateCopy, /admin-reviewed/i);
 
-assert.ok(TIER_ADD_ONS.some((addOn) => addOn.label === "Extra kid profile" && addOn.price === "Free during beta"));
-assert.ok(TIER_ADD_ONS.some((addOn) => addOn.label === "Extra adult family member" && addOn.price === "Free during beta"));
-assert.ok(TIER_ADD_ONS.some((addOn) => addOn.label === "Extra watched store" && addOn.price === "Free during beta"));
-assert.ok(TIER_ADD_ONS.some((addOn) => addOn.label === "Seller/business partner seat" && addOn.price === "Free during beta"));
-assert.ok(TIER_ADD_ONS.some((addOn) => addOn.label === "Shop staff seat" && addOn.price === "Free during beta"));
-assert.ok(TIER_ADD_ONS.some((addOn) => addOn.label === "Extra shop location" && addOn.price === "Free during beta"));
+assert.ok(TIER_ADD_ONS.some((addOn) => addOn.label === "Extra kid profile" && addOn.price === "Free"));
+assert.ok(TIER_ADD_ONS.some((addOn) => addOn.label === "Extra adult family member" && addOn.price === "Free"));
+assert.ok(TIER_ADD_ONS.some((addOn) => addOn.label === "Extra watched store" && addOn.price === "Free"));
+assert.ok(TIER_ADD_ONS.some((addOn) => addOn.label === "Seller/business partner seat" && addOn.price === "Free"));
+assert.ok(TIER_ADD_ONS.some((addOn) => addOn.label === "Shop staff seat" && addOn.price === "Free"));
+assert.ok(TIER_ADD_ONS.some((addOn) => addOn.label === "Extra shop location" && addOn.price === "Free"));
 
 // Open beta (2026-11-14): by default every member plan's limits are unlocked.
 const openBetaFree = getTierAccess({ tier: "free", betaTester: true });
@@ -125,7 +125,7 @@ assert.match(protectedScoutLock.guardrail, /all-store timing data/i);
 
 const sellerLock = getLockedFeatureDetails("seller_tools");
 assert.match(sellerLock.title, /Seller tools are gated/i);
-assert.match(sellerLock.action, /free during beta; there is nothing to pay yet/i);
+assert.match(sellerLock.action, /Everything is free; there is nothing to pay/i);
 
 const familyLock = getLockedFeatureDetails("kid_profiles");
 assert.match(familyLock.title, /Family support is gated/i);
@@ -141,8 +141,8 @@ const tierAnswer = buildEmberAssistFallbackResponse(
 );
 assert.match(tierAnswer.answer, /Free, Collector, Family, Seller, and Shop/);
 // 83884c3 replaced the per-tier beta price list with "free during beta" copy.
-assert.match(tierAnswer.answer, /Everything is free during beta/);
-assert.match(tierAnswer.answer, /no checkout yet/i);
+assert.match(tierAnswer.answer, /Everything is free: there is nothing to pay/);
+assert.match(tierAnswer.answer, /no checkout/i);
 assert.match(tierAnswer.answer, /told before anything costs money/i);
 assert.match(tierAnswer.answer, /ask the Code 3 team/i);
 assert.doesNotMatch(tierAnswer.answer, /\$\d/, "tier answer should not quote dollar prices during beta");
@@ -154,9 +154,9 @@ assert.match(appSource, /Upgrade Value Preview/, "upgrade preview label should r
 assert.match(appSource, /What upgrading unlocks next/, "Hearth should explain upgrade value");
 assert.match(appSource, /Local beta/, "upgrade previews should be honest about local beta status");
 assert.match(appSource, /Available in upgraded plans when enabled/, "upgrade previews should avoid live entitlement promises");
-assert.match(appSource, /Coming with connected accounts/, "connected-account-dependent value should be labeled as future backend work");
+assert.match(appSource, /Limits apply to this device for now\./, "device-only limits should be labeled honestly");
 assert.match(appSource, /No add-on checkout is connected\. Upgrades and seller\/shop access remain reviewed beta actions\./, "the active Membership page should state that checkout is not connected");
-assert.match(appSource, /label: "Checkout",\s+value: "Not live"/, "the active Membership status should keep checkout unavailable");
+assert.match(appSource, /label: "Checkout",\s+value: "None"/, "the active Membership status should keep checkout unavailable");
 
 const unsafeUpgradeClaimPatterns = [
   /Live alerts are enabled/i,

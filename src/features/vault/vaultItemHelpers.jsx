@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components -- plain helpers (a few return JSX), no components here */
 // Moved out of App.jsx unchanged (Nov 15, 2026) to shrink the main component file.
 import { getProductImageFallback, getProductImageUrl } from "../../utils/productDisplayUtils";
+import { nativeAllowsRemoteProductImage } from "../../config/nativeLaunchScope.js";
 import { getCardNumber as getSetMasteryCardNumber, getVariantLabel as getSetMasteryVariantLabel } from "../../utils/vaultSetMastery";
 import { hasKnownPriceValue } from "../../utils/pricingReliabilityUtils";
 import { safeReadBrowserJson, safeWriteBrowserJson } from "../../utils/betaDataCleanup";
@@ -17,7 +18,7 @@ function renderGenericProductImageFallback(product = {}, options = {}) {
     <div className={className} hidden={Boolean(options.hidden)}>
       <strong>{fallback.title}</strong>
       <span>{fallback.meta}</span>
-      <b>{options.badge || "Photo coming soon"}</b>
+      <b>{options.badge || "No photo yet"}</b>
     </div>
   );
 }
@@ -389,7 +390,8 @@ function collectorVisualTypeLabel(value = "") {
 }
 
 function vaultItemDisplayImage(item = {}) {
-  return item.displayImage || item.itemImage || item.item_image || item.imageUrl || item.image_url || item.catalogImageUrl || item.productImageUrl || getCatalogImage(item);
+  const image = item.displayImage || item.itemImage || item.item_image || item.imageUrl || item.image_url || item.catalogImageUrl || item.productImageUrl || getCatalogImage(item);
+  return nativeAllowsRemoteProductImage(image) ? image : getCatalogImage(item);
 }
 
 const MASTER_CARD_VARIANT_LABELS = {

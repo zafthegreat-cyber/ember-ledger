@@ -1313,7 +1313,6 @@ function VaultItemDetailContent({ item, marketItem, masterCard, setSummary, link
             !itemIsWishlist ? { label: "Add to Trade Binder", onClick: () => onStartTrade?.(item) } : null,
             { label: "Save Price", onClick: () => onSavePriceMemory?.(item) },
             { label: "Compare", onClick: () => onAddToCompare?.(item) },
-            { label: "Add to Set", disabled: true, title: "Add to Set is coming soon." },
           ]}
         />
         <PremiumCardImage
@@ -1569,14 +1568,13 @@ function VaultItemDetailContent({ item, marketItem, masterCard, setSummary, link
           {!itemIsWishlist ? <button type="button" className="secondary-button" onClick={() => onStartTrade?.(item)}>Use in Business</button> : null}
           <button type="button" className="secondary-button" onClick={() => onCheckMarket?.(item)}>Check in Market</button>
           <button type="button" className="secondary-button" onClick={() => onAddToCompare?.(item)}>Compare</button>
-          <button type="button" className="secondary-button" disabled title="Add to Set is coming soon.">Add to set</button>
           {itemIsWishlist ? <button type="button" onClick={() => onMarkOwned?.(item)}>Mark owned</button> : null}
           {setSummary ? <button type="button" className="secondary-button" onClick={() => onViewSet?.(setSummary)}>View Set</button> : null}
           <button type="button" className="secondary-button" onClick={() => onAttachReceipt?.(item)}>Attach receipt</button>
           <button type="button" className="secondary-button" onClick={() => onQuickUpdateMarketValue?.(item)}>Review value</button>
           {showVaultSellerTools ? <button type="button" className="secondary-button" disabled={Number(item.quantity || 0) < 1} onClick={() => onMoveToForge(item)}>Move to Business</button> : null}
         </div>
-        <small>{collectionSetCount ? `${collectionSetCount} Set Shelf group${collectionSetCount === 1 ? "" : "s"} available. Add to set is Coming Soon.` : "Create a Set Shelf first, then add items later when assignment is enabled."}</small>
+        <small>{collectionSetCount ? `${collectionSetCount} Set Shelf group${collectionSetCount === 1 ? "" : "s"} available.` : "Create a Set Shelf to group items by set."}</small>
       </section>
       {purchaserDetailRows.length ? (
         <div className="vault-detail-group-summary" aria-label="Grouped inventory details">

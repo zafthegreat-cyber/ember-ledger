@@ -197,7 +197,7 @@ export default function ProfileContent({ scope }) {
               ))}
             </div>
             <div className="you-simple-footer">
-              <span>{betaAccessAllowed() ? "Beta access: on" : "Beta access: limited"} · {TIER_LABELS[currentTier] || "Free"} plan, free during beta · {scoutGuessPoints} restock points</span>
+              <span>{TIER_LABELS[currentTier] || "Free"} plan, free · {scoutGuessPoints} restock points</span>
               {signedInWithSupabase && typeof signOut === "function" ? <button type="button" className="secondary-button you-simple-sign-out" onClick={signOut}>Sign out</button> : null}
             </div>
           </>

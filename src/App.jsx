@@ -14,6 +14,7 @@ import BarcodeScanner from "./components/BarcodeScanner.jsx";
 import ItemPhoto from "./components/ItemPhoto.jsx";
 import DeferredModalBoundary from "./features/deferredViews/DeferredModalBoundary";
 import NationwideLocationPicker from './components/NationwideLocationPicker.jsx';
+import { NATIVE_BUILD, isHiddenInNativeApp } from "./config/nativeLaunchScope.js";
 import {nearbyCoordinatesForText} from './utils/nearbyPreference.mjs';
 import { compactSavedStores } from "./utils/storeDirectoryPersistence.js";
 import { isBlockedAuthor, useBlockedUsers } from "./utils/blockedUsers.js";
@@ -28,6 +29,7 @@ import { readFeedbackDraft, saveFeedbackDraft, clearFeedbackDraft } from "./feat
 import CommunityWelcome, { MemberAccessNotice } from "./features/auth/CommunityWelcome.jsx";
 import { hasServerAppAccessDecision } from "./features/auth/memberAccess.mjs";
 import { isNativePlatform, getNativeAuthRedirect } from "./native/nativeRuntime.js";
+import { enableNativePush, listenForPushOpens, nativePushSupport } from "./native/pushNotifications.js";
 import { exportFile, exportFileStatus, exportFileError } from "./native/nativeFiles.js";
 // Audit 2026-11-14: loaded only when the cloud-saving page opens; it pulls in the backup,
 // restore and validation code (~490 KB) that the first page does not need.
@@ -90,7 +92,6 @@ import {
 } from "./features/workspaces/workspacePreference";
 import { OWNED_ITEM_PURPOSES, changeOwnedItemPurpose } from "./features/ownedItems/ownedItemPurpose";
 import { createEmptyOwnerCenterState, createOwnerCenterRepository } from "./features/ownerCenter/ownerCenterRepository";
-import { enableNativePush, nativePushAvailable } from "./native/pushNotifications.js";
 import { loadCommunityPosts, mergeServerPosts, moderateCommunityPost, serverRowToPostOverrides, submitCommunityPost, toServerModerationStatus } from "./features/community/communityServer.js";
 import {
   OWNER_SESSION_STATES,
@@ -468,6 +469,7 @@ import {
 } from "./utils/adminCommandCenterUtils";
 import {
   IN_APP_ALERT_DISCLOSURE,
+  NATIVE_ALERT_DISCLOSURE,
   NOTIFICATION_PREFERENCE_ROWS,
   buildNotificationsFromEvents,
   normalizeNotificationPreferences,
@@ -2650,7 +2652,7 @@ const UPGRADE_VALUE_PREVIEWS = {
     detail: "A beta-safe preview of how higher plans add more tracking capacity and planning room without changing today's local-first tools.",
     now: "Free keeps Home, Vault, Restocks basics, Market search, The Spark, and helper guidance useful now.",
     upgrade: "Plus and Family plans add more saved planning depth when enabled.",
-    status: "Local beta preview. Coming with connected accounts for account-wide limits later.",
+    status: "Limits apply to this device for now.",
     bullets: ["More cross-page reminders", "Deeper saved history", "Family planning context"],
   },
   scout: {
@@ -2666,7 +2668,7 @@ const UPGRADE_VALUE_PREVIEWS = {
     detail: "Collection organization can grow beyond the starter Vault without implying live pricing or backend inventory changes.",
     now: "Free keeps item profiles, collection sets, wishlist, sealed product, and review-first adds.",
     upgrade: "Upgraded plans can expand sets, profile depth, and family organization when enabled.",
-    status: "Local beta preview. Connected-account expansion comes later.",
+    status: "Works on this device.",
     bullets: ["More set planning", "Deeper item profiles", "Family collection organization"],
   },
   forge: {
@@ -2682,7 +2684,7 @@ const UPGRADE_VALUE_PREVIEWS = {
     detail: "Market can remember more manual price snapshots without claiming live pricing or availability.",
     now: "Free keeps fair price discovery, search, freshness copy, and manual Price Memory.",
     upgrade: "Collector and Seller previews can add more saved price memories and comparison slots when enabled.",
-    status: "Local beta preview. Not Live Pricing and no checkout or stock guarantee.",
+    status: "Price research only. No checkout or stock guarantee.",
     bullets: ["More saved prices", "More comparison slots", "Cleaner research history"],
   },
   spark: {
@@ -2690,7 +2692,7 @@ const UPGRADE_VALUE_PREVIEWS = {
     detail: "Family and Spark planning can expand while gifts, kid packs, and support records remain preview/local-only.",
     now: "Free keeps The Spark, Kid Packs, Giving Ledger, and parent-safe support framing.",
     upgrade: "Family/Spark previews can expand kid-pack planning, giving history, and event support tools when enabled.",
-    status: "Local beta preview. No payment processing, tax receipt, or private child messaging.",
+    status: "No payment processing, tax receipt, or private child messaging.",
     bullets: ["More kid-pack planning", "More support history", "Event support planning"],
   },
   tidepool: {
@@ -6726,12 +6728,13 @@ export default function App() {
     preview: { enabled: tierPreviewActive, tier: adminPreviewTier, persona: adminPreviewPersona },
   });
   const optionalExperienceTools = appSetupPersonalization?.optionalTools || {};
-  const showFamilyExperience = appReviewAccessActive || (experiencePresentation.isPreview
+  // Phone apps leave Community and the family/kids screens out at launch (config/nativeLaunchScope.js).
+  const showFamilyExperience = !NATIVE_BUILD && (appReviewAccessActive || (experiencePresentation.isPreview
     ? experiencePresentation.showFamilyTools
     : appSetupPersonalization?.optionalToolsCustomized?.includes("family")
       ? optionalExperienceTools.family === true
-      : experiencePresentation.showFamilyTools || optionalExperienceTools.family === true);
-  const showCommunityExperience = appReviewAccessActive || experiencePresentation.showAdminTools || (!experiencePresentation.isPreview && optionalExperienceTools.community === true);
+      : experiencePresentation.showFamilyTools || optionalExperienceTools.family === true));
+  const showCommunityExperience = !NATIVE_BUILD && (appReviewAccessActive || experiencePresentation.showAdminTools || (!experiencePresentation.isPreview && optionalExperienceTools.community === true));
   const showAssistantExperience = appReviewAccessActive || experiencePresentation.showAdminTools || (!experiencePresentation.isPreview && optionalExperienceTools.assistant === true);
   const ownerToolsVisible = experiencePresentation.showOwnerTools;
   const regularPreviewPlanProfile = actualAdminUser && !adminViewingAsAdmin
@@ -7157,7 +7160,7 @@ export default function App() {
     showCommunityExperience ? mobileMenuByKey.tidepool : null,
     showFamilyExperience ? mobileMenuByKey.spark : null,
     showFamilyExperience ? mobileMenuByKey.parentCenter : null,
-    experiencePresentation.isStore || experiencePresentation.showAdminTools ? mobileMenuByKey.shopPortal : null,
+    !NATIVE_BUILD && (experiencePresentation.isStore || experiencePresentation.showAdminTools) ? mobileMenuByKey.shopPortal : null,
     experiencePresentation.showAdminTools ? mobileMenuByKey.announcements : null,
   ].filter(Boolean);
   const menuToolItems = [
@@ -13613,7 +13616,7 @@ export default function App() {
       const row = makeImportRow({
         originalText: importLink,
         itemName: "Saved inventory source link",
-        notes: "Automatic link import is coming soon. You can paste the list or upload a CSV for now.",
+        notes: "Links can't be imported automatically. Paste the list or upload a CSV instead.",
         source: importLink,
       }, "link", 0);
       setImportRows([row]);
@@ -13761,7 +13764,7 @@ export default function App() {
     if (forgeImportForm.importType === "Sales") {
       setForgeImportForm((current) => ({
         ...current,
-        mappingNotes: "Sales import mapping is coming soon. Manual sale entry is available now; this file was previewed but no sale records were saved.",
+        mappingNotes: "Sales files are previewed only and no sale records were saved. Enter sales manually.",
       }));
       setVaultToast("Sales import preview is staged for mapping only. No sale records were saved.");
       return;
@@ -30622,19 +30625,24 @@ function renderForgeBusinessLedgerPanel() {
     return searchSetsByName(query, vaultSetLibraryRows, { limit: 4 });
   }, [catalogSearchHasRun, submittedCatalogSearch, catalogSearch, catalogSetFilter, vaultSetLibraryRows]);
   // Kid-safe view (A48–A51): derived from the profile's declared collector/account type.
-  const kidSafeView = !adminViewingAsAdmin && isKidSafeProfile(currentUserProfile || {}, shorelineState.betaRequest || {});
+  const kidProfileDeclared = isKidSafeProfile(currentUserProfile || {}, shorelineState.betaRequest || {});
+  const kidSafeView = !adminViewingAsAdmin && kidProfileDeclared;
+  // Store audit 2026-11-14: tell the server once, so its rules that keep minors from
+  // posting reports, guesses and listings apply to this account too. Only staff can undo it.
+  const minorMarkedForUserRef = useRef("");
+  useEffect(() => {
+    const userId = user?.id;
+    // A real Supabase user id (not the local test user) means a signed-in account.
+    if (!kidProfileDeclared || actualAdminUser || !supabase || !isUuidLike(userId)) return;
+    if (currentUserProfile?.isMinor === true || minorMarkedForUserRef.current === userId) return;
+    minorMarkedForUserRef.current = userId;
+    // A failed call is retried on the next profile load.
+    supabase.rpc("mark_my_account_minor").then(({ error }) => {
+      if (error) minorMarkedForUserRef.current = "";
+    });
+  }, [kidProfileDeclared, actualAdminUser, user?.id, currentUserProfile?.isMinor]);
   // Audit 2026-11-14: crash reports start at boot, so tell them when a kid view is active (events are dropped).
   useEffect(() => { setCrashReportingKidSafe(kidSafeView); }, [kidSafeView]);
-  // Nov 15 (kid safety on the server): when a signed-in account declares it belongs to a kid,
-  // record that on the server once. The database then blocks posting, restock reports and
-  // listings for this account even if the app is bypassed; only staff can undo it.
-  const minorMarkedRef = useRef(false);
-  useEffect(() => {
-    if (!kidSafeView || minorMarkedRef.current || BETA_LOCAL_MODE || !isSupabaseConfigured || !supabase) return;
-    if (!user?.id || user.id === "local-beta" || currentUserProfile?.isMinor) return;
-    minorMarkedRef.current = true;
-    supabase.rpc("mark_my_account_minor").then(({ error }) => { if (error) minorMarkedRef.current = false; });
-  }, [kidSafeView, user?.id, currentUserProfile?.isMinor]);
   // A50: kid profiles see "—" instead of dollar amounts on every page that takes `money` as a prop.
   const displayMoney = kidSafeView ? () => "—" : money;
   const featureGateOptions = {
@@ -31116,7 +31124,11 @@ function renderForgeBusinessLedgerPanel() {
     shellRouteOwnership?.requiredAuthority === AUTHORITY_REQUIREMENTS.VERIFIED_OWNER ||
     ["adminReview", "moderator", "betaReadiness"].includes(activeTab)
   );
-  const activeTabLocked = previewRouteUnavailable || Boolean(activeTabFeature && FEATURE_GATES_ENABLED && !featureAllowed(activeTabFeature));
+  const nativeHiddenTab = isHiddenInNativeApp(activeTab);
+  const activeTabLocked = nativeHiddenTab || previewRouteUnavailable || Boolean(activeTabFeature && FEATURE_GATES_ENABLED && !featureAllowed(activeTabFeature));
+  useEffect(() => {
+    if (nativeHiddenTab) setActiveTab("dashboard");
+  }, [nativeHiddenTab]);
   const startupAnnouncementsAvailable = getPersistedNotificationRows().some(canShowAnnouncement);
   const startupOnboardingDue = shouldRenderFirstRunOnboarding();
 
@@ -31246,7 +31258,7 @@ function renderForgeBusinessLedgerPanel() {
         {publicBetaSubmissionComplete ? (
           <div className={`public-beta-submit-state ${feedbackSubmitState.persisted === "backend" ? "is-cloud" : "is-local"}`} role="status">
             <span className="section-kicker">{feedbackSubmitState.persisted === "backend" ? "Submitted" : "Queued locally"}</span>
-            <h3>{feedbackSubmitState.persisted === "backend" ? "Thank you - your beta feedback helps shape Code 3 TCG." : "Feedback capture connection coming soon."}</h3>
+            <h3>{feedbackSubmitState.persisted === "backend" ? "Thank you - your feedback helps shape Code 3 TCG." : "Saved on this device. Email support@code3tcg.com if you need a reply."}</h3>
             <p>{feedbackSubmitState.message}</p>
             <p>Reference: <code>{feedbackSubmitState.reference}</code>. Keep this with any follow-up. A reference for a local queue is not confirmation that staff received it.</p>
             {feedbackSubmitState.persisted !== "backend" ? (
@@ -33413,22 +33425,41 @@ function renderForgeBusinessLedgerPanel() {
     announceNewNotifications(latestNotificationRows.current, { firstRun: deviceNotificationFirstRun.current, mutedIds: pausedAlertIds(latestNotificationRows.current, latestAlertPauses.current.rows, Date.now(), { suppressActiveSource: true }) });
     deviceNotificationFirstRun.current = false;
   }, [notificationRowSignature]);
-  const [deviceNotificationState, setDeviceNotificationState] = useState(() => deviceNotificationSupport());
-  // Phone app: refresh this device's push token for the signed-in account when permission was already given.
+  // Phones use real push notifications (src/native/pushNotifications.js); browsers keep the Notification API.
+  const nativeAlerts = isNativePlatform();
+  const [deviceNotificationState, setDeviceNotificationState] = useState(() => (
+    nativeAlerts ? { supported: true, permission: "prompt", label: "Phone alerts are off. Turn them on to get a notification when a watched store restocks." } : deviceNotificationSupport()
+  ));
+  const pushAccountClient = signedInWithSupabase && isUuidLike(user?.id) ? supabase : null;
   useEffect(() => {
-    if (!nativePushAvailable() || BETA_LOCAL_MODE || !isSupabaseConfigured || !supabase || !user?.id || user.id === "local-beta") return;
-    enableNativePush({ supabase, prompt: false }).then((result) => { if (result.ok) setDeviceNotificationState({ supported: true, permission: "granted", label: result.label }); });
-  }, [user?.id]);
+    if (!nativeAlerts) return undefined;
+    let active = true;
+    nativePushSupport().then((support) => {
+      if (!active) return;
+      setDeviceNotificationState(support);
+      // Tokens can change; refresh this device's token for the signed-in account.
+      if (support.permission === "granted" && pushAccountClient) enableNativePush({ client: pushAccountClient, appVersion: APP_VERSION }).then((next) => { if (active) setDeviceNotificationState(next); });
+    });
+    return () => { active = false; };
+  }, [nativeAlerts, pushAccountClient]);
+  useEffect(() => {
+    if (!nativeAlerts) return undefined;
+    let stop = () => {};
+    listenForPushOpens((path) => {
+      history.pushState({}, "", path);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    }).then((remove) => { stop = remove; });
+    return () => stop();
+  }, [nativeAlerts]);
   async function enableDeviceNotifications() {
-    if (nativePushAvailable()) {
-      const result = await enableNativePush({ supabase: isSupabaseConfigured && user?.id && user.id !== "local-beta" ? supabase : null });
-      setDeviceNotificationState({ supported: true, permission: result.ok ? "granted" : result.permission, label: result.label });
-      setVaultToast(result.label);
+    if (nativeAlerts && !pushAccountClient) {
+      setVaultToast("Sign in to turn on phone alerts.");
       return;
     }
-    const next = await requestDeviceNotifications();
+    const next = nativeAlerts ? await enableNativePush({ client: pushAccountClient, appVersion: APP_VERSION }) : await requestDeviceNotifications();
     setDeviceNotificationState(next);
-    setVaultToast(next.permission === "granted" ? "Device alerts are on for this browser." : next.label);
+    const turnedOn = nativeAlerts ? next.registration === "registered" : next.permission === "granted";
+    setVaultToast(turnedOn ? (nativeAlerts ? "Phone alerts are on." : "Device alerts are on for this browser.") : next.label);
   }
 
 
@@ -36964,7 +36995,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       });
       if (!confirmed) return;
     } else if (!replaceStoreId && watchedRows.length >= scoutWatchSlotLimit() && !tierAccess.isAdmin) {
-      setVaultToast("You are at your watched-store limit. Change an existing store or ask the Code 3 team for an extra watched store (free during beta).");
+      setVaultToast("You are at your watched-store limit. Change an existing store or ask the Code 3 team for an extra watched store (free).");
       return;
     }
     applyStoreMapWatchState(row, true, { replaceStoreId });
@@ -37725,7 +37756,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   function renderNotificationCenter() {
     return <div className="notification-center-shell">
       <button type="button" className="notification-bell-button" aria-label={`Notifications${notificationUnreadCount ? `, ${notificationUnreadCount} unread` : ""}`} aria-expanded={notificationCenterOpen} aria-controls={notificationCenterOpen ? "notification-center-panel" : undefined} onClick={() => notificationCenterOpen ? closeNotificationCenter() : setNotificationCenterOpen(true)}><AppNavIcon kind="bell" />{notificationUnreadCount ? <span>{notificationUnreadCount}</span> : null}</button>
-      {notificationCenterOpen && <NotificationInbox key={`${user?.id || 'local-beta'}:${activeWorkspace?.id || 'personal'}`} notifications={notificationCenterRows} unreadCount={notificationUnreadCount} deviceState={deviceNotificationState} disclosure={IN_APP_ALERT_DISCLOSURE} onEnableDevice={enableDeviceNotifications} onRead={markNotificationRead} onReadAll={markAllNotificationsRead} onOpen={openNotificationTarget} onArchive={dismissNotification} onClose={closeNotificationCenter} closeRef={notificationCloseRef} pauses={alertPauses.rows} now={alertPauses.now} onPauseSource={alertPauses.pause} onResumeSource={alertPauses.resume} />}
+      {notificationCenterOpen && <NotificationInbox key={`${user?.id || 'local-beta'}:${activeWorkspace?.id || 'personal'}`} notifications={notificationCenterRows} unreadCount={notificationUnreadCount} deviceState={deviceNotificationState} disclosure={nativeAlerts ? NATIVE_ALERT_DISCLOSURE : IN_APP_ALERT_DISCLOSURE} enableLabel={nativeAlerts ? "Turn on phone alerts" : "Turn on device alerts"} onEnableDevice={enableDeviceNotifications} onRead={markNotificationRead} onReadAll={markAllNotificationsRead} onOpen={openNotificationTarget} onArchive={dismissNotification} onClose={closeNotificationCenter} closeRef={notificationCloseRef} pauses={alertPauses.rows} now={alertPauses.now} onPauseSource={alertPauses.pause} onResumeSource={alertPauses.resume} />}
     </div>;
   }
 
@@ -38710,7 +38741,6 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             {linkActions.map((entry) => (
               <button type="button" key={entry.label} onClick={entry.action}>{entry.label}</button>
             ))}
-            <button type="button" className="secondary-button" onClick={() => setVaultToast("Follow links are coming soon for beta launch.")}>Follow Code 3 TCG</button>
           </div>
           <div className="beta-foundation-grid">
             {BETA_REF_CODES.map((code) => <span className="status-badge" key={code}>{code}</span>)}
@@ -43085,11 +43115,6 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </Field>
         </section>
 
-        <section className="vault-collection-set-helper-card" aria-label="Add to Set coming soon">
-          <strong>Add to Set</strong>
-          <span>Soon you{"\u2019"}ll be able to tuck Vault items directly into this set.</span>
-        </section>
-
         {vaultCollectionSetMessage ? <p className="field-error trade-value-message" role="status">{vaultCollectionSetMessage}</p> : null}
 
         <div className="quick-actions trade-value-actions vault-collection-set-actions">
@@ -44601,7 +44626,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <summary>Preview detected columns and mapping</summary>
           {forgeImportForm.importType === "Sales" ? (
             <p className="flow-inline-message is-info">
-              Sales import mapping is coming soon. Manual sale entry is available now; this preview helps you confirm date, platform, item name, quantity, gross sale, fees, shipping, net payout, and notes before a future import save.
+              Sales files are previewed only; nothing is saved from them. Check the date, platform, item name, quantity, gross sale, fees, shipping, net payout and notes, then enter sales manually.
             </p>
           ) : null}
           {forgeImportForm.detectedColumns.length ? (
@@ -46034,7 +46059,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div>
             <p className="section-kicker">Account setup</p>
             <strong>Pick the setup that matches how you collect.</strong>
-            <p className="compact-subtitle">Setup labels only change what the app shows first. Everything is free during beta.</p>
+            <p className="compact-subtitle">Setup labels only change what the app shows first. Everything is free.</p>
           </div>
         </div>
         <div className="account-setup-tier-grid">
@@ -46238,7 +46263,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <article className="settings-preference-panel">
             <span>Notifications</span>
             <strong>In-app alerts</strong>
-            <p>{IN_APP_ALERT_DISCLOSURE}</p>
+            <p>{nativeAlerts ? NATIVE_ALERT_DISCLOSURE : IN_APP_ALERT_DISCLOSURE}</p>
             <div className="settings-toggle-stack">
               {NOTIFICATION_PREFERENCE_ROWS.slice(0, 4).map((row) => (
                 <label className="toggle-row" key={row.key}>
@@ -46309,7 +46334,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <p className="compact-subtitle account-essentials-email">{user?.email || accountStatusDescription}</p>
               </div>
               <dl className="drawer-status-list account-essentials-list">
-                <div><dt>Plan</dt><dd>{TIER_LABELS[currentTier] || "Free"} · free during beta</dd></div>
+                <div><dt>Plan</dt><dd>{TIER_LABELS[currentTier] || "Free"} · free</dd></div>
                 <div><dt>Setup</dt><dd>{adminViewingAsAdmin ? actualAdminRole : experiencePresentation.personaLabel} <button type="button" className="auth-text-button" onClick={() => openUtilityPage("settings")}>Change</button></dd></div>
                 <div><dt>Your records</dt><dd>{cloudSyncPreference === "cloud" ? "On this device, cloud copy requested" : "On this device"}</dd></div>
               </dl>
@@ -46363,7 +46388,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <form className="drawer-info-card utility-card" onSubmit={handleAuth} noValidate>
                 <SocialSignInButtons />
                 <strong>{authMode === "login" ? "Sign in" : "Create account"}</strong>
-                <p className="compact-subtitle">Everything is free during beta. Your account works right away once you confirm your email.</p>
+                <p className="compact-subtitle">Everything is free. Your account works right away once you confirm your email.</p>
                 {!isSupabaseConfigured ? <p className="compact-subtitle danger-text">Account sign-in is temporarily unavailable. Please try again later.</p> : null}
                 {authMode === "signup" ? (
                   <>
@@ -48798,10 +48823,6 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     placeholder="Phone, tablet, desktop, browser, or anything that might help."
                   />
                 </Field>
-                <div className="small-empty-state">
-                  <strong>Optional screenshot - coming soon</strong>
-                  <p>Screenshot upload is not connected yet. For now, describe what you saw or export beta data if support needs details.</p>
-                </div>
               </>
             )}
             {!publicBetaFeedbackActive && feedbackSubmitState.error ? (
@@ -50591,7 +50612,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <button type="button" className="primary-button" onClick={() => setActiveTab("dashboard")}>Preview Home</button>
             <button type="button" className="secondary-button" onClick={() => setAdminModeView("admin")}>Return to Admin</button>
           </section>
-        ) : activeTabLocked ? (
+        ) : activeTabLocked && !nativeHiddenTab ? (
           <UpgradeScreen featureKey={activeTabFeature} subscriptionsLive={SUBSCRIPTIONS_LIVE} onBack={() => setActiveTab("dashboard")} />
         ) : null}
         {!activeTabLocked && activeTab === "tidepool" && renderTidepoolCommunity()}
@@ -51639,7 +51660,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <div className="tax-record-card">
                     <h3>Import foundation</h3>
                     <p><span>CSV mapping</span><strong>Preview</strong></p>
-                    <p className="compact-subtitle">Sales import mapping is coming soon. Manual sale entry is available now, and uploaded files can be staged from Import File.</p>
+                    <p className="compact-subtitle">Enter sales manually. Uploaded sales files can be previewed from Import File.</p>
                   </div>
                 </div>
               </details>
