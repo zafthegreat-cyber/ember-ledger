@@ -514,12 +514,12 @@ export const EMPTY_STATE_GUIDANCE = {
   },
   tidepool: {
     title: "The Community is quiet right now.",
-    body: "Start the first Community post and help keep collecting positive. New posts are reviewed before they appear publicly.",
+    // Audit 2026-11-14: no "Follow Local Collectors" (not built), and honest about where posts go today.
+    body: "Start a post and help keep collecting positive. Posts are reviewed before they appear publicly once sharing opens; for now they save on your device.",
     actionLabel: "Start a Post",
     actionTarget: "tidepool",
     actions: [
       { label: "Start a Post", actionTarget: "tidepool" },
-      { label: "Follow Local Collectors", actionTarget: "tidepool_follow", primary: false },
     ],
     assistPrompt: "How do I post safely?",
   },

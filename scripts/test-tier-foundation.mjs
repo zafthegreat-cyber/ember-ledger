@@ -27,7 +27,7 @@ assert.equal(TIER_PRICING.free.price, "$0");
 assert.match(TIER_PRICING.collector.price, /Free during beta/);
 assert.match(TIER_PRICING.collector.trialCopy, /told before anything costs money/i);
 assert.match(TIER_PRICING.family.price, /Free during beta/);
-assert.match(TIER_PRICING.family.features.join(" "), /2 kid profiles included/i);
+assert.match(TIER_PRICING.family.features.join(" "), /2 kid profiles — not available yet/i);
 assert.match(TIER_PRICING.seller.price, /Free during beta/);
 assert.match(TIER_PRICING.shop.price, /Free during beta for approved shops/);
 assert.match(TIER_PRICING.shop.trialCopy, /reviewed by the Code 3 team/i);
@@ -188,3 +188,12 @@ for (const file of publicCopyFiles) {
 }
 
 console.log("Tier foundation checks passed.");
+
+// Audit 2026-11-14: plan cards never show placeholder copy, and unbuilt features say so.
+{
+  const all = Object.values(TIER_PRICING).flatMap((plan) => [plan.summary, ...plan.features]).join("\n");
+  if (/add-on copy/i.test(all)) throw new Error("placeholder 'add-on copy' text is back on a plan card");
+  for (const phrase of [/kid profiles — not available yet/, /Text \(SMS\) alerts — not available yet/, /Community posts shared with other members — not available yet/]) {
+    if (!phrase.test(all)) throw new Error(`plan cards must say ${phrase} until it ships`);
+  }
+}

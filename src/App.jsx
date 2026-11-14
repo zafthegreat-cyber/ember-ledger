@@ -12638,6 +12638,12 @@ export default function App() {
       setActiveTab("adminReview");
       return;
     }
+    // Audit 2026-11-14: "Start a Post" used to fall through to Home.
+    if (normalized === "tidepool") {
+      setActiveTab("tidepool");
+      openTidepoolCreatePostFlow();
+      return;
+    }
     setActiveTab("dashboard");
   }
 
