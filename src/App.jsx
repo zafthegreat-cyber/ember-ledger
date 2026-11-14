@@ -568,7 +568,8 @@ const SparkPage = lazy(() => import("./pages/Spark"));
 const Scout = lazy(() => import("./pages/Scout"));
 const FlipScoutPage = lazy(() => import("./features/flipScout/FlipScoutPage"));
 const OwnerCenterPage = lazy(() => import("./features/ownerCenter/OwnerCenterPage"));
-const AccountOpsPage = lazy(() => import("./features/accountOps/AccountOpsPage"));
+// Audit 2026-11-14: owner-only account tooling is left out of the native (Play/App Store) build.
+const AccountOpsPage = import.meta.env.VITE_NATIVE_BUILD === "true" ? null : lazy(() => import("./features/accountOps/AccountOpsPage"));
 const RecordSearchPanel = lazy(() => import("./features/recordSearch/RecordSearchPanel.jsx"));
 const PurchaseReceivingPage = lazy(() => import("./features/purchaseReceiving/PurchaseReceivingPage"));
 const WorkspaceHomePage = lazy(() => import("./features/workspaces/WorkspaceHomePage"));
@@ -8495,7 +8496,7 @@ export default function App() {
   const menuAccountItems = [
     mobileMenuByKey.profile,
     mobileMenuByKey.account,
-    ownerToolsVisible ? { key: "account-ops", label: "Account Ops", helper: "Profiles, email aliases, retailer accounts, and account tasks.", icon: "account", action: () => { prepareRouteNavigation(); setAccountOpsSection("overview"); setActiveTab("accountOps"); } } : null,
+    ownerToolsVisible && AccountOpsPage ? { key: "account-ops", label: "Account Ops", helper: "Profiles, email aliases, retailer accounts, and account tasks.", icon: "account", action: () => { prepareRouteNavigation(); setAccountOpsSection("overview"); setActiveTab("accountOps"); } } : null,
     ownerToolsVisible ? { key: "owner-center", label: "Owner Center", helper: "Private sourcing, performance, and system controls.", icon: "settings", action: () => { prepareRouteNavigation(); setOwnerCenterSection("overview"); setOwnerCenterSubview(""); setActiveTab("ownerCenter"); } } : null,
     { key: "collections", label: "Workspace / Family", helper: "Collection workspace, members, and privacy.", icon: "settings", action: () => openUtilityPage("collections") },
     mobileMenuByKey.membership,
@@ -52070,7 +52071,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             />
           </LazyToolBoundary>
         )}
-        {!activeTabLocked && activeTab === "accountOps" && (
+        {!activeTabLocked && activeTab === "accountOps" && AccountOpsPage && (
           <LazyToolBoundary label="Loading Account Ops...">
             <AccountOpsPage
               session={ownerSession}

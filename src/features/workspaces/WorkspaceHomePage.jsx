@@ -10,7 +10,9 @@ import { OWNER_SESSION_STATES } from "../../services/ownerSession.js";
 import { resolveExperiencePresentation } from "../../utils/experiencePresentation.js";
 import "./workspace-shell.css";
 
-const BotOperationsPage = lazy(() => import("../botOps/BotOperationsPage.jsx"));
+// Audit 2026-11-14: the native (Play/App Store) build leaves the bot tooling out entirely;
+// the static env check lets the bundler drop the import.
+const BotOperationsPage = import.meta.env.VITE_NATIVE_BUILD === "true" ? null : lazy(() => import("../botOps/BotOperationsPage.jsx"));
 
 const WORKSPACE_COPY = Object.freeze({
   COLLECT: {
@@ -191,6 +193,9 @@ function SellHome({ items, sales, onNavigate, onAdd, presentation }) {
 }
 
 function BotHome({ session, onReturn, initialSection, onSectionChange }) {
+  if (!BotOperationsPage) {
+    return <EmptyState title="Not in the mobile app" action={<PrimaryButton onClick={onReturn}>Return Home</PrimaryButton>}>This page is only available on the website.</EmptyState>;
+  }
   if (session?.status === OWNER_SESSION_STATES.LOADING) {
     return <EmptyState title="Checking owner access">Private tools stay unavailable until the owner session is verified.</EmptyState>;
   }

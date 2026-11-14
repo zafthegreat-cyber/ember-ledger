@@ -61,8 +61,8 @@ check(
 );
 
 check(
-  "Account Ops is independently lazy-loaded",
-  app.includes('const AccountOpsPage = lazy(() => import("./features/accountOps/AccountOpsPage"))') &&
+  "Account Ops is independently lazy-loaded (and left out of native builds)",
+  app.includes('const AccountOpsPage = import.meta.env.VITE_NATIVE_BUILD === "true" ? null : lazy(() => import("./features/accountOps/AccountOpsPage"))') &&
     app.includes('<AccountOpsPage')
 );
 
@@ -76,7 +76,7 @@ check(
 
 check(
   "Bot Operations is independently lazy-loaded behind the workspace owner gate",
-  workspaceHomePage.includes('lazy(() => import("../botOps/BotOperationsPage.jsx"))') &&
+  workspaceHomePage.includes('import.meta.env.VITE_NATIVE_BUILD === "true" ? null : lazy(() => import("../botOps/BotOperationsPage.jsx"))') &&
     workspaceHomePage.includes("session?.status !== OWNER_SESSION_STATES.AUTHORIZED") &&
     botOperationsPage.includes("export default function BotOperationsPage")
 );

@@ -145,7 +145,7 @@ export const WORKSPACE_DEFINITIONS = deepFreeze({
   [WORKSPACE_IDS.BUSINESS]: {
     id: WORKSPACE_IDS.BUSINESS,
     label: "Business",
-    description: "Purchases, money, Account Ops, and business records.",
+    description: "Purchases, money, and business records.",
     homePath: "/business",
     iconKey: "business",
     switcherEligible: true,
@@ -416,9 +416,13 @@ function featureIsAvailable(featureKey, featureControls = {}) {
   return !featureKey || featureControls?.[featureKey] !== false;
 }
 
+// Audit 2026-11-14: owner-only bot tooling is not part of the Android/iOS apps.
+const NATIVE_BUILD = import.meta.env?.VITE_NATIVE_BUILD === "true";
+
 export function getAvailableWorkspaces({ ownerAuthorized = false, featureControls = {} } = {}) {
   return Object.freeze(PRODUCT_WORKSPACES.filter((workspace) => (
     workspace.switcherEligible &&
+    !(NATIVE_BUILD && workspace.id === WORKSPACE_IDS.BOT) &&
     featureIsAvailable(workspace.featureKey, featureControls) &&
     (workspace.requiredAuthority !== AUTHORITY_REQUIREMENTS.VERIFIED_OWNER || ownerAuthorized === true)
   )));
