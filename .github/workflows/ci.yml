@@ -79,7 +79,8 @@ jobs:
     # Starts the app and runs the browser tests that need it (scripts/browser-suite.json).
     # Tests listed under knownFailing are stale or need seeded data; fix them and move
     # them into "passing" to bring them under CI.
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest became Ubuntu 26 (Oct 2026), which Playwright 1.59 can't install browsers on.
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
