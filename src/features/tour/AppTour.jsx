@@ -51,19 +51,29 @@ export const APP_TOUR_STEPS = [
   },
   {
     key: "you",
-    selectors: [".command-board-v4-profile-action", ".ops-desktop-sidebar [data-nav-key='settings']", ".ops-mobile-nav button:last-child"],
+    selectors: [".command-board-v4-profile-action", ".ops-desktop-sidebar [data-nav-key='settings']", ".topbar-command-actions .menu-button"],
     title: "You, settings and sign out",
     body: "Your account, backups, theme and Sign out live under You / Settings. Backups are yours to download any time; nothing leaves this device without you.",
   },
 ];
 
 function findTarget(selectors = []) {
+  let offscreen = null;
   for (const selector of selectors) {
     const node = document.querySelector(selector);
     if (node && node.getClientRects().length) {
       const rect = node.getBoundingClientRect();
-      if (rect.width > 0 && rect.height > 0 && rect.bottom > 0 && rect.top < window.innerHeight) return node;
+      if (rect.width <= 0 || rect.height <= 0) continue;
+      if (rect.bottom > 0 && rect.top < window.innerHeight) return node;
+      offscreen ||= node;
     }
+  }
+  // The control exists but the page is scrolled past it (e.g. the phone header
+  // after scrolling Settings): bring it into view instead of saying it's missing.
+  if (offscreen) {
+    offscreen.scrollIntoView({ block: "center", behavior: "instant" });
+    const rect = offscreen.getBoundingClientRect();
+    if (rect.bottom > 0 && rect.top < window.innerHeight) return offscreen;
   }
   return null;
 }

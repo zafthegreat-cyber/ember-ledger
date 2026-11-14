@@ -37,7 +37,10 @@
           const direct = localStorage.getItem("et-tcg-app-theme");
           const saved = !direct ? JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}") : null;
           const stored = direct || saved?.appThemeChoice || saved?.themeChoice || saved?.settings?.appThemeChoice;
-          document.documentElement.dataset.bootTheme = String(stored || "").trim().toLowerCase() === "dark" ? "dark" : "light";
+          const choice = String(stored || "").trim().toLowerCase();
+          // No explicit choice (or "system"): follow the device, like the app does after load.
+          const deviceDark = Boolean(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.dataset.bootTheme = choice === "dark" || (choice !== "light" && deviceDark) ? "dark" : "light";
         }
       } catch {
         document.documentElement.dataset.bootTheme = "light";

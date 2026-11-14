@@ -22,7 +22,7 @@ export default function PersonaChecklist({ persona = "collector", kidSafe = fals
       <ol className="persona-checklist__steps">
         {checklist.steps.map((step, index) => (
           <li key={step.key} className={step.done ? "is-done" : ""}>
-            <button type="button" onClick={() => !step.done && onOpen(step.target, step)} disabled={step.done} aria-label={`${step.label}${step.done ? " (done)" : ""}`}>
+            <button type="button" className="persona-checklist__step" onClick={() => !step.done && onOpen(step.target, step)} disabled={step.done} aria-label={`${step.label}${step.done ? " (done)" : ""}`}>
               <span className="persona-checklist__mark" aria-hidden="true">{step.done ? "✓" : index + 1}</span>
               <span className="persona-checklist__copy"><strong>{step.label}</strong><small>{step.detail}</small></span>
               {!step.done ? <span className="persona-checklist__chevron" aria-hidden="true">›</span> : null}

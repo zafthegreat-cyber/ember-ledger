@@ -130,6 +130,9 @@ html body .app[data-theme] :is(.ops-button--primary, .primary-button, .command-b
   html body .app[data-theme] :is(.command-board-v4-rail, .et-mockup-right-rail) { padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
   html body .app[data-theme] .ops-mobile-nav { padding-bottom: calc(5px + env(safe-area-inset-bottom, 0px) * 0.5); }
   html body .app[data-theme] .quick-feedback-fab { bottom: calc(max(8px, env(safe-area-inset-bottom)) + 88px); }
+  /* Phone pass 2026-11-14: the labelled pill covered card text and buttons; a 44px icon covers far less. */
+  html body .app[data-theme] .quick-feedback-fab { width: 44px; justify-content: center; padding: 0; border-radius: 50%; }
+  html body .app[data-theme] .quick-feedback-fab span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   html body .app[data-theme] .back-to-top-button { bottom: calc(max(8px, env(safe-area-inset-bottom)) + 140px) !important; }
   /* Sheets and modals never slide under the gesture bar. */
   html body .app[data-theme] :is(.ops-bottom-sheet, .flow-modal, .quick-feedback-sheet, .app-tour__card) { padding-bottom: max(14px, env(safe-area-inset-bottom)); }
@@ -182,3 +185,35 @@ html body .app[data-theme] .trade-fallback-row p { margin: 0; font-size: 14px; c
 html body .app[data-theme] .trade-fallback-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 html body .app[data-theme] .trade-fallback-actions small { color: var(--text-secondary); font-size: 12.5px; }
 html body .app[data-theme] .trade-fallback-actions .secondary-button { min-height: 40px; }
+
+/* ---------- Guest preview bar (phone pass 2026-11-14) ---------- */
+/* Had no styles: plain bold text and a bare button above the page. */
+html body .app[data-theme] .guest-preview-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 12px 0;
+  padding: 8px 8px 8px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background: var(--surface-elevated, var(--surface-primary));
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.4;
+}
+html body .app[data-theme] .guest-preview-banner strong { color: var(--text-primary); font-size: 13px; }
+html body .app[data-theme] .guest-preview-banner span { color: var(--text-secondary); }
+html body .app[data-theme] .guest-preview-banner .auth-text-button {
+  flex: none;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-primary);
+  font: 600 13px/1 var(--font-ui, inherit);
+}
+@media (min-width: 900px) {
+  html body .app[data-theme] .guest-preview-banner { margin: 12px 24px 0; }
+}

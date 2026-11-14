@@ -29,6 +29,9 @@
 .app-tour__actions { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
 .app-tour__spacer { flex: 1; }
 .app-tour__actions button { min-height: 44px; padding: 0 14px; border-radius: 10px; font: 600 14px/1 var(--font-ui, inherit); cursor: pointer; }
-.app-tour__skip, .app-tour__back { background: transparent; border: 1px solid var(--border-subtle, #ddd); color: var(--text-primary, #222); }
-.app-tour__next { background: var(--action-primary, #7A0F1E); border: 1px solid var(--action-primary, #7A0F1E); color: var(--on-primary, #fff); }
+/* `.app .app-tour …` outranks the app-wide `.app :where(button)` surface fill that hid Next in dark mode. */
+.app-tour__skip, .app-tour__back,
+.app .app-tour .app-tour__skip, .app .app-tour .app-tour__back { background: transparent; border: 1px solid var(--border-subtle, #ddd); color: var(--text-primary, #222); }
+.app-tour__next,
+.app .app-tour .app-tour__next { background: var(--action-primary, #7A0F1E); border: 1px solid var(--action-primary, #7A0F1E); color: var(--on-primary, #fff); }
 @media (prefers-reduced-motion: reduce) { .app-tour__spotlight { transition: none; } }

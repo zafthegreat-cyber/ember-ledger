@@ -5,13 +5,18 @@
 .persona-checklist__dismiss { flex: none; min-height: 44px; padding: 0 12px; border: 1px solid var(--border-subtle, #ddd); border-radius: 10px; background: transparent; color: var(--text-secondary, #777); font: 600 13px/1 var(--font-ui, inherit); cursor: pointer; }
 .persona-checklist__dismiss:hover { border-color: var(--accent-teal, #1F7A74); color: var(--accent-teal, #1F7A74); }
 .persona-checklist__steps { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
-.persona-checklist__steps button { display: grid; grid-template-columns: 32px minmax(0, 1fr) 16px; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 10px 12px; border: 1px solid var(--border-subtle, #ddd); border-radius: var(--c3-radius, 14px); background: var(--surface-primary, #fff); color: var(--text-primary, #222); text-align: left; cursor: pointer; }
-.persona-checklist__steps button:hover:not(:disabled) { border-color: var(--accent-teal, #1F7A74); }
-.persona-checklist__steps button:disabled { cursor: default; opacity: 1; background: color-mix(in srgb, var(--surface-secondary, #f3f3f3) 70%, transparent); }
+/* `.app` prefix: outranks the app-wide `.app.app-command-shell button:not([class])` primary fill (gold in dark mode). */
+.persona-checklist__steps button,
+.app .persona-checklist__steps button { display: grid; grid-template-columns: 32px minmax(0, 1fr) 16px; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 10px 12px; border: 1px solid var(--border-subtle, #ddd); border-radius: var(--c3-radius, 14px); background: var(--surface-primary, #fff); color: var(--text-primary, #222); text-align: left; cursor: pointer; }
+.persona-checklist__steps button:hover:not(:disabled),
+.app .persona-checklist__steps button:hover:not(:disabled) { border-color: var(--accent-teal, #1F7A74); }
+.persona-checklist__steps button:disabled,
+.app .persona-checklist__steps button:disabled { cursor: default; opacity: 1; background: color-mix(in srgb, var(--surface-secondary, #f3f3f3) 70%, transparent); }
 .persona-checklist__mark { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--accent-teal-soft, #E3F1EF); color: var(--accent-teal, #1F7A74); font: 700 14px/1 var(--font-ui, inherit); }
 .is-done .persona-checklist__mark { background: var(--status-success, #24633D); color: #fff; }
 .persona-checklist__copy { display: grid; gap: 2px; min-width: 0; }
-.persona-checklist__copy strong { font-size: 15px; }
+.persona-checklist__copy strong,
+.app .persona-checklist__copy strong { font-size: 15px; color: var(--text-primary, #222); }
 .is-done .persona-checklist__copy strong { text-decoration: line-through; color: var(--text-secondary, #777); }
 .persona-checklist__copy small { color: var(--text-secondary, #777); font-size: 12.5px; line-height: 1.4; }
 .persona-checklist__chevron { color: var(--text-secondary, #777); font-size: 20px; }
