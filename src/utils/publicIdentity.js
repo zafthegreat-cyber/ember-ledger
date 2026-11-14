@@ -1,4 +1,6 @@
-export const DILLON_ADMIN_EMAIL = "dillonthedark@gmail.com";
+// Audit 2026-11-14: no personal email address ships in the public bundle. The owner's account is
+// matched by its Supabase user id (not contact information); admins also match by role + first name.
+export const OFFICIAL_TIDE_ADMIN_USER_ID = "5956c4fb-cc4d-4b02-a9dc-32f4e582e762";
 
 export const OFFICIAL_ADMIN_USERNAMES = {
   ember: "official_admin_ember",
@@ -45,10 +47,6 @@ const RESERVED_COMPACT_KEYS = new Set([
   "trustandsafety",
 ]);
 
-function emailFromProfile(profile = {}) {
-  return String(profile.email || profile.accountEmail || profile.userEmail || "").trim().toLowerCase();
-}
-
 function metadataFromProfile(profile = {}) {
   return profile.app_metadata || profile.raw_app_meta_data || profile.rawAppMetaData || {};
 }
@@ -82,8 +80,6 @@ export function formatPublicUsername(username = "") {
 }
 
 export function officialAdminUsernameForProfile(profile = {}) {
-  const email = emailFromProfile(profile);
-  if (email === DILLON_ADMIN_EMAIL) return OFFICIAL_ADMIN_USERNAMES.tide;
   const metadata = metadataFromProfile(profile);
   const role = String(profile.userRole || profile.user_role || profile.role || metadata.role || metadata.user_role || "").toLowerCase();
   const adminFlag = Boolean(profile.isAdmin || profile.is_admin || metadata.is_admin || metadata.isAdmin);
@@ -95,6 +91,11 @@ export function officialAdminUsernameForProfile(profile = {}) {
     profile.fullName,
     profile.full_name,
   ].map((value) => String(value || "").trim().toLowerCase());
+  const userId = String(profile.userId || profile.user_id || profile.id || "").toLowerCase();
+  if (userId === OFFICIAL_TIDE_ADMIN_USER_ID) return OFFICIAL_ADMIN_USERNAMES.tide;
+  if ((role === "admin" || adminFlag) && nameSignals.some((value) => value === "dillon" || value.startsWith("dillon "))) {
+    return OFFICIAL_ADMIN_USERNAMES.tide;
+  }
   if ((role === "admin" || adminFlag) && nameSignals.some((value) => value === "zena" || value.startsWith("zena "))) {
     return OFFICIAL_ADMIN_USERNAMES.ember;
   }

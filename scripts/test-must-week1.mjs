@@ -68,16 +68,17 @@ test("MUST-10: quick feedback saves to beta_feedback, relays to Discord, and que
   const m = await load("src/features/feedback/QuickFeedback.jsx", "feedback");
   const inserted = []; const invoked = [];
   const supabase = {
-    from: () => ({ insert: (row) => { inserted.push(row); return { select: () => ({ single: async () => ({ data: { id: "fb-1" }, error: null }) }) }; } }),
+    // Audit 2026-11-14: insert asks for nothing back (guests cannot read their row).
+    from: () => ({ insert: async (row) => { inserted.push(row); return { error: null }; } }),
     functions: { invoke: async (name, opts) => { invoked.push([name, opts.body]); return { data: { ok: true } }; } },
   };
   const row = { title: "Something's broken: x", description: "the thing", page: "vault", feedback_type: "Bug", severity: "normal", app_version: "v1", device_info: { viewport: "390x844" } };
   const result = await m.sendQuickFeedback({ supabase, row });
   assert.equal(result.ok, true);
   assert.equal(inserted.length, 1);
+  assert.match(inserted[0].id, /^[0-9a-f-]{36}$/, "the client makes the row id");
   assert.equal(invoked[0][0], "feedback-discord");
-  assert.equal(invoked[0][1].id, "fb-1");
-  assert.equal(invoked[0][1].guest_email, "");
+  assert.deepEqual(invoked[0][1], { id: inserted[0].id }, "only the id is sent; the function loads the stored row");
   const offline = await m.sendQuickFeedback({ supabase: null, row });
   assert.equal(offline.ok, false);
   const app = src("src/App.jsx");

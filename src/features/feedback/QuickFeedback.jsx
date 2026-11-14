@@ -45,15 +45,24 @@ function scrub(text) {
     .slice(0, MAX_MESSAGE);
 }
 
+function newFeedbackId() {
+  try { if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID(); } catch { /* fall through */ }
+  return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => (Number(c) ^ (Math.random() * 16) >> (Number(c) / 4)).toString(16));
+}
+
 export async function sendQuickFeedback({ supabase, row }) {
   if (!supabase) return { ok: false, reason: "offline" };
-  const { data, error } = await supabase.from("beta_feedback").insert(row).select("id").single();
+  // Audit 2026-11-14: the id is made here and the insert asks for nothing back, because guests may
+  // insert feedback but not read it (asking for the row back made every guest send fail).
+  const id = row.id || newFeedbackId();
+  const { error } = await supabase.from("beta_feedback").insert({ ...row, id });
   if (error) return { ok: false, reason: error.message || "insert-failed" };
   try {
-    // Discord relay is best effort; the row is already saved.
-    await supabase.functions.invoke("feedback-discord", { body: { id: data?.id, title: row.title, description: row.description, page: row.page, feedback_type: row.feedback_type, severity: row.severity, app_version: row.app_version, guest_email: row.guest_email ? "(provided)" : "", device_info: row.device_info } });
+    // Discord relay is best effort; the row is already saved. The function loads the saved row
+    // itself by id, so nothing typed here can be posted unless it was stored first.
+    await supabase.functions.invoke("feedback-discord", { body: { id } });
   } catch { /* Discord down or function missing: ignore */ }
-  return { ok: true, id: data?.id };
+  return { ok: true, id };
 }
 
 export async function flushQuickFeedbackQueue(supabase) {

@@ -1,4 +1,5 @@
 import { PrivateStorageImage } from "../components/PrivateReceipt.jsx";
+import { safeExternalWebUrl } from "../utils/externalLink.mjs";
 import ListSkeleton from "../components/ListSkeleton";
 import ExternalWebLink from "../components/ExternalWebLink.jsx";
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
@@ -320,7 +321,8 @@ function getAutoOpenDropWebsitePreference() {
 }
 
 function getDropWebsiteUrl(drop = {}) {
-  const url = drop.url || drop.productUrl || drop.product_url || drop.sourceUrl || drop.source_url || drop.link || "";
+  // Audit 2026-11-14: only plain http(s) links may leave the app (no javascript:, data:, credentials).
+  const url = safeExternalWebUrl(String(drop.url || drop.productUrl || drop.product_url || drop.sourceUrl || drop.source_url || drop.link || ""));
   if (url) return url;
   const sku = drop.bestBuySku || drop.best_buy_sku || drop.sku || "";
   if (sku) return `https://www.bestbuy.com/site/searchpage.jsp?st=${encodeURIComponent(sku)}`;
@@ -1454,7 +1456,6 @@ export default function Scout({
   const [intelImportPreview, setIntelImportPreview] = useState([]);
   const [restockIntel, setRestockIntel] = useState([]);
   const [, setRestockPatterns] = useState([]);
-  const hasAutoOpenedDropRef = useRef(false);
 
   const [storeForm, setStoreForm] = useState(createBlankStoreForm);
   const targetSubTabKey = typeof targetSubTab === "string" ? targetSubTab : targetSubTab?.tab;
@@ -2418,13 +2419,9 @@ function updateAlertSetting(field, value) {
   saveLocalScout({ alertSettings: next });
 }
 
-function openWebsiteWhenDropDetected(drop) {
-  if (!drop || !alertSettings.autoOpenDropWebsite) return;
-  if (hasAutoOpenedDropRef.current) return;
-  hasAutoOpenedDropRef.current = true;
-  const url = getDropWebsiteUrl(drop);
-  window.location.assign(url);
-}
+// Audit 2026-11-14: no automatic redirect to a retailer when a drop is detected (too close to
+// auto-checkout, and it navigated away without a tap). Opening the site is always a tap.
+function openWebsiteWhenDropDetected() {}
 
 function openDropWebsiteFromUserAction(drop) {
   const url = getDropWebsiteUrl(drop);
@@ -4414,7 +4411,6 @@ async function handleUpdateStore(e) {
     { key: "favoriteStoresOnly", label: "Favorite store alerts", description: "Prioritize reports from stores you care about." },
     { key: "watchlistAlerts", label: "Watchlist product alerts", description: "Notify when watched products appear in reports." },
     { key: "onlineDropAlerts", label: "Online drop alerts", description: "Include online drop and Best Buy source updates." },
-    { key: "autoOpenDropWebsite", label: "Auto-open website on drop", description: "When a detected drop has a product URL, redirect this tab once. Off by default." },
     { key: "verifiedOnly", label: "Verified-only alerts", description: "Only surface higher-confidence reports." },
     { key: "quietHours", label: "Quiet hours", description: "Pause non-urgent alerts during quiet time later." },
   ];

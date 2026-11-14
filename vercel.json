@@ -4,6 +4,17 @@
   "outputDirectory": "dist",
   "routes": [
     {
+      "src": "/(.*)",
+      "headers": {
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "Content-Security-Policy": "frame-ancestors 'none'; base-uri 'self'; object-src 'none'",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Permissions-Policy": "camera=(self), geolocation=(self), microphone=(), payment=(), usb=()"
+      },
+      "continue": true
+    },
+    {
       "src": "^/(?:terms|terms-of-service|settings/terms)/?$",
       "dest": "/terms.html"
     },
