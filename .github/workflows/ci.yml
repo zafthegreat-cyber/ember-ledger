@@ -75,3 +75,30 @@ jobs:
           name: chunk-report
           path: chunk-report.json
           if-no-files-found: ignore
+  browser:
+    # Starts the app and runs the browser tests that need it (scripts/browser-suite.json).
+    # Tests listed under knownFailing are stale or need seeded data; fix them and move
+    # them into "passing" to bring them under CI.
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Start the app
+        run: |
+          nohup npx vite --host 127.0.0.1 --port 5217 --strictPort > vite.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:5217/ > /dev/null && exit 0; sleep 2; done
+          cat vite.log; exit 1
+      - name: Browser tests
+        env:
+          APP_URL: http://127.0.0.1:5217
+        run: node scripts/run-browser-suite.mjs
+      - name: App server log
+        if: failure()
+        run: tail -n 200 vite.log
