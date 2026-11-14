@@ -31,7 +31,7 @@ turn it on. Until then the app works normally and simply sends no pushes.
    contents** as the value. Treat this file like a password: don't commit it,
    don't paste it in chat, delete the download after adding the secret.
 
-Then build a new Android bundle. On the phone, turning on alerts asks for
+Then build a new Android bundle (the workflow turns the app's push code on automatically when the secret exists). On the phone, turning on alerts asks for
 notification permission and registers the device.
 
 ## Sending a push (for the team)

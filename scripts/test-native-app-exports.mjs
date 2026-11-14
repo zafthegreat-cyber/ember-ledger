@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
+import { rowsToCsvAsync } from "../src/features/exports/csv.js";
 
 const app = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
 const start = app.indexOf("  async function downloadRecordFile(");
@@ -13,7 +14,7 @@ const downloads = [], notices = [];
 let native = false, reject = false, abortDuringExport = false;
 const scope = { current: new AbortController() };
 const context = vm.createContext({
-  Blob, Date, JSON, String, Object, Error,
+  Blob, Date, JSON, String, Object, Error, rowsToCsvAsync,
   fileExportScopeRef: scope,
   isNativePlatform: () => native,
   exportFile: async (request) => {

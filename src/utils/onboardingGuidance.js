@@ -515,7 +515,7 @@ export const EMPTY_STATE_GUIDANCE = {
   tidepool: {
     title: "The Community is quiet right now.",
     // Audit 2026-11-14: no "Follow Local Collectors" (not built), and honest about where posts go today.
-    body: "Start a post and help keep collecting positive. Posts are reviewed before they appear publicly once sharing opens; for now they save on your device.",
+    body: "Start a post and help keep collecting positive. Posts are reviewed before they appear publicly to other members.",
     actionLabel: "Start a Post",
     actionTarget: "tidepool",
     actions: [

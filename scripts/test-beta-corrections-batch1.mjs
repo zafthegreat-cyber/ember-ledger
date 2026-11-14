@@ -160,7 +160,7 @@ test("#24 typed age ranges are accepted", () => {
 
 test("#27-28 pending review copy sets expectations", () => {
   assert.match(tidepool.tidepoolPendingReviewCopy({}), /passed the automatic safety check/);
-  assert.match(tidepool.TIDEPOOL_REVIEW_EXPECTATION, /saved on this device/);
+  assert.match(tidepool.TIDEPOOL_REVIEW_EXPECTATION, /reviewed by the Code 3 team before other members see them/);
   assert.match(tidepool.tidepoolPendingReviewCopy({ safetyReviewReason: "Possible private contact information." }), /closer look/);
 });
 

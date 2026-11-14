@@ -76,6 +76,8 @@ import {
 } from "./features/workspaces/workspacePreference";
 import { OWNED_ITEM_PURPOSES, changeOwnedItemPurpose } from "./features/ownedItems/ownedItemPurpose";
 import { createEmptyOwnerCenterState, createOwnerCenterRepository } from "./features/ownerCenter/ownerCenterRepository";
+import { enableNativePush, nativePushAvailable } from "./native/pushNotifications.js";
+import { loadCommunityPosts, mergeServerPosts, moderateCommunityPost, serverRowToPostOverrides, submitCommunityPost, toServerModerationStatus } from "./features/community/communityServer.js";
 import {
   OWNER_SESSION_STATES,
   isLocalDevelopmentIdentityEnabled,
@@ -7018,6 +7020,8 @@ export default function App() {
   const [tidepoolFilter, setTidepoolFilter] = useState("Feed");
   const [tidepoolPage, setTidepoolPage] = useState(1);
   const [tidepoolPosts, setTidepoolPosts] = useState([]);
+  // Nov 15, 2026: shared Community posts from the server (approved feed + this member's own; staff see all).
+  const [communityServerPosts, setCommunityServerPosts] = useState([]);
   const [tidepoolComments, setTidepoolComments] = useState([]);
   const [tidepoolReactions, setTidepoolReactions] = useState([]);
   const [tidepoolTrustedCircle, setTidepoolTrustedCircle] = useState([]);
@@ -16457,20 +16461,68 @@ export default function App() {
       safetyReviewReason,
       needsSafetyReview: Boolean(safetyReviewReason),
     });
+    if (communityServerReady() && !safetyReviewReason) {
+      const draft = { ...tidepoolPostForm };
+      submitCommunityPost(supabase, { title: draft.title, body: draft.body, category: draft.postType || draft.category }).then((result) => {
+        if (result.ok) {
+          setVaultToast("Post sent for review. Other members will see it once the Code 3 team approves it.");
+          refreshCommunityServerPosts();
+        } else {
+          saveTidepoolCommunity({ posts: [post, ...tidepoolPosts] });
+          setVaultToast(result.message);
+        }
+      });
+      setTidepoolPostForm(BLANK_TIDEPOOL_POST_FORM);
+      setTidepoolFilter("Feed");
+      if (activeFlowModal?.type === "tidepoolCreatePost") closeFlowModal({ force: true, reset: false });
+      return true;
+    }
     saveTidepoolCommunity({ posts: [post, ...tidepoolPosts] });
     setTidepoolPostForm(BLANK_TIDEPOOL_POST_FORM);
     setTidepoolFilter("Feed");
     if (activeFlowModal?.type === "tidepoolCreatePost") {
       closeFlowModal({ force: true, reset: false });
     }
-    // Audit 2026-11-14: posts are stored on this device only (no server table yet), so don't promise a review queue.
+    // Signed-out or offline posts stay on this device; flagged drafts stay private to the author.
     setVaultToast(safetyReviewReason
       ? "Post saved on this device. It was flagged by the safety check, so it stays private to you."
-      : "Post saved on this device. Sharing posts with other members is coming soon; for now only you can see it.");
+      : "Post saved on this device. Sign in to share posts with other members.");
+    return true;
+  }
+
+  function communityServerReady() {
+    return !BETA_LOCAL_MODE && isSupabaseConfigured && Boolean(supabase) && Boolean(user?.id) && user.id !== "local-beta" && !kidSafeView;
+  }
+
+  async function refreshCommunityServerPosts() {
+    if (BETA_LOCAL_MODE || !isSupabaseConfigured || !supabase || !user?.id || user.id === "local-beta") return;
+    const { ok, feed, own } = await loadCommunityPosts(supabase);
+    if (!ok && !own.length) return;
+    const me = { myUserId: currentUserProfile.userId || user.id, myUsername: currentPublicUsername() };
+    const byId = new Map();
+    for (const row of feed) byId.set(row.id, buildTidepoolPost(makeTidepoolPost(serverRowToPostOverrides(row, me))));
+    for (const row of own) byId.set(row.id, buildTidepoolPost(makeTidepoolPost(serverRowToPostOverrides(row, me))));
+    setCommunityServerPosts((current) => {
+      const local = new Map(current.map((post) => [post.postId, post]));
+      return [...byId.values()].map((post) => ({ ...post, saved: Boolean(local.get(post.postId)?.saved) }));
+    });
+  }
+
+  async function moderateServerCommunityPost(post, label) {
+    const status = toServerModerationStatus(label);
+    if (!post?.serverId || !status) return false;
+    const ok = await moderateCommunityPost(supabase, post.serverId, status, "");
+    if (!ok) throw new Error("The server didn't accept that change. Check that you're signed in as Code 3 staff.");
+    await refreshCommunityServerPosts();
     return true;
   }
 
   function updateTidepoolPost(postId, updates) {
+    if (String(postId || "").startsWith("srv-")) {
+      setCommunityServerPosts((current) => current.map((post) =>
+        post.postId === postId ? buildTidepoolPost({ ...post, ...updates, updatedAt: new Date().toISOString() }) : post));
+      return;
+    }
     saveTidepoolCommunity({
       posts: tidepoolPosts.map((post) =>
         post.postId === postId ? buildTidepoolPost({ ...post, ...updates, updatedAt: new Date().toISOString() }) : post
@@ -16503,6 +16555,15 @@ export default function App() {
     const currentUserId = currentUserProfile.userId || "local-beta";
     if (post.userId !== currentUserId && !adminToolsVisible) {
       setVaultToast("Only the author or an admin can hide this post.");
+      return;
+    }
+    if (post.serverId) {
+      const request = post.userId === currentUserId
+        ? supabase.from("community_posts").delete().eq("id", post.serverId)
+        : moderateCommunityPost(supabase, post.serverId, "removed", "Hidden by admin.");
+      Promise.resolve(request).then(() => refreshCommunityServerPosts());
+      setCommunityServerPosts((current) => current.filter((item) => item.postId !== post.postId));
+      setVaultToast("Post removed.");
       return;
     }
     updateTidepoolPost(post.postId, moderateTidepoolPost(post, "Archived", {
@@ -16570,8 +16631,13 @@ export default function App() {
       setVaultToast("Turn on Admin Edit Mode to moderate Community posts.");
       return;
     }
-    const execute = () => {
+    const execute = async () => {
       const requestedStatus = updates.status || updates.moderationStatus || updates.verificationStatus || post.status;
+      if (post.serverId && toServerModerationStatus(requestedStatus)) {
+        await moderateServerCommunityPost(post, requestedStatus);
+        setVaultToast(`${label} applied to Community post.`);
+        return;
+      }
       const moderated = moderateTidepoolPost({ ...post, ...updates }, requestedStatus, {
         reviewer: currentPublicUsername(),
         reason: updates.moderationReason || updates.reason || "",
@@ -31871,6 +31937,16 @@ function renderForgeBusinessLedgerPanel() {
   const kidSafeView = !adminViewingAsAdmin && isKidSafeProfile(currentUserProfile || {}, shorelineState.betaRequest || {});
   // Audit 2026-11-14: crash reports start at boot, so tell them when a kid view is active (events are dropped).
   useEffect(() => { setCrashReportingKidSafe(kidSafeView); }, [kidSafeView]);
+  // Nov 15 (kid safety on the server): when a signed-in account declares it belongs to a kid,
+  // record that on the server once. The database then blocks posting, restock reports and
+  // listings for this account even if the app is bypassed; only staff can undo it.
+  const minorMarkedRef = useRef(false);
+  useEffect(() => {
+    if (!kidSafeView || minorMarkedRef.current || BETA_LOCAL_MODE || !isSupabaseConfigured || !supabase) return;
+    if (!user?.id || user.id === "local-beta" || currentUserProfile?.isMinor) return;
+    minorMarkedRef.current = true;
+    supabase.rpc("mark_my_account_minor").then(({ error }) => { if (error) minorMarkedRef.current = false; });
+  }, [kidSafeView, user?.id, currentUserProfile?.isMinor]);
   // A50: kid profiles see "—" instead of dollar amounts on every page that takes `money` as a prop.
   const displayMoney = kidSafeView ? () => "—" : money;
   const featureGateOptions = {
@@ -34099,12 +34175,17 @@ function renderForgeBusinessLedgerPanel() {
     for (const reaction of tidepoolReactions) {
       reactionCounts.set(reaction.postId, Number(reactionCounts.get(reaction.postId) || 0) + 1);
     }
-    return tidepoolPosts.map((post) => ({
+    return mergeServerPosts(tidepoolPosts, communityServerPosts).map((post) => ({
       ...buildTidepoolPost(post),
-      commentCount: commentCounts.get(post.postId) || 0,
+      commentCount: commentCounts.get(post.postId) || Number(post.commentCount || 0),
       reactionCount: reactionCounts.get(post.postId) || 0,
     }));
-  }, [tidepoolPosts, tidepoolComments, tidepoolReactions]);
+  }, [tidepoolPosts, communityServerPosts, tidepoolComments, tidepoolReactions]);
+  useEffect(() => {
+    if (activeTab !== "tidepool") return;
+    refreshCommunityServerPosts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, user?.id, adminEditModeActive]);
   const visibleTidepoolFilters = TIDEPOOL_FEED_FILTERS.filter((filter) => TIDEPOOL_PRIMARY_TABS.includes(filter) || (filter === "Needs Review" && adminEditModeActive));
   const blockedUsers = useBlockedUsers();
   const filteredTidepoolPosts = useMemo(() => tidepoolPostsWithCounts
@@ -34642,7 +34723,18 @@ function renderForgeBusinessLedgerPanel() {
     deviceNotificationFirstRun.current = false;
   }, [notificationRowSignature]);
   const [deviceNotificationState, setDeviceNotificationState] = useState(() => deviceNotificationSupport());
+  // Phone app: refresh this device's push token for the signed-in account when permission was already given.
+  useEffect(() => {
+    if (!nativePushAvailable() || BETA_LOCAL_MODE || !isSupabaseConfigured || !supabase || !user?.id || user.id === "local-beta") return;
+    enableNativePush({ supabase, prompt: false }).then((result) => { if (result.ok) setDeviceNotificationState({ supported: true, permission: "granted", label: result.label }); });
+  }, [user?.id]);
   async function enableDeviceNotifications() {
+    if (nativePushAvailable()) {
+      const result = await enableNativePush({ supabase: isSupabaseConfigured && user?.id && user.id !== "local-beta" ? supabase : null });
+      setDeviceNotificationState({ supported: true, permission: result.ok ? "granted" : result.permission, label: result.label });
+      setVaultToast(result.label);
+      return;
+    }
     const next = await requestDeviceNotifications();
     setDeviceNotificationState(next);
     setVaultToast(next.permission === "granted" ? "Device alerts are on for this browser." : next.label);

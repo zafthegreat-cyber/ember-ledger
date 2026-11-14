@@ -152,6 +152,9 @@ export function mapProfileRow(row = {}, user = null) {
   });
   return {
     userId: row.id || row.userId || user?.id || "",
+    // Server-side kid flag (Nov 15): set by the account or staff, cleared only by staff.
+    isMinor: row.is_minor === true,
+    is_minor: row.is_minor === true,
     email,
     firstName,
     lastName,

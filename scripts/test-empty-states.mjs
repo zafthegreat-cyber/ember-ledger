@@ -37,7 +37,7 @@ const tidepool = getEmptyStateGuidance("tidepool");
 assert.equal(tidepool.title, "The Community is quiet right now.");
 assert.deepEqual(tidepool.actions.map((action) => action.label), ["Start a Post"], "no Follow Local Collectors until it exists");
 assert.match(tidepool.body, /reviewed before they appear publicly/i);
-assert.match(tidepool.body, /save on your device/i);
+assert.doesNotMatch(tidepool.body, /save on your device|once sharing opens/i);
 
 const kids = getEmptyStateGuidance("kids");
 assert.equal(kids.title, "No open requests yet.");

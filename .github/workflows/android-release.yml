@@ -56,6 +56,8 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
           VITE_AUTH_VERIFIED_PROVIDERS: ${{ vars.VITE_AUTH_VERIFIED_PROVIDERS }}
           VITE_AUTH_ACCOUNT_LINKING_VERIFIED: ${{ vars.VITE_AUTH_ACCOUNT_LINKING_VERIFIED }}
+          # Push code only runs in builds that include the Firebase config (see docs/PUSH_NOTIFICATIONS_SETUP.md).
+          VITE_PUSH_ENABLED: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 != '' && 'true' || 'false' }}
       - run: npx cap sync android
       - name: Add Firebase config for push notifications (optional)
         env:

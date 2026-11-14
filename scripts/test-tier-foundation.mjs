@@ -193,7 +193,7 @@ console.log("Tier foundation checks passed.");
 {
   const all = Object.values(TIER_PRICING).flatMap((plan) => [plan.summary, ...plan.features]).join("\n");
   if (/add-on copy/i.test(all)) throw new Error("placeholder 'add-on copy' text is back on a plan card");
-  for (const phrase of [/kid profiles — not available yet/, /Text \(SMS\) alerts — not available yet/, /Community posts shared with other members — not available yet/]) {
-    if (!phrase.test(all)) throw new Error(`plan cards must say ${phrase} until it ships`);
+  for (const phrase of [/kid profiles — not available yet/, /Text \(SMS\) alerts — not available yet/, /Community posts shared with other members \(reviewed by/]) {
+    if (!phrase.test(all)) throw new Error(`plan cards must say ${phrase}`);
   }
 }

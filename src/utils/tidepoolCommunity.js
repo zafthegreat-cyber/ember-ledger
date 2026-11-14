@@ -48,8 +48,8 @@ export const TIDEPOOL_FAMILY_SAFE_RULES = [
 export const TIDEPOOL_DEFAULT_POST_STATUS = "Pending Review";
 // #27/#28: set expectations for the review queue instead of a bare "Pending".
 export const TIDEPOOL_REVIEW_EXPECTATION =
-  // Audit 2026-11-14: posts are stored on this device only until a server-side queue exists; say so plainly.
-  "Community posts are saved on this device for now. Sharing them with other members, with a person reviewing each one first, is coming soon. You can edit or delete your post any time.";
+  // Nov 15, 2026: posts go to the server as pending; a moderator approves them before other members see them.
+  "Community posts are reviewed by the Code 3 team before other members see them. If you're signed out, posts are saved on this device. You can edit or delete your post any time.";
 
 export function tidepoolPendingReviewCopy(post = {}) {
   const flagged = Boolean(post.safetyReviewReason || post.needsSafetyReview || post.flagReason);

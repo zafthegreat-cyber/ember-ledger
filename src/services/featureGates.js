@@ -101,7 +101,7 @@ export const TIER_PRICING = {
       "Follow 1 watched store; change it once every 30 days",
       "Submit and confirm restock reports; limited current restock details",
       "The Spark and the guided tour",
-      "Community posts shared with other members — not available yet (posts save on your device for now)",
+      "Community posts shared with other members (reviewed by the Code 3 team before they appear)",
       "Not included: the Sell ledger (sales, expenses, receipts, profit), Deal Finder, receipt scan, price history, and Restocks tooling (more watched stores, deeper store details, alerts)",
       "No raw restock history or restock pattern tools on any plan",
     ],
