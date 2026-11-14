@@ -22,8 +22,8 @@ for free during beta is taken away from Free afterwards.
 |---|---|---|---|
 | **Free** | Every collector, every family member | The complete collector app (below) | $0, forever |
 | **Collector** | People who hunt restocks | 3 watched stores (swap 1 every 14 days), deeper current store details, restock/text alerts, price history, unlimited scans | Free during beta; priced after |
-| **Family** | Parents | Everything in Collector plus parent-managed kid profiles (2 included), Family Vault, kid-safe views, kid wishlists, Spark family reminders | Free during beta; priced after |
-| **Seller** | Resellers | Everything in Collector plus the Business ledger: inventory with cost basis, sales, expenses, mileage, receipts and receipt scan, profit/loss, Deal Finder, listing prep, cross-listing status, business reports and exports | Free during beta; priced after |
+| **Family** | Parents | Everything in Collector plus parent-managed kid profiles (2 included), family collection, kid-safe views, kid wants lists (planned, not available yet), Spark family reminders | Free during beta; priced after |
+| **Seller** | Resellers | Everything in Collector plus the Sell and Business tools: inventory with cost basis, sales, expenses, mileage, receipts and receipt scan, profit/loss, Deal Finder, listing prep, cross-listing status, business reports and exports | Free during beta; priced after |
 | **Shop** | Local card shops (approved by hand) | Shop profile and directory listing, store rules/limits/events, Trusted Family Friend application, staff seats, featured placement (Shop Plus) | Free during beta for approved shops |
 
 Legacy plan ids (`collector_plus`, `seller_pro`, `scout_premium`, `ultimate`, `shop_basic`,
@@ -35,7 +35,7 @@ Legacy plan ids (`collector_plus`, `seller_pro`, `scout_premium`, `ultimate`, `s
 - Folders, tags, variants, wishlist, favorites (`variants`, `wishlist_basic`)
 - Total collection value and a fair range per item (`portfolio_value`)
 - Set progress, missing-card lists, binder view (`set_completion`)
-- Wishlist alerts and saved Market searches (`wishlist_alerts`, `saved_market_searches`)
+- Wants alerts and saved Market searches (`wishlist_alerts`, `saved_market_searches`)
 - Collection export (`collection_export`, `vault_export`)
 - Graded slab tracking (`graded_slab_tracking`)
 - Basic trade analyzer, deck/list builder

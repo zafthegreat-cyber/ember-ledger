@@ -15,21 +15,24 @@ childish, cluttered, generic, scalper-friendly, cold, or overly technical.
 
 ## Main areas
 
-Use these product page names in all user-facing copy (decided Oct 30 – Nov 6,
-2026). Code symbols, routes, storage keys and database names keep the older
+One set of names everywhere a person reads (decided Nov 14, 2026): the app is
+three workspaces, **Collect**, **Find** and **Sell**, plus Business, Community and
+Settings. Code symbols, routes, storage keys and database names keep the older
 words in parentheses; do not rename those.
 
-- Home (code: hearth): home dashboard
-- Restocks (code: scout): local and online restock reports, watched stores
-- Vault: personal/family collection tracker
-- Business (code: forge): trades, listings, sales, inventory, receipts
-- Market: discovery, search, fair price tools
+- **Collect** (code: vault): tabs **Collection**, **Sets**, **Wants**. Never "Vault" or
+  "Wishlist" in visible copy; the plain-language layer rewrites stragglers.
+- **Find** (code: scout, flip scout): tabs Home, **Deals**, **Restocks**, Auctions.
+  "Watchlist" means stores/products watched for restocks, not wanted cards.
+- **Sell** (code: forge resale): Inventory and Sales.
+- **Business** (code: forge/ledger): purchases, money, receipts and records.
+- Home (code: hearth), Market: discovery, search, fair price tools
 - Community (code: tidepool): trusted family-safe community
-- The Spark: kids program, donations, giveaways, events
+- Kids & Community / The Spark: kids program, donations, giveaways, events
 - Safety Center (code: lantern) and Family (code: nest): safety and family settings
 - Watch Center (code: ember watch / tide watch), Public Profile (code: ember id),
   Daily Points (code: ember/tide points), Trust Score (code: tide score)
-- Code 3 Assist (code: ember assist): warm helper / assistant layer
+- Business Assistant (code: ember assist): warm helper / assistant layer
 
 `src/config/plainLanguage.js` (`renameLegacyProductNames`) is the render-time
 catch-all; `npm run test:plain-language` fails on leaked old names.

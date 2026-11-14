@@ -36,3 +36,12 @@ assert.equal(plainLanguageText("Obsidian Flames booster"), "Obsidian Flames boos
 }
 
 console.log("Plain-language display-copy checks passed.");
+
+// Nov 14: Collect / Find / Sell naming — Wishlist reads as Wants everywhere.
+assert.equal(plainLanguageText("Wishlist"), "Wants");
+assert.equal(plainLanguageText("Add to Wishlist"), "Add to Wants");
+assert.equal(plainLanguageText("Your wishlist is empty"), "Your wants list is empty");
+assert.equal(plainLanguageText("Wishlist alerts and saved Market searches"), "Wants alerts and saved Market searches");
+assert.equal(plainLanguageText("Open Vault"), "Open Collection");
+assert.equal(plainLanguageText("Watchlist"), "Watchlist", "watched stores/products keep their own name");
+console.log("Collect / Find / Sell naming checks passed.");
