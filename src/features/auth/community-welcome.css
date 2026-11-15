@@ -9,4 +9,8 @@
 .community-welcome-actions button:disabled { opacity: .65; cursor: wait; }
 .community-welcome--compact { padding: 16px 0 0; border: 0; border-top: 1px solid #ab854640; border-radius: 0; background: transparent; }
 .community-link-context { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
-@media (max-width: 420px) { .community-welcome-actions { align-items: stretch; } .community-welcome-actions a, .community-welcome-actions button { flex: 1 1 auto; } }
+/* One full-width button per row, like the sign-in options. */
+.community-welcome-actions { display: grid; grid-template-columns: 1fr; align-items: stretch; }
+.community-welcome-actions > :is(a, button), .community-welcome-actions > .share-code3 { width: 100%; box-sizing: border-box; margin: 0; }
+.community-welcome-actions > .share-code3 > button { width: 100%; }
+.community-welcome-actions a, .community-welcome-actions button { min-height: 48px; font-size: .92rem; font-weight: 600; text-align: center; }
