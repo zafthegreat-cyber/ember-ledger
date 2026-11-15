@@ -14964,6 +14964,8 @@ export default function App() {
     const confidenceScore = Number(report.confidenceScore || report.confidence_score || scoutConfidenceScore(report.confidence || ""));
     const payload = {
       store_id: storeId,
+      // Directory stores have text ids; restock alerts match watchers on this key.
+      store_key: storeId ? null : (String(rawStoreId || "").slice(0, 160) || null),
       user_id: user.id,
       product_id: uuidOrNull(report.productId || report.product_id || report.catalogProductId || report.catalog_product_id),
       report_type: report.report_type || report.reportType || "restock",
@@ -15029,17 +15031,22 @@ export default function App() {
 
   async function persistScoutStoreWatchToSupabase(store = {}, favorite = true) {
     if (!scoutBackendSyncReady()) return false;
-    const storeId = uuidOrNull(getScoutQuickStoreId(store));
-    if (!storeId) return false;
+    // Nov 15: directory stores have text ids, so they are saved by store_key; restock
+    // alerts (database trigger) match watchers on store_id or store_key.
+    const rawStoreId = getScoutQuickStoreId(store);
+    const storeId = uuidOrNull(rawStoreId);
+    const storeKey = storeId ? null : String(rawStoreId || "").slice(0, 160);
+    if (!storeId && !storeKey) return false;
     const { error } = await supabase.from("store_user_watchlist").upsert(
       {
         user_id: user.id,
         store_id: storeId,
+        store_key: storeKey,
         favorite: Boolean(favorite),
         watched: Boolean(favorite),
         updated_at: new Date().toISOString(),
       },
-      { onConflict: "user_id,store_id" }
+      { onConflict: storeId ? "user_id,store_id" : "user_id,store_key" }
     );
     if (error) {
       logAppError("scout_store_watch_save", error, { storeId }, "normal");

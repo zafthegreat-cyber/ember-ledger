@@ -60,6 +60,7 @@ jobs:
           node --no-warnings --test scripts/test-native-launch-scope.mjs
           node --no-warnings scripts/test-shared-device-signout.mjs
           node --no-warnings scripts/test-community-server.mjs
+          node --no-warnings scripts/test-restock-alerts.mjs
           node --no-warnings scripts/test-tier-foundation.mjs
           npm run test:native
           node --no-warnings scripts/test-code3-branding.mjs

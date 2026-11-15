@@ -14,6 +14,8 @@ export const DEVICE_NOTIFICATION_SEEN_KEY = "code3_device_notification_seen_v1";
 const MAX_SEEN = 400;
 const ANNOUNCE_CATEGORIES = new Set([
   "confirmed_restock",
+  // Server-created restock alerts for watched stores (notifications.type, Nov 15 2026).
+  "stock_alert",
   "favorite_store_alert",
   "saved_product_alert",
   "predicted_restock_window",
