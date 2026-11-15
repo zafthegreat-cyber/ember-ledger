@@ -22,8 +22,16 @@ on:
       - package-lock.json
   push:
     branches:
+      - main
       - codex/social-login-20261030
       - codex/member-improvements-01-20-20261030
+    paths:
+      - .github/workflows/social-sign-in-checks.yml
+      - src/features/auth/**
+      - src/supabaseClient.js
+      - src/native/**
+      - scripts/test-social-sign-in*.mjs
+      - docs/SOCIAL_SIGN_IN_*.md
 permissions:
   contents: read
 jobs:

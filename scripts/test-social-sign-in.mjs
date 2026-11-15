@@ -61,6 +61,22 @@ test("iPhone shows other sign-in options only beside Sign in with Apple", async 
   const both = await loadSocialAvailability({ ...base, released: ["apple", "discord"], requireApple: true, fetchImpl: settings({ discord: true, apple: true }) });
   assert.deepEqual(both.map(provider => provider.id), ["apple", "discord"]);
 });
+test("Google, Facebook, Discord and Apple all show on web and iPhone once released and enabled", async () => {
+  const fetchImpl = async () => Response.json({ external: { google: true, apple: true, discord: true, facebook: true, email: true } });
+  const base = { projectUrl: project, publicKey: "public-fixture", released: releasedProviders("google,facebook,discord,apple"), fetchImpl };
+  for (const requireApple of [false, true]) {
+    assert.deepEqual((await loadSocialAvailability({ ...base, requireApple })).map(provider => provider.id), ["google", "apple", "discord", "facebook"]);
+  }
+  const partial = await loadSocialAvailability({ ...base, fetchImpl: async () => Response.json({ external: { google: true, facebook: false, discord: true } }) });
+  assert.deepEqual(partial.map(provider => provider.id), ["google", "discord"]);
+});
+test("Apple and Facebook authorization pages are accepted only at their real hosts", () => {
+  assert.ok(checkedProviderUrl("https://appleid.apple.com/auth/authorize?client_id=public", "apple", project));
+  assert.ok(checkedProviderUrl("https://www.facebook.com/v19.0/dialog/oauth?client_id=public", "facebook", project));
+  for (const value of ["https://appleid.apple.com.evil.test/auth/authorize", "https://www.facebook.com/dialog/share"]) {
+    assert.throws(() => checkedProviderUrl(value, value.includes("apple") ? "apple" : "facebook", project));
+  }
+});
 test("availability errors fail closed without leaking upstream details", async () => {
   await assert.rejects(loadSocialAvailability({ projectUrl: project, publicKey: "public-fixture", released: ["google"], fetchImpl: async () => new Response("private upstream detail", { status: 502 }) }), error => !error.message.includes("private"));
 });

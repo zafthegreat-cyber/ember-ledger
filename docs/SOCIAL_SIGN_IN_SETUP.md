@@ -1,5 +1,7 @@
 # Google, Apple, Discord and Facebook sign-in
 
+Step-by-step owner checklist: [SOCIAL_SIGN_IN_OWNER_CHECKLIST.md](SOCIAL_SIGN_IN_OWNER_CHECKLIST.md).
+
 Prepared October 30, 2026 for the existing Code 3 TCG website and Capacitor Android/iOS app. The provider integration is implemented locally; all four production providers were disabled at the initial readback. This document is not an activation receipt. Email/password and its existing confirmation/recovery links remain supported. Best Buy remains paused.
 
 ## Destinations and scope
@@ -51,7 +53,8 @@ Shared application information:
 | Privacy policy | `https://code3tcg.app/privacy` |
 | Terms | `https://code3tcg.app/terms` |
 | Account deletion instructions | `https://code3tcg.app/delete-account` |
-| Existing native bundle/application ID | `app.code3tcg.mobile` |
+| iOS bundle ID / Apple App ID | `app.code3tcg.mobile` |
+| Android package (store ID) | `com.code3tcg.app` |
 | Provider callback | `https://gxsfququorfczvhrkudl.supabase.co/auth/v1/callback` |
 
 These public identifiers are not provider credentials. Confirm ownership of the chosen developer account before saving a client. Keep the existing Supabase app-return URLs and manual linking configuration.
