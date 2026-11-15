@@ -1,7 +1,9 @@
 name: Android signed beta build
 # Builds a signed Android bundle (.aab) and APK with the owner's upload key, so testers can
-# install it over earlier signed builds and it can be uploaded to Play by hand.
-# Runs only when started from the Actions tab; nothing is uploaded to Play.
+# install it over earlier signed builds.
+# Runs only when started from the Actions tab. With play_track set (alpha by default) and the
+# PLAY_SERVICE_ACCOUNT_JSON secret added, it also uploads the bundle to Google Play as a DRAFT
+# release; the owner still reviews it and clicks "Start rollout" in Play Console.
 # Needs repository secrets: CODE3_ANDROID_KEYSTORE_BASE64 (base64 of the keystore file),
 # CODE3_ANDROID_STORE_PASSWORD, CODE3_ANDROID_KEY_ALIAS and CODE3_ANDROID_KEY_PASSWORD.
 on:
@@ -16,6 +18,15 @@ on:
         type: string
         default: '1.0.0'
         required: true
+      play_track:
+        description: Upload to Google Play as a draft on this testing track (none = do not upload)
+        type: choice
+        options: [alpha, internal, none]
+        default: alpha
+      release_notes:
+        description: What's new (shown to testers in Play; optional)
+        type: string
+        default: ''
 permissions:
   contents: read
 concurrency:
@@ -96,3 +107,12 @@ jobs:
           name: code3-android-signed-build-${{ inputs.build_number }}
           path: artifacts/native/android-release/
           retention-days: 14
+      - name: Upload to Google Play as a draft (optional)
+        if: inputs.play_track != 'none'
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          PLAY_TRACK: ${{ inputs.play_track }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+        run: |
+          if [ -z "$PLAY_SERVICE_ACCOUNT_JSON" ]; then echo "::warning::PLAY_SERVICE_ACCOUNT_JSON is not set; download the bundle from this run and upload it to Play by hand."; exit 0; fi
+          node scripts/upload-play-bundle.mjs "artifacts/native/android-release/Code3TCG-build-$CODE3_BUILD_NUMBER.aab" --track "$PLAY_TRACK" --name "$CODE3_BUILD_NUMBER ($CODE3_VERSION_NAME)" --notes "$RELEASE_NOTES"
