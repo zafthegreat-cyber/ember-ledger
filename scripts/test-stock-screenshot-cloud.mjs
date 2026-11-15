@@ -38,13 +38,14 @@ const pad = (value) => String(value).padStart(2, "0");
 const localDate = (value = new Date()) => `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
 const localTime = (value = new Date()) => `${pad(value.getHours())}:${pad(value.getMinutes())}`;
 
-// The deployed table has 26 columns; optional migration columns are absent.
+// The deployed table has 27 columns (store_key added Nov 15, 2026 for restock alerts);
+// optional migration columns are absent.
 // Validate the payload AND RETURNING columns instead of manufacturing success.
 const productionColumns = new Set([
   "id", "store_id", "user_id", "product_id", "report_type", "quantity_seen", "price_seen", "photo_url", "notes",
   "reported_at", "verification_status", "workspace_id", "store_name", "product_name", "product_type", "set_name",
   "quantity_estimate", "report_time", "visibility", "status", "confidence_score", "created_at", "updated_at",
-  "archived_at", "archived_by", "observed_at",
+  "archived_at", "archived_by", "observed_at", "store_key",
 ]);
 const productionStatuses = new Set(["pending", "confirmed", "unverified", "rejected", "stale"]);
 const productionVisibility = new Set(["public", "private_from_map", "admin_only"]);
