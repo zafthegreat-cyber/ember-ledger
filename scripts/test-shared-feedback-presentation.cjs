@@ -184,6 +184,10 @@ async function checkFullAppDialogs(browser) {
       await modal.getByLabel("Asking Price", { exact: true }).fill("10");
       const before = await page.evaluate((key) => localStorage.getItem(key), storageKey);
       await page.evaluate((key) => {
+        // Keep the error toast on screen while it is measured. On slower CI
+        // runners the save can hold the main thread past its 7.8s auto-dismiss.
+        const schedule = window.setTimeout;
+        window.setTimeout = function(callback, delay, ...rest) { return delay === 7800 ? 0 : schedule.call(this, callback, delay, ...rest); };
         const original = Storage.prototype.setItem;
         Storage.prototype.setItem = function(name, value) {
           if (name === key) throw new DOMException("Synthetic feedback quota failure", "QuotaExceededError");
