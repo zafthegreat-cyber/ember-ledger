@@ -118,10 +118,16 @@ await check("Android Back starts Escape on focused visible dialog control, not w
   const stop = await startNativeLifecycle({ client: fixture.client }); await fixture.emit("backButton", { canGoBack: true });
   assert.deepEqual(events, [{ key: "Escape", bubbles: true, cancelable: true }]); assert.equal(fixture.states.historyBack, 0); assert.deepEqual(fixture.states.dispatched, []); stop();
 });
-await check("Android Back uses existing history then minimizes without clearing unsaved records", async () => {
+await check("Android Back uses history, then goes Home, then needs a second press on Home to leave", async () => {
   const fixture = host(); const stop = await startNativeLifecycle({ client: fixture.client });
   await fixture.emit("backButton", { canGoBack: true }); assert.equal(fixture.states.historyBack, 1);
-  await fixture.emit("backButton", { canGoBack: false }); assert.equal(fixture.states.minimized, 1); stop();
+  globalThis.location = { pathname: "/settings" };
+  await fixture.emit("backButton", { canGoBack: false });
+  assert.deepEqual(fixture.states.routes, ["/"]); assert.deepEqual(fixture.states.dispatched, ["popstate"]); assert.equal(fixture.states.minimized, 0);
+  globalThis.location = { pathname: "/" };
+  await fixture.emit("backButton", { canGoBack: false }); assert.equal(fixture.states.minimized, 0);
+  await fixture.emit("backButton", { canGoBack: false }); assert.equal(fixture.states.minimized, 1);
+  delete globalThis.location; stop();
 });
 await check("cold start PKCE exchange runs once, returns to reset route, duplicate delivery does not re-exchange", async () => {
   const fixture = host({ launch: callback }); const stop = await startNativeLifecycle({ client: fixture.client });

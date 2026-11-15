@@ -22,10 +22,28 @@ function exchangeOnce(client, code) {
   return state.pending.get(code);
 }
 
+const LEAVE_WINDOW_MS = 2000;
+const HOME_PATHS = new Set(["/", "/find/home", "/sell/home"]);
+function isHomePath(pathname) { return HOME_PATHS.has(String(pathname || "/").replace(/\/+$/, "") || "/"); }
+// A small, self-removing notice; the app keeps running if the DOM is unavailable.
+function showLeaveHint() {
+  try {
+    const existing = document.getElementById("code3-leave-hint");
+    if (existing) existing.remove();
+    const hint = document.createElement("div");
+    hint.id = "code3-leave-hint"; hint.setAttribute("role", "status");
+    hint.textContent = "Press back again to leave Code 3";
+    hint.style.cssText = "position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:2147483000;padding:10px 16px;border-radius:999px;background:#1f1f1fee;color:#fff;font:600 14px/1.3 system-ui,sans-serif;box-shadow:0 4px 14px #0006;pointer-events:none;";
+    document.body.appendChild(hint);
+    setTimeout(() => hint.remove(), LEAVE_WINDOW_MS);
+  } catch { /* hint is optional */ }
+}
+
 export async function startNativeLifecycle({ client, onAuthError = () => {}, onSocialCallback, signal } = {}) {
   if (!isNativePlatform() || signal?.aborted) return () => {};
   activeCleanup?.();
   let disposed = false;
+  let lastHomeBack = 0;
   let processing = false;
   const listeners = [];
   const cleanup = () => {
@@ -86,7 +104,13 @@ export async function startNativeLifecycle({ client, onAuthError = () => {}, onS
         // and the existing window handler all receive the normal bubbling path.
         target.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
       } else if (canGoBack && history.length > 1) { history.back(); }
-      else { App.minimizeApp(); }
+      else if (!isHomePath(globalThis.location?.pathname)) {
+        // Many screens switch in place without a history entry. Back should
+        // land on Home instead of sending Code 3 to the background.
+        history.replaceState({}, "", "/");
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      } else if (Date.now() - lastHomeBack < LEAVE_WINDOW_MS) { lastHomeBack = 0; App.minimizeApp(); }
+      else { lastHomeBack = Date.now(); showLeaveHint(); }
     }),
     ]);
     if (disposed) return cleanup;
