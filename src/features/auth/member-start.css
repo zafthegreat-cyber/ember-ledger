@@ -17,6 +17,10 @@
 .member-destinations dt { font-weight: 700; }
 .member-destinations dd { margin: 0; }
 .member-start--closed { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; justify-content: space-between; }
-.member-field-privacy { font-size: .9rem; }
+/* Spans the full form width even when its parent is a grid or flex row. */
+.member-field-privacy { font-size: .9rem; width: 100%; max-width: none; grid-column: 1 / -1; flex: 1 1 100%; align-self: stretch; }
+.member-field-privacy strong { display: block; font-size: .95rem; }
+.member-field-privacy p { margin: .4rem 0 .6rem; }
+.member-field-privacy a { display: inline-block; text-underline-offset: 3px; }
 .public-beta-submit-state code { overflow-wrap: anywhere; word-break: break-word; }
 @media (max-width: 420px) { .member-start-action, .member-start-report { width: 100%; margin-inline: 0; } }
