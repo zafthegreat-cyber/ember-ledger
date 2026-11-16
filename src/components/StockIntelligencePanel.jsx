@@ -41,6 +41,7 @@ export default function StockIntelligencePanel() {
   const [query,setQuery] = useState("");
   const [pins,setPins] = useState(initialPins);
   const [onlyPins,setOnlyPins] = useState(false);
+  const [showAll,setShowAll] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
     let waiting = false;
@@ -72,6 +73,7 @@ export default function StockIntelligencePanel() {
       return aPin-bPin || a.retailer.localeCompare(b.retailer) || a.name.localeCompare(b.name);
     });
   },[selection.targets,pins,onlyPins]);
+  const visibleProducts = showAll || query.trim() || onlyPins ? products : products.slice(0,4);
   const connected = snapshot?.sources?.filter(s=>s.connected).length||0;
   const signalCount = snapshot?.signals?.length||0;
   function togglePin(p) {
@@ -127,7 +129,7 @@ export default function StockIntelligencePanel() {
             <button type="button" aria-pressed={onlyPins} onClick={()=>setOnlyPins(v=>!v)} className={onlyPins?"is-active":""}>★ Pinned only ({pins.length})</button>
           </div>
           {products.length ? <ul className="stock-intel__products">
-            {products.map(p=>{
+            {visibleProducts.map(p=>{
               const pinned=pins.includes(labelFor(p));
               const recent=selection.signals.find(s=>s.retailer===p.retailer && s.sku===p.sku);
               const current=recent && Date.parse(recent.expiresAt)>now ? recent:null;
@@ -144,6 +146,8 @@ export default function StockIntelligencePanel() {
               </li>;
             })}
           </ul> : <p className="stock-intel__empty" role="status">No watch targets match. Clear the search or change retailer.</p>}
+          {!showAll && !query.trim() && !onlyPins && products.length>4 && <button className="stock-intel__show-all" type="button" onClick={()=>setShowAll(true)}>Show all {products.length} tracked products</button>}
+          {showAll && products.length>4 && !onlyPins && !query.trim() && <button className="stock-intel__show-all" type="button" onClick={()=>setShowAll(false)}>Show fewer products</button>}
           <p className="stock-intel__footnote">★ Pins are saved on this device only. Pinning a product does not turn on push notifications or a retailer connection.</p>
         </>}
         {active==="signals" && <>
