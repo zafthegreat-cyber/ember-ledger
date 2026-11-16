@@ -84,6 +84,7 @@ import AgeConfirmationGate from "./features/auth/AgeConfirmationGate.jsx";
 import { crashReportingAllowed, setCrashReportingAllowed, setCrashReportingKidSafe } from "./features/monitoring/crashReporting.js";
 import { rowsToCsvAsync } from "./features/exports/csv.js";
 import { RELEASE_NOTES } from "./features/tour/releaseNotes.js";
+import { SAVED_SEARCHES_CHANGED_EVENT, syncSavedSearches } from "./features/market/savedSearches.js";
 import { reportHandledError } from "./features/monitoring/crashReporting.js";
 import {
   readWorkspacePreference,
@@ -10994,6 +10995,23 @@ export default function App() {
     markNotificationRead(entry.id);
     setNotificationCenterOpen(false);
     const route = String(entry.route || entry.actionUrl || entry.ctaDestination || "").trim();
+    if (route.startsWith("/find/restocks") || route.startsWith("/restocks")) {
+      setActiveTab("scout");
+      setScoutView("reports");
+      setScoutSubTabTarget({ tab: "reports", id: Date.now() });
+      return;
+    }
+    if (route.startsWith("/market")) {
+      let query = "";
+      try { query = new URL(route, "https://code3tcg.app").searchParams.get("q") || ""; } catch { query = ""; }
+      setActiveTab("market");
+      setTideTradrSubTab("catalog");
+      if (query) {
+        updateCatalogSearchInput(query);
+        window.setTimeout(() => submitCatalogSearch(query), 0);
+      }
+      return;
+    }
     if (route.startsWith("/scout/calendar")) {
       setActiveTab("scout");
       setScoutView("alerts");
@@ -23530,7 +23548,8 @@ function mapCatalog(row) {
         vaultStatus: itemForm.vaultStatus || items.find((item) => item.id === editingItemId)?.vaultStatus || "",
         listingPlatform: itemForm.listingPlatform,
         listingUrl: itemForm.listingUrl,
-        listedPrice: Number(itemForm.listedPrice || 0),        storageLocation: itemForm.storageLocation || "",
+        listedPrice: Number(itemForm.listedPrice || 0),
+        storageLocation: itemForm.storageLocation || "",
         physicalLocation: itemForm.physicalLocation || currentEditingItem?.physicalLocation || "",
         physicalLocationNotes: itemForm.physicalLocation === "Other" ? itemForm.physicalLocationNotes || "" : "",
         condition: itemForm.condition || "",
@@ -23595,7 +23614,8 @@ function mapCatalog(row) {
       status: itemForm.status,
       listing_platform: itemForm.listingPlatform,
       listing_url: itemForm.listingUrl,
-      listed_price: Number(itemForm.listedPrice || 0),      vault_status: itemForm.vaultStatus || null,
+      listed_price: Number(itemForm.listedPrice || 0),
+      vault_status: itemForm.vaultStatus || null,
       physical_location: itemForm.physicalLocation || currentEditingItem?.physicalLocation || "",
       physical_location_notes: itemForm.physicalLocation === "Other" ? itemForm.physicalLocationNotes || "" : "",
       condition_name: itemForm.conditionName || itemForm.condition || "Near Mint",
@@ -31083,6 +31103,45 @@ function renderForgeBusinessLedgerPanel() {
       active = false;
     };
   }, [localDataLoaded, guestPreviewActive, signedInWithSupabase, user?.id, currentUserProfile?.id, currentUserProfile?.userId, currentUserProfile?.appAccess, currentUserProfile?.app_access, currentUserProfile?.betaStatus, currentUserProfile?.beta_status, currentUserProfile?.betaAccessStatus, currentUserProfile?.beta_access_status, shorelineState.betaRequest?.status, dataAccessForEffects]);
+
+  // SHOULD 17: alerts that arrive. The server queues in-app notifications
+  // (watched-store restock reports, saved-search matches, price drops); the app
+  // re-reads them when it comes back to the foreground and every few minutes
+  // while open, so a badge appears without a restart. Push stays off until a
+  // provider is wired (device_push_tokens is empty by design).
+  useEffect(() => {
+    if (!localDataLoaded || guestPreviewActive || !signedInWithSupabase || !dataAccessForEffects) return undefined;
+    let active = true;
+    const refresh = () => {
+      if (!active || document.visibilityState !== "visible") return;
+      onNotificationSessionReady().then((rows) => { if (active && Array.isArray(rows)) setBackendNotifications(rows); }).catch(() => {});
+    };
+    const onVisible = () => { if (document.visibilityState === "visible") refresh(); };
+    document.addEventListener("visibilitychange", onVisible);
+    const interval = window.setInterval(refresh, 3 * 60 * 1000);
+    return () => {
+      active = false;
+      document.removeEventListener("visibilitychange", onVisible);
+      window.clearInterval(interval);
+    };
+  }, [localDataLoaded, guestPreviewActive, signedInWithSupabase, user?.id, dataAccessForEffects]);
+
+  // Saved Market searches double as the alert subscription list, so they live
+  // on the account as well as the device: merge on sign-in, push on change.
+  useEffect(() => {
+    if (!localDataLoaded || guestPreviewActive || !signedInWithSupabase || !dataAccessForEffects || !supabase || !user?.id) return undefined;
+    let active = true;
+    let timer = 0;
+    const run = (mode) => { if (active) void syncSavedSearches(supabase, user.id, undefined, { mode }); };
+    run("merge");
+    const onChanged = () => { window.clearTimeout(timer); timer = window.setTimeout(() => run("push"), 800); };
+    window.addEventListener(SAVED_SEARCHES_CHANGED_EVENT, onChanged);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+      window.removeEventListener(SAVED_SEARCHES_CHANGED_EVENT, onChanged);
+    };
+  }, [localDataLoaded, guestPreviewActive, signedInWithSupabase, user?.id, dataAccessForEffects]);
 
   useEffect(() => {
     if (!adminEditModeAvailable && adminEditMode) {
@@ -41704,15 +41763,19 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (!match) return null;
     const info = getTideTradrMarketInfo(match);
     const value = Number(info?.marketValue || info?.currentMarketValue || match.marketValue || match.marketPrice || match.currentMarketValue || match.midPrice || 0);
-    if (!(value > 0)) return null;
-    return { value, source: `Catalog estimate (${catalogTitle(match)})`, product: match };
+    const msrp = Number(match.msrpPrice || match.msrp_price || match.msrp || 0);
+    if (value > 0) return { value, source: `Catalog estimate (${catalogTitle(match)})`, product: match, msrp: msrp > 0 ? msrp : null };
+    // Build-11 fix: sealed product with no market value but a shelf price still
+    // gets a one-tap floor instead of a hint.
+    if (msrp > 0) return { value: msrp, source: `Shelf price / MSRP (${catalogTitle(match)})`, product: match, msrp };
+    return null;
   }
 
   function renderTradeValueFlowContent() {
     const sourceItem = selectedTradeSourceItem();
     const validation = validateTradeDraft(tradeDraft, sourceItem);
     const receivedEstimate = tradeDraft.receivedValue === "" || tradeDraft.receivedValue === undefined ? tradeReceivedCatalogEstimate(tradeDraft) : null;
-    const comparison = buildTradeComparison(tradeDraft, sourceItem || {}, { moneyFormatter: money, receivedEstimate });
+    const comparison = buildTradeComparison(tradeDraft, sourceItem || {}, { moneyFormatter: money, receivedEstimate, receivedMsrp: receivedEstimate?.msrp || null });
     const selectedOption = tradeSourceOptions.find((option) => String(option.id) === String(tradeDraft.sourceItemId));
     const recentTrades = workspaceTradeRecords.slice(0, 3);
     const sourceMasterCard = sourceItem ? buildMasterCardsFromItems(inventoryGroupEntries(sourceItem))[0] || null : null;
@@ -47107,6 +47170,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   const hearthPageProps = {
     kidSafeView,
     marketSearchesRun: catalogSearchHasRun ? 1 : 0,
+    // Store persona checklist: "finish your public profile" is done once a public username exists.
+    publicProfileReady: Boolean(currentUserProfile?.publicUsername || currentUserProfile?.public_username),
     onOpenFeedback: openQuickFeedback,
     experiencePresentation,
     onOpenSellTrade: () => { prepareRouteNavigation(); setActiveTab("exchange"); },

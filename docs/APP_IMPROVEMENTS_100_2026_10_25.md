@@ -876,3 +876,76 @@ and are in `docs/MUST_WEEK1_PC_CHECKLIST.md`.
   repo), 27 route-level code splitting (needs the PC build to measure), 28/42
   tester voices (content batches, next session), 32/33/34 (binder page,
   verified-shop badge, map tile cache), 39 analytics (account), 41 ledger #16/#29/#100.
+
+### November 14 (evening): simulated beta for build 11
+
+- `scripts/simulate-beta-build11.mjs` (`npm run simulate:beta-build11`): 20,000
+  synthetic testers walk the Nov 13–14 features through the real modules.
+  Report: `docs/BETA_SIMULATION_BUILD11_2026_11_14.md`.
+- Fixed from the run: store-persona checklist step that could never complete
+  (`publicProfileReady` now passed from App); bare-number card queries
+  ("jolteon ex 28") rank the named card first and numeric set codes no longer
+  masquerade as matches; five grooming-shaped off-platform steering patterns in
+  `communitySafety.js` (no digits needed to trip them).
+- `test:should-batch2` is now 20 tests.
+
+### November 14 (late): the four "didn't like" items from the build-11 run
+
+- Quick report: Sealed / Singles / Both chip row between the store and status
+  rows; the choice is remembered per store (`categoryByStore` in
+  `quickReport.js`, `categoryForStore`, `buildQuickReportOptions({ category })`).
+- Quick report with nothing followed: Home passes two suggested directory
+  stores (ones you reported at, else the first two) so the launcher still
+  renders, with a hint to follow a store.
+- Trade analyzer: when the received item is sealed and the catalog row has an
+  MSRP, "Use the shelf price as a floor ($X)" is a tappable button, not a hint
+  (`receivedMsrp` through `buildTradeComparison`; App resolves it from the
+  catalog estimate).
+- Purchase return: "Mark N items returned" on a Refunded/Closed return
+  (`markPurchaseReturned` in `manualLifecycles/service.js`) sets the linked
+  unsold inventory rows to status "Returned", disposition "Returned to seller",
+  with `returnedAt`/`returnRecordId`; idempotent.
+- `test:should-batch2` is now 23 tests; `simulate:beta-build11` reports zero
+  code-decided defects with the simulation updated to exercise all four.
+
+### November 15: SHOULD 17 alerts end to end (in-app) and SHOULD 16 durable store
+
+- **Alerts (17).** Server: `saved_searches` table; the restock trigger now alerts
+  watchers in-app on any public report at a watched store (previously only
+  `confirmed`, of which there were none) and alerts saved-search owners when the
+  product or set name matches; a new price-drop trigger (≥10% and ≥$1, once a day
+  per product) alerts saved-search owners. Push is still queued only for confirmed
+  reports and only to registered devices — `device_push_tokens` is empty until a
+  provider is wired, so nothing leaves the phone yet. App: saved searches sync to
+  the account (merge on sign-in, push on edit, so removing a chip removes the
+  subscription); notifications re-load on foreground and every 3 minutes; alert
+  taps open Restocks → reports or run the Market search (`/find/restocks`,
+  `/market?q=`). What's new card gained the alerts line and the "we'll say so
+  here before Free features change" line (sim item 5).
+- **Durable store (16).** IndexedDB is now written on every save of the main
+  local store (`legacyAppStorage.js`): localStorage stays the quick copy, and when
+  the 5 MB quota refuses a write the save still succeeds (`durableOnly`), the
+  record is marked `quickCopy:false`, and the next start-up opens the IndexedDB
+  copy (`preloadDurableAppData()` in `main.jsx` runs before the first render,
+  bounded at 1.5 s). An evicted localStorage also falls back to the durable copy.
+  Hosted inventory/sales/expenses were already in Supabase; this covers the
+  local-mode store and the hosted "supplement" (purchasers, caches, trade
+  records, sets). Cloud saving stays opt-in.
+- Tests: `test:should-batch2` 25; `test-legacy-app-storage.cjs` quota expectation
+  updated (run on the PC — needs Playwright).
+
+### November 15 (later): reconciling with `main`
+
+- `main` moved ~20 commits during Nov 14–15 (Claude Code on the PC: push via
+  `send-push`/`push-dispatch` + `register_push_token`, Android back button,
+  sign-in screens, CI browser job, store-review fixes). The Nov 15 work above
+  was three-way merged onto `1bf8a13`: alerts (saved-search sync, notification
+  refresh, routes), durable IndexedDB store, build-11 follow-ups, the Nov 14
+  evening fixes (search ranking, community safety) that had not been committed.
+- My duplicate push leg (drainer function, schedule, phone module) was dropped
+  in favour of the one already on `main`; `code3_queue_restock_alerts` keeps the
+  Nov 15 changes (in-app alerts on any public report, saved-search matches) and
+  still writes `push_outbox` for the existing dispatcher.
+- Tasks board: t006/t009/t010/t011/t013/t014/t088/t090/t092/t105/t106/t107 done;
+  t008 doing (Firebase setup), t087 done on `main`; t115/t116 added.
+- `test:should-batch2` is 25 tests on the merged tree.

@@ -47,6 +47,7 @@
     "test:should-polish": "node --no-warnings --test scripts/test-should-polish.mjs",
     "test:should-batch2": "node --no-warnings --test scripts/test-should-batch2.mjs",
     "report:chunks": "node scripts/report-chunk-sizes.mjs dist",
+    "simulate:beta-build11": "node --no-warnings scripts/simulate-beta-build11.mjs",
     "test:legacy-backup-validation": "node scripts/test-legacy-backup-validation.mjs",
     "test:account-ops-restore": "node --no-warnings scripts/test-account-ops-restore.mjs",
     "test:account-ops-storage-safety": "node --no-warnings scripts/test-account-ops-storage-safety.mjs",

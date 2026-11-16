@@ -43,6 +43,13 @@ const UNSAFE_COMMUNITY_PATTERNS = [
   /\b(replica|replicas|counterfeit|counterfeits|fake|fakes|proxy|proxies|bootleg|knock[-\s]?off|unofficial print|custom print)\b[^.\n]{0,40}\b(cards?|packs?|box(es)?|etb|booster|slabs?|psa|cgc|bgs)\b/i,
   /\b(cards?|packs?|box(es)?|etb|booster|slabs?)\b[^.\n]{0,40}\b(replica|replicas|counterfeit|counterfeits|fake|fakes|proxy|proxies|bootleg|knock[-\s]?off)\b/i,
   /\b(resealed|reseal|re-sealed|weighed\s+packs?|light\s+packs?)\b/i,
+  // Build-11 simulated beta (2026-11-14): grooming-shaped steering with no
+  // phone number or address in it still has to be caught before moderation.
+  /\b(message|msg|dm|text|hit|add|find)\s+me\s+on\s+(insta|instagram|ig|snap|snapchat|tiktok|discord|telegram|whatsapp|kik|fb|facebook|signal)\b[^.\n]{0,80}\b(school|bus\s*(loop|stop)?|parents?|mom|dad|kid|kids|child|children|minor|young)\b/i,
+  /\b(after|before)\s+school\b[^.\n]{0,60}\b(meet|meet\s*up|pick\s+you\s+up|come\s+by|swing\s+by)\b/i,
+  /\b(meet|meet\s*up|pick\s+you\s+up)\b[^.\n]{0,60}\b(after|before)\s+school\b/i,
+  /\bdon'?t\s+tell\s+(your\s+)?(parents?|mom|dad|anyone|teacher)\b/i,
+  /\b(our|a)\s+(little\s+)?secret\b[^.\n]{0,40}\b(kid|kids|child|parents?|mom|dad)\b/i,
 ];
 
 export function isMarketplaceClosedStatus(status = "") {

@@ -43,7 +43,7 @@ export default function OperationsHome({
   onOpenSellTrade, onOpenExperienceSettings, activeVaultItems = [], workspaceWatchlist = [],
   scoutSnapshot = {}, isWatchedEmberStore = () => false,
   onOpenCollectionItem, onOpenInventoryItem, onOpenReport, onOpenStoreReports, onOpenFollowedReports, onSaveHomeShortcuts,
-  kidSafeView = false, marketSearchesRun = 0, startAppTour, onOpenFeedback,
+  kidSafeView = false, marketSearchesRun = 0, startAppTour, onOpenFeedback, publicProfileReady = false,
 }) {
   const [allAttention, setAllAttention] = useState(false);
   const [customizing, setCustomizing] = useState(false);
@@ -97,6 +97,15 @@ export default function OperationsHome({
   const homePreference = personalizationPreferences.pagePreferences?.hearth;
   const isVisible = (key) => !homePreference?.visibleKeys || homePreference.visibleKeys.includes(key);
   const followedStores = (scoutSnapshot.stores || []).filter(isWatchedEmberStore);
+  // Build-11 fix: people who follow nothing yet still get the quick-report chips —
+  // two directory stores they have reported at before, else the first two listed.
+  const suggestedStores = useMemo(() => {
+    if (followedStores.length) return [];
+    const directory = (scoutSnapshot.stores || []).filter((store) => !isWatchedEmberStore(store));
+    const reportedIds = new Set((adaptiveActivity.reports || []).map((report) => String(report.storeId || report.store_id || "")));
+    const reported = directory.filter((store) => reportedIds.has(String(store.id || store.storeId || "")));
+    return [...reported, ...directory.filter((store) => !reported.includes(store))].slice(0, 2);
+  }, [followedStores.length, scoutSnapshot.stores, adaptiveActivity.reports, isWatchedEmberStore]);
   // SHOULD 15: three-step checklist driven by what the person has actually done.
   const checklistCounts = useMemo(() => ({
     vaultItems: activeVaultItems.length,
@@ -107,9 +116,9 @@ export default function OperationsHome({
     receipts: state.expenses.filter((row) => row.receiptReference).length + (adaptiveActivity.expenses || []).length,
     sales: state.sales.length + (adaptiveActivity.sales || []).length,
     reports: (adaptiveActivity.reports || []).length,
-    publicProfile: Boolean(presentation.publicProfileReady),
+    publicProfile: Boolean(presentation.publicProfileReady ?? publicProfileReady),
     tourSeen: appTourSeen(),
-  }), [activeVaultItems.length, followedStores.length, marketSearchesRun, workspaceWatchlist.length, state, adaptiveActivity, presentation.publicProfileReady]);
+  }), [activeVaultItems.length, followedStores.length, marketSearchesRun, workspaceWatchlist.length, state, adaptiveActivity, presentation.publicProfileReady, publicProfileReady]);
   const openChecklistTarget = (target) => {
     if (target === "collectionWorkspace" || target === "collectionWorkspace:sets") return setActiveTab("collectionWorkspace");
     if (target === "restocks") return onOpenRestockReports?.();
@@ -144,7 +153,7 @@ export default function OperationsHome({
         <h2 id="home-restock-title">Restock reports</h2>
         <p>Share stocked or empty shelves in your area.</p>
         <div className="home-restock-actions"><PrimaryButton onClick={() => onReportRestock()}>Report a restock</PrimaryButton><SecondaryButton onClick={onOpenRestockReports}>Browse all restocks</SecondaryButton></div>
-        <QuickRestockLauncher followedStores={followedStores} nearbyStores={(scoutSnapshot.nearbyStores || []).slice(0, 3)} kidSafe={kidSafeView} onLaunch={(options) => onReportRestock(options)} />
+        <QuickRestockLauncher followedStores={followedStores} nearbyStores={(scoutSnapshot.nearbyStores || []).slice(0, 3).length ? (scoutSnapshot.nearbyStores || []).slice(0, 3) : suggestedStores} kidSafe={kidSafeView} onLaunch={(options) => onReportRestock(options)} />
       </div>
     </section>
     <PersonaChecklist persona={presentation.persona} kidSafe={kidSafeView} counts={checklistCounts} onOpen={openChecklistTarget} />

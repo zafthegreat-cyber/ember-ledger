@@ -1,10 +1,15 @@
 // Chip row under the Market search form (COULD 35).
-import { useState } from "react";
-import { addSavedSearch, isSavedSearch, readSavedSearches, removeSavedSearch, touchSavedSearch, writeSavedSearches } from "./savedSearches.js";
+import { useEffect, useState } from "react";
+import { addSavedSearch, isSavedSearch, readSavedSearches, removeSavedSearch, SAVED_SEARCHES_SYNCED_EVENT, touchSavedSearch, writeSavedSearches } from "./savedSearches.js";
 import "./saved-searches.css";
 
 export default function SavedSearches({ currentQuery = "", hasRun = false, onRun = () => {} }) {
   const [rows, setRows] = useState(() => readSavedSearches());
+  useEffect(() => {
+    const onSynced = () => setRows(readSavedSearches());
+    window.addEventListener(SAVED_SEARCHES_SYNCED_EVENT, onSynced);
+    return () => window.removeEventListener(SAVED_SEARCHES_SYNCED_EVENT, onSynced);
+  }, []);
   const commit = (next) => { setRows(writeSavedSearches(next)); };
   const clean = String(currentQuery || "").trim();
   const saved = clean ? isSavedSearch(rows, clean) : false;
@@ -28,7 +33,7 @@ export default function SavedSearches({ currentQuery = "", hasRun = false, onRun
             </li>
           ))}
         </ul>
-      ) : <small className="saved-searches__hint">Save a search to run it again with one tap.</small>}
+      ) : <small className="saved-searches__hint">Save a search to run it again with one tap. Saved searches also alert you when a matching restock is reported or the price drops.</small>}
     </div>
   );
 }

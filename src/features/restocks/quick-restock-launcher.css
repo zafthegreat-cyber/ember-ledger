@@ -10,3 +10,5 @@
 .quick-restock__status:hover { background: var(--surface-secondary, #f3f3f3); }
 .quick-restock__hint { color: var(--text-secondary, #777); font-size: 12px; line-height: 1.4; }
 @media (max-width: 360px) { .quick-restock__store { width: 100%; } .quick-restock__status { flex: 1 1 auto; } }
+.quick-restock__category { min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--border-subtle, #ddd); background: transparent; color: var(--text-secondary, #777); font: 600 12.5px/1 var(--font-ui, inherit); cursor: pointer; }
+.quick-restock__category.is-selected { border-color: var(--accent-teal, #1F7A74); background: var(--accent-teal-soft, #E3F1EF); color: var(--accent-teal, #1F7A74); }
