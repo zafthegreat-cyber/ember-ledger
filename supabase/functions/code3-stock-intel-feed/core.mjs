@@ -20,7 +20,7 @@ export function createStockIntelHandler({ load }) {
     if (req.method !== 'GET' && req.method !== 'HEAD') return response(405, {error: 'Read-only feed'}, req.method);
     try {
       const url = new URL(req.url);
-      if (url.search !== '' || url.pathname !== '/code3-stock-intel-feed') return response(400, {error:'Unsupported request'}, req.method);
+      if (url.search !== '' || !/^\/(?:functions\/v1\/)?code3-stock-intel-feed$/.test(url.pathname)) return response(400, {error:'Unsupported request'}, req.method);
       const payload = await load();
       if (payload?.version !== 1 || !Array.isArray(payload.sources) || !Array.isArray(payload.targets) || !Array.isArray(payload.signals) ||
           payload.sources.length > 4 || payload.targets.length > 80 || payload.signals.length > 40)
