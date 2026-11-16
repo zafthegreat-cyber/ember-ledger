@@ -34,11 +34,11 @@ function allowedUrl(input, domains) {
       domains.some(domain => u.hostname === domain || u.hostname.endsWith("." + domain));
   } catch { return false; }
 }
-function parseDate(raw,now,optional=false) {
+function parseDate(raw,now,optional=false,allowFuture=false) {
   if (optional && (raw === null || raw === undefined)) return null;
   if (!isString(raw,64)) throw new Error("Invalid stock intelligence timestamp.");
   const n = Date.parse(raw);
-  if (!Number.isFinite(n) || n > now + 60_000) throw new Error("Invalid stock intelligence timestamp.");
+  if (!Number.isFinite(n) || (!allowFuture && n > now + 60_000)) throw new Error("Invalid stock intelligence timestamp.");
   return new Date(n).toISOString();
 }
 export function parseStockIntelligence(payload, now=Date.now()) {
@@ -81,7 +81,7 @@ export function parseStockIntelligence(payload, now=Date.now()) {
     if (signal.evidenceLevel === "official" && signal.sourceType !== "official_api") throw new Error("Unverified official signal.");
     if (signal.evidenceLevel === "admin_checked" && signal.sourceType !== "admin_review") throw new Error("Unverified admin signal.");
     const observedAt = parseDate(signal.observedAt,now);
-    const expiresAt = parseDate(signal.expiresAt,now);
+    const expiresAt = parseDate(signal.expiresAt,now,false,true);
     if (Date.parse(expiresAt) <= Date.parse(observedAt) || Date.parse(expiresAt) > Date.parse(observedAt) + 48*3600_000) throw new Error("Invalid signal lifetime.");
     if (signal.product !== null && signal.product !== undefined && !isString(signal.product,180)) throw new Error("Invalid signal product.");
     if (signal.productUrl !== null && signal.productUrl !== undefined &&
