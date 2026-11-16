@@ -1,5 +1,6 @@
 import {useEffect,useMemo,useState} from "react";
 import {EVIDENCE_LABELS,RETAILER_NAMES,SIGNAL_KINDS,filterStockIntelligence,loadStockIntelligence} from "../services/stockIntelligence.mjs";
+import StockSignalReview from "./StockSignalReview.jsx";
 import "./stock-intelligence-panel.css";
 
 const STORAGE_KEY = "code3.stock-intelligence.device-pins.v1";
@@ -179,6 +180,7 @@ export default function StockIntelligencePanel() {
           </li>)}</ul>
           <p className="stock-intel__footnote">A Pokémon Center queue is not proof of a product launch. No automatic checkout, queue bypass, or unauthorized Discord access is used.</p>
         </div>}
+        <StockSignalReview targets={snapshot.targets} onPublished={()=>{setActive("signals");setRevision(v=>v+1);}} />
       </>}
     </section>
   );
