@@ -64,7 +64,7 @@ export default function StockIntelligencePanel() {
     }, 60000);
     return () => {controller.abort();globalThis.clearInterval(timer);};
   },[revision]);
-  const now = updated || Date.now();
+  const now = updated;
   const selection=useMemo(()=>snapshot ? filterStockIntelligence(snapshot,{retailer,query}):{targets:[],signals:[]},[snapshot,retailer,query]);
   const products = useMemo(()=>{
     const next = onlyPins ? selection.targets.filter(p=>pins.includes(labelFor(p))) : selection.targets;
