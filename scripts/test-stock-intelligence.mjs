@@ -15,6 +15,12 @@ function feed(signals=[]) {
       {retailer:"Walmart",mode:"manual-watch",connected:false,lastSuccessAt:null},
       {retailer:"Pokémon Center",mode:"manual-watch",connected:false,lastSuccessAt:null},
       {retailer:"Best Buy",mode:"manual-watch",connected:false,lastSuccessAt:null},
+      {retailer:"Sam's Club",mode:"manual-watch",connected:false,lastSuccessAt:null},
+      {retailer:"Costco",mode:"manual-watch",connected:false,lastSuccessAt:null},
+    ],
+    discoveryWatches:[
+      {retailer:"Sam's Club",query:"Pokémon Trading Card Game"},
+      {retailer:"Costco",query:"Pokémon Trading Card Game"},
     ],
     targets:[{retailer:"Target",sku:"1012850572",name:"Pokémon 30th Night",url:TARGET_URL}],
     signals,
@@ -36,6 +42,8 @@ test("Watch targets do not imply available inventory",()=>{
   assert.equal(result.targets.length,1);
   assert.equal(result.signals.length,0);
   assert.equal(result.sources.filter(s=>s.connected).length,0);
+  assert.equal(result.sources.length,6);
+  assert.equal(result.discoveryWatches.length,2);
 });
 test("Reported stock cannot be described as available to purchase",()=>{
   assert.throws(()=>parseStockIntelligence(feed([signal({signalType:"available_now"})]),NOW),/Unconfirmed stock/);
@@ -60,6 +68,8 @@ test("Filtered search preserves SKU and retailer accuracy",()=>{
   const result=parseStockIntelligence(feed([signal()]),NOW);
   assert.equal(filterStockIntelligence(result,{retailer:"Target",query:"1012850572"}).targets.length,1);
   assert.equal(filterStockIntelligence(result,{retailer:"Walmart"}).targets.length,0);
+  assert.equal(filterStockIntelligence(result,{retailer:"Costco"}).discoveryWatches.length,1);
+  assert.equal(filterStockIntelligence(result,{retailer:"Sam's Club",query:"Trading Card"}).discoveryWatches.length,1);
 });
 test("Unknown statuses, too many rows, and future observations are rejected",()=>{
   const bad=feed([signal({signalType:"guaranteed_checkout"})]);
@@ -182,4 +192,48 @@ test("Review API rejects unauthorized origins and duplicate posts",async()=>{
   });
   assert.equal((await handler(createStaffRequest(review,{headers:{origin:"https://attacker.example"}}))).status,403);
   assert.equal((await handler(createStaffRequest(review,{headers:{origin:"https://code3tcg.app"}}))).status,409);
+});
+
+test("Sam's Club and Costco accept appropriate official product domains",()=>{
+  const clubs=[
+    {retailer:"Sam's Club",sku:"212121",name:"Pokémon Club bundle",url:"https://www.samsclub.com/p/pokemon-cards/212121"},
+    {retailer:"Costco",sku:"313131",name:"Pokémon Warehouse bundle",url:"https://www.costco.com/pokemon-collection.product.313131.html"},
+  ];
+  const valid=feed();valid.targets.push(...clubs);
+  assert.equal(parseStockIntelligence(valid,NOW).targets.length,3);
+  const mismatched=feed();mismatched.targets.push({...clubs[0],url:clubs[1].url});
+  assert.throws(()=>parseStockIntelligence(mismatched,NOW),/Invalid retailer watch target/);
+  const hostile=feed();hostile.targets.push({...clubs[1],url:"https://www.costco.com.attacker.example/item"});
+  assert.throws(()=>parseStockIntelligence(hostile,NOW),/Invalid retailer watch target/);
+});
+test("Discovery watches cannot invent retailers, exceed limits or repeat categories",()=>{
+  const unknown=feed();unknown.discoveryWatches.push({retailer:"Mystery Store",query:"Pokémon"});
+  assert.throws(()=>parseStockIntelligence(unknown,NOW),/Invalid discovery watch/);
+  const duplicate=feed();duplicate.discoveryWatches.push({...duplicate.discoveryWatches[0]});
+  assert.throws(()=>parseStockIntelligence(duplicate,NOW),/Duplicate discovery watch/);
+  const excessive=feed();excessive.discoveryWatches=Array(21).fill({retailer:"Costco",query:"Pokémon"});
+  assert.throws(()=>parseStockIntelligence(excessive,NOW),/Invalid discovery watches/);
+});
+test("Sam's Club and Costco can log SKU-free possible-drop signals, not queue claims",async()=>{
+  const saved=[];
+  const handler=createReviewHandler({
+    authorize:async()=>({id:staffId,admin:true}),
+    findProduct:async()=>null,
+    write:async item=>{saved.push(item);return{id:"00000000-0000-4000-8000-000000000003"};},
+    clock:()=>new Date(NOW),
+  });
+  const cases=[
+    {retailer:"Sam's Club",url:"https://www.samsclub.com",signalType:"possible_drop"},
+    {retailer:"Costco",url:"https://www.costco.com",signalType:"possible_drop"},
+  ];
+  for(const entry of cases){
+    const res=await handler(createStaffRequest({...review,retailer:entry.retailer,sku:"",signalType:entry.signalType,sourceUrl:entry.url,headline:"Possible Pokémon drop reported for "+entry.retailer}));
+    assert.equal(res.status,201);
+  }
+  assert.equal(saved.length,2);
+  assert.ok(saved.every(s=>s.evidence_level==="reported"&&s.product_id===null));
+  const bad=await handler(createStaffRequest({...review,retailer:"Costco",sku:"",signalType:"queue_detected",sourceUrl:"https://www.costco.com"}));
+  assert.equal(bad.status,400);
+  const untrusted=await handler(createStaffRequest({...review,retailer:"Costco",sku:"",signalType:"possible_drop",sourceUrl:"https://www.samsclub.com"}));
+  assert.equal(untrusted.status,400);
 });
