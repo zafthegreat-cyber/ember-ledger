@@ -25,6 +25,8 @@ jobs:
       - run: npm ci --ignore-scripts
       - name: Lint
         run: npm run lint:src
+      - name: Connected sign-in regression checks
+        run: npm run test:social-sign-in
       - name: Beta suites (node --test)
         run: >
           node --no-warnings --test

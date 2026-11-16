@@ -2,6 +2,7 @@ import { supabase, createSocialOAuthClient, clearSocialOAuthStorage } from "../.
 import { isNativeIos, isNativePlatform } from "../../native/nativeRuntime.js";
 import { nativeSessionStorage } from "../../native/nativeSessionStorage.js";
 import { createSocialAuthService, loadSocialAvailability, releasedProviders } from "./socialAuth.mjs";
+import { withConnectionUpdates } from "./connectionUpdates.mjs";
 
 const env = import.meta.env || {};
 const native = isNativePlatform();
@@ -15,7 +16,7 @@ const intentStorage = native ? nativeSessionStorage : {
   setItem: (key, value) => sessionStorage.setItem(key, value),
   removeItem: key => sessionStorage.removeItem(key),
 };
-export const socialAuth = createSocialAuthService({
+export const socialAuth = withConnectionUpdates(createSocialAuthService({
   client: supabase, oauthClient: createSocialOAuthClient(), clearOAuthStorage: clearSocialOAuthStorage,
   projectUrl: env.VITE_SUPABASE_URL, store: intentStorage,
   loadAvailability: availableSocialProviders, native, linkingEnabled: accountLinkingEnabled,
@@ -26,7 +27,7 @@ export const socialAuth = createSocialAuthService({
       await Browser.open({ url });
     } else { globalThis.location.assign(url); }
   },
-});
+}));
 
 export async function finishNativeSocialCallback(callback) {
   try { return await socialAuth.finish(callback); }
