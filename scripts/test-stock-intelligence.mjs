@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import {parseStockIntelligence,filterStockIntelligence,loadStockIntelligence} from "../src/services/stockIntelligence.mjs";
 import {createStockIntelHandler} from "../supabase/functions/code3-stock-intel-feed/core.mjs";
 import {createReviewHandler} from "../supabase/functions/code3-stock-intel-review/core.mjs";
+import {createInboundHandler} from "../supabase/functions/code3-stock-inbound/core.mjs";
+import {INBOUND_STAGES,parseInboundEvents} from "../src/services/warehouseInbound.mjs";
 
 const NOW = Date.parse("2026-11-15T20:00:00Z");
 const TARGET_URL = "https://www.target.com/p/hoc2/A-1012850572";
@@ -236,4 +238,118 @@ test("Sam's Club and Costco can log SKU-free possible-drop signals, not queue cl
   assert.equal(bad.status,400);
   const untrusted=await handler(createStaffRequest({...review,retailer:"Costco",sku:"",signalType:"possible_drop",sourceUrl:"https://www.samsclub.com"}));
   assert.equal(untrusted.status,400);
+});
+
+const ACTOR_ID="00000000-0000-4000-8000-000000000009";
+const INBOUND_URL="https://gxsfququorfczvhrkudl.supabase.co/functions/v1/code3-stock-inbound";
+function inboundRequest(report,headers={}){
+  return new Request(INBOUND_URL,{method:"POST",headers:{
+    authorization:"Bearer "+"z".repeat(64),"content-type":"application/json",...headers
+  },body:JSON.stringify(report)});
+}
+const inboundReport={
+  retailer:"Sam's Club",sku:"",stage:"in_warehouse",
+  headline:"Warehouse storage reported, awaiting source confirmation"
+};
+test("Warehouse stages include arrived separately from stored in warehouse",()=>{
+  const stages=INBOUND_STAGES.map(item=>item.key);
+  assert.ok(stages.indexOf("arrived_warehouse")!==stages.indexOf("in_warehouse"));
+  assert.ok(stages.includes("ordered")&&stages.includes("en_route"));
+  assert.ok(stages.includes("warehouse_processing")&&stages.includes("distribution_en_route"));
+});
+test("Warehouse endpoint rejects unsigned and non-admin users before reading data",async()=>{
+  let touched=false;
+  const handler=createInboundHandler({
+    authorize:async()=>({id:ACTOR_ID,admin:false}),
+    list:async()=>{touched=true;return[];},
+    findProduct:async()=>{touched=true;return null;},
+    save:async()=>{touched=true;return{};}
+  });
+  assert.equal((await handler(new Request(INBOUND_URL))).status,401);
+  const denied=await handler(new Request(INBOUND_URL,{headers:{authorization:"Bearer "+"z".repeat(64)}}));
+  assert.equal(denied.status,403);
+  assert.equal((await handler(inboundRequest(inboundReport))).status,403);
+  assert.equal(touched,false);
+});
+test("Warehouse reports are staff-only, unverified, and expire",async()=>{
+  let saved;
+  const handler=createInboundHandler({
+    authorize:async()=>({id:ACTOR_ID,admin:true}),
+    list:async()=>[],
+    findProduct:async()=>null,
+    save:async row=>{saved=row;return {id:"00000000-0000-4000-8000-000000000021"};},
+    clock:()=>new Date(NOW)
+  });
+  const response=await handler(inboundRequest(inboundReport));
+  assert.equal(response.status,201);
+  assert.equal(saved.stage,"in_warehouse");
+  assert.equal(saved.evidence_level,"reported");
+  assert.equal(saved.source_type,"staff_report");
+  assert.equal(saved.product_id,null);
+  assert.equal(saved.retailer,"Sam's Club");
+  assert.equal(saved.created_by,ACTOR_ID);
+  assert.equal(Date.parse(saved.expires_at)-Date.parse(saved.observed_at),7*86400_000);
+  assert.match(saved.event_key,/^[a-f0-9]{64}$/);
+  const now=new Date(NOW);
+  const row={
+    id:"00000000-0000-4000-8000-000000000021",retailer:"Sam's Club",
+    stage:"in_warehouse",headline:inboundReport.headline,evidenceLevel:"reported",
+    sourceType:"staff_report",observedAt:now.toISOString(),
+    expiresAt:new Date(NOW+7*86400_000).toISOString(),sku:"",product:""
+  };
+  const validated=parseInboundEvents({version:1,events:[row]},NOW);
+  assert.equal(validated[0].active,true);
+  assert.equal(parseInboundEvents({version:1,events:[row]},NOW+8*86400_000)[0].active,false);
+});
+test("Inbound tracking validates retailer and known stages and does not allow forged evidence",async()=>{
+  let writes=0;
+  const handler=createInboundHandler({
+    authorize:async()=>({id:ACTOR_ID,admin:true}),
+    list:async()=>[],
+    findProduct:async()=>null,
+    save:async()=>{writes++;return{id:ACTOR_ID};}
+  });
+  for(const report of [
+    {...inboundReport,stage:"warehouse_full"},
+    {...inboundReport,retailer:"Other retailer"},
+    {...inboundReport,sku:"unapproved-sku"},
+    {...inboundReport,headline:"oops",evidenceLevel:"verified",sourceType:"authorized_supplier_feed"},
+  ]){
+    const response=await handler(inboundRequest(report));
+    assert.ok([400,422].includes(response.status));
+  }
+  assert.equal(writes,0);
+  const authorizedAttempt=await handler(inboundRequest({...inboundReport,evidenceLevel:"verified",sourceType:"retailer_notice"}));
+  assert.equal(authorizedAttempt.status,201);
+  assert.equal(writes,1);
+});
+test("Warehouse records cannot be fetched by anonymous users, and only admin sees filtered fields",async()=>{
+  const userId=ACTOR_ID;
+  const handler=createInboundHandler({
+    authorize:async()=>({id:userId,admin:true}),
+    list:async()=>[{
+      id:"00000000-0000-4000-8000-000000000031",retailer:"Costco",
+      stage:"arrived_warehouse",summary:"Shipment arrival reported privately",
+      observed_at:new Date(NOW).toISOString(),expires_at:new Date(NOW+86400000).toISOString(),
+      evidence_level:"reported",source_type:"staff_report",
+      retailer_products:null,created_by:userId,
+      internal_shipment_route:"never expose"
+    }],
+    findProduct:async()=>null,save:async()=>({id:userId})
+  });
+  const admin=await handler(new Request(INBOUND_URL,{headers:{authorization:"Bearer "+"z".repeat(64)}}));
+  assert.equal(admin.status,200);
+  const payload=await admin.json();
+  assert.equal(payload.events.length,1);
+  assert.equal(payload.events[0].stage,"arrived_warehouse");
+  assert.equal(payload.events[0].internal_shipment_route,undefined);
+  assert.equal(payload.events[0].created_by,undefined);
+  assert.equal((await handler(new Request(INBOUND_URL,{method:"PUT",headers:{authorization:"Bearer "+"z".repeat(64)}}))).status,405);
+});
+test("Reject unsafe cross-origin warehouse reports",async()=>{
+  const handler=createInboundHandler({
+    authorize:async()=>({id:ACTOR_ID,admin:true}),list:async()=>[],
+    findProduct:async()=>null,save:async()=>({id:ACTOR_ID})
+  });
+  assert.equal((await handler(inboundRequest(inboundReport,{origin:"https://attacker.example"}))).status,403);
 });
