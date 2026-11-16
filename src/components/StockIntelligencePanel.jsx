@@ -103,7 +103,7 @@ export default function StockIntelligencePanel() {
       </div>}
       {phase==="ready" && snapshot && <>
         <div className="stock-intel__metrics" aria-label="Stock monitoring summary">
-          <div><strong>{snapshot.targets.length}</strong><span>Products on watch</span></div>
+          <div><strong>{snapshot.targets.length}</strong><span>Individual products</span></div>
           <div><strong>{signalCount}</strong><span>Current signals</span></div>
           <div><strong>{connected}/{snapshot.sources.length}</strong><span>Connected sources</span></div>
         </div>
@@ -111,7 +111,7 @@ export default function StockIntelligencePanel() {
           <span className="stock-intel__notice-dot" aria-hidden="true"/>
           <p><strong>{connected ? "Source-based intelligence" : "Watchlist ready · Sources not yet connected"}</strong>
           {connected ? " — Only approved connections can create automatic observations." : " — Saved products aren't being checked automatically until approved feeds are connected."}
-          <small>Feed loaded {timeAgo(snapshot.generatedAt,now)}. This is not a retailer stock-check timestamp.</small></p>
+          <small>{snapshot.discoveryWatches.length} category discovery watches configured. Feed loaded {timeAgo(snapshot.generatedAt,now)}; this is not a retailer stock-check timestamp.</small></p>
         </div>
         <div className="stock-intel__tabs" aria-label="Stock intelligence sections">
           <button type="button" aria-pressed={active==="products"} className={active==="products"?"is-active":""} onClick={()=>setActive("products")}>Products <span>{snapshot.targets.length}</span></button>
@@ -146,9 +146,17 @@ export default function StockIntelligencePanel() {
                 </div>
               </li>;
             })}
-          </ul> : <p className="stock-intel__empty" role="status">No watch targets match. Clear the search or change retailer.</p>}
+          </ul> : <p className="stock-intel__empty" role="status">{selection.discoveryWatches.length && !query ? "No individual SKUs saved for this retailer yet. Its Pokémon discovery watch is listed below." : "No individual products match. Clear the search or change retailer."}</p>}
           {!showAll && !query.trim() && !onlyPins && products.length>4 && <button className="stock-intel__show-all" type="button" onClick={()=>setShowAll(true)}>Show all {products.length} tracked products</button>}
           {showAll && products.length>4 && !onlyPins && !query.trim() && <button className="stock-intel__show-all" type="button" onClick={()=>setShowAll(false)}>Show fewer products</button>}
+          {selection.discoveryWatches.length > 0 && <div className="stock-intel__discovery">
+            <div className="stock-intel__list-heading"><div><strong>Category discovery watches</strong><p>Tracks a product category, not a verified live inventory count.</p></div></div>
+            <ul>{selection.discoveryWatches.map(watch=><li key={watch.retailer+"|"+watch.query} className="stock-intel__discovery-card">
+              <span className="stock-intel__retailer">{watch.retailer}</span>
+              <strong>{watch.query}</strong>
+              <small>{snapshot.sources.find(source=>source.retailer===watch.retailer)?.connected ? "Approved source connected" : "Not connected · manual watch only"}</small>
+            </li>)}</ul>
+          </div>}
           <p className="stock-intel__footnote">★ Pins are saved on this device only. Pinning a product does not turn on push notifications or a retailer connection.</p>
         </>}
         {active==="signals" && <>
@@ -174,7 +182,10 @@ export default function StockIntelligencePanel() {
         {active==="sources" && <div className="stock-intel__sources">
           <p>Retailer connectors must be approved and successfully tested before we're able to call them live.</p>
           <ul>{snapshot.sources.map(s=><li key={s.retailer}>
-            <div><strong>{s.retailer}</strong><small>{s.mode==="manual-watch"?"Manual/community watch":s.mode==="authorized-feed"?"Authorized partner feed":"Official API"}</small></div>
+            <div><strong>{s.retailer}</strong>
+              <small>{s.mode==="manual-watch"?"Manual/community watch":s.mode==="authorized-feed"?"Authorized partner feed":"Official API"}</small>
+              {snapshot.discoveryWatches.filter(w=>w.retailer===s.retailer).map(w=><small key={w.query}>Discovery: {w.query} · {s.connected?"source connected":"not live"}</small>)}
+            </div>
             <span className={"stock-intel__status "+(s.connected?"is-available":"")}>{statusText(s)}</span>
             {s.connected && s.lastSuccessAt && <small>Source checked {timeAgo(s.lastSuccessAt,now)}</small>}
           </li>)}</ul>
