@@ -1,5 +1,5 @@
 export const STOCK_INTELLIGENCE_URL = "https://gxsfququorfczvhrkudl.supabase.co/functions/v1/code3-stock-intel-feed";
-export const RETAILER_NAMES = Object.freeze(["Target", "Walmart", "Pokémon Center", "Best Buy"]);
+export const RETAILER_NAMES = Object.freeze(["Target", "Walmart", "Pokémon Center", "Best Buy", "Sam's Club", "Costco"]);
 export const SIGNAL_KINDS = Object.freeze({
   reported_stock: { label: "Inventory reported", explanation: "Third-party inventory report; not proof an item can be purchased.", tone: "reported" },
   available_now: { label: "Available to purchase", explanation: "Official feed or admin-checked availability. Recheck before checkout.", tone: "available" },
@@ -25,6 +25,8 @@ const retailerOrigins = Object.freeze({
   Walmart: ["walmart.com"],
   "Pokémon Center": ["pokemoncenter.com"],
   "Best Buy": ["bestbuy.com"],
+  "Sam's Club": ["samsclub.com"],
+  Costco: ["costco.com"],
 });
 function allowedUrl(input, domains) {
   if (!isString(input,2048)) return false;
@@ -44,9 +46,11 @@ function parseDate(raw,now,optional=false,allowFuture=false) {
 export function parseStockIntelligence(payload, now=Date.now()) {
   if (!payload || payload.version !== 1 || !Array.isArray(payload.sources) ||
       !Array.isArray(payload.targets) || !Array.isArray(payload.signals) ||
-      payload.sources.length > 4 || payload.targets.length > 80 || payload.signals.length > 40) {
+      payload.sources.length > RETAILER_NAMES.length || payload.targets.length > 80 || payload.signals.length > 40) {
     throw new Error("Stock intelligence feed unavailable.");
   }
+  const discovery = payload.discoveryWatches ?? [];
+  if (!Array.isArray(discovery) || discovery.length > 20) throw new Error("Invalid discovery watches.");
   const generatedAt = parseDate(payload.generatedAt, now);
   if (Date.parse(generatedAt) < now - 10 * 60_000) throw new Error("Stock intelligence feed is stale.");
   const sources = payload.sources.map(source => {
@@ -60,6 +64,12 @@ export function parseStockIntelligence(payload, now=Date.now()) {
     };
   });
   if (new Set(sources.map(x=>x.retailer)).size !== sources.length) throw new Error("Duplicate retailer source.");
+  const discoveryWatches = discovery.map(watch => {
+    if (!watch || !RETAILER_NAMES.includes(watch.retailer) || !isString(watch.query,80) ||
+        watch.query.trim().length < 3) throw new Error("Invalid discovery watch.");
+    return {retailer:watch.retailer,query:watch.query.trim()};
+  });
+  if (new Set(discoveryWatches.map(x=>x.retailer+"|"+x.query)).size !== discoveryWatches.length) throw new Error("Duplicate discovery watch.");
   const targets = payload.targets.map(product => {
     if (!RETAILER_NAMES.includes(product.retailer) || !skus.test(product.sku) ||
         !isString(product.name,180) || !allowedUrl(product.url, retailerOrigins[product.retailer])) {
@@ -94,7 +104,7 @@ export function parseStockIntelligence(payload, now=Date.now()) {
       productUrl:signal.productUrl || "", sku:signal.sku || "",
     };
   }).filter(signal => Date.parse(signal.expiresAt) > now && Date.parse(signal.observedAt) >= now - 24*3600_000);
-  return {generatedAt,sources,targets,signals};
+  return {generatedAt,sources,targets,signals,discoveryWatches};
 }
 export async function loadStockIntelligence({
   signal, fetchImpl=fetch, now=Date.now(),
@@ -112,7 +122,7 @@ export function filterStockIntelligence(snapshot,{retailer="All",query=""}={}) {
   const term = query.trim().normalize("NFKC").toLocaleLowerCase();
   const matches = x => (retailer === "All" || x.retailer === retailer) &&
     (!term || [x.name||x.headline,x.product||"",x.sku||"",x.retailer].join(" ").normalize("NFKC").toLocaleLowerCase().includes(term));
-  return {targets:snapshot.targets.filter(matches),signals:snapshot.signals.filter(matches)};
+  return {targets:snapshot.targets.filter(matches),signals:snapshot.signals.filter(matches),discoveryWatches:(snapshot.discoveryWatches||[]).filter(matches)};
 }
 
 export const STOCK_REVIEW_URL = "https://gxsfququorfczvhrkudl.supabase.co/functions/v1/code3-stock-intel-review";
