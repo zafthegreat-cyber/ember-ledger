@@ -3,6 +3,8 @@ const retailers = {
   Walmart: "walmart.com",
   "Pokémon Center": "pokemoncenter.com",
   "Best Buy": "bestbuy.com",
+  "Sam's Club": "samsclub.com",
+  Costco: "costco.com",
 };
 const ttl = {
   reported_stock: 90, available_now: 15, out_of_stock: 30, possible_drop: 120,
