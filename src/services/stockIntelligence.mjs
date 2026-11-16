@@ -121,7 +121,7 @@ export async function loadStockIntelligence({
 export function filterStockIntelligence(snapshot,{retailer="All",query=""}={}) {
   const term = query.trim().normalize("NFKC").toLocaleLowerCase();
   const matches = x => (retailer === "All" || x.retailer === retailer) &&
-    (!term || [x.name||x.headline,x.product||"",x.sku||"",x.retailer].join(" ").normalize("NFKC").toLocaleLowerCase().includes(term));
+    (!term || [x.name||x.headline||x.query||"",x.product||"",x.sku||"",x.retailer].join(" ").normalize("NFKC").toLocaleLowerCase().includes(term));
   return {targets:snapshot.targets.filter(matches),signals:snapshot.signals.filter(matches),discoveryWatches:(snapshot.discoveryWatches||[]).filter(matches)};
 }
 
