@@ -66,3 +66,5 @@
 .stock-intel__footnote{font-size:11px!important;line-height:1.5;color:var(--text-secondary,#666);margin:0}
 @media(max-width:660px){.stock-intel__products{grid-template-columns:minmax(0,1fr)}.stock-intel__filters{grid-template-columns:minmax(0,1fr)}.stock-intel__metrics strong{font-size:21px}.stock-intel__heading .stock-intel__refresh{width:100%}}
 @media(max-width:380px){.stock-intel{padding:12px}.stock-intel__metrics{gap:6px}.stock-intel__metrics>div{padding:9px 7px}.stock-intel__metrics span{font-size:10px}.stock-intel__tabs button{padding:8px 10px;font-size:12px}}
+
+.stock-intel__show-all{min-height:44px;padding:9px 14px;border-radius:10px;border:1px solid var(--border-subtle,#ddd);color:var(--text-primary,#111);background:var(--surface-secondary,#fafafa);font-size:13px;font-weight:750}
