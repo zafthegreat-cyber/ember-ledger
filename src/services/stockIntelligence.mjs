@@ -114,3 +114,21 @@ export function filterStockIntelligence(snapshot,{retailer="All",query=""}={}) {
     (!term || [x.name||x.headline,x.product||"",x.sku||"",x.retailer].join(" ").normalize("NFKC").toLocaleLowerCase().includes(term));
   return {targets:snapshot.targets.filter(matches),signals:snapshot.signals.filter(matches)};
 }
+
+export const STOCK_REVIEW_URL = "https://gxsfququorfczvhrkudl.supabase.co/functions/v1/code3-stock-intel-review";
+export async function submitStockReview({accessToken,review,fetchImpl=fetch}) {
+  if (!accessToken || typeof accessToken !== "string") throw new Error("Sign in as an admin before submitting.");
+  const response=await fetchImpl(STOCK_REVIEW_URL,{
+    method:"POST",credentials:"omit",redirect:"error",cache:"no-store",
+    headers:{
+      "Content-Type":"application/json",
+      "apikey":import.meta.env?.VITE_SUPABASE_ANON_KEY || "",
+      "Authorization":"Bearer "+accessToken,
+    },
+    body:JSON.stringify(review),
+  });
+  const result=await response.json().catch(()=>({}));
+  if (!response.ok) throw new Error(typeof result.error==="string"?result.error:"Review could not be saved.");
+  if (result.ok!==true || typeof result.id!=="string") throw new Error("Review could not be confirmed.");
+  return result;
+}
