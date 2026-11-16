@@ -68,3 +68,10 @@
 @media(max-width:380px){.stock-intel{padding:12px}.stock-intel__metrics{gap:6px}.stock-intel__metrics>div{padding:9px 7px}.stock-intel__metrics span{font-size:10px}.stock-intel__tabs button{padding:8px 10px;font-size:12px}}
 
 .stock-intel__show-all{min-height:44px;padding:9px 14px;border-radius:10px;border:1px solid var(--border-subtle,#ddd);color:var(--text-primary,#111);background:var(--surface-secondary,#fafafa);font-size:13px;font-weight:750}
+
+.stock-intel__discovery{display:grid;gap:10px;padding-top:12px;border-top:1px solid var(--border-subtle,#ddd)}
+.stock-intel__discovery ul{list-style:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0;padding:0}
+.stock-intel__discovery-card{display:grid;align-content:start;gap:6px;border:1px solid var(--border-subtle,#ddd);background:var(--surface-secondary,#fafafa);border-radius:12px;padding:14px;min-width:0}
+.stock-intel__discovery-card strong{font-size:14px;line-height:1.4}
+.stock-intel__discovery-card small{color:var(--text-secondary,#666);font-size:12px;line-height:1.4}
+@media(max-width:600px){.stock-intel__discovery ul{grid-template-columns:minmax(0,1fr)}}
