@@ -23,7 +23,8 @@ export function createStockIntelHandler({ load }) {
       if (url.search !== '' || !/^\/(?:functions\/v1\/)?code3-stock-intel-feed$/.test(url.pathname)) return response(400, {error:'Unsupported request'}, req.method);
       const payload = await load();
       if (payload?.version !== 1 || !Array.isArray(payload.sources) || !Array.isArray(payload.targets) || !Array.isArray(payload.signals) ||
-          payload.sources.length > 4 || payload.targets.length > 80 || payload.signals.length > 40)
+          payload.sources.length > 6 || payload.targets.length > 80 || payload.signals.length > 40 ||
+          !Array.isArray(payload.discoveryWatches) || payload.discoveryWatches.length > 20)
         throw new Error('Invalid feed');
       return response(200, payload, req.method);
     } catch {
