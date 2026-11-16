@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { accountLinkingEnabled, availableSocialProviders, socialAuth } from "./socialAuthClient.js";
+import { SOCIAL_PROVIDERS } from "./socialAuth.mjs";
 import "./social-sign-in.css";
 
 function useSocialProviders(load = availableSocialProviders) {
@@ -57,19 +58,40 @@ export default function SocialSignInButtons({ loadProviders = availableSocialPro
 
 export function ConnectedSignIns({ user, loadProviders = availableSocialProviders, service = socialAuth, linkingEnabled = accountLinkingEnabled }) {
   const { providers, state, retry } = useSocialProviders(loadProviders);
-  const [identities, setIdentities] = useState([]);
-  const [verifiedId, setVerifiedId] = useState("");
+  const [connection, setConnection] = useState({ userId: "", identities: [], checking: true, error: "" });
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const [attempt, setAttempt] = useState(0);
   const request = useRef(false);
   useEffect(() => {
-    if (!user?.id || !providers.length || !linkingEnabled) return;
+    if (!user?.id || !linkingEnabled) return;
     let active = true;
-    service.verifiedUser(user.id).then(current => {
-      if (active) { setIdentities((current.identities || []).map(identity => identity.provider)); setVerifiedId(current.id); }
-    }).catch(() => { if (active) setError("Sign in again before connecting another method."); });
-    return () => { active = false; };
-  }, [user?.id, providers, service, linkingEnabled]);
+    let generation = 0;
+    async function refresh() {
+      const currentGeneration = ++generation;
+      setConnection({ userId: user.id, identities: [], checking: true, error: "" });
+      setError("");
+      try {
+        const current = await service.verifiedUser(user.id);
+        if (!active || currentGeneration !== generation) return;
+        if (current.id !== user.id) throw new Error("Account changed");
+        setConnection({ userId: current.id, identities: (current.identities || []).map(identity => identity.provider), checking: false, error: "" });
+      } catch {
+        if (active && currentGeneration === generation) setConnection({ userId: user.id, identities: [], checking: false, error: "Could not check your connections. Retry to confirm their status." });
+      }
+    }
+    const onVisible = () => { if (document.visibilityState === "visible") void refresh(); };
+    const unsubscribe = service.subscribeConnections?.(refresh);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", onVisible);
+    void refresh();
+    return () => {
+      active = false;
+      unsubscribe?.();
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [user?.id, service, linkingEnabled, attempt]);
   async function connect(provider) {
     if (request.current) return;
     request.current = true; setBusy(provider); setError("");
@@ -78,14 +100,17 @@ export function ConnectedSignIns({ user, loadProviders = availableSocialProvider
     finally { request.current = false; setBusy(""); }
   }
   if (!user?.id || !linkingEnabled) return null;
-  if (!providers.length) return <ProviderAvailability state={state} retry={retry} />;
+  const verified = connection.userId === user.id && !connection.checking && !connection.error;
+  const identities = verified ? connection.identities : [];
   const choices = providers.filter(provider => !identities.includes(provider.id));
-  return <section className="social-sign-in connected-sign-ins" aria-label="Connected sign-in methods" aria-busy={Boolean(busy)}>
+  return <section className="social-sign-in connected-sign-ins" aria-label="Connected sign-in methods" aria-busy={Boolean(busy) || connection.checking}>
     <h3>Ways to sign in</h3>
     <p>Keep your collection with this account{user.email ? `: ${user.email}` : ''}.</p><ol><li>Choose an available method below.</li><li>Verify it with the provider.</li><li>Return here to confirm it is connected. Both sign-in methods then open this same collection.</li></ol>
-    {providers.filter(provider => identities.includes(provider.id)).map(provider => <p className="social-sign-in-connected" key={provider.id}>{provider.name} · Connected</p>)}
-    {verifiedId !== user.id && !error && <p role="status">Checking your sign-in methods…</p>}
-    {choices.length > 0 && <SocialButtons providers={choices} busy={busy || verifiedId !== user.id && "checking"} onChoose={connect} connecting />}
+    {<div role="status" aria-live="polite">{SOCIAL_PROVIDERS.filter(provider => identities.includes(provider.id)).map(provider => <p className="social-sign-in-connected" key={provider.id}><ProviderIcon id={provider.id} /><span>{provider.name} · Connected</span></p>)}</div>}
+    {(connection.userId !== user.id || connection.checking) && <p role="status">Checking your sign-in methods…</p>}
+    {connection.error && connection.userId === user.id && <div><p role="alert">{connection.error}</p><button type="button" className="secondary-button" onClick={() => setAttempt(value => value + 1)}>Retry connection status</button></div>}
+    {!providers.length && <ProviderAvailability state={state} retry={retry} />}
+    {choices.length > 0 && <SocialButtons providers={choices} busy={busy || !verified && "checking"} onChoose={connect} connecting />}
     {error && <p role="alert" className="auth-status-message error">{error}</p>}
     <p className="social-sign-in-note">If you use Apple’s Hide My Email, connect Apple here before using it to sign in. Private records are never merged by an email typed into the app.</p>
     <p className="social-sign-in-note">Some account security actions require a Code 3 TCG password. Use the password email option in Account Security to set or reset yours.</p>
