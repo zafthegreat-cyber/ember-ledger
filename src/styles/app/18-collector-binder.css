@@ -1,0 +1,322 @@
+/* "Collector's binder" refresh (owner, Nov 17 2026: "Make the app look whatever
+   way you think the intended user would like").
+
+   Who it is for (owner: "anyone who is a TCG fan"): players and collectors of
+   any trading card game, from kids to adults, casual to serious. The app should
+   feel like the hobby itself: the thrill of cracking a pack, the shine of a
+   holo, a well-kept binder. Energetic and collectible, still clean and easy;
+   never a finance dashboard or a dim lounge. No single game's look or IP.
+
+   What changes (tokens first, then a few signature pieces; no layout rewrites):
+   - Type: the brand's DM Sans, heavy and rounded, for headings instead of the
+     Georgia serif. Bold like a card name, easy to read at any age.
+   - Colour: dark mode lifts from near-black wine to a warmer burgundy-plum with
+     visible layers; light mode is cream with white cards. Gold stays the one
+     main action. No blue anywhere (owner rule, Nov 17).
+   - Shape: softer 20 px cards with gentle shadows instead of hard outlines,
+     pill buttons, 48 px touch targets.
+   - Magic: a thin holo-foil edge (burgundy, purple, gold) on featured cards and
+     the active tab, like the shine on a holo card.
+   Loaded last. */
+
+html:root body .app:is(.app-command-shell, .app-signed-out)[data-theme] {
+  --lounge-display: "DM Sans", "Segoe UI", system-ui, sans-serif;
+  --c3-font-heading: "DM Sans", "Segoe UI", system-ui, sans-serif;
+  --c3-radius: 14px;
+  --c3-radius-lg: 20px;
+  --ui-control-radius: 12px;
+  --binder-card-radius: 20px;
+  --binder-pill: 999px;
+  --binder-foil: linear-gradient(90deg, #7A0F1E 0%, #9B3B8C 30%, #D4AF37 55%, #F3D987 70%, #9B3B8C 88%, #7A0F1E 100%);
+
+  /* Light: cream page, white cards, maroon action. */
+  --lounge-gold: #7A5C0A;
+  --lounge-line: #E6D8C4;
+  --lounge-panel: #FFFFFF;
+  --lounge-ink: #2A1418;
+  --lounge-muted: #6E5A55;
+  --c3-page: #FBF4E6;
+  --c3-surface: #FFFFFF;
+  --c3-surface-secondary: #F6EDDF;
+  --c3-surface-inset: #F1E6D5;
+  --c3-surface-elevated: #FFFFFF;
+  --c3-border: #EADFCF;
+  --c3-control-border: #B59E86;
+  --c3-action: #7A0F1E;
+  --c3-action-hover: #5D0B17;
+  --c3-on-action: #FFF8EC;
+  --c3-info: #4B1B6B;
+  --c3-selection: #F3E3E6;
+  --app-brand-rail: #FFFFFF;
+  --app-brand-header: #FBF4E6;
+  --app-brand-on-chrome: #2A1418;
+  --app-brand-chrome-muted: #7A6560;
+  --app-brand-chrome-line: #EADFCF;
+  --app-brand-selected: #F6E3E1;
+  --app-brand-selected-ink: #7A0F1E;
+  --shadow-1: 0 1px 2px rgb(74 22 34 / 6%);
+  --shadow-2: 0 4px 16px rgb(74 22 34 / 8%);
+  --shadow-3: 0 12px 32px rgb(74 22 34 / 14%);
+  --binder-card-shadow: 0 1px 2px rgb(74 22 34 / 5%), 0 6px 20px rgb(74 22 34 / 7%);
+  --binder-hero: linear-gradient(145deg, #7A0F1E 0%, #5B1940 58%, #4B1B6B 100%);
+  --binder-hero-ink: #FFF8EC;
+  --binder-hero-muted: #F1D9CF;
+}
+
+html:root body .app:is(.app-command-shell, .app-signed-out)[data-theme="dark"] {
+  /* Dark: warmer and lighter than before, with clear layers. */
+  --lounge-gold: #E8C86B;
+  --lounge-line: #4E3440;
+  --lounge-panel: #2B1A23;
+  --lounge-ink: #FBF1E4;
+  --lounge-muted: #CDB8B0;
+  --c3-page: #1E1219;
+  --c3-surface: #2B1A23;
+  --c3-surface-secondary: #35212C;
+  --c3-surface-inset: #24151D;
+  --c3-surface-elevated: #3A2531;
+  --c3-border: #4A303C;
+  --c3-control-border: #9C8279;
+  --c3-action: #E8C86B;
+  --c3-action-hover: #F3D987;
+  --c3-on-action: #2A1418;
+  --c3-info: #EBC9A2;
+  --c3-selection: #4A2A36;
+  --app-brand-rail: #2B1A23;
+  --app-brand-header: #1E1219;
+  --app-brand-on-chrome: #FBF1E4;
+  --app-brand-chrome-muted: #CDB8B0;
+  --app-brand-chrome-line: #4A303C;
+  --app-brand-selected: #47293A;
+  --app-brand-selected-ink: #F3D987;
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 20%);
+  --shadow-2: 0 6px 18px rgb(0 0 0 / 26%);
+  --shadow-3: 0 14px 36px rgb(0 0 0 / 34%);
+  --binder-card-shadow: 0 1px 0 rgb(255 255 255 / 4%) inset, 0 8px 22px rgb(0 0 0 / 24%);
+  --binder-hero: linear-gradient(145deg, #5A1530 0%, #43173A 55%, #34184A 100%);
+  --binder-hero-ink: #FFF5E6;
+  --binder-hero-muted: #E6CFC9;
+}
+
+html:root:has(.app:is(.app-command-shell, .app-signed-out)[data-theme="dark"]),
+html:root body:has(.app:is(.app-command-shell, .app-signed-out)[data-theme="dark"]) { --app-background: #1E1219; background: #1E1219; }
+html:root:has(.app:is(.app-command-shell, .app-signed-out)[data-theme="light"]),
+html:root body:has(.app:is(.app-command-shell, .app-signed-out)[data-theme="light"]) { --app-background: #FBF4E6; background: #FBF4E6; }
+
+/* ---------- Type ---------- */
+html:root body .app:is(.app-command-shell, .app-signed-out)[data-theme] :is(h1, h2, h3) {
+  font-family: var(--c3-font-heading) !important;
+}
+html:root body .app.app-command-shell[data-theme] .ops-page-header h1 {
+  font: 800 clamp(30px, 8vw, 40px)/1.08 var(--c3-font-heading) !important;
+  letter-spacing: -.035em !important;
+}
+html:root body .app.app-command-shell[data-theme] .ops-section-header h2,
+html:root body .app.app-command-shell[data-theme] .home-layout--lounge .ops-section-header h2 {
+  font: 750 21px/1.25 var(--c3-font-heading) !important;
+  letter-spacing: -.02em !important;
+}
+html:root body .app:is(.app-command-shell, .app-signed-out)[data-theme] :is(.ops-home-section, .panel) h2 {
+  font-weight: 750 !important;
+  letter-spacing: -.02em;
+}
+
+/* ---------- Cards: soft, rounded, layered ---------- */
+html:root body .app.app-command-shell[data-theme] :is(
+  .home-layout.home-layout--lounge .persona-checklist,
+  .home-layout.home-layout--lounge .home-workspaces,
+  .panel,
+  .ops-record-card,
+  .collection-portfolio-card,
+  .ops-attention-panel
+) {
+  border-radius: var(--binder-card-radius) !important;
+  border-color: var(--c3-border) !important;
+  background: var(--c3-surface) !important;
+  box-shadow: var(--binder-card-shadow) !important;
+}
+html:root body .app.app-signed-out[data-theme] :is(.panel, .auth-panel, .signed-out-auth-card) {
+  border-radius: var(--binder-card-radius) !important;
+  border-color: var(--c3-border) !important;
+  box-shadow: var(--binder-card-shadow) !important;
+}
+
+/* Featured card (Home restock card): a rich burgundy-to-plum panel with a foil
+   edge. This is the one place on Home that should catch the eye. */
+html:root body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .home-restock-hero {
+  position: relative;
+  overflow: hidden;
+  border: 0 !important;
+  border-radius: var(--binder-card-radius) !important;
+  background: var(--binder-hero) !important;
+  box-shadow: 0 10px 28px rgb(74 22 34 / 22%) !important;
+  color: var(--binder-hero-ink) !important;
+}
+html:root body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .home-restock-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: var(--binder-foil);
+  pointer-events: none;
+}
+html:root body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .home-restock-hero :is(h2, h3) { color: var(--binder-hero-ink) !important; }
+html:root body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .home-restock-hero p { color: var(--binder-hero-muted) !important; }
+html:root body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .home-restock-hero .ops-button--primary {
+  background: #E8C86B !important;
+  border-color: #E8C86B !important;
+  color: #2A1418 !important;
+}
+html:root body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .home-restock-hero .ops-button--secondary {
+  background: rgb(255 255 255 / 8%) !important;
+  border-color: rgb(255 248 236 / 55%) !important;
+  color: var(--binder-hero-ink) !important;
+}
+html:root body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .home-restock-hero :is(button:not(.ops-button), .quick-restock__store, .quick-restock__category) {
+  color: var(--binder-hero-ink);
+  border-color: rgb(255 248 236 / 35%);
+}
+
+/* ---------- Buttons: pill shape, generous touch targets ---------- */
+html:root body .app:is(.app-command-shell, .app-signed-out)[data-theme] :is(.ops-button, .primary-button, .secondary-button, .ember-gradient-button, .social-sign-in-button) {
+  border-radius: var(--binder-pill) !important;
+  min-height: 48px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+html:root body .app:is(.app-command-shell, .app-signed-out)[data-theme] :is(.ops-button--primary, .primary-button) {
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--c3-action) 28%, transparent);
+}
+html:root body .app:is(.app-command-shell, .app-signed-out)[data-theme] :is(input, select, textarea) {
+  border-radius: var(--ui-control-radius);
+}
+
+/* ---------- Bottom navigation: a floating bar with a round gold Add ---------- */
+@media (max-width: 899px) {
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav {
+    border-radius: 24px !important;
+    border: 1px solid var(--c3-border) !important;
+    background: color-mix(in srgb, var(--c3-surface-elevated) 92%, transparent) !important;
+    backdrop-filter: blur(12px) saturate(1.2);
+    box-shadow: 0 10px 30px rgb(0 0 0 / 22%) !important;
+  }
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav button {
+    border-radius: 16px !important;
+    color: var(--app-brand-chrome-muted) !important;
+    font-weight: 600;
+  }
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav button.is-active {
+    position: relative;
+    background: var(--app-brand-selected) !important;
+    color: var(--app-brand-selected-ink) !important;
+    box-shadow: none !important;
+  }
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav button.is-active::after {
+    content: "";
+    position: absolute;
+    left: 28%;
+    right: 28%;
+    bottom: 3px;
+    height: 3px;
+    border-radius: 3px;
+    background: var(--binder-foil);
+  }
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav__action-icon {
+    border-radius: 50% !important;
+    background: radial-gradient(circle at 35% 30%, #F7E2A0 0%, #E8C86B 45%, #C99A2E 100%) !important;
+    color: #2A1418 !important;
+    border: 3px solid var(--c3-surface-elevated) !important;
+    box-shadow: 0 6px 16px rgb(201 154 46 / 40%) !important;
+  }
+}
+
+/* ---------- Home: one brand mark, not two ---------- */
+html:root body .app.app-command-shell[data-theme] .home-layout .ops-page-header .home-mobile-identity :is(strong, span:not(:first-child)) {
+  font-family: var(--c3-font-heading) !important;
+  font-weight: 800;
+}
+
+/* ---------- Checklist and small chips ---------- */
+html:root body .app.app-command-shell[data-theme] .persona-checklist__steps button {
+  border-radius: 16px !important;
+  background: var(--c3-surface-secondary) !important;
+  border-color: transparent !important;
+}
+html:root body .app.app-command-shell[data-theme] .persona-checklist__mark {
+  background: var(--app-brand-selected) !important;
+  color: var(--app-brand-selected-ink) !important;
+}
+
+/* ---------- Floating feedback button: smaller, out of the way ---------- */
+html:root body .app[data-theme] .quick-feedback-fab {
+  width: 44px !important;
+  height: 44px !important;
+  opacity: .92;
+  box-shadow: 0 6px 16px rgb(0 0 0 / 20%);
+}
+
+/* ---------- Card-game touches ---------- */
+/* Featured card: a gold frame line inside the edge and a soft diagonal holo
+   sheen, like the face of a premium card. */
+html:root body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .home-restock-hero {
+  box-shadow: inset 0 0 0 1px rgb(232 200 107 / 22%), 0 10px 28px rgb(74 22 34 / 22%) !important;
+}
+html:root body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .home-restock-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 28%, rgb(255 255 255 / 6%) 42%, rgb(243 217 135 / 10%) 50%, rgb(155 59 140 / 8%) 58%, transparent 72%);
+  pointer-events: none;
+}
+html:root body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .home-restock-hero > * { position: relative; z-index: 1; }
+
+/* Item and set tiles: rounded like a sleeved card, and a holo shimmer sweeps
+   across when pressed or hovered with a mouse. */
+html:root body .app.app-command-shell[data-theme] :is(.collection-portfolio-item, .collection-sets-card, .set-catalog-product) {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px !important;
+  box-shadow: var(--binder-card-shadow);
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+html:root body .app.app-command-shell[data-theme] :is(.collection-portfolio-item, .collection-sets-card, .set-catalog-product)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 35%, rgb(255 255 255 / 18%) 47%, rgb(243 217 135 / 22%) 52%, rgb(155 59 140 / 16%) 57%, transparent 68%);
+  background-size: 250% 100%;
+  background-position: 120% 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+html:root body .app.app-command-shell[data-theme] :is(.collection-portfolio-item, .collection-sets-card, .set-catalog-product):active::after {
+  opacity: 1;
+  animation: binder-holo-sweep 520ms ease-out;
+}
+@media (hover: hover) {
+  html:root body .app.app-command-shell[data-theme] :is(.collection-portfolio-item, .collection-sets-card, .set-catalog-product):hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-3);
+  }
+  html:root body .app.app-command-shell[data-theme] :is(.collection-portfolio-item, .collection-sets-card, .set-catalog-product):hover::after {
+    opacity: 1;
+    animation: binder-holo-sweep 700ms ease-out;
+  }
+}
+@keyframes binder-holo-sweep { from { background-position: 120% 0; } to { background-position: -40% 0; } }
+@media (prefers-reduced-motion: reduce) {
+  html:root body .app[data-theme] :is(.collection-portfolio-item, .collection-sets-card, .set-catalog-product) { transition: none; }
+  html:root body .app[data-theme] :is(.collection-portfolio-item, .collection-sets-card, .set-catalog-product)::after { animation: none !important; }
+}
+
+/* Page title: a short foil underline gives every main page the same signature. */
+html:root body .app.app-command-shell[data-theme] .ops-page-header h1::after {
+  content: "";
+  display: block;
+  width: 56px;
+  height: 4px;
+  margin-top: 10px;
+  border-radius: 4px;
+  background: var(--binder-foil);
+}

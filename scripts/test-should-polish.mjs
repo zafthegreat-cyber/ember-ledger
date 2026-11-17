@@ -12,10 +12,11 @@ const read = (relative) => readFileSync(path.join(root, relative), "utf8");
 const css = read("src/styles/app/16-should-polish.css");
 const appCss = read("src/App.css");
 
-test("16-should-polish loads after the palette; only 17-touch-feedback follows it", () => {
+test("16-should-polish loads after the palette; only 17-touch-feedback and 18-collector-binder follow it", () => {
   const imports = appCss.split("\n").filter((line) => line.startsWith("@import"));
-  assert.match(imports.at(-2), /16-should-polish\.css/);
-  assert.match(imports.at(-1), /17-touch-feedback\.css/);
+  assert.match(imports.at(-3), /16-should-polish\.css/);
+  assert.match(imports.at(-2), /17-touch-feedback\.css/);
+  assert.match(imports.at(-1), /18-collector-binder\.css/);
   assert.ok(imports.findIndex((line) => line.includes("15-warm-palette")) < imports.length - 1);
 });
 
