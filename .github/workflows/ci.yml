@@ -63,6 +63,7 @@ jobs:
           node --no-warnings scripts/test-shared-device-signout.mjs
           node --no-warnings scripts/test-community-server.mjs
           node --no-warnings scripts/test-restock-alerts.mjs
+          node --no-warnings --test scripts/test-stock-intelligence.mjs
           node --no-warnings scripts/test-play-upload.mjs
           node --no-warnings scripts/test-tier-foundation.mjs
           npm run test:native
