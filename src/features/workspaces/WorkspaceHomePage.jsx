@@ -22,7 +22,8 @@ const WORKSPACE_COPY = Object.freeze({
   },
   FIND: {
     title: "Find",
-    purpose: "Deals, auctions, restocks, and sourcing intelligence.",
+    purpose: "Restock reports from other collectors, and where to look next.",
+    sellerPurpose: "Restocks, plus tools to check a listing or auction before you buy to resell.",
     empty: "No watched opportunities yet.",
   },
   SELL: {
@@ -142,24 +143,28 @@ function FindHome({ onNavigate, presentation }) {
   const watchedDeals = state.deals.filter((record) => /watch|offer|strong|review/i.test(record.status || record.recommendation || ""));
   const liveAuctions = state.auctions.filter((record) => !/expired|passed|lost|cancelled/i.test(record.status || record.outcome || ""));
   const attention = recentRecords([...watchedDeals, ...liveAuctions]);
+  // Owner, Nov 17: "Auctions and deals? They don't make sense." They are resale
+  // tools (is this listing worth buying to flip?), so only sellers and stores
+  // see them, or anyone who already saved a deal or auction.
+  const resaleTools = presentation.isSeller || presentation.isStore || presentation.showBusinessTools || presentation.showAdminTools || state.deals.length > 0 || state.auctions.length > 0;
   return (
     <>
-      <SummaryStrip values={[
-        { label: "Watched", value: watchedDeals.length },
-        { label: "Active auctions", value: liveAuctions.length },
-      ]} />
+      {resaleTools ? <SummaryStrip values={[
+        { label: "Listings saved", value: watchedDeals.length },
+        { label: "Auctions tracked", value: liveAuctions.length },
+      ]} /> : null}
       <section className="code3-workspace-actions" aria-label="Find actions">
         <PrimaryButton onClick={() => onNavigate("/find/restocks")}>Browse restocks</PrimaryButton>
-        <SecondaryButton onClick={() => onNavigate("/find/deals")}>Review Deals</SecondaryButton>
-        <SecondaryButton onClick={() => onNavigate("/find/auctions")}>Auctions</SecondaryButton>
-        <SecondaryButton onClick={() => onNavigate("/find/buy-offer")}>Buy Offer</SecondaryButton>
+        {resaleTools ? <SecondaryButton onClick={() => onNavigate("/find/deals")}>Check a listing</SecondaryButton> : <SecondaryButton onClick={() => onNavigate("/market")}>Look up a price</SecondaryButton>}
+        {resaleTools ? <SecondaryButton onClick={() => onNavigate("/find/auctions")}>Track an auction</SecondaryButton> : null}
+        {resaleTools ? <SecondaryButton onClick={() => onNavigate("/find/buy-offer")}>Buy Offer</SecondaryButton> : null}
       </section>
-      <RecentList
+      {resaleTools ? <RecentList
         title={presentation.showBusinessTools || presentation.showAdminTools ? "Sourcing activity" : "Saved finds"}
         records={attention}
         empty={WORKSPACE_COPY.FIND.empty}
         onOpen={(record) => onNavigate(state.auctions.includes(record) ? "/find/auctions" : "/find/deals")}
-      />
+      /> : null}
     </>
   );
 }

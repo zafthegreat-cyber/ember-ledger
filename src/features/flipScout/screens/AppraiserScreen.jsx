@@ -529,6 +529,7 @@ export default function AppraiserScreen({ seed, onSave, repository = null, analy
     <div className="flip-screen flip-analysis-workflow">
       <section className="flip-section">
         <SectionHeading title="Deal Analysis" />
+        <p className="flip-analysis-intro">Thinking of buying something to resell? Enter the listing and your costs, and this shows whether the price leaves room for profit. Five short steps; nothing is bought or posted.</p>
         {latestSavedAnalyses.length ? <details className="code3-saved-analyses"><summary>Saved analysis history ({latestSavedAnalyses.length})</summary><ul className="code3-history-list">{latestSavedAnalyses.map((record) => <li key={record.id}><span><strong>{record.systemResult?.identity?.productName || record.workflowSnapshot?.title || "Untitled analysis"}</strong><small>Revision {record.revision} · {new Date(record.analyzedAt).toLocaleString()}</small></span><button type="button" className="secondary-button" disabled={isSaving} onClick={() => openSavedAnalysis(record)}>Open</button></li>)}</ul></details> : null}
         <nav className="flip-analysis-steps" aria-label="Deal Analysis progress">
           {STEPS.map((label, index) => <button key={label} type="button" className={index === step ? "is-active" : index < step ? "is-complete" : ""} aria-current={index === step ? "step" : undefined} disabled={isSaving || index > step} onClick={() => setStep(index)}><span>{index + 1}</span><strong>{label}</strong></button>)}

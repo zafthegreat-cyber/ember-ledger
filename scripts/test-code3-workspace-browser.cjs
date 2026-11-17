@@ -382,7 +382,7 @@ async function verifyFixture(page, fixture) {
     case "find-populated":
     case "dark-mobile":
       await page.getByTestId("find-workspace-home").waitFor();
-      match(await body(), /Watched\s*1[\s\S]*Active auctions\s*1/i, "Find populated state should derive real fixture counts");
+      match(await body(), /Listings saved\s*1[\s\S]*Auctions tracked\s*1/i, "Find populated state should derive real fixture counts");
       match(await body(), /Vintage binder opportunity|Local card collection auction/i, "Find populated state should show sourced records");
       break;
     case "sell-empty":

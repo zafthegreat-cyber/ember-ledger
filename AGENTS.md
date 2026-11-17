@@ -23,6 +23,9 @@ words in parentheses; do not rename those.
 - **Collect** (code: vault): tabs **Collection**, **Sets**, **Wants**. Never "Vault" or
   "Wishlist" in visible copy; the plain-language layer rewrites stragglers.
 - **Find** (code: scout, flip scout): tabs Home, **Deals**, **Restocks**, Auctions.
+  Deals and Auctions are resale tools: collectors do not see them (tabs, Find home, inner Find tabs)
+  unless they are a seller/store or already saved one (owner, Nov 17, 2026). Restocks opens on the
+  restock map (`src/features/restocks/RestockMapCard.jsx`): latest public report per store only.
   "Watchlist" means stores/products watched for restocks, not wanted cards.
 - **Sell** (code: forge resale): Inventory and Sales.
 - **Business** (code: forge/ledger): purchases, money, receipts and records.

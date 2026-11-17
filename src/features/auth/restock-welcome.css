@@ -6,3 +6,5 @@
 .restock-welcome-steps li { display: grid; gap: .35rem; padding: 1rem; border: 1px solid currentColor; border-radius: 12px; background: color-mix(in srgb, var(--surface-primary, #211f28) 80%, transparent); }
 .restock-welcome-steps strong, .restock-welcome-steps span { overflow-wrap: anywhere; }
 .restock-welcome-steps span { font-size: .9rem; line-height: 1.55; }
+
+.restock-welcome-promise { margin: 6px 0 10px; font-weight: 800; font-size: 1.05rem; color: var(--c3-gold-ink, #7A5C0A); letter-spacing: -.01em; }

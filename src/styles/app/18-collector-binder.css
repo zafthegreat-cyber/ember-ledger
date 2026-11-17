@@ -320,3 +320,53 @@ html:root body .app.app-command-shell[data-theme] .ops-page-header h1::after {
   border-radius: 4px;
   background: var(--binder-foil);
 }
+
+/* ---------- Simulated UI beta, Nov 17 (scripts/simulate-ui-beta.mjs) ----------
+   5,000 synthetic testers over 220 measured screens. Fixes for what they hit most. */
+/* 1. Text under 12 px (Settings status and footer, small brand and summary labels, map credit). */
+html:root body .app.app-command-shell[data-theme] :is(
+  .settings-layout__footer, .settings-layout__footer *,
+  .settings-layout__account-type, .settings-layout__row-status,
+  .command-board-v4-mobile-brand, .command-board-v4-mobile-brand *,
+  .code3-workspace-summary dt, .code3-workspace-summary span, .code3-workspace-summary small,
+  .code3-workspace-home__header span, .code3-workspace-home__header small,
+  .home-desktop-context, .scout-tile-map-attribution, .scout-tile-map-attribution *
+) { font-size: 12px !important; }
+html:root body .app.app-command-shell[data-theme] .settings-layout__row-status { max-width: 120px; }
+/* 2. Bottom bar labels were cut off ("Collection") on small phones and with large text. */
+@media (max-width: 899px) {
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav button span {
+    overflow: visible; text-overflow: clip; max-width: none;
+    font-size: 12px; letter-spacing: -.02em;
+  }
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav button { padding-inline: 0; }
+}
+@media (max-width: 340px) {
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav button span { letter-spacing: -.04em; }
+}
+/* 3. Map pins were 36 px; thumbs need 44. */
+html:root body .app .restock-map-card .restock-map-card__map .scout-tile-map-pin { width: 44px; height: 44px; font-size: 13px; }
+html:root body .app .restock-map-card .restock-map-card__map .scout-tile-map-pin.is-selected { width: 48px; height: 48px; }
+
+/* ---------- Home at a glance (competitor review, Nov 17) ----------
+   Other apps open on one clear thing: a search bar and your numbers. */
+html:root body .app.app-command-shell[data-theme] .home-glance { display: grid; gap: 12px; margin: 0 0 20px; }
+html:root body .app.app-command-shell[data-theme] .home-glance__search {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 52px; padding: 0 18px;
+  border: 1px solid var(--c3-border); border-radius: 999px; background: var(--c3-surface);
+  color: var(--text-secondary); font: 500 16px/1 var(--font-ui, inherit); text-align: left; cursor: pointer;
+  box-shadow: var(--binder-card-shadow);
+}
+html:root body .app.app-command-shell[data-theme] .home-glance__search svg { flex: none; width: 20px; height: 20px; color: var(--c3-gold-ink); }
+html:root body .app.app-command-shell[data-theme] .home-glance__stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+html:root body .app.app-command-shell[data-theme] .home-glance__stats button {
+  display: grid; gap: 2px; justify-items: start; min-height: 72px; padding: 12px 14px;
+  border: 1px solid var(--c3-border); border-radius: 16px; background: var(--c3-surface);
+  color: var(--text-primary); text-align: left; cursor: pointer; box-shadow: var(--binder-card-shadow);
+}
+html:root body .app.app-command-shell[data-theme] .home-glance__stats strong { font: 800 26px/1 var(--c3-font-heading); letter-spacing: -.03em; color: var(--text-primary); }
+html:root body .app.app-command-shell[data-theme] .home-glance__stats span { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+html:root body .app.app-command-shell[data-theme] .home-glance :is(.home-glance__search, .home-glance__stat) { background: var(--c3-surface) !important; border-color: var(--c3-border) !important; }
+html:root body .app.app-command-shell[data-theme] .home-glance .home-glance__search { color: var(--text-secondary) !important; }
+html:root body .app.app-command-shell[data-theme] .home-glance .home-glance__stat strong { color: var(--text-primary) !important; }
+html:root body .app.app-command-shell[data-theme] .home-glance .home-glance__stat span { color: var(--text-secondary) !important; }

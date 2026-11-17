@@ -6983,7 +6983,11 @@ export default function App() {
   const workspaceNavItems = getWorkspaceNavigation(presentationWorkspaceId, {
     ownerAuthorized: ownerToolsVisible,
     featureControls: ownerFeatureControls,
-  }).map((item) => ({
+  })
+    // Deals and Auctions are resale tools; collectors do not get them as tabs
+    // (owner, Nov 17: "They don't make sense"). Sellers, stores and admins do.
+    .filter((item) => !(["find-deals", "find-auctions"].includes(item.key) && experiencePresentation.isCollector && !adminViewingAsAdmin))
+    .map((item) => ({
     ...item,
     icon: item.iconKey,
     action: () => navigateProductPath(item.path),
@@ -51070,7 +51074,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
         {activeTab === "flipScout" && (
           <LazyToolBoundary label="Loading Deal Finder...">
-            <FlipScoutPage experiencePresentation={experiencePresentation} initialScreen={flipScoutView} onViewChange={(view) => { prepareRouteNavigation(); setFlipScoutView(view); }} featureControls={ownerFeatureControls} onExit={() => { prepareRouteNavigation(); setActiveTab("dashboard"); }} onReportRestock={() => openScoutSubmitFlow({ source: "restocks-page" })} onOpenRestocks={() => { prepareRouteNavigation(); setScoutView("reports"); setScoutSubTabTarget({ tab: "reports", id: Date.now() }); setActiveTab("scout"); }} />
+            <FlipScoutPage restockMap={flipScoutView === "restocks" ? { stores: getScoutQuickStores(), reports: scoutSnapshot.reports || [], isFollowed: isWatchedEmberStore, onOpenStore: (store) => openCommunityRestockReports({ storeId: store.id }), onReportAtStore: (store) => openScoutSubmitFlow({ source: "restock-map", store }) } : null} experiencePresentation={experiencePresentation} initialScreen={flipScoutView} onViewChange={(view) => { prepareRouteNavigation(); setFlipScoutView(view); }} featureControls={ownerFeatureControls} onExit={() => { prepareRouteNavigation(); setActiveTab("dashboard"); }} onReportRestock={() => openScoutSubmitFlow({ source: "restocks-page" })} onOpenRestocks={() => { prepareRouteNavigation(); setScoutView("reports"); setScoutSubTabTarget({ tab: "reports", id: Date.now() }); setActiveTab("scout"); }} />
           </LazyToolBoundary>
         )}
 

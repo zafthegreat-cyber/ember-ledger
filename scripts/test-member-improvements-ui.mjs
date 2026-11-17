@@ -73,7 +73,7 @@ test("community links explain purpose and notification consent without subscribi
 });
 test("restock landing opens the existing signup callback without creating an account",async()=>{
   environment();let calls=0;await act(()=>root.render(React.createElement(RestockWelcome,{onCreateAccount:()=>calls++})));
-  assert.equal(document.querySelectorAll("ol li").length,3);assert.match(document.body.textContent,/observation time/);assert.match(document.body.textContent,/availability can change/);
+  assert.equal(document.querySelectorAll("ol li").length,3);assert.match(document.body.textContent,/Track your collection\. Get free restock alerts\./);assert.match(document.body.textContent,/Built for collectors, not scalpers\./);assert.match(document.body.textContent,/availability can change/);
   await act(()=>click(button("Create a free account")));assert.equal(calls,1);
 });
 test("a blocked share and clipboard leave a labelled selectable public link",async()=>{

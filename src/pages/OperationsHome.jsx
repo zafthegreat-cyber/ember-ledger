@@ -146,12 +146,21 @@ export default function OperationsHome({
   });
 
   return <div className="ops-home-page home-layout home-layout--refined home-layout--lounge">
-    <PageHeader eyebrow={<><span className="home-desktop-context">Home</span><span className="home-mobile-identity"><BrandIdentity /></span></>} title={activeVaultItems.length || recent.length || workspaceWatchlist.length || followedStores.length ? "Welcome back." : "Welcome to Code 3 TCG."} description={activeVaultItems.length || recent.length || workspaceWatchlist.length ? "Your collection, local reports, and saved finds." : "Start with your first item or explore restock reports near you."} />
+    <PageHeader eyebrow={<><span className="home-desktop-context">Home</span><span className="home-mobile-identity"><BrandIdentity /></span></>} title={activeVaultItems.length || recent.length || workspaceWatchlist.length || followedStores.length ? "Welcome back." : "Welcome to Code 3 TCG."} description={activeVaultItems.length || recent.length || workspaceWatchlist.length ? "" : "Track your cards and get free restock alerts."} />
     {isOffline ? <OfflineState action={<SecondaryButton onClick={() => window.location.reload()}>Try again</SecondaryButton>} /> : null}
+    {/* Competitor review, Nov 17: open on a search bar and the person's own numbers. */}
+    <div className="home-glance">
+      <button type="button" className="home-glance__search" onClick={() => setActiveTab("market")} aria-label="Search cards and products"><AppNavIcon kind="search" /><span>Search cards &amp; products</span></button>
+      <div className="home-glance__stats" aria-label="Your numbers">
+        <button type="button" className="home-glance__stat" onClick={() => setActiveTab("collectionWorkspace")} aria-label={`${collectionQuantity} in your collection. Open collection.`}><strong>{collectionQuantity}</strong><span>{collectionQuantity === 1 ? "Card" : "Cards"}</span></button>
+        <button type="button" className="home-glance__stat" onClick={() => setActiveTab("market")} aria-label={`${workspaceWatchlist.length} on your wants list. Search to add more.`}><strong>{workspaceWatchlist.length}</strong><span>{workspaceWatchlist.length === 1 ? "Want" : "Wants"}</span></button>
+        <button type="button" className="home-glance__stat" onClick={() => (followedStores.length ? onOpenFollowedReports || onOpenRestockReports : onOpenRestockReports)?.()} aria-label={`${followedStores.length} stores followed. Open restocks.`}><strong>{followedStores.length}</strong><span>{followedStores.length === 1 ? "Store" : "Stores"}</span></button>
+      </div>
+    </div>
     <section className="ops-home-section home-restock-hero" aria-labelledby="home-restock-title">
       <div className="home-restock-copy">
         <h2 id="home-restock-title">Restock reports</h2>
-        <p>Share stocked or empty shelves in your area.</p>
+        <p>See what collectors found. Share what you saw.</p>
         <div className="home-restock-actions"><PrimaryButton onClick={() => onReportRestock()}>Report a restock</PrimaryButton><SecondaryButton onClick={onOpenRestockReports}>Browse all restocks</SecondaryButton></div>
         <QuickRestockLauncher followedStores={followedStores} nearbyStores={(scoutSnapshot.nearbyStores || []).slice(0, 3).length ? (scoutSnapshot.nearbyStores || []).slice(0, 3) : suggestedStores} kidSafe={kidSafeView} onLaunch={(options) => onReportRestock(options)} />
       </div>
