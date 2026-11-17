@@ -498,3 +498,14 @@ html body .app.app-command-shell[data-theme] .home-layout--lounge :is(.home-foll
 html body .app.app-command-shell[data-theme] .home-layout--lounge :is(.home-followed-stores li > button,.home-recent-list article > button):hover{background:var(--surface-secondary) !important}
 html body .app.app-command-shell[data-theme] .home-layout--lounge :is(.home-followed-stores li > button,.home-recent-list article > button) strong{color:var(--text-primary)}
 html body .app.app-command-shell[data-theme] .home-layout--lounge .home-followed-stores li > button small{color:var(--text-secondary);font-size:13px}
+
+/* UI sweep (Nov 17): the lounge theme draws a border and panel behind these
+   sections, but the refined layout zeroed their padding, so text and the Hide
+   button sat on the border. Same inner spacing as the restock card. */
+html body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge :is(.persona-checklist, .home-workspaces) {
+  padding: 18px 16px;
+}
+html body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .home-workspaces .home-personal-card:first-child {
+  border-top: 0;
+  padding-top: 4px;
+}

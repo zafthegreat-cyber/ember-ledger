@@ -9,8 +9,11 @@
    Tokens only; no layout changes. */
 
 :root, .app[data-theme] {
-  --c3-teal: #1F7A74;
-  --c3-teal-soft: #E3F1EF;
+  /* Owner, Nov 17 2026: no blue/teal anywhere ("I hate that when you hover over
+     things it is blue"). The second accent is now a warm copper. Token names keep
+     "teal" so existing rules need no change. */
+  --c3-teal: #8A4B1F;
+  --c3-teal-soft: #F6E8DA;
   --c3-kicker: #7A6A64;
 }
 
@@ -26,9 +29,9 @@
   --c3-text: #F6EEE2;
   --c3-muted: #C2B2B6;
   --c3-kicker: #A79399;
-  --c3-teal: #5CC3BA;
-  --c3-teal-soft: #1F3A3B;
-  --c3-info: #8FD3CC;
+  --c3-teal: #E3B07A;
+  --c3-teal-soft: #3A2620;
+  --c3-info: #EBC9A2;
   --c3-shadow: 0 6px 24px rgb(0 0 0 / 28%);
 }
 

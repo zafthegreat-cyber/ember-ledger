@@ -135,7 +135,7 @@
 
 .accountant-review button:focus-visible,
 .accountant-review select:focus-visible {
-  outline: 3px solid var(--focus-ring, #60a5fa);
+  outline: 3px solid var(--focus-ring, #d4af37);
   outline-offset: 3px;
 }
 

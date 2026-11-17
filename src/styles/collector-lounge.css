@@ -1,6 +1,6 @@
 /* Collector identity inspired by the supplied burgundy / gold campaign.
    Semantic roles keep saved data, status colors, and theme preferences intact. */
-html body .app.app-command-shell[data-theme] {
+html body .app:is(.app-command-shell, .app-signed-out)[data-theme] {
   --lounge-display: Georgia, "Times New Roman", serif;
   --ui-control-radius: 8px;
   --lounge-gold: #765316;
@@ -74,7 +74,7 @@ html body .app.app-command-shell[data-theme] {
   background: var(--app-background);
   color: var(--text-primary);
 }
-html body .app.app-command-shell[data-theme="dark"] {
+html body .app:is(.app-command-shell, .app-signed-out)[data-theme="dark"] {
   --lounge-gold: #dfbf7f;
   --lounge-line: #6b4b37;
   --lounge-panel: #281018;
@@ -107,10 +107,10 @@ html body .app.app-command-shell[data-theme="dark"] {
   --shadow-1: 0 2px 5px rgb(12 1 6 / 12%);
   --shadow-2: 0 6px 20px rgb(12 1 6 / 18%);
 }
-:root:has(.app.app-command-shell[data-theme="dark"]),
-body:has(.app.app-command-shell[data-theme="dark"]) { --app-background: #19090f; background: #19090f; }
-:root:has(.app.app-command-shell[data-theme="light"]),
-body:has(.app.app-command-shell[data-theme="light"]) { --app-background: #f7efdf; background: #f7efdf; }
+:root:has(.app:is(.app-command-shell, .app-signed-out)[data-theme="dark"]),
+body:has(.app:is(.app-command-shell, .app-signed-out)[data-theme="dark"]) { --app-background: #19090f; background: #19090f; }
+:root:has(.app:is(.app-command-shell, .app-signed-out)[data-theme="light"]),
+body:has(.app:is(.app-command-shell, .app-signed-out)[data-theme="light"]) { --app-background: #f7efdf; background: #f7efdf; }
 
 /* A display face belongs to page headings. Controls and saved numbers stay sans serif. */
 html body .app.app-command-shell[data-theme] .ops-page-header h1 {

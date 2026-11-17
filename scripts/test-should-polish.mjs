@@ -12,9 +12,10 @@ const read = (relative) => readFileSync(path.join(root, relative), "utf8");
 const css = read("src/styles/app/16-should-polish.css");
 const appCss = read("src/App.css");
 
-test("16-should-polish is the last stylesheet App.css imports", () => {
+test("16-should-polish loads after the palette; only 17-touch-feedback follows it", () => {
   const imports = appCss.split("\n").filter((line) => line.startsWith("@import"));
-  assert.match(imports.at(-1), /16-should-polish\.css/);
+  assert.match(imports.at(-2), /16-should-polish\.css/);
+  assert.match(imports.at(-1), /17-touch-feedback\.css/);
   assert.ok(imports.findIndex((line) => line.includes("15-warm-palette")) < imports.length - 1);
 });
 

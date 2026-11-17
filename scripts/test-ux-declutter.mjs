@@ -47,10 +47,14 @@ test("warm palette polish is loaded last and defines the teal accent", () => {
   const appCss = src("src/App.css");
   // 16-should-polish (SHOULD 12-14) now loads after it; 15 must still come after everything else.
   const imports = appCss.split(/\r?\n/).filter((line) => line.startsWith("@import"));
-  assert.equal(imports.at(-2), '@import "./styles/app/15-warm-palette-polish.css";');
-  assert.equal(imports.at(-1), '@import "./styles/app/16-should-polish.css";');
+  assert.equal(imports.at(-3), '@import "./styles/app/15-warm-palette-polish.css";');
+  assert.equal(imports.at(-2), '@import "./styles/app/16-should-polish.css";');
+  // 17-touch-feedback (owner, Nov 17): no blue tap flash; loads last.
+  assert.equal(imports.at(-1), '@import "./styles/app/17-touch-feedback.css";');
+  assert.match(src("src/styles/app/17-touch-feedback.css"), /-webkit-tap-highlight-color: transparent/);
   const polish = src("src/styles/app/15-warm-palette-polish.css");
   assert.match(polish, /--c3-teal:/);
+  assert.doesNotMatch(polish, /#5CC3BA|#1F7A74/, "the second accent is warm copper, not teal");
   assert.match(polish, /--c3-page: #1A1518/);
   assert.match(polish, /text-transform: none !important/);
 });

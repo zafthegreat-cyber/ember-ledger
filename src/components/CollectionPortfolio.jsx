@@ -199,7 +199,7 @@ export default function CollectionPortfolio({
   }
 
   return <section className="collection-portfolio" data-density={extraPreferences.state.density} aria-label="Collection portfolio">
-    <PhoneMotionControl compact />
+    {items.length ? <PhoneMotionControl compact /> : null}
     <div ref={contentRef} inert={Boolean(modal)} aria-hidden={modal ? true : undefined}>
       <div className="collection-portfolio-tabs" role="group" aria-label="Portfolio section">
         <button type="button" aria-pressed={section === "overview"} onClick={() => updateView({ section: "overview" })}>Overview</button>

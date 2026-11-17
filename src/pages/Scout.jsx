@@ -5468,7 +5468,7 @@ async function handleUpdateStore(e) {
                   <strong>{report.productName || report.reportType}</strong>
                   <span style={styles.badge}>{report.computedStatus} | {report.weightedScore}%</span>
                 </div>
-                <p style={{ margin: "6px 0", color: "#334155" }}>{report.storeName} - {report.city || "No city"} {report.distanceMiles ? `- ${report.distanceMiles} mi` : ""}</p>
+                <p style={{ margin: "6px 0", color: "var(--text-secondary)" }}>{report.storeName} - {report.city || "No city"} {report.distanceMiles ? `- ${report.distanceMiles} mi` : ""}</p>
                 <p style={{ margin: "6px 0", color: "var(--cmd-muted)" }}>{report.reportText}</p>
                 <p style={styles.tiny}>
                   {report.reportType} | {report.displayName} | Source: {report.sourceType} | Helpful: {report.helpfulVotes} | Confirmed: {report.verifiedByCount} | Disputed: {report.disputedByCount}
@@ -5518,7 +5518,7 @@ async function handleUpdateStore(e) {
                         <strong>{event.eventTitle}</strong>
                         <span style={styles.badge}>{event.eventStatus} | {event.verificationStatus}</span>
                       </div>
-                      <p style={{ margin: "6px 0", color: "#334155" }}>
+                      <p style={{ margin: "6px 0", color: "var(--text-secondary)" }}>
                         {event.eventType} | {event.startDate || "Date TBD"} {event.startTime || ""} | {event.onlineEvent ? "Online" : `${event.city || "No city"}, ${event.state || "VA"}`}
                       </p>
                       <p style={{ margin: "6px 0", color: "var(--cmd-muted)" }}>{event.eventDescription}</p>
@@ -6253,7 +6253,7 @@ async function handleUpdateStore(e) {
                     <strong>{store.name}</strong>
                     <span style={styles.badge}>{score}% Restocks Score</span>
                   </div>
-                  <p style={{ margin: "8px 0", color: "#334155" }}>{reason}</p>
+                  <p style={{ margin: "8px 0", color: "var(--text-secondary)" }}>{reason}</p>
                   <p style={styles.tiny}>
                     {commonDay ? `Most common day: ${commonDay} (${commonDayCount})` : "No common day yet"}
                     {commonHour ? ` · Common time: ${commonHour}:00` : ""}
@@ -6396,7 +6396,7 @@ async function handleUpdateStore(e) {
                     </div>
                     {store.nickname ? <p style={{ margin: "6px 0", color: "var(--cmd-muted)" }}>{store.name}</p> : null}
                     <p style={{ margin: "6px 0", color: "var(--cmd-muted)" }}>{stop.group} | {store.address || "No address"} | {store.city || ""}</p>
-                    <p style={{ margin: "6px 0", color: "#334155" }}>
+                    <p style={{ margin: "6px 0", color: "var(--text-secondary)" }}>
                       Reason: {explainRouteChoice(stop, routeForm.routeGoal)}
                     </p>
                     <p style={styles.tiny}>

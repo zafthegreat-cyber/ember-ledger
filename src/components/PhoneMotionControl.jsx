@@ -21,8 +21,8 @@ export default function PhoneMotionControl({ className = "", compact = false, sh
     : "Your phone may ask for motion access.";
   return <div className={`phone-motion-control ${className}`} data-compact={compact}>
     <div className="phone-motion-control__actions">
-      <button type="button" aria-pressed={isOn} disabled={asking} onClick={() => isOn ? controller.setEnabled(false) : controller.requestPermission()}>{label}</button>
-      {isOn && !compact ? <button type="button" onClick={() => controller.recalibrate()}>Center tilt</button> : null}
+      <button type="button" className="phone-motion-control__button" aria-pressed={isOn} disabled={asking} onClick={() => isOn ? controller.setEnabled(false) : controller.requestPermission()}>{label}</button>
+      {isOn && !compact ? <button type="button" className="phone-motion-control__button" onClick={() => controller.recalibrate()}>Center tilt</button> : null}
     </div>
     {!compact || state.status === "denied" ? <p className="phone-motion-control__note" role={state.status === "denied" ? "status" : undefined}>{message}</p> : null}
   </div>;

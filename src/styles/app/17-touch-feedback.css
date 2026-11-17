@@ -1,0 +1,30 @@
+/* Touch and hover feedback (owner, Nov 17 2026: "I hate that when you hover over
+   things it is blue"). Loaded last.
+   1. Android paints a translucent blue box over anything tapped unless the page
+      turns it off. Off everywhere; a short warm press state replaces it.
+   2. Hover and press use the brand's warm tones, never the browser's blue. */
+
+html, body, .app, .app * { -webkit-tap-highlight-color: transparent; }
+
+html body .app[data-theme] {
+  --press-wash: color-mix(in srgb, var(--c3-gold, #d4af37) 14%, transparent);
+  --hover-line: var(--c3-gold, #d4af37);
+}
+html body .app[data-theme="light"] {
+  --press-wash: color-mix(in srgb, var(--c3-maroon, #641329) 8%, transparent);
+  --hover-line: var(--c3-gold-ink, #765316);
+}
+
+/* Press: a brief warm wash and a slight sink, on buttons, links and tappable rows. */
+html body .app[data-theme] :is(button, a, summary, [role="button"], label:has(> input[type="checkbox"], > input[type="radio"])):not(:disabled):active {
+  background-image: linear-gradient(var(--press-wash), var(--press-wash));
+  transform: translateY(1px);
+  transition: transform 60ms ease-out;
+}
+
+/* Keyboard focus keeps a clear ring, in the brand color rather than browser blue. */
+html body .app[data-theme] :is(button, a, summary, input, select, textarea, [tabindex]):focus-visible {
+  outline-color: var(--focus-ring, var(--c3-gold, #d4af37));
+}
+html body .app[data-theme] :is(input, select, textarea) { accent-color: var(--action-primary, #641329); }
+html body .app[data-theme] ::selection { background: var(--c3-selection, #44232c); color: var(--text-primary); }

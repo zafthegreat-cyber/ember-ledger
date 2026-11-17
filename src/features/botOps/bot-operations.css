@@ -125,7 +125,7 @@
 .bot-ops a:focus-visible,
 .bot-ops input:focus-visible,
 .bot-ops select:focus-visible {
-  outline: 3px solid var(--focus-ring, #60a5fa);
+  outline: 3px solid var(--focus-ring, #d4af37);
   outline-offset: 3px;
 }
 

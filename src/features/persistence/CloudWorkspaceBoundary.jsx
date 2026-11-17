@@ -119,13 +119,18 @@ function ProtectedCloudWorkspaceBoundary({ children, client = supabase, configur
     return result.data.user;
   }, [client]);
   // A request that could not connect at all is tried up to three times, a few
-  // seconds apart, before it is shown. Timeouts already waited 15 s, so they are not repeated.
+  // seconds apart, before it is shown. A check that timed out (already 15 s) is
+  // tried once more: phones often stall only on the first call after waking.
   const verify = useCallback(async (expectedId, { attempts = 3 } = {}) => {
+    let timeoutRetried = false;
     for (let attempt = 1; ; attempt += 1) {
       try { return await verifyOnce(expectedId); }
       catch (error) {
-        if (attempt >= attempts || error?.code !== "VERIFY_NETWORK") throw error;
-        await pause(1500 * attempt);
+        const timedOut = String(error?.code || "").endsWith("_TIMEOUT");
+        const retry = attempt < attempts && (error?.code === "VERIFY_NETWORK" || (timedOut && !timeoutRetried));
+        if (!retry) throw error;
+        if (timedOut) timeoutRetried = true;
+        await pause(timedOut ? 250 : 1500 * attempt);
       }
     }
   }, [verifyOnce]);

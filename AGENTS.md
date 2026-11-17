@@ -57,7 +57,8 @@ catch-all; `npm run test:plain-language` fails on leaked old names.
 - Strong contrast.
 - Rounded cards (14 px cards, 10 px controls, round badges).
 - Maroon primary action in light, gold in dark; gold is for the one primary action, values and the brand line.
-- Teal (`--accent-teal`) carries informational and secondary accents; small labels are quiet grey, never gold caps.
+- The second accent (`--accent-teal`, kept as the token name) is warm copper since Nov 17, 2026: the owner does not want blue or teal anywhere, including hover, focus and links. Small labels are quiet grey, never gold caps.
+- No blue tap flash: `-webkit-tap-highlight-color` is transparent app-wide (`17-touch-feedback.css`); press feedback uses warm tones.
 - Large readable text.
 - 44px minimum touch targets.
 - Bottom navigation should be clear and thumb-friendly.
