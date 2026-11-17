@@ -84,7 +84,7 @@ import AgeConfirmationGate from "./features/auth/AgeConfirmationGate.jsx";
 import { crashReportingAllowed, setCrashReportingAllowed, setCrashReportingKidSafe } from "./features/monitoring/crashReporting.js";
 import { rowsToCsvAsync } from "./features/exports/csv.js";
 import { RELEASE_NOTES } from "./features/tour/releaseNotes.js";
-import { SAVED_SEARCHES_CHANGED_EVENT, syncSavedSearches } from "./features/market/savedSearches.js";
+import { SAVED_SEARCHES_CHANGED_EVENT, addSavedSearch, isSavedSearch, readSavedSearches, syncSavedSearches, writeSavedSearches } from "./features/market/savedSearches.js";
 import { reportHandledError } from "./features/monitoring/crashReporting.js";
 import {
   readWorkspacePreference,
@@ -25304,6 +25304,12 @@ function addProductToTideTradrWatchlist(productId, pinned = false, workspaceId =
   const product = catalogProducts.find((p) => String(p.id) === String(productId));
   if (!product) return;
   const workspace = workspaces.find((entry) => String(entry.id) === String(workspaceId)) || activeWorkspace;
+  // Competitive review, Nov 17: a Want is also an alert. Saving the product name as
+  // a saved search makes the existing restock and price-drop alerts cover it.
+  try {
+    const savedSearches = readSavedSearches();
+    if (product.name && !isSavedSearch(savedSearches, product.name)) writeSavedSearches(addSavedSearch(savedSearches, product.name, { label: "From your wants" }));
+  } catch { /* alerts are a bonus; the Want itself still saves */ }
   setTideTradrWatchlist((current) => {
     if (current.some((item) => String(item.productId) === String(productId) && recordBelongsToWorkspace(item, workspace?.id))) {
       return current.map((item) => String(item.productId) === String(productId) && recordBelongsToWorkspace(item, workspace?.id) ? { ...item, pinned: item.pinned || pinned } : item);
@@ -51074,7 +51080,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
         {activeTab === "flipScout" && (
           <LazyToolBoundary label="Loading Deal Finder...">
-            <FlipScoutPage restockMap={flipScoutView === "restocks" ? { stores: getScoutQuickStores(), reports: scoutSnapshot.reports || [], isFollowed: isWatchedEmberStore, onOpenStore: (store) => openCommunityRestockReports({ storeId: store.id }), onReportAtStore: (store) => openScoutSubmitFlow({ source: "restock-map", store }) } : null} experiencePresentation={experiencePresentation} initialScreen={flipScoutView} onViewChange={(view) => { prepareRouteNavigation(); setFlipScoutView(view); }} featureControls={ownerFeatureControls} onExit={() => { prepareRouteNavigation(); setActiveTab("dashboard"); }} onReportRestock={() => openScoutSubmitFlow({ source: "restocks-page" })} onOpenRestocks={() => { prepareRouteNavigation(); setScoutView("reports"); setScoutSubTabTarget({ tab: "reports", id: Date.now() }); setActiveTab("scout"); }} />
+            <FlipScoutPage restockMap={flipScoutView === "restocks" ? { stores: getScoutQuickStores(), reports: scoutSnapshot.reports || [], isFollowed: isWatchedEmberStore, onOpenStore: (store) => openCommunityRestockReports({ storeId: store.id }), onReportAtStore: (store) => openScoutSubmitFlow({ source: "restock-map", store }), onFollowStore: (store) => favoriteSearchStore(store) } : null} experiencePresentation={experiencePresentation} initialScreen={flipScoutView} onViewChange={(view) => { prepareRouteNavigation(); setFlipScoutView(view); }} featureControls={ownerFeatureControls} onExit={() => { prepareRouteNavigation(); setActiveTab("dashboard"); }} onReportRestock={() => openScoutSubmitFlow({ source: "restocks-page" })} onOpenRestocks={() => { prepareRouteNavigation(); setScoutView("reports"); setScoutSubTabTarget({ tab: "reports", id: Date.now() }); setActiveTab("scout"); }} />
           </LazyToolBoundary>
         )}
 

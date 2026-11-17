@@ -9,9 +9,11 @@ import { PrimaryButton, SecondaryButton } from "../../components/operations/Oper
 import { buildRestockMapRows, describeLatestReport } from "./restockMapRows.js";
 import "./restock-map-card.css";
 
-export default function RestockMapCard({ stores = [], reports = [], isFollowed, onOpenStore, onReportAtStore, onBrowseAll, areaLabel = "" }) {
+export default function RestockMapCard({ stores = [], reports = [], isFollowed, onOpenStore, onReportAtStore, onFollowStore, onBrowseAll, areaLabel = "" }) {
   const rows = useMemo(() => buildRestockMapRows({ stores, reports, isFollowed }), [stores, reports, isFollowed]);
   const [selectedId, setSelectedId] = useState("");
+  // Shown as followed straight away; the parent's store list catches up on its next render.
+  const [justFollowed, setJustFollowed] = useState(() => new Set());
   const selected = rows.find((row) => row.id === selectedId) || rows[0] || null;
   const withReports = rows.filter((row) => row.report).length;
   if (!rows.length) return null;
@@ -49,7 +51,10 @@ export default function RestockMapCard({ stores = [], reports = [], isFollowed, 
             <small>{latest.detail}</small>
           </div>
           <div className="restock-map-card__actions">
-            {onReportAtStore ? <PrimaryButton onClick={() => onReportAtStore(selected.store)}>Report here</PrimaryButton> : null}
+            {onFollowStore ? (selected.followed || justFollowed.has(selected.id)
+              ? <span className="restock-map-card__following" role="status">Following · you'll get alerts</span>
+              : <PrimaryButton onClick={() => { onFollowStore(selected.store); setJustFollowed((current) => new Set(current).add(selected.id)); }}>Follow for free alerts</PrimaryButton>) : null}
+            {onReportAtStore ? <SecondaryButton onClick={() => onReportAtStore(selected.store)}>Report here</SecondaryButton> : null}
             {onOpenStore ? <SecondaryButton onClick={() => onOpenStore(selected.store)}>Store reports</SecondaryButton> : null}
           </div>
         </div>

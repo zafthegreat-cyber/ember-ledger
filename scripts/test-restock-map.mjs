@@ -47,3 +47,16 @@ test("pin limit and report wording", () => {
   assert.equal(empty.tone, "empty");
   assert.doesNotMatch(JSON.stringify(describeLatestReport({ status: "reported", productName: "ETB", quantity: 14, observedAt: hoursAgo(2) }, now)), /14/, "no stock quantities");
 });
+
+test("competitive wiring: follow from the map, wants become alerts, value on Home", async () => {
+  const { readFileSync } = await import("node:fs");
+  const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
+  const card = read("src/features/restocks/RestockMapCard.jsx");
+  assert.match(card, /Follow for free alerts/);
+  assert.match(card, /onFollowStore\(selected\.store\)/);
+  const app = read("src/App.jsx");
+  assert.match(app, /onFollowStore: \(store\) => favoriteSearchStore\(store\)/);
+  assert.match(app, /addSavedSearch\(savedSearches, product\.name, \{ label: "From your wants" \}\)/);
+  const home = read("src/pages/OperationsHome.jsx");
+  assert.match(home, /!kidSafeView && collectionWorth\.knownCount > 0/, "no money shown in the kid-safe view");
+});

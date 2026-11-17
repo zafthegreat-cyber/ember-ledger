@@ -1,6 +1,7 @@
 import HomeShortcutEditor from "../components/HomeShortcutEditor.jsx";
 import { dateGroup, relativeUiTime } from "../utils/uiTime.mjs";
 import { groupCollectionCopies } from "../utils/collectionCopyGroups.mjs";
+import { summarizePortfolio } from "../utils/collectionPortfolio.mjs";
 import { PrivateStorageImage } from "../components/PrivateReceipt.jsx";
 import { useMemo, useState } from "react";
 import { OfflineState, PageHeader, PrimaryButton, SectionHeader, SecondaryButton } from "../components/operations/OperationsUI.jsx";
@@ -49,6 +50,8 @@ export default function OperationsHome({
   const [customizing, setCustomizing] = useState(false);
   const collectionGroups = useMemo(() => groupCollectionCopies(activeVaultItems), [activeVaultItems]);
   const collectionQuantity = collectionGroups.reduce((sum, group) => sum + group.quantity, 0);
+  // Competitive review, Nov 17: trackers open on what the collection is worth.
+  const collectionWorth = useMemo(() => summarizePortfolio(activeVaultItems), [activeVaultItems]);
   const openCollectionItem = item => onOpenCollectionItem ? onOpenCollectionItem(item) : setActiveTab("collectionWorkspace");
   const repository = useMemo(() => createFlipScoutRepository(), []);
   const state = useMemo(() => repository.load(), [repository]);
@@ -151,6 +154,11 @@ export default function OperationsHome({
     {/* Competitor review, Nov 17: open on a search bar and the person's own numbers. */}
     <div className="home-glance">
       <button type="button" className="home-glance__search" onClick={() => setActiveTab("market")} aria-label="Search cards and products"><AppNavIcon kind="search" /><span>Search cards &amp; products</span></button>
+      {!kidSafeView && collectionWorth.knownCount > 0 && collectionWorth.total != null ? <button type="button" className="home-glance__value" onClick={() => setActiveTab("collectionWorkspace")} aria-label={`Collection value ${formatCurrency(collectionWorth.total)}. Open collection.`}>
+        <span>Collection value</span>
+        <strong>{formatCurrency(collectionWorth.total)}</strong>
+        <small>{collectionWorth.knownCount === activeVaultItems.length ? "Every item has a saved value" : `${collectionWorth.knownCount} of ${activeVaultItems.length} items have a saved value`}</small>
+      </button> : null}
       <div className="home-glance__stats" aria-label="Your numbers">
         <button type="button" className="home-glance__stat" onClick={() => setActiveTab("collectionWorkspace")} aria-label={`${collectionQuantity} in your collection. Open collection.`}><strong>{collectionQuantity}</strong><span>{collectionQuantity === 1 ? "Card" : "Cards"}</span></button>
         <button type="button" className="home-glance__stat" onClick={() => setActiveTab("market")} aria-label={`${workspaceWatchlist.length} on your wants list. Search to add more.`}><strong>{workspaceWatchlist.length}</strong><span>{workspaceWatchlist.length === 1 ? "Want" : "Wants"}</span></button>

@@ -123,3 +123,39 @@ html:root body .app.app-command-shell[data-theme] .home-layout .ops-page-header 
   }
   html:root body .app[data-theme] .quick-feedback-fab:is(:hover, :focus-visible, :active) { opacity: 1; }
 }
+
+/* ---------- Competitive features (Nov 17) ---------- */
+/* Home: collection value, the number other trackers open on. */
+html:root body .app.app-command-shell[data-theme] .home-glance .home-glance__value {
+  display: grid; gap: 2px; justify-items: start; width: 100%; padding: 16px 18px;
+  border: 1px solid var(--holo-edge) !important; border-radius: 14px !important;
+  background: var(--holo-panel), var(--c3-surface) !important;
+  color: var(--text-primary) !important; text-align: left; cursor: pointer;
+  box-shadow: var(--binder-card-shadow);
+}
+html:root body .app.app-command-shell[data-theme] .home-glance__value span { font-size: 13.5px; font-weight: 600; color: var(--text-secondary); }
+html:root body .app.app-command-shell[data-theme] .home-glance__value strong { font: 800 34px/1.1 var(--c3-font-body, "DM Sans", sans-serif); letter-spacing: -.03em; color: var(--c3-gold-ink, #E8C86B); font-variant-numeric: tabular-nums; }
+html:root body .app.app-command-shell[data-theme] .home-glance__value small { font-size: 13px; color: var(--text-secondary); }
+
+/* Restock map: followed state. */
+.restock-map-card__following { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--status-success, #24633D); color: var(--text-primary); font-weight: 700; font-size: 14px; }
+
+/* Card sets: the four scope tabs share one row, and the rows above the tiles
+   sit closer, so the first set shows sooner on a phone. */
+@media (max-width: 899px) {
+  html:root body .app.app-command-shell[data-theme] .collection-sets-controls { gap: 8px 12px !important; margin-block: 4px !important; }
+  html:root body .app.app-command-shell[data-theme] .collection-sets-controls > .collection-sets-tabs { flex: 1 1 100%; flex-wrap: nowrap; gap: 0 18px; overflow-x: auto; scrollbar-width: none; }
+  html:root body .app.app-command-shell[data-theme] .collection-sets-tabs::-webkit-scrollbar { display: none; }
+  html:root body .app.app-command-shell[data-theme] .collection-sets-tabs > button { flex: none; white-space: nowrap; min-height: 44px; padding: 8px 0 12px; }
+  html:root body .app.app-command-shell[data-theme] .collection-extra-filters { margin-block: 0 !important; padding-block: 4px !important; border: 0 !important; }
+  html:root body .app.app-command-shell[data-theme] .collection-sets-toolbar { margin-block: 6px !important; }
+  html:root body .app.app-command-shell[data-theme] .collection-sets-results-heading { margin-block: 6px 10px !important; }
+  html:root body .app.app-command-shell[data-theme] .everyday-secondary-navigation { margin-bottom: 8px !important; }
+}
+@media (max-width: 899px) {
+  html:root body .app.app-command-shell[data-theme] .collection-sets-controls > .collection-sets-tabs { gap: 0 12px; }
+  html:root body .app.app-command-shell[data-theme] .collection-sets-tabs > button { font-size: 14px !important; }
+}
+/* Map store chips: quiet outline; only the selected one is filled. */
+html:root body .app .restock-map-card__legend button { background: transparent !important; color: var(--text-primary) !important; border: 1px solid var(--holo-edge) !important; }
+html:root body .app .restock-map-card__legend button[aria-pressed="true"] { background: var(--app-brand-selected, var(--c3-surface-secondary)) !important; border-color: var(--c3-gold, #D4AF37) !important; }
