@@ -87,7 +87,7 @@ function addScope(overrides={}) {
 }
 
 test("barcode entry works from an empty search and specialist tools are collapsible",async()=>environment(async({root,click,change})=>{
-  let searched;await act(async()=>root.render(React.createElement(Add,{scope:addScope({runMultiDestinationCatalogSearch:(...args)=>searched=args})})));await click("Enter UPC/SKU");const input=document.querySelector('.add-item-barcode-entry input');assert.ok(input);await change(input,"0820650123456");await click("Look up barcode");assert.equal(searched[0],"0820650123456");assert.equal(document.querySelector('.add-item-more-tools').open,false);assert.ok(document.querySelector('.add-item-primary-tools'));
+  let searched;await act(async()=>root.render(React.createElement(Add,{scope:addScope({runMultiDestinationCatalogSearch:(...args)=>searched=args})})));await click("Type a barcode number");const input=document.querySelector('.add-item-barcode-entry input');assert.ok(input);await change(input,"0820650123456");await click("Look up barcode");assert.equal(searched[0],"0820650123456");assert.equal(document.querySelector('.add-item-more-tools').open,false);assert.ok(document.querySelector('.add-item-primary-tools'));
 }));
 
 test("selected catalog details collapse and finish suggestions only use known catalog versions",async()=>environment(async({root})=>{

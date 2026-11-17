@@ -206,7 +206,7 @@ async function runCase(browser, testCase) {
     await expect(detail).toBeVisible();
     await expect(setItems.getByRole("button", { name: "Open Arcane Magic card", exact: true })).toBeFocused();
     await detail.getByRole("button", { name: "Add an item", exact: true }).click();
-    await expect(page.getByRole("heading", { name: "Add Collection Item", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Add to my collection", exact: true })).toBeVisible();
     await expect(page.getByRole("combobox", { name: "Trading card game", exact: true })).toHaveValue("magic");
     await expect(page.getByRole("textbox", { name: "Set", exact: true })).toHaveValue("Fusion Strike");
     await expect(page.getByRole("textbox", { name: "Character or subject", exact: true })).toBeVisible();

@@ -24,7 +24,7 @@ const pkg = JSON.parse(read("package.json"));
 
 const loadingCopy = getAppLoadFallbackCopy("loading");
 assert.equal(loadingCopy.title, `Loading ${BRAND_CONFIG.shortName}...`);
-assert.equal(loadingCopy.body, "Preparing your business workspace.");
+assert.equal(loadingCopy.body, "Getting your collection ready.");
 assert.doesNotMatch(loadingCopy.helper, /records will be ready/);
 assert.equal(APP_LOAD_SLOW_THRESHOLD_MS, 12000);
 assert.match(getAppLoadFallbackCopy("slow").helper, /connection.*refreshing/);

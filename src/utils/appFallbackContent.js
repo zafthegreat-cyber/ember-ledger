@@ -22,12 +22,12 @@ export const APP_LOAD_FALLBACK_COPY = {
   loading: {
     eyebrow: BRAND_CONFIG.applicationDisplayName,
     title: `Loading ${BRAND_CONFIG.shortName}...`,
-    body: "Preparing your business workspace.",
+    body: "Getting your collection ready.",
     helper: "This usually takes a few seconds.",
   },
   slow: {
     eyebrow: BRAND_CONFIG.applicationDisplayName,
-    title: "Still loading your workspace",
+    title: "Still loading",
     body: "This is taking longer than usual.",
     helper: "Check your connection, then try refreshing the app.",
   },

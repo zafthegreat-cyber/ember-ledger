@@ -80,7 +80,7 @@ async function contrastReport(chooser) {
       const prefix = `${width}-${theme}${textScale === 2 ? "-text200" : ""}`;
       lastStep = `${prefix}: load home and open Add`;
       await page.goto(`${base}/?betaLocalMode=true`);
-      await expect(page.getByRole("heading", { name: "Welcome back.", exact: true })).toBeVisible({ timeout: 30000 });
+      await expect(page.getByRole("heading", { name: /^Welcome( back| to Code 3 TCG).$/ })).toBeVisible({ timeout: 30000 });
       const dataSnapshot = () => page.evaluate(() => { const data = JSON.parse(localStorage.getItem("et-tcg-beta-data")); return JSON.stringify([data.items, data.sales, data.expenses]); });
       const before = await dataSnapshot();
       const opener = page.getByRole("button", { name: "Open global Add menu", exact: true }).filter({ visible: true }).first();
@@ -140,7 +140,7 @@ async function contrastReport(chooser) {
         lastStep = `${prefix}: working choices preserve callbacks without saving`;
         const paths = [
           { name: /^Search by name\./, selector: ".add-anything-search", title: "Search item" },
-          { name: /^Enter UPC or SKU\./, selector: ".add-anything-upc", title: "Enter UPC/SKU" },
+          { name: /^Type a barcode number/, selector: ".add-anything-upc", title: "Type a barcode number" },
           { name: /^Manual entry\./, selector: ".add-anything-manual", title: "Manual entry" },
           { name: /^Scan page of cards\./, selector: ".add-anything-card-page-review", title: "Scan page of cards" },
           { name: /^Scout screenshot or photo review\./, selector: ".add-anything-scout-scan-review", title: "Review Scout Scan" },

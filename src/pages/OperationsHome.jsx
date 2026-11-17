@@ -146,7 +146,7 @@ export default function OperationsHome({
   });
 
   return <div className="ops-home-page home-layout home-layout--refined home-layout--lounge">
-    <PageHeader eyebrow={<><span className="home-desktop-context">Home</span><span className="home-mobile-identity"><BrandIdentity /></span></>} title="Welcome back." description={activeVaultItems.length || recent.length || workspaceWatchlist.length ? "Your collection, local reports, and saved finds." : "Start with your first item or explore restock reports near you."} />
+    <PageHeader eyebrow={<><span className="home-desktop-context">Home</span><span className="home-mobile-identity"><BrandIdentity /></span></>} title={activeVaultItems.length || recent.length || workspaceWatchlist.length || followedStores.length ? "Welcome back." : "Welcome to Code 3 TCG."} description={activeVaultItems.length || recent.length || workspaceWatchlist.length ? "Your collection, local reports, and saved finds." : "Start with your first item or explore restock reports near you."} />
     {isOffline ? <OfflineState action={<SecondaryButton onClick={() => window.location.reload()}>Try again</SecondaryButton>} /> : null}
     <section className="ops-home-section home-restock-hero" aria-labelledby="home-restock-title">
       <div className="home-restock-copy">

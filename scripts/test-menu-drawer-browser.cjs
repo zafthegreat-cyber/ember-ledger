@@ -161,7 +161,7 @@ async function verifyGuestReportingIsHidden(browser) {
       lastStep = `${width} ${theme}: load home and check menu presentation`;
       page.on("pageerror", error => errors.push(error.message));
       await page.goto(`${base}/?betaLocalMode=true`);
-      await expect(page.getByRole("heading", { name: "Welcome back.", exact: true })).toBeVisible({ timeout: 30000 });
+      await expect(page.getByRole("heading", { name: /^Welcome( back| to Code 3 TCG).$/ })).toBeVisible({ timeout: 30000 });
       const existingWorkspaceLabels = await page.getByTestId("workspace-switcher").locator(".code3-workspace-switcher__menu button strong").allTextContents();
       const snapshot = () => page.evaluate(() => { const data = JSON.parse(localStorage.getItem("et-tcg-beta-data")); return JSON.stringify([data.items, data.sales, data.expenses]); });
       const before = await snapshot();
@@ -297,7 +297,7 @@ async function verifyGuestReportingIsHidden(browser) {
       await workspaceToggle.click();
       assert.deepEqual(await destinationKeys(), originalKeys);
       await page.screenshot({ path: path.join(output, `${width}-${theme}-menu-active.png`) });
-      await page.keyboard.press("Escape"); await page.goBack(); await expect(page.getByRole("heading", { name: "Welcome back.", exact: true })).toBeVisible();
+      await page.keyboard.press("Escape"); await page.goBack(); await expect(page.getByRole("heading", { name: /^Welcome( back| to Code 3 TCG).$/ })).toBeVisible();
 
       lastStep = `${width} ${theme}: Find workspace navigation and Back`;
       const previousWorkspacePath = new URL(page.url()).pathname;

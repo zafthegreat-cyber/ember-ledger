@@ -69,7 +69,7 @@ test("MUST-11: quiet command boards and admin-only clutter on the five main page
     ["src/pages/Scout.jsx", /Recent reports near you\./],
     ["src/features/deferredViews/CommunityContent.jsx", /\{adminToolsVisible \? \(<EtMockupRightRail/],
     ["src/features/deferredViews/CommunityContent.jsx", /\{adminToolsVisible \? \(<div className="tidepool-preview-feed"/],
-    ["src/pages/OperationsHome.jsx", /title="Welcome back\."\s*\/?>?/],
+    ["src/pages/OperationsHome.jsx", /"Welcome back\." : "Welcome to Code 3 TCG\."/],
   ]) assert.match(src(file), marker, `${file} ${marker}`);
   assert.doesNotMatch(src("src/pages/OperationsHome.jsx"), /Stock changes quickly\. Check when a report was observed\./);
   assert.doesNotMatch(src("src/features/deferredViews/CommunityContent.jsx"), /Community posting opens after beta access is approved/);

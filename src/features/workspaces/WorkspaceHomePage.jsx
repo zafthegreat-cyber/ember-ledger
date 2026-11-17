@@ -122,7 +122,7 @@ function CollectHome({ items, onNavigate, onAdd }) {
         { label: "Grading candidates", value: gradingCandidates.length },
       ]} />
       <section className="code3-workspace-actions" aria-label="Collect actions">
-        <PrimaryButton onClick={onAdd}>Add Collection Item</PrimaryButton>
+        <PrimaryButton onClick={onAdd}>Add to my collection</PrimaryButton>
         <SecondaryButton onClick={() => onNavigate("/collection")}>Open Collection</SecondaryButton>
       </section>
       <RecentList

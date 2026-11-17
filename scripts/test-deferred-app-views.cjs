@@ -45,7 +45,7 @@ async function recordSnapshot(page) {
       page.on("request", (request) => requested.push(new URL(request.url()).pathname));
       try {
         await page.goto(url("/", theme));
-        await expect(page.getByRole("heading", { name: "Welcome back.", exact: true })).toBeVisible({ timeout: 30000 });
+        await expect(page.getByRole("heading", { name: /^Welcome( back| to Code 3 TCG).$/ })).toBeVisible({ timeout: 30000 });
         await page.waitForTimeout(250);
         assert.deepEqual(requested.filter((entry) => entry.includes("/features/deferredViews/")), [], "Home does not download the deferred account, community, marketplace, import, or admin views.");
         results.push({ theme, width, name: "Home defers inactive views", passed: true });
@@ -62,7 +62,7 @@ async function recordSnapshot(page) {
           assert.ok(overflow <= 1, `${route.path} fits ${width}px`);
           await page.screenshot({ path: path.join(output, `${route.module}-${theme}-${width}.png`) });
           await page.goBack();
-          await expect(page.getByRole("heading", { name: "Welcome back.", exact: true })).toBeVisible({ timeout: 30000 });
+          await expect(page.getByRole("heading", { name: /^Welcome( back| to Code 3 TCG).$/ })).toBeVisible({ timeout: 30000 });
           results.push({ theme, width, name: `${route.module} loads, preserves records and supports Back`, passed: true });
         }
         assert.ok(!requested.some((entry) => /\/(AdminOperationsContent|BetaReviewContent|BetaUsersContent)\.jsx$/.test(entry)), "An unprivileged admin visit does not load authorized admin subviews.");

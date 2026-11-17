@@ -139,7 +139,7 @@ async function checkBrowser() {
         const quickAdd = page.locator('.flow-modal[data-flow="addActionSheet"]');
         await expect(quickAdd).toBeVisible();
         await expect(quickAdd.getByRole("button", { name: /^Scan Listing\./ })).toBeVisible();
-        await expect(quickAdd.getByRole("button", { name: /^Add Collection Item / })).toBeVisible();
+        await expect(quickAdd.getByRole("button", { name: /^Add to my collection / })).toBeVisible();
         await quickAdd.getByText("More", { exact: true }).click();
         await expect(quickAdd.getByRole("button", { name: /^Add Resale Inventory / })).toBeVisible();
         await quickAdd.getByRole("button", { name: /^Analyze Deal\./ }).click();

@@ -17,7 +17,8 @@ function AccountStartGuide({ userId, onCollect, onSell, onBrowseRestocks, onRepo
     if (!saveMemberIntro(storage, userId, next)) setSaveWarning("This choice is temporary here. It could not be saved for this account on this device.");
     else setSaveWarning("");
   }
-  if (choice.hidden || hasCollectionItems && !reviewRequested) return <section className="member-start member-start--closed" aria-label="First collecting task"><p>{hasCollectionItems ? "Your collection is started. Revisit the introduction any time." : "Ready when you are."}</p><button type="button" className="secondary-button" onClick={() => { setReviewRequested(true); update({ hidden: false }); }}>Reopen getting started</button></section>;
+  // Once a person has started (or skipped), Home keeps only a small link back to the guide.
+  if (choice.hidden || hasCollectionItems && !reviewRequested) return <div className="member-start-reopen" aria-label="Getting started guide"><button type="button" className="member-start-reopen-link" onClick={() => { setReviewRequested(true); update({ hidden: false }); }}>Reopen getting started</button></div>;
   const selected = MEMBER_PATHS[choice.path];
   return <section className="member-start" aria-labelledby={`${id}-title`}>
     <div className="member-start-heading"><h2 id={`${id}-title`}>Start with one collecting task</h2><button type="button" className="secondary-button" onClick={() => update({ hidden: true })}>Skip for now</button></div>

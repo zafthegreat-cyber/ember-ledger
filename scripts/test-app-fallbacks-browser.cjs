@@ -91,7 +91,7 @@ async function assertStoragePreserved(page, theme) {
           const normal = await fallbackGeometry(page, theme);
           await page.screenshot({ path: path.join(output, `boot-${theme}-${width}-loading.png`) });
           await page.clock.fastForward(12001);
-          await expect(page.getByRole("heading", { name: "Still loading your workspace" })).toBeVisible();
+          await expect(page.getByRole("heading", { name: "Still loading" })).toBeVisible();
           const slow = await fallbackGeometry(page, theme);
           assert.equal(await page.locator(".app-load-fallback-progress span").evaluate((element) => getComputedStyle(element).animationName), "none");
           await assertStoragePreserved(page, theme);

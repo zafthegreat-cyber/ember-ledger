@@ -77,6 +77,10 @@ test("A79 storage quota status warns before a save fails", () => {
   assert.equal(status.level, "warn");
   assert.match(status.message, /backup/i);
   assert.equal(quota.storageQuotaStatus({ length: 0, key: () => null, getItem: () => "" }).level, "ok");
+  // With the IndexedDB durable store (SHOULD 16) a full 5 MB quick copy loses nothing: no banner.
+  const full = { length: 1, key: () => "a", getItem: () => "x".repeat(5 * 1024 * 1024) };
+  assert.equal(quota.storageQuotaStatus(full, 5 * 1024 * 1024, { durableStore: true }).level, "ok");
+  assert.equal(quota.storageQuotaStatus(full, 5 * 1024 * 1024, { durableStore: false }).level, "critical");
 });
 
 test("A72/A73 restore preview names records without stable IDs", async () => {

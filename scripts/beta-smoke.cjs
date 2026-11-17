@@ -1969,7 +1969,7 @@ async function main() {
       await quickAddModal.waitFor({ state: "visible", timeout: 5000 });
       await assertVisibleText("Scan Listing");
       await assertVisibleText("Analyze Deal");
-      await assertVisibleText("Add Collection Item");
+      await assertVisibleText("Add to my collection");
       await assertNotVisibleText("Add Resale Inventory");
       await assertNotVisibleText("Add Kids Pack");
       await quickAddModal.locator("summary", { hasText: /^More$/ }).click();

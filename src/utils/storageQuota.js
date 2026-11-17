@@ -23,7 +23,16 @@ export function estimateLocalStorageBytes(storage = globalThis.localStorage) {
   }
 }
 
-export function storageQuotaStatus(storage = globalThis.localStorage, limit = LOCAL_STORAGE_ASSUMED_LIMIT) {
+// Since Nov 15 (SHOULD 16) every save also goes to IndexedDB, which holds far
+// more than 5 MB, and a full quick store no longer loses changes. Where that
+// durable store exists the 5 MB figure is not a risk, so no banner is shown;
+// the warning stays for the rare browser without IndexedDB.
+export function hasDurableStore(scope = globalThis) {
+  try { return typeof scope?.indexedDB?.open === "function"; } catch { return false; }
+}
+
+export function storageQuotaStatus(storage = globalThis.localStorage, limit = LOCAL_STORAGE_ASSUMED_LIMIT, { durableStore = hasDurableStore() } = {}) {
+  if (durableStore) return { level: "ok", bytes: estimateLocalStorageBytes(storage), limit, percent: 0, title: "", message: "" };
   const bytes = estimateLocalStorageBytes(storage);
   const ratio = limit > 0 ? bytes / limit : 0;
   const mb = (value) => `${(value / (1024 * 1024)).toFixed(1)} MB`;

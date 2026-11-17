@@ -44434,7 +44434,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <span>Find a catalog item and prefill the add flow.</span>
           </button>
           <button type="button" className="forge-quick-add-option" onClick={() => openVaultCatalogSearchFlow({ source: "vault-upc" })}>
-            <strong>Enter UPC/SKU</strong>
+            <strong>Type a barcode number</strong>
             <span>Type an identifier into catalog search.</span>
           </button>
           <button type="button" className="forge-quick-add-option" onClick={() => {
@@ -44510,7 +44510,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <span>Match from a photo without requiring a UPC.</span>
           </button>
           <button type="button" className="forge-quick-add-option" onClick={() => runQuickFindSearch(null, "barcode")}>
-            <strong>Enter UPC/SKU</strong>
+            <strong>Type a barcode number</strong>
             <span>Lookup by identifier when you have one.</span>
           </button>
           <button type="button" className="forge-quick-add-option" onClick={() => runQuickFindSearch(null, "general")}>

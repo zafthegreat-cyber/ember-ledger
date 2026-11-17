@@ -319,12 +319,12 @@ export default function AddAnythingContent({ scope }) {
             <button type="button" className="add-anything-option add-anything-option--search" aria-label="Search by name. Find cards, sets, sealed products, UPCs, or SKUs." onClick={() => setQuickAddPath("search")}>
               <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="search" /></span>
               <strong>Search by name</strong>
-              <small>Find cards, sets, sealed products, UPCs, or SKUs.</small>
+              <small>Find cards, sets and sealed products.</small>
             </button>
-            <button type="button" className="add-anything-option add-anything-option--search" aria-label="Enter UPC or SKU. Look up sealed products or identifiers manually." onClick={() => setQuickAddPath("upc")}>
+            <button type="button" className="add-anything-option add-anything-option--search" aria-label="Type a barcode number. Look up sealed products by the number under the barcode (UPC or SKU)." onClick={() => setQuickAddPath("upc")}>
               <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="scan" /></span>
-              <strong>Enter UPC/SKU</strong>
-              <small>Look up sealed products or identifiers manually.</small>
+              <strong>Type a barcode number</strong>
+              <small>Use the number under the barcode on sealed products.</small>
             </button>
             <button type="button" className="add-anything-option add-anything-option--warning" aria-label="Manual entry. Add a record now and correct details before saving." onClick={() => setQuickAddPath("manual")}>
               <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="manual_entry" /></span>
@@ -611,7 +611,7 @@ export default function AddAnythingContent({ scope }) {
     if (quickAddScreen === "upc") {
       return (
         <div className="add-anything-flow add-anything-upc">
-          {renderFlowHeader("Enter UPC/SKU", "Scan a package barcode, or enter a UPC, SKU or product ID. Choose the matching edition before adding.")}
+          {renderFlowHeader("Type a barcode number", "Scan a package barcode, or enter a UPC, SKU or product ID. Choose the matching edition before adding.")}
           <div className="scan-anything-principle-card">
             <strong>Review before saving.</strong>
             <p>If the source is weak or the match looks wrong, search again or request a missing item.</p>
@@ -830,16 +830,16 @@ export default function AddAnythingContent({ scope }) {
       window.setTimeout(() => openFlipScoutView(screen, subview), 0);
     };
     const defaultEntryOptions = [
-      { key: "scan-listing", title: presentation.isCollector ? "Scan or review" : "Scan Listing", ariaLabel: presentation.isCollector ? "Scan or review. Start a review-first scan or screenshot workflow." : "Scan Listing. Start a review-first scan or screenshot workflow.", icon: "scan", tone: "search", onClick: () => setQuickAddPath("scanAnything") },
+      { key: "scan-listing", title: presentation.isCollector ? "Scan with camera" : "Scan Listing", ariaLabel: presentation.isCollector ? "Scan with camera. Start a review-first scan or screenshot workflow." : "Scan Listing. Start a review-first scan or screenshot workflow.", icon: "scan", tone: "search", onClick: () => setQuickAddPath("scanAnything") },
       { key: "analyze-deal", title: "Analyze Deal", ariaLabel: "Analyze Deal. Review costs, resale assumptions, profit, and ROI.", icon: "find", tone: "search", onClick: () => openFindAction("appraise") },
       { key: "record-purchase", title: "Record Purchase", ariaLabel: "Record Purchase. Create a purchase and split it into lots or items.", icon: "clipboard", tone: "forge", onClick: () => openFindAction("records", "purchases") },
-      { key: "add-collection-item", title: "Add Collection Item", ariaLabel: "Add Collection Item with a personal collection purpose.", icon: "inventory", tone: "vault", onClick: () => { closeFlowModal({ force: true }); window.setTimeout(() => openProductAddFlow({ source: "global-add-collection", seed: { ownedItemPurpose: OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION }, destinations: { vault: true } }), 0); } },
+      { key: "add-collection-item", title: "Add to my collection", ariaLabel: "Add to my collection with a personal collection purpose.", icon: "inventory", tone: "vault", onClick: () => { closeFlowModal({ force: true }); window.setTimeout(() => openProductAddFlow({ source: "global-add-collection", seed: { ownedItemPurpose: OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION }, destinations: { vault: true } }), 0); } },
       { key: "record-sale", title: "Record Sale", ariaLabel: "Record Sale with proceeds, fees, shipping, and realized profit.", icon: "sell", tone: "forge", onClick: () => openFindAction("records", "sales") },
       ...(onOpenSellTrade ? [{ key: "sell-or-trade", title: "Sell or trade", ariaLabel: "Sell or trade. Open your existing listing and trade tools.", icon: "sell", tone: "forge", onClick: () => { closeFlowModal({ force: true }); window.setTimeout(onOpenSellTrade, 0); } }] : []),
     ];
     const moreEntryOptions = [
       { key: "search-catalog", title: "Search cards & products", ariaLabel: "Search cards and products by name.", icon: "search", tone: "search", onClick: () => setQuickAddPath("search") },
-      { key: "enter-upc", title: "Enter UPC/SKU", ariaLabel: "Enter UPC or SKU to find a product.", icon: "scan", tone: "search", onClick: () => setQuickAddPath("upc") },
+      { key: "enter-upc", title: "Type a barcode number", ariaLabel: "Type a barcode number (UPC or SKU) to find a product.", icon: "scan", tone: "search", onClick: () => setQuickAddPath("upc") },
       { key: "scan-page", title: "Scan page of cards", ariaLabel: "Scan page of cards with manual review.", icon: "inventory", tone: "vault", onClick: () => setQuickAddPath("cardPageReview") },
       { key: "review-screenshot", title: "Review a restock screenshot", ariaLabel: "Review a restock screenshot before saving a report.", icon: "find", tone: "search", onClick: () => setQuickAddPath("scoutScreenshotReview") },
       { key: "request-missing-item", title: "Request Missing Item", ariaLabel: "Request a missing catalog item.", icon: "search", tone: "search", onClick: openQuickAddMissingProduct },
