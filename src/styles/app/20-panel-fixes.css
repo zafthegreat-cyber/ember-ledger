@@ -1,0 +1,125 @@
+/* Panel fixes (simulated survey of 24 AI-played TCG fans, Nov 17 2026; owner:
+   "Do C and make all the noted changes"). The calm futuristic look from
+   19-holo-tech.css, with the friendliness of the warm look. Loaded last. */
+
+/* 1. Normal-case, readable labels and numbers. Spaced capitals and squared
+      zeros were hard for the youngest and oldest readers. */
+html:root body .app.app-command-shell[data-theme] :is(.ops-eyebrow, .persona-checklist__head > div > span:first-child, .restock-start__eyebrow, .home-glance__stats span) {
+  font-family: var(--c3-font-body, "DM Sans", sans-serif) !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  font-weight: 600;
+  font-size: 13.5px;
+}
+html:root body .app.app-command-shell[data-theme] .home-glance__stats strong {
+  font: 800 28px/1 var(--c3-font-body, "DM Sans", sans-serif);
+  letter-spacing: -.02em;
+}
+
+/* 2. Clearer active tab: a filled tab as well as the gold line. */
+html:root body .app.app-command-shell[data-theme="dark"] { --app-brand-selected: #2B2530; --app-brand-selected-ink: #F3D987; }
+@media (max-width: 899px) {
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav button.is-active {
+    background: var(--app-brand-selected) !important;
+    color: var(--app-brand-selected-ink) !important;
+    box-shadow: inset 0 0 0 1px var(--holo-edge) !important;
+  }
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav button.is-active span { font-weight: 800; }
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav button.is-active::after { height: 3px; }
+}
+html:root body .app.app-command-shell[data-theme] .collection-sets-tabs > :is([aria-selected="true"], [aria-pressed="true"]) { color: var(--text-primary) !important; font-weight: 800; }
+html:root body .app.app-command-shell[data-theme] .collection-sets-tabs > :is([aria-selected="true"], [aria-pressed="true"])::after { height: 3px; }
+
+/* 3. Brighter secondary text: sub-lines, hints, counts and quiet controls
+      looked disabled and washed out outdoors. */
+html:root body .app:is(.app-command-shell, .app-signed-out)[data-theme="dark"] {
+  --lounge-muted: #CFC8CC;
+  --c3-muted: #CFC8CC;
+  --text-secondary: #CFC8CC;
+  --text-muted: #CFC8CC;
+  --app-brand-chrome-muted: #CFC8CC;
+  --text-kicker: #CFC8CC;
+  --c3-kicker: #CFC8CC;
+}
+html:root body .app:is(.app-command-shell, .app-signed-out)[data-theme="light"] {
+  --lounge-muted: #4F4340;
+  --c3-muted: #4F4340;
+  --text-secondary: #4F4340;
+  --text-muted: #4F4340;
+}
+html:root body .app.app-command-shell[data-theme] :is(input, textarea)::placeholder { color: var(--text-secondary) !important; opacity: 1; }
+html:root body .app.app-command-shell[data-theme] .collection-sets-tabs > button { color: var(--text-secondary) !important; opacity: 1 !important; }
+html:root body .app.app-command-shell[data-theme] :is(.collection-sets-result-count, .everyday-more-menu > summary, .collection-extra-filters > summary) {
+  color: var(--text-primary) !important;
+  opacity: 1 !important;
+  font-size: 14px;
+}
+html:root body .app.app-command-shell[data-theme] .everyday-more-menu > summary { border-color: var(--c3-control-border) !important; }
+html:root body .app.app-command-shell[data-theme] .collection-extra-filters > summary { text-decoration: underline; text-underline-offset: 4px; }
+
+/* 4. Set tiles: dark like the rest, with the game named on every tile. */
+html:root body .app.app-command-shell[data-theme] .collection-sets-card {
+  border: 1px solid var(--holo-edge) !important;
+  border-radius: 14px !important;
+  background: var(--c3-surface) !important;
+  color: var(--text-primary) !important;
+}
+html:root body .app.app-command-shell[data-theme] .collection-sets-card > .collection-sets-artwork,
+html:root body .app.app-command-shell[data-theme] .collection-sets-card > .collection-sets-artwork[data-artwork="fallback"] {
+  background: linear-gradient(160deg, var(--c3-surface-elevated), var(--c3-surface-inset)) !important;
+  border-bottom: 1px solid var(--holo-edge) !important;
+}
+html:root body .app.app-command-shell[data-theme] .collection-sets-card > .collection-sets-artwork[data-artwork="logo"] { background: #F4EFE6 !important; }
+html:root body .app.app-command-shell[data-theme] .collection-sets-card .collection-sets-artwork-fallback {
+  color: var(--c3-gold-ink, #E8C86B) !important;
+  font-family: var(--c3-font-heading) !important;
+  letter-spacing: .06em;
+}
+html:root body .app.app-command-shell[data-theme] .collection-sets-card-name { color: var(--text-primary) !important; }
+html:root body .app.app-command-shell[data-theme] .collection-sets-card :is(.collection-sets-card-series, .collection-sets-value-coverage, .collection-sets-progress-label, .collection-sets-value) { color: var(--text-secondary) !important; font-size: 13px !important; }
+html:root body .app.app-command-shell[data-theme] .collection-sets-card .collection-sets-card-game {
+  align-self: start;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--holo-edge);
+  background: var(--c3-surface-secondary);
+  color: var(--text-primary);
+  font: 700 12px/1.3 var(--c3-font-body, inherit);
+}
+
+/* 5. Smaller welcome header, so search and restocks sit higher. */
+html:root body .app.app-command-shell[data-theme] .home-layout .ops-page-header { gap: 6px !important; padding-bottom: 10px !important; margin-bottom: 12px !important; }
+html:root body .app.app-command-shell[data-theme] .home-layout .ops-page-header h1 { font: 600 24px/1.15 var(--c3-font-heading) !important; }
+html:root body .app.app-command-shell[data-theme] .home-layout .ops-page-header h1::after { width: 48px; margin-top: 8px; }
+html:root body .app.app-command-shell[data-theme] .home-layout .ops-page-header p { font-size: 14px !important; margin: 0 !important; }
+
+/* 6. Nothing shows through or hides under the bottom bar: the bar is solid,
+      the page fades out just above it, and the feedback bubble is smaller and
+      out of the way until touched. */
+@media (max-width: 899px) {
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav {
+    background: var(--c3-surface) !important;
+    backdrop-filter: none !important;
+  }
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav::before {
+    content: "";
+    position: absolute;
+    left: -16px;
+    right: -16px;
+    bottom: -24px;
+    top: -28px;
+    z-index: -1;
+    pointer-events: none;
+    background: linear-gradient(to bottom, transparent 0, var(--c3-page) 38%);
+  }
+  html:root body .app.app-command-shell[data-theme] .main { padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px)) !important; }
+  html:root:has(.ops-mobile-nav) { scroll-padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px)); }
+  html:root body .app[data-theme] .quick-feedback-fab {
+    width: 40px !important;
+    height: 40px !important;
+    right: 8px !important;
+    opacity: .7;
+    background: var(--c3-surface-elevated) !important;
+  }
+  html:root body .app[data-theme] .quick-feedback-fab:is(:hover, :focus-visible, :active) { opacity: 1; }
+}

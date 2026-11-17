@@ -58,6 +58,7 @@ catch-all; `npm run test:plain-language` fails on leaked old names.
 - Mobile-first.
 - Who it is for (owner, Nov 17, 2026): anyone who is a TCG fan, any game, any age, casual to serious. It should feel like the hobby: cracking a pack, the shine of a holo, a well-kept binder. No single game's look or IP.
 - Look (owner, Nov 17, 2026: "more futuristic"): `src/styles/app/19-holo-tech.css`, loaded last on top of the binder file: Chakra Petch headings and HUD-style labels, near-black violet with a faint grid, dark-glass panels with lit edges, a magenta-to-gold energy line, a glowing main action. Still no blue or teal. Delete the file and its import to return to the softer look.
+- `src/styles/app/20-panel-fixes.css` (loaded last) keeps that look friendly, from a simulated panel of 24 fans: normal-case labels (no spaced capitals), DM Sans numbers, a filled active tab, bright secondary text (#CFC8CC on dark), dark set tiles that name the game, a small Home header, and a solid bottom bar that content fades under.
 - Base visual system: `src/styles/app/18-collector-binder.css`. DM Sans bold headings (no serif), 20 px cards with soft shadows, pill buttons, holo-foil accents (`--binder-foil`) on the featured card, active tab and page titles. Change the look there, by tokens, before touching screens.
 - Warm premium style; dark and light themes follow the device until the person picks.
 - Strong contrast.
