@@ -1,10 +1,12 @@
 import {useEffect,useId,useRef,useState} from 'react';
 import {normalizeProductPhotoQuery,readProductPhotoText,validateProductPhotoFile,PRODUCT_PHOTO_LIMITS} from '../utils/productPhotoLookup.mjs';
+// Card mode uses the card reader (name strip + number strip); it loads only when a card photo is chosen.
+const readCardPhoto=(file,options)=>import('../utils/cardPhotoReader.mjs').then(module=>module.readCardPhoto(file,options));
 import './product-photo-lookup.css';
 
 // Only the explicitly reviewed query leaves this component. The selected file,
 // preview URL and complete OCR text are never sent to a parent or saved.
-export default function ProductPhotoLookup({onQuery,onDraftChange,initialQuery='',disabled=false,kind='item',reader=readProductPhotoText}){
+export default function ProductPhotoLookup({onQuery,onDraftChange,initialQuery='',disabled=false,kind='item',reader=kind==='card'?readCardPhoto:readProductPhotoText}){
  const id=useId(),sequence=useRef(0),controller=useRef(null),previewRef=useRef(''),edited=useRef(false),queryRef=useRef(null);
  const [preview,setPreview]=useState(''),[fileName,setFileName]=useState(''),[query,setQuery]=useState(initialQuery),[text,setText]=useState(''),[suggestions,setSuggestions]=useState([]),[busy,setBusy]=useState(false),[searching,setSearching]=useState(false),[progress,setProgress]=useState(null),[message,setMessage]=useState(''),[error,setError]=useState('');
  useEffect(()=>()=>{sequence.current++;controller.current?.abort();if(previewRef.current)URL.revokeObjectURL(previewRef.current);},[]);

@@ -43494,6 +43494,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         findCatalogProductsByBarcode,
         onOpenBarcodeScanner: () => { const destination = quickAddWizard.destination; closeFlowModal(); beginScanProduct(destination); },
         onOpenItemPhoto: () => { const destination = quickAddWizard.destination; closeFlowModal(); openPictureLookupFlow(destination); },
+        // Card reader (Nov 17): straight to the card photo screen, which reads the name and number.
+        onOpenCardPhoto: () => { const destination = quickAddWizard.destination; closeFlowModal(); beginScanProduct(destination); setScanMode("card"); },
         getCatalogPickerResults,
         getTideTradrMarketInfo,
         handleQuickAddPhotoFile,

@@ -213,7 +213,7 @@ const homeKeys = page => page.locator("[data-home-card]").evaluateAll(rows => ro
       await page.screenshot({ path: path.join(output, `${prefix}-adaptive-collection-home.png`), fullPage: true });
 
       step = `${prefix}: adaptive Add choices and manual preferences`;
-      await render("add"); const defaultAdd = await primaryAdd(page).allTextContents(); assert.deepEqual(defaultAdd, ["Add to my collection", "Search cards & products", "Scan with camera", "Type a barcode number", "Sell or trade"]);
+      await render("add"); const defaultAdd = await primaryAdd(page).allTextContents(); assert.deepEqual(defaultAdd, ["Add to my collection", "Scan a card", "Search cards & products", "Scan with camera", "Type a barcode number"]);
       await render("add", { adaptiveActivity: { collection: records("collection") } }); assert.equal((await primaryAdd(page).allTextContents())[0], "Add to my collection");
       await render("add", { ...seller, adaptiveActivity: { sales: records("sale") } }); assert.equal((await primaryAdd(page).allTextContents())[0], "Record Sale");
       await render("add", { ...seller, adaptiveActivity: { sales: [] } }, { sales: records("native-sale") }); assert.equal((await primaryAdd(page).allTextContents())[0], "Record Sale");

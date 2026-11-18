@@ -43,6 +43,7 @@ export default function AddAnythingContent({ scope }) {
     findCatalogProductsByBarcode,
     onOpenBarcodeScanner,
     onOpenItemPhoto,
+    onOpenCardPhoto,
     getCatalogPickerResults,
     getTideTradrMarketInfo,
     handleQuickAddPhotoFile,
@@ -830,6 +831,7 @@ export default function AddAnythingContent({ scope }) {
       window.setTimeout(() => openFlipScoutView(screen, subview), 0);
     };
     const defaultEntryOptions = [
+      ...(onOpenCardPhoto ? [{ key: "scan-card", title: "Scan a card", ariaLabel: "Scan a card. Take a photo; the app reads the name and card number and shows matches to confirm.", icon: "scan", tone: "vault", onClick: () => { closeFlowModal({ force: true }); window.setTimeout(onOpenCardPhoto, 0); } }] : []),
       { key: "scan-listing", title: presentation.isCollector ? "Scan with camera" : "Scan Listing", ariaLabel: presentation.isCollector ? "Scan with camera. Start a review-first scan or screenshot workflow." : "Scan Listing. Start a review-first scan or screenshot workflow.", icon: "scan", tone: "search", onClick: () => setQuickAddPath("scanAnything") },
       { key: "analyze-deal", title: "Analyze Deal", ariaLabel: "Analyze Deal. Review costs, resale assumptions, profit, and ROI.", icon: "find", tone: "search", onClick: () => openFindAction("appraise") },
       { key: "record-purchase", title: "Record Purchase", ariaLabel: "Record Purchase. Create a purchase and split it into lots or items.", icon: "clipboard", tone: "forge", onClick: () => openFindAction("records", "purchases") },
@@ -869,7 +871,7 @@ export default function AddAnythingContent({ scope }) {
     const preferredActions = (addPreference?.visibleKeys || []).map((key) => preferenceActions[key]).filter(Boolean);
     const businessActionKeys = new Set(["analyze-deal", "record-purchase", "record-sale", "add-auction", "add-resale-inventory", "add-expense", "add-mileage", "add-receipt"]);
     const personaDefaults = presentation.isCollector
-      ? ["add-collection-item", "search-catalog", "scan-listing", "enter-upc", "sell-or-trade"]
+      ? ["add-collection-item", "scan-card", "search-catalog", "scan-listing", "enter-upc", "sell-or-trade"]
       : presentation.isStore
         ? ["add-resale-inventory", "record-sale", "record-purchase", "search-catalog", "scan-listing"]
         : ["add-resale-inventory", "record-sale", "record-purchase", "analyze-deal", "scan-listing"];

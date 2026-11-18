@@ -25,7 +25,8 @@ collectors and not scalpers, any trading card game, Android first.
 
 ## Next, in order
 
-1. **Scanner accuracy and speed.** The first thing people try in a tracker and
+1. **Card reader: measure on real cards.** Built in build 23 (`src/utils/cardPhotoReader.mjs`): finds the card in the photo, reads the name strip, a taller top strip, the number strip and the whole card in one load of the local text model, fixes common misreads (O for 0, l for 1), and searches the catalog with "name number". 6 of 6 synthetic test cards read correctly at about 1 s each; real cards are harder (foil, glare, sleeves, stylised fonts). Measure with `node scripts/card-reader-eval.cjs --dir=<photos>`.
+   Earlier note: **Scanner accuracy and speed.** The first thing people try in a tracker and
    the top complaint about Collectr. Needs a test set of real cards (photos of
    50 to 100 cards across games, sleeved and unsleeved, good and poor light)
    so results can be measured before and after tuning. Owner: supply photos.

@@ -44,6 +44,7 @@ jobs:
           scripts/test-debounced-save.mjs
           scripts/test-age-confirmation.mjs
           scripts/test-restock-map.mjs
+          scripts/test-card-photo-text.mjs
       - name: Domain suites (plain node)
         run: |
           node --no-warnings scripts/test-empty-states.mjs
