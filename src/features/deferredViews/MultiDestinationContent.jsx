@@ -621,6 +621,31 @@ export default function MultiDestinationContent({ scope }) {
             {addFlowIsCard ? (
               <PrintingPicker value={multiDestinationForm.variant} catalogNames={catalogFinishChoices} onChange={(value) => updateMultiDestinationField("variant", value)} />
             ) : null}
+            {addFlowIsCard ? (
+              <fieldset className="graded-slab-fields">
+                <legend>Graded slab</legend>
+                <label className="graded-slab-fields__toggle">
+                  <input type="checkbox" checked={Boolean(multiDestinationForm.graded)} onChange={(event) => updateMultiDestinationField("graded", event.target.checked)} />
+                  This card is in a graded slab
+                </label>
+                {multiDestinationForm.graded ? (
+                  <div className="graded-slab-fields__grid">
+                    <Field label="Grading company">
+                      <input list="graded-slab-companies" value={multiDestinationForm.gradingCompany || ""} onChange={(event) => updateMultiDestinationField("gradingCompany", event.target.value)} placeholder="PSA, CGC, Beckett (BGS)…" />
+                      <datalist id="graded-slab-companies">
+                        {["PSA", "CGC", "Beckett (BGS)", "SGC", "TAG", "ACE", "AGS", "GMA"].map((name) => <option key={name} value={name} />)}
+                      </datalist>
+                    </Field>
+                    <Field label="Grade">
+                      <input value={multiDestinationForm.grade || ""} onChange={(event) => updateMultiDestinationField("grade", event.target.value)} placeholder="10, 9.5, 10 Pristine…" />
+                    </Field>
+                    <Field label="Cert number">
+                      <input inputMode="text" autoComplete="off" value={multiDestinationForm.certificationNumber || ""} onChange={(event) => updateMultiDestinationField("certificationNumber", event.target.value)} placeholder="From the slab label" />
+                    </Field>
+                  </div>
+                ) : null}
+              </fieldset>
+            ) : null}
             <Field label="UPC / SKU if known">
               <input
                 value={multiDestinationForm.upcSku}

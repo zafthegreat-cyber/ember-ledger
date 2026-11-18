@@ -46,6 +46,7 @@ jobs:
           scripts/test-restock-map.mjs
           scripts/test-card-photo-text.mjs
           scripts/test-card-printings.mjs
+          scripts/test-slab-label.mjs
       - name: Domain suites (plain node)
         run: |
           node --no-warnings scripts/test-empty-states.mjs

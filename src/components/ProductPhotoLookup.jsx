@@ -4,13 +4,16 @@ const CardCameraFrame=lazy(()=>import('./CardCameraFrame.jsx'));
 import {normalizeProductPhotoQuery,readProductPhotoText,validateProductPhotoFile,PRODUCT_PHOTO_LIMITS} from '../utils/productPhotoLookup.mjs';
 // Card mode uses the card reader (name strip + number strip); it loads only when a card photo is chosen.
 const readCardPhoto=(file,options)=>import('../utils/cardPhotoReader.mjs').then(module=>module.readCardPhoto(file,options));
+// Graded slabs: reads the label for grader, grade, cert number and the card.
+const readSlabPhoto=(file,options)=>import('../utils/cardPhotoReader.mjs').then(module=>module.readSlabPhoto(file,options));
+const SLAB_FIELDS=[['gradingCompany','Grader'],['grade','Grade'],['certificationNumber','Cert number']];
 import './product-photo-lookup.css';
 
 // Only the explicitly reviewed query leaves this component. The selected file,
 // preview URL and complete OCR text are never sent to a parent or saved.
-export default function ProductPhotoLookup({onQuery,onDraftChange,initialQuery='',disabled=false,kind='item',reader=kind==='card'?readCardPhoto:readProductPhotoText}){
+export default function ProductPhotoLookup({onQuery,onDraftChange,onSlabDetails,initialSlab=false,initialQuery='',disabled=false,kind='item',reader=kind==='card'?readCardPhoto:readProductPhotoText,slabReader=readSlabPhoto}){
  const id=useId(),sequence=useRef(0),controller=useRef(null),previewRef=useRef(''),edited=useRef(false),queryRef=useRef(null);
- const [preview,setPreview]=useState(''),[fileName,setFileName]=useState(''),[query,setQuery]=useState(initialQuery),[text,setText]=useState(''),[suggestions,setSuggestions]=useState([]),[busy,setBusy]=useState(false),[searching,setSearching]=useState(false),[progress,setProgress]=useState(null),[message,setMessage]=useState(''),[error,setError]=useState(''),[cameraOpen,setCameraOpen]=useState(false);
+ const [preview,setPreview]=useState(''),[fileName,setFileName]=useState(''),[query,setQuery]=useState(initialQuery),[text,setText]=useState(''),[suggestions,setSuggestions]=useState([]),[busy,setBusy]=useState(false),[searching,setSearching]=useState(false),[progress,setProgress]=useState(null),[message,setMessage]=useState(''),[error,setError]=useState(''),[cameraOpen,setCameraOpen]=useState(false),[slab,setSlab]=useState(initialSlab),[slabDetails,setSlabDetails]=useState(initialSlab?{gradingCompany:'',grade:'',certificationNumber:''}:null);
  useEffect(()=>()=>{sequence.current++;controller.current?.abort();if(previewRef.current)URL.revokeObjectURL(previewRef.current);},[]);
  function stop(){sequence.current++;controller.current?.abort();controller.current=null;setBusy(false);setProgress(null);}
  function clearPreview(){if(previewRef.current)URL.revokeObjectURL(previewRef.current);previewRef.current='';setPreview('');setFileName('');}
@@ -26,9 +29,10 @@ export default function ProductPhotoLookup({onQuery,onDraftChange,initialQuery='
   const request=sequence.current,abort=new AbortController();controller.current=abort;
   previewRef.current=URL.createObjectURL(file);setPreview(previewRef.current);setFileName(file.name);setBusy(true);
   try{
-   const result=await reader(file,{signal:abort.signal,framed,onProgress:value=>{if(request===sequence.current)setProgress(value);}});
+   const result=await (slab?slabReader:reader)(file,{signal:abort.signal,framed,onProgress:value=>{if(request===sequence.current)setProgress(value);}});
    if(request!==sequence.current||abort.signal.aborted)return;
    setText(result.text||'');setSuggestions(result.suggestions||[]);if(!edited.current){onDraftChange?.();setQuery(result.query||'');}
+   if(slab){const details={gradingCompany:result.gradingCompany||'',grade:result.grade||'',certificationNumber:result.certificationNumber||''};setSlabDetails(details);onSlabDetails?.(details);}
    setMessage(result.message||'Review the text before searching.');
    if(['invalid','failed','unsupported','timeout'].includes(result.status))setError(result.message||'Type the details below to continue.');
   }catch{if(request===sequence.current&&!abort.signal.aborted)setError('The photo could not be read. Type the product details below.');}
@@ -44,8 +48,10 @@ export default function ProductPhotoLookup({onQuery,onDraftChange,initialQuery='
  const subject=kind==='card'?'card':kind==='sealed'?'sealed product':'card or sealed product';
  return <section className="product-photo-lookup" aria-labelledby={`${id}-title`}>
   <header><h3 id={`${id}-title`}>Find from a photo</h3><p>Photograph the printed name, card number or barcode on your {subject}.</p></header>
-  {kind==='card'&&cameraOpen?<Suspense fallback={<p role="status">Opening the camera…</p>}><CardCameraFrame onCancel={()=>setCameraOpen(false)} onCapture={async file=>{setCameraOpen(false);await readFile(file,{framed:true});}}/></Suspense>:null}
-  {kind==='card'&&!cameraOpen?<button type="button" className="product-photo-lookup__camera" disabled={disabled||searching||busy} onClick={()=>setCameraOpen(true)}>Scan with the card frame</button>:null}
+  {kind==='card'?<label className="product-photo-lookup__slab"><input type="checkbox" checked={slab} disabled={disabled||busy||searching} onChange={event=>{const on=event.target.checked;setSlab(on);const next=on?{gradingCompany:'',grade:'',certificationNumber:''}:null;setSlabDetails(next);onSlabDetails?.(next);}}/>This is a graded slab (PSA, CGC, Beckett…)</label>:null}
+  {slab&&slabDetails?<div className="product-photo-lookup__slab-fields" aria-label="Slab label details">{SLAB_FIELDS.map(([key,label])=><label key={key}>{label}<input value={slabDetails[key]} autoComplete="off" maxLength={40} disabled={disabled||searching} onChange={event=>{const next={...slabDetails,[key]:event.target.value};setSlabDetails(next);onSlabDetails?.(next);}}/></label>)}</div>:null}
+  {kind==='card'&&cameraOpen?<Suspense fallback={<p role="status">Opening the camera…</p>}><CardCameraFrame slab={slab} onCancel={()=>setCameraOpen(false)} onCapture={async file=>{setCameraOpen(false);await readFile(file,{framed:true});}}/></Suspense>:null}
+  {kind==='card'&&!cameraOpen?<button type="button" className="product-photo-lookup__camera" disabled={disabled||searching||busy} onClick={()=>setCameraOpen(true)}>{slab?'Scan with the slab frame':'Scan with the card frame'}</button>:null}
   <div className="product-photo-lookup__pickers">
    <label className="product-photo-lookup__picker">Take photo<input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" aria-label="Take a product photo" disabled={disabled||searching} onChange={choose}/></label>
    <label className="product-photo-lookup__picker">Choose image<input type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose a product image" disabled={disabled||searching} onChange={choose}/></label>

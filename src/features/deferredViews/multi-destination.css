@@ -213,3 +213,10 @@ html body .app[data-theme] .multi-destination-flow input[type="checkbox"] {
 .add-item-identification{grid-column:1/-1;min-width:0;border-top:1px solid var(--border-subtle);padding-top:12px}
 .add-item-identification>summary,.add-item-more-tools>summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:600}
 .add-item-barcode-entry{display:grid;gap:12px;padding:14px 0}.add-item-barcode-entry label{display:grid;gap:8px}.add-item-barcode-entry input{min-height:44px;width:100%;font-size:16px}.add-item-identification small,.add-item-search-guidance{color:var(--text-secondary);font-size:.8125rem;line-height:1.5}.add-item-primary-tools{display:flex;gap:8px;flex-wrap:wrap}
+
+/* Graded slab fields on the save screen (Nov 17 2026). */
+.graded-slab-fields { border: 1px solid var(--border-subtle, rgba(255,255,255,.14)); border-radius: 16px; padding: 12px 14px; margin: 0; display: grid; gap: 10px; }
+.graded-slab-fields legend { padding: 0 6px; font-weight: 700; }
+.graded-slab-fields__toggle { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.graded-slab-fields__toggle input { width: 22px; height: 22px; accent-color: var(--accent-gold, #d8b25a); }
+.graded-slab-fields__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }

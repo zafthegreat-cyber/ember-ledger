@@ -8,6 +8,7 @@
 // The photo, crops and text never leave the device; only the reviewed search does.
 import { validateProductPhotoFile, PRODUCT_PHOTO_LIMITS } from "./productPhotoLookup.mjs";
 import { parseCardPhotoText } from "./cardPhotoText.mjs";
+import { parseSlabLabel } from "./slabLabelText.mjs";
 
 export const CARD_PHOTO_READER = Object.freeze({
   timeoutMs: 120_000,
@@ -252,6 +253,123 @@ export async function readCardPhoto(file, { signal, onProgress, timeoutMs = CARD
     return result("failed", code, "The card could not be read automatically. Type the card name and number below.");
   } finally {
     stopped = true;
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", abort);
+    worker?.terminate();
+  }
+}
+
+/**
+ * Graded slab (Nov 17 2026): reads the label at the top of the slab for the
+ * grading company, grade, cert number and the card's name and number.
+ * framed: the photo is the slab-shaped camera frame, so the label is the top
+ * part; otherwise the whole photo is read larger.
+ */
+export async function readSlabPhoto(file, { signal, onProgress, timeoutMs = CARD_PHOTO_READER.timeoutMs, workerUrl, framed = false } = {}) {
+  const invalid = validateProductPhotoFile(file);
+  if (invalid) return result("invalid", "file_invalid", invalid);
+  if (signal?.aborted) return result("cancelled", "cancelled", "Reading stopped. You can type the slab details below.");
+  if (typeof window === "undefined" || typeof Worker !== "function" || typeof document === "undefined") return result("unsupported", "unsupported", "This device cannot read slabs automatically. Type the details below.");
+  let worker, timer, rejectStop;
+  const interrupted = new Promise((_, reject) => { rejectStop = reject; });
+  const stop = (code) => { worker?.terminate(); rejectStop(fail(code)); };
+  const abort = () => stop("cancelled");
+  signal?.addEventListener("abort", abort, { once: true });
+  timer = setTimeout(() => stop("timeout"), Math.min(180_000, Math.max(1, timeoutMs)));
+  try {
+    return await Promise.race([interrupted, (async () => {
+      onProgress?.({ label: "Finding the slab label…", progress: null });
+      const image = await decode(file);
+      const width = image.width || image.naturalWidth, height = image.height || image.naturalHeight;
+      if (!width || !height || width * height > 40_000_000) throw fail("image_dimensions");
+      const labelHeight = framed ? height * 0.3 : height;
+      const label = crop(image, 0, 0, width, labelHeight, 1800, true);
+      const whole = crop(image, 0, 0, width, height, Math.min(2400, width), true);
+      image.close?.();
+      const images = [
+        { key: "label6", psm: "6", image: await toPng(label) },
+        { key: "label11", psm: "11", image: await toPng(label) },
+        { key: "whole", psm: "11", image: await toPng(whole) },
+      ];
+      label.width = 0; whole.width = 0;
+      onProgress?.({ label: "Reading the label…", progress: null });
+      worker = new Worker(workerUrl || new URL("/ocr/card-photo-v1.worker.js", window.location.href), { name: "Code 3 slab reader" });
+      const response = await new Promise((resolve, reject) => {
+        worker.onerror = (event) => { event.preventDefault(); reject(fail("ocr_failed")); };
+        worker.onmessage = ({ data }) => { if (data?.type === "result") resolve(data); else if (data?.type === "failure") reject(fail("ocr_failed")); };
+        worker.postMessage({ type: "recognize-many", images, gzip: MODEL_GZIP }, images.map((entry) => entry.image.buffer));
+      });
+      const byKey = Object.fromEntries((response.texts || []).map((entry) => [entry.key, String(entry.text || "")]));
+      const slab = parseSlabLabel([byKey.label6, byKey.label11, byKey.whole].filter(Boolean).join("\n"));
+      const found = [slab.gradingCompany && "grader", slab.grade && "grade", slab.certificationNumber && "cert number", (slab.name || slab.number) && "card"].filter(Boolean);
+      const message = found.length >= 3 ? "Read the " + found.join(", ") + ". Check each one, then review the matches."
+        : found.length ? "Read the " + found.join(" and ") + ". Type anything missing from the label."
+          : "Could not read this label. Hold the slab straight with the label at the top of the frame, avoid glare, or type the details.";
+      const suggestions = [slab.number && { type: "card-number", value: slab.number, label: "Card number" }, slab.name && { type: "text", value: slab.name, label: "Card name" }].filter(Boolean);
+      return { ...slab, slab: true, status: found.length ? "complete" : "low_confidence", code: "slab_read", message, suggestions };
+    })()]);
+  } catch (error) {
+    const code = error?.code || "ocr_failed";
+    if (code === "cancelled") return result("cancelled", code, "Reading stopped. You can type the slab details below.");
+    if (code === "timeout") return result("timeout", code, "Reading took too long. Try a closer photo of the label.");
+    return result("failed", code, "The slab label could not be read automatically. Type the details below.");
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", abort);
+    worker?.terminate();
+  }
+}
+
+/**
+ * Receipts (Nov 17 2026): reads a receipt photo on this device and returns its
+ * lines as text for the receipt review screen. The person checks every line
+ * before anything is saved; the photo never leaves the device for reading.
+ */
+export async function readReceiptPhoto(file, { signal, onProgress, timeoutMs = CARD_PHOTO_READER.timeoutMs, workerUrl } = {}) {
+  const invalid = validateProductPhotoFile(file);
+  if (invalid) return result("invalid", "file_invalid", invalid);
+  if (signal?.aborted) return result("cancelled", "cancelled", "Reading stopped. Type the receipt lines below.");
+  if (typeof window === "undefined" || typeof Worker !== "function" || typeof document === "undefined") return result("unsupported", "unsupported", "This device cannot read receipts automatically. Type the lines below.");
+  let worker, timer, rejectStop;
+  const interrupted = new Promise((_, reject) => { rejectStop = reject; });
+  const stop = (code) => { worker?.terminate(); rejectStop(fail(code)); };
+  const abort = () => stop("cancelled");
+  signal?.addEventListener("abort", abort, { once: true });
+  timer = setTimeout(() => stop("timeout"), Math.min(180_000, Math.max(1, timeoutMs)));
+  try {
+    return await Promise.race([interrupted, (async () => {
+      onProgress?.({ label: "Preparing the receipt…", progress: null });
+      const image = await decode(file);
+      const width = image.width || image.naturalWidth, height = image.height || image.naturalHeight;
+      if (!width || !height || width * height > 40_000_000) throw fail("image_dimensions");
+      // Long receipts stay tall; the width is what makes the print readable.
+      const page = crop(image, 0, 0, width, height, Math.min(1800, Math.max(width, 1200)), true);
+      image.close?.();
+      const images = [{ key: "receipt", psm: "6", image: await toPng(page) }];
+      page.width = 0;
+      onProgress?.({ label: "Reading the receipt…", progress: null });
+      worker = new Worker(workerUrl || new URL("/ocr/card-photo-v1.worker.js", window.location.href), { name: "Code 3 receipt reader" });
+      const response = await new Promise((resolve, reject) => {
+        worker.onerror = (event) => { event.preventDefault(); reject(fail("ocr_failed")); };
+        worker.onmessage = ({ data }) => { if (data?.type === "result") resolve(data); else if (data?.type === "failure") reject(fail("ocr_failed")); };
+        worker.postMessage({ type: "recognize-many", images, gzip: MODEL_GZIP }, images.map((entry) => entry.image.buffer));
+      });
+      const text = String(response.texts?.[0]?.text || "")
+        .split(/\r?\n/).map((line) => line.replace(/\s+/g, " ").trim()).filter((line) => line.length >= 2).join("\n").slice(0, 20_000);
+      const priced = text.split("\n").filter((line) => /\d+[.,]\d{2}\b/.test(line)).length;
+      return {
+        status: priced ? "complete" : "low_confidence",
+        code: "receipt_read",
+        text,
+        message: priced ? `Read ${priced} priced line${priced === 1 ? "" : "s"}. Check them below before reviewing.` : "Could not find prices on this receipt. Flatten it, fill the frame and avoid shadows, or type the lines.",
+      };
+    })()]);
+  } catch (error) {
+    const code = error?.code || "ocr_failed";
+    if (code === "cancelled") return result("cancelled", code, "Reading stopped. Type the receipt lines below.");
+    if (code === "timeout") return result("timeout", code, "Reading took too long. Try a closer photo, or type the lines.");
+    return result("failed", code, "The receipt could not be read automatically. Type the lines below.");
+  } finally {
     clearTimeout(timer);
     signal?.removeEventListener("abort", abort);
     worker?.terminate();

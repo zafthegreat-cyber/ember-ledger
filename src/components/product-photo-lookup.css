@@ -13,3 +13,10 @@
 /* Card frame camera (Nov 17): the main way to scan a card. */
 .app .product-photo-lookup__camera, .product-photo-lookup__camera { width: 100%; min-height: 52px; margin: 4px 0 10px; border: 0; border-radius: 12px; background: var(--action-primary, #E8C86B); color: var(--on-primary, #1A0F12); font: 700 16px/1 var(--font-ui, inherit); cursor: pointer; }
 .app .product-photo-lookup__camera:disabled { opacity: .6; }
+
+/* Graded slab toggle and label fields (Nov 17 2026). */
+.product-photo-lookup__slab { display: flex; align-items: center; gap: 10px; min-height: 44px; font-weight: 600; }
+.product-photo-lookup__slab input { width: 22px; height: 22px; accent-color: var(--accent-gold, #d8b25a); }
+.product-photo-lookup__slab-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+.product-photo-lookup__slab-fields label { display: grid; gap: 4px; font-size: 0.9rem; }
+.product-photo-lookup__slab-fields input { min-height: 44px; border-radius: 12px; padding: 0 12px; }

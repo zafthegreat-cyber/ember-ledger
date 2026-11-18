@@ -6105,6 +6105,9 @@ export default function App() {
   const [scanMode, setScanMode] = useState("upc");
   const [scanMatches, setScanMatches] = useState([]);
   const [scanReview, setScanReview] = useState(null);
+  // Grader, grade and cert number read from a slab label; carried to the save screen.
+  const [scanSlabDetails, setScanSlabDetails] = useState(null);
+  const receiptReadRequestRef = useRef(0);
   const [scanDestination, setScanDestination] = useState("none");
   const [scanSearchState, setScanSearchState] = useState("idle");
   const scanLookupRequestRef = useRef(0);
@@ -17466,7 +17469,7 @@ export default function App() {
     return {
       scanId: makeId("scan"),
       rawValue,
-      scanType: scanMode === "upc" ? "upc" : scanMode === "card" ? "card" : scanMode === "manual" ? "manual" : "barcode",
+      scanType: scanMode === "upc" ? "upc" : (scanMode === "card" || scanMode === "slab") ? "card" : scanMode === "manual" ? "manual" : "barcode",
       matchedCatalogItemId: product?.id || "",
       itemName: product?.name || product?.productName || product?.cardName || rawValue || "Unknown item",
       catalogType: product?.catalogType || "unknown",
@@ -17490,6 +17493,7 @@ export default function App() {
   function beginScanProduct(defaultDestination = "none") {
     scanLookupRequestRef.current += 1;
     setEditingItemId(null);
+    setScanSlabDetails(null);
     setScanMode("upc");
     setScanMatches([]);
     setScanReview(null);
@@ -17545,7 +17549,23 @@ export default function App() {
         source,
       };
     });
-    setReceiptScanMessage(file.type === "application/pdf" ? "PDF received. OCR support will process PDFs later; paste visible text for this beta review." : "Receipt image ready. Paste visible text or use the beta extractor.");
+    if (file.type === "application/pdf") {
+      setReceiptScanMessage("PDF received. Type or paste the receipt lines for review.");
+      return;
+    }
+    // Nov 17 2026: read the receipt on this device and fill the lines for review.
+    setReceiptScanMessage("Reading the receipt on this device…");
+    const request = (receiptReadRequestRef.current += 1);
+    import("./utils/cardPhotoReader.mjs")
+      .then((module) => module.readReceiptPhoto(file))
+      .then((read) => {
+        if (request !== receiptReadRequestRef.current) return;
+        if (read?.text) setReceiptScanForm((current) => (current.rawText?.trim() ? current : { ...current, rawText: read.text }));
+        setReceiptScanMessage(read?.message || "Type the receipt lines below.");
+      })
+      .catch(() => {
+        if (request === receiptReadRequestRef.current) setReceiptScanMessage("The receipt could not be read automatically. Type the lines below.");
+      });
   }
 
   function prefillQaReceiptScanDraft() {
@@ -18896,6 +18916,12 @@ export default function App() {
         destinations: destinationDefaults({ [destination]: true }),
         seed: {
           catalogSearchQuery: scanReview?.rawValue || scanInput || catalogTitle(product),
+          ...(scanSlabDetails ? {
+            graded: true,
+            gradingCompany: scanSlabDetails.gradingCompany || "",
+            grade: scanSlabDetails.grade || "",
+            certificationNumber: scanSlabDetails.certificationNumber || "",
+          } : {}),
         },
       });
     }
@@ -21944,6 +21970,13 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       productLine: selectedCatalogKnown.productLine || "",
       packCount: selectedCatalogKnown.packCount || "",
       variant: multiDestinationForm.variant || "",
+      // Graded slab (Nov 17 2026): from the slab scanner or typed on the save screen.
+      ...(multiDestinationForm.graded ? {
+        graded: true,
+        gradingCompany: String(multiDestinationForm.gradingCompany || "").trim(),
+        grade: String(multiDestinationForm.grade || "").trim(),
+        certificationNumber: String(multiDestinationForm.certificationNumber || "").trim(),
+      } : {}),
       receiptId: multiDestinationForm.receiptId || "",
       receiptImage: multiDestinationForm.receiptImage || "",
       notes: appendUniqueText(
@@ -49813,8 +49846,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <section className={`scanner-review-modal scan-product-modal scan-product-modal--${scanMode === "upc" ? "barcode" : scanMode}`} role="dialog" aria-modal="true" aria-labelledby="scanner-review-title" onClick={(event) => event.stopPropagation()}>
             <div className="modal-title-row modal-sticky-header scanner-modal-header">
               <div>
-                <h2 id="scanner-review-title">Scan Product/Card</h2>
-                <p>Find a card, sealed product, receipt, or add it manually.</p>
+                <h2 id="scanner-review-title">Scan</h2>
+                <p>Barcode, card, several cards, graded slab, photo or receipt.</p>
                 <p>Nothing is saved until you review it.</p>
               </div>
               <button type="button" className="modal-close-button" aria-label="Close scanner" onClick={closeInventoryScanner}>X</button>
@@ -49823,6 +49856,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               {[
                 ["upc", "Barcode", "barcode", "▥"],
                 ["card", "Card", "card", "▣"],
+                ["several", "Several cards", "card", "▣"],
+                ["slab", "Graded slab", "card", "▣"],
                 ["picture", "Photo", "photo", "□"],
                 ["receipt", "Receipt", "receipt", "▤"],
                 ["manual", "Manual", "manual", "✎"],
@@ -49834,7 +49869,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   aria-selected={scanMode === key}
                   className={`scan-product-mode-button scan-product-mode-button--${tone} ${scanMode === key ? "is-selected" : ""}`}
                   onClick={() => {
+                    // Several cards opens the binder-page / keep-scanning screen in Add.
+                    if (key === "several") {
+                      closeInventoryScanner();
+                      openQuickAddPathFlow("cardPageReview", {}, "scanner-several-cards");
+                      return;
+                    }
                     scanLookupRequestRef.current += 1;
+                    setScanSlabDetails(null);
                     setScanReview(null);
                     setScanMatches([]);
                     setScanSearchState("idle");
@@ -49883,7 +49925,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 ) : null}
                 <div className="scan-product-helper-card scan-product-helper-card--receipt">
                   <strong>How this works right now:</strong>
-                  <p className="compact-subtitle">There is no automatic receipt reading yet. Attach the photo for your records, then type or paste the receipt lines and we sort them into:</p>
+                  <p className="compact-subtitle">Take a photo and the receipt is read on this device. Check the lines, fix anything misread, and we sort them into:</p>
                   <ul>
                     <li>Store</li>
                     <li>Date</li>
@@ -49897,9 +49939,16 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </button>
                 {receiptScanMessage ? <p className="compact-subtitle scan-product-message">{receiptScanMessage}</p> : null}
               </div>
+            ) : scanMode === "slab" ? (
+              <div className="scan-product-mode-panel scan-product-mode-panel--card">
+                <ProductPhotoLookup key="slab" kind="card" initialSlab onSlabDetails={setScanSlabDetails} initialQuery={scanInput} disabled={scanSearchState === "loading"} onDraftChange={() => { scanLookupRequestRef.current += 1; setScanReview(null); setScanMatches([]); setScanSearchState("idle"); setScanMessage(""); }} onQuery={async query => {
+                  setPictureLookup(current => ({ ...current, text: query }));
+                  await handleCatalogScanMatch(query);
+                }} />
+              </div>
             ) : scanMode === "card" ? (
               <div className="scan-product-mode-panel scan-product-mode-panel--card">
-                <ProductPhotoLookup key="card" kind="card" initialQuery={scanInput} disabled={scanSearchState === "loading"} onDraftChange={() => { scanLookupRequestRef.current += 1; setScanReview(null); setScanMatches([]); setScanSearchState("idle"); setScanMessage(""); }} onQuery={async query => {
+                <ProductPhotoLookup key="card" kind="card" onSlabDetails={setScanSlabDetails} initialQuery={scanInput} disabled={scanSearchState === "loading"} onDraftChange={() => { scanLookupRequestRef.current += 1; setScanReview(null); setScanMatches([]); setScanSearchState("idle"); setScanMessage(""); }} onQuery={async query => {
                   setPictureLookup(current => ({ ...current, text: query }));
                   await handleCatalogScanMatch(query);
                 }} />

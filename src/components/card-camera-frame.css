@@ -17,3 +17,6 @@
 .app .card-camera-frame__shutter, .card-camera-frame__shutter { flex: 1 1 180px; min-height: 52px; border: 0; border-radius: 12px; background: var(--action-primary, #E8C86B); color: var(--on-primary, #1A0F12); font: 700 16px/1 var(--font-ui, inherit); cursor: pointer; }
 .app .card-camera-frame__shutter:disabled { opacity: .6; cursor: default; }
 .app .card-camera-frame__cancel, .card-camera-frame__cancel { flex: 0 1 auto; min-height: 52px; padding: 0 16px; border: 1px solid var(--border-strong, #888); border-radius: 12px; background: transparent; color: var(--text-primary); font: 600 15px/1 var(--font-ui, inherit); cursor: pointer; }
+
+/* Graded slab: taller frame (about 3.1 x 5.3 in), label band at the top. */
+.card-camera-frame--slab .card-camera-frame__guide { aspect-ratio: 31 / 53; }

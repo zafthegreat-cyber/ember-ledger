@@ -6,7 +6,8 @@ import { frameToVideoRect } from "../utils/cardCameraFrame.mjs";
 // frame gives the card reader an upright, full-size card, which is what makes
 // reading reliable on busy tables and at odd angles. Only the area inside the
 // frame is captured; the camera stream stops as soon as this closes.
-export default function CardCameraFrame({ onCapture, onCancel }) {
+// slab: a taller graded-slab frame with the label at the top.
+export default function CardCameraFrame({ onCapture, onCancel, slab = false }) {
   const videoRef = useRef(null);
   const boxRef = useRef(null);
   const frameRef = useRef(null);
@@ -51,22 +52,22 @@ export default function CardCameraFrame({ onCapture, onCancel }) {
       canvas.getContext("2d").drawImage(video, area.x, area.y, area.width, area.height, 0, 0, canvas.width, canvas.height);
       const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
       canvas.width = 0; canvas.height = 0;
-      if (blob) await onCapture?.(new File([blob], "card-scan.jpg", { type: "image/jpeg" }));
+      if (blob) await onCapture?.(new File([blob], slab ? "slab-scan.jpg" : "card-scan.jpg", { type: "image/jpeg" }));
     } finally {
       setBusy(false);
     }
   }
 
-  return <section className="card-camera-frame" aria-label="Card camera">
+  return <section className={slab ? "card-camera-frame card-camera-frame--slab" : "card-camera-frame"} aria-label={slab ? "Slab camera" : "Card camera"}>
     <div className="card-camera-frame__view" ref={boxRef}>
       <video ref={videoRef} playsInline muted aria-hidden="true" />
-      <div className="card-camera-frame__guide" ref={frameRef} aria-hidden="true"><span className="card-camera-frame__name">Name here</span><span className="card-camera-frame__number">Number here</span></div>
+      <div className="card-camera-frame__guide" ref={frameRef} aria-hidden="true">{slab ? <span className="card-camera-frame__name">Label here</span> : <><span className="card-camera-frame__name">Name here</span><span className="card-camera-frame__number">Number here</span></>}</div>
       {!ready && !error ? <p className="card-camera-frame__status" role="status">Starting the camera…</p> : null}
       {error ? <p className="card-camera-frame__status" role="alert">{error}</p> : null}
     </div>
-    <p className="card-camera-frame__hint">Hold the card upright inside the frame, name at the top. Avoid glare on the card.</p>
+    <p className="card-camera-frame__hint">{slab ? "Fit the whole slab in the frame, label at the top. Tilt it slightly to stop glare on the plastic." : "Hold the card upright inside the frame, name at the top. Avoid glare on the card."}</p>
     <div className="card-camera-frame__actions">
-      <button type="button" className="card-camera-frame__shutter" onClick={capture} disabled={!ready || busy}>{busy ? "Reading…" : "Scan this card"}</button>
+      <button type="button" className="card-camera-frame__shutter" onClick={capture} disabled={!ready || busy}>{busy ? "Reading…" : slab ? "Scan this slab" : "Scan this card"}</button>
       <button type="button" className="card-camera-frame__cancel" onClick={onCancel}>Close camera</button>
     </div>
   </section>;
