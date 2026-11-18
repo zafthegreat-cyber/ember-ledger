@@ -1,0 +1,19 @@
+/* Price history chart (Nov 17 2026). Warm tones only: no blue or teal. */
+.market-history-chart { margin: 12px 0; }
+.market-history-chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.market-history-chart path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.market-history-chart .market-history-line { stroke: var(--accent-gold, #d8b25a); stroke-width: 3; }
+.market-history-chart .market-history-median { stroke: var(--accent-teal, #c57a4a); stroke-width: 2; stroke-dasharray: 6 5; }
+.market-history-chart .market-history-low,
+.market-history-chart .market-history-high { stroke: currentColor; stroke-width: 1.5; opacity: 0.35; }
+.market-history-chart .market-history-axis { stroke: currentColor; opacity: 0.35; }
+.market-history-chart .market-history-grid { stroke: currentColor; opacity: 0.12; stroke-dasharray: 3 5; }
+.market-history-chart .market-history-label { fill: currentColor; opacity: 0.75; font-size: 15px; font-family: "DM Sans", system-ui, sans-serif; }
+.market-history-chart.empty { padding: 18px; border-radius: 16px; border: 1px dashed currentColor; opacity: 0.7; text-align: center; }
+.market-history-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; font-size: 0.9rem; }
+.market-history-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.market-history-legend .legend-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; }
+.market-history-legend .legend-dot.market { background: var(--accent-gold, #d8b25a); }
+.market-history-legend .legend-dot.median { background: var(--accent-teal, #c57a4a); }
+.market-history-legend .legend-dot.range { background: currentColor; opacity: 0.35; }
+.market-history-controls .chip-row { flex-wrap: wrap; }

@@ -1,22 +1,25 @@
-name: Market price history (2+ years, weekly)
+name: Market price history (popular daily, all weekly)
 
-# Owner, Nov 17 2026: "the over 2 year market pull".
-# Builds weekly Pokémon market prices back to 2024-02-08 from TCGCSV's daily
-# TCGplayer price archives (scripts/build-market-history.mjs) and commits one
-# JSON file per set to the `market-history` data branch. Supabase loads those
-# files (public.import_market_history_*). The first run fetches ~150 archives
-# (2-4 MB each); later runs only fetch the new week. Archives are immutable and
-# are never downloaded twice while the cache lives.
+# Owner, Nov 17 2026: "the over 2 year market pull", then "pull popular
+# products daily and the rest weekly".
+# scripts/build-market-history.mjs reads TCGCSV's daily TCGplayer price
+# archives and commits per-set JSON files to the `market-history` data branch:
+#   - every Pokémon product weekly, back to 2024-02-08
+#   - popular products (newest sets, highest value, biggest movers) daily, last 120 days
+# Runs every day; a weekly point is only added when its week is due. Supabase
+# loads the files on its own schedule (public.market_history_* functions).
+# Archives are immutable and cached; TCGCSV rate limits are waited out, and a
+# run that is still limited keeps its progress for the next run.
 on:
   workflow_dispatch:
     inputs:
       limit:
-        description: Only take the newest N weeks (blank = all; use 2 for a quick test)
+        description: Only add this many weekly points this run (blank = all; use 2 for a quick test, not committed)
         type: string
         default: ''
   schedule:
-    # Mondays 21:30 UTC, after TCGCSV writes the day's archive (~20:00 UTC).
-    - cron: "30 21 * * 1"
+    # Daily 21:30 UTC, after TCGCSV writes the day's archive (~20:00 UTC).
+    - cron: "30 21 * * *"
 
 permissions:
   contents: write
@@ -28,7 +31,7 @@ concurrency:
 jobs:
   build-history:
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    timeout-minutes: 300
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -39,7 +42,7 @@ jobs:
       - name: 7-Zip
         run: command -v 7z || (sudo apt-get update && sudo apt-get install -y p7zip-full)
       - name: Restore downloaded archives
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: .market-cache
           key: tcgcsv-archives-${{ github.run_id }}
@@ -55,7 +58,7 @@ jobs:
           else
             git worktree add --orphan -b market-history history-branch
           fi
-      - name: Build weekly price history
+      - name: Build price history
         env:
           LIMIT: ${{ inputs.limit }}
         run: |
@@ -64,13 +67,19 @@ jobs:
           node scripts/build-market-history.mjs $ARGS
           rm -rf .market-cache/extract
           du -sh history-branch --exclude=.git
+      - name: Save downloaded archives
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: .market-cache
+          key: tcgcsv-archives-${{ github.run_id }}
       - name: Commit to the market-history branch
         # A quick test run (limit set) is never committed, so the full history is built later.
         if: inputs.limit == '' || github.event_name == 'schedule'
         run: |
           cd history-branch
-          printf '%s\n' "# Market price history (data only)" "" "Weekly Pokémon TCGplayer market prices from TCGCSV archives, built by .github/workflows/market-history.yml on main." "One file per set: { groupId, dates, series: { \"productId|subType\": [cents|null] } }." > README.md
+          printf '%s\n' "# Market price history (data only)" "" "Pokémon TCGplayer market prices from TCGCSV archives, built by .github/workflows/market-history.yml on main." "Weekly for every product in the root folder; daily for popular products in daily/." "One file per set: { groupId, dates, series: { \"productId|subType\": [cents|null] } }." > README.md
           git add -A
           if git diff --cached --quiet; then echo "No new prices."; exit 0; fi
-          git commit -q -m "Market history through $(node -e "const i=require('./index.json');console.log(i.dates[i.dates.length-1])")"
+          git commit -q -m "Market history: weekly through $(node -e "const i=require('./index.json');console.log(i.dates.at(-1))"), daily through $(node -e "try{const i=require('./daily/index.json');console.log(i.dates.at(-1))}catch{console.log('none')}")"
           git push origin market-history
