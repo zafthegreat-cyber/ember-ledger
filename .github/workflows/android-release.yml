@@ -1,7 +1,7 @@
 name: Android signed beta build
 # Builds a signed Android bundle (.aab) and APK with the owner's upload key, so testers can
 # install it over earlier signed builds.
-# Runs only when started from the Actions tab. With play_track set (alpha by default) and the
+# Runs only when started from the Actions tab. With play_track set (beta = open testing by default, owner Nov 17 2026) and the
 # PLAY_SERVICE_ACCOUNT_JSON secret added, it also uploads the bundle to Google Play as a DRAFT
 # release; the owner still reviews it and clicks "Start rollout" in Play Console.
 # Needs repository secrets: CODE3_ANDROID_KEYSTORE_BASE64 (base64 of the keystore file),
@@ -19,10 +19,10 @@ on:
         default: '1.0.0'
         required: true
       play_track:
-        description: Upload to Google Play as a draft on this testing track (none = do not upload)
+        description: "Upload to Google Play as a draft on this track: beta = open testing, alpha = closed testing, none = do not upload"
         type: choice
-        options: [alpha, internal, none]
-        default: alpha
+        options: [beta, alpha, internal, none]
+        default: beta
       release_notes:
         description: What's new (shown to testers in Play; optional)
         type: string
