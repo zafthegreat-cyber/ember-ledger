@@ -1,0 +1,76 @@
+name: Market price history (2+ years, weekly)
+
+# Owner, Nov 17 2026: "the over 2 year market pull".
+# Builds weekly Pokémon market prices back to 2024-02-08 from TCGCSV's daily
+# TCGplayer price archives (scripts/build-market-history.mjs) and commits one
+# JSON file per set to the `market-history` data branch. Supabase loads those
+# files (public.import_market_history_*). The first run fetches ~150 archives
+# (2-4 MB each); later runs only fetch the new week. Archives are immutable and
+# are never downloaded twice while the cache lives.
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: Only take the newest N weeks (blank = all; use 2 for a quick test)
+        type: string
+        default: ''
+  schedule:
+    # Mondays 21:30 UTC, after TCGCSV writes the day's archive (~20:00 UTC).
+    - cron: "30 21 * * 1"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: market-history
+  cancel-in-progress: false
+
+jobs:
+  build-history:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: 7-Zip
+        run: command -v 7z || (sudo apt-get update && sudo apt-get install -y p7zip-full)
+      - name: Restore downloaded archives
+        uses: actions/cache@v4
+        with:
+          path: .market-cache
+          key: tcgcsv-archives-${{ github.run_id }}
+          restore-keys: tcgcsv-archives-
+      - name: Check out the data branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin market-history > /dev/null; then
+            git fetch --depth 1 origin market-history
+            git worktree add history-branch FETCH_HEAD
+            git -C history-branch checkout -B market-history
+          else
+            git worktree add --orphan -b market-history history-branch
+          fi
+      - name: Build weekly price history
+        env:
+          LIMIT: ${{ inputs.limit }}
+        run: |
+          ARGS="--cache .market-cache --out history-branch"
+          if [ -n "$LIMIT" ]; then ARGS="$ARGS --limit $LIMIT"; fi
+          node scripts/build-market-history.mjs $ARGS
+          rm -rf .market-cache/extract
+          du -sh history-branch --exclude=.git
+      - name: Commit to the market-history branch
+        # A quick test run (limit set) is never committed, so the full history is built later.
+        if: inputs.limit == '' || github.event_name == 'schedule'
+        run: |
+          cd history-branch
+          printf '%s\n' "# Market price history (data only)" "" "Weekly Pokémon TCGplayer market prices from TCGCSV archives, built by .github/workflows/market-history.yml on main." "One file per set: { groupId, dates, series: { \"productId|subType\": [cents|null] } }." > README.md
+          git add -A
+          if git diff --cached --quiet; then echo "No new prices."; exit 0; fi
+          git commit -q -m "Market history through $(node -e "const i=require('./index.json');console.log(i.dates[i.dates.length-1])")"
+          git push origin market-history
