@@ -47,6 +47,7 @@ export default function AddAnythingContent({ scope }) {
     onOpenBarcodeScanner,
     onOpenItemPhoto,
     onOpenCardPhoto,
+    onOpenScannerMode,
     getCatalogPickerResults,
     getTideTradrMarketInfo,
     handleQuickAddPhotoFile,
@@ -101,11 +102,13 @@ export default function AddAnythingContent({ scope }) {
       ...(sellerQuickAddActive && activeForgeWorkspace ? [{ value: "both", label: "Both", helper: "Vault and Business" }] : []),
       { value: "wishlist", label: "Wishlist/Watch", helper: "Track for later" },
     ];
-    const comingLaterScanModes = [
-      { key: "binder", title: "Scan Binder", helper: "Binder intake is coming later.", icon: "vault", tone: "vault" },
-      { key: "slab", title: "Scan Slab", helper: "Slab intake is coming later.", icon: "grade", tone: "warning" },
-      { key: "receipt", title: "Scan Receipt", helper: "Receipt parsing is coming later.", icon: "receipt", tone: "forge" },
-    ];
+    // Built Nov 17 2026 (were "coming later"): each opens the scanner in its own mode.
+    const liveScanModes = onOpenScannerMode ? [
+      { key: "card", title: "Scan a card", helper: "Line a card up in the frame; the name and number are read for you.", icon: "scan", tone: "vault" },
+      { key: "slab", title: "Graded slab", helper: "Reads the grader, grade and cert number from a PSA, CGC or Beckett label.", icon: "grade", tone: "vault" },
+      { key: "listing", title: "Listing screenshot", helper: "eBay, Marketplace, Mercari or TCGplayer: title, price and shipping filled in.", icon: "scan", tone: "search" },
+      { key: "receipt", title: "Scan a receipt", helper: "Read a receipt photo on this device, then check each line.", icon: "receipt", tone: "forge" },
+    ] : [];
     const runSearch = (value = quickAddWizard.query) => {
       const query = String(value || "").trim();
       if (!query) {
@@ -217,18 +220,17 @@ export default function AddAnythingContent({ scope }) {
         )}
       </div>
     );
-    const renderComingLaterTile = (mode) => (
+    const renderLiveScanTile = (mode) => (
       <button
         key={mode.key}
         type="button"
-        className={`add-anything-option add-anything-option--${mode.tone || mode.key} add-anything-option--locked`}
-        aria-label={`${mode.title}. ${mode.helper} Coming later.`}
-        disabled
+        className={`add-anything-option add-anything-option--${mode.tone || mode.key}`}
+        aria-label={`${mode.title}. ${mode.helper}`}
+        onClick={() => onOpenScannerMode(mode.key)}
       >
         <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed={mode.icon || mode.key} /></span>
         <strong>{mode.title}</strong>
         <small>{mode.helper}</small>
-        <em>Coming later</em>
       </button>
     );
     const openScoutScanSavedReportDetails = () => {
@@ -294,7 +296,7 @@ export default function AddAnythingContent({ scope }) {
     if (quickAddScreen === "scanAnything") {
       return (
         <div className="add-anything-flow add-anything-scan-foundation">
-          {renderFlowHeader("Scan Anything", "Search, enter UPC/SKU, or add manually.")}
+          {renderFlowHeader("Scan Anything", "Cards, slabs, barcodes, listing screenshots and receipts, or search.")}
           <div className="scan-anything-principle-card">
             <strong>Review before saving.</strong>
             <p>Scan a barcode or read a printed name and card number from a photo. Choose the correct product, printing and quantity before saving.</p>
@@ -320,6 +322,7 @@ export default function AddAnythingContent({ scope }) {
               <strong>Scan several cards</strong>
               <small>Keep scanning with the camera, or read a whole binder page.</small>
             </button>
+            {liveScanModes.map(renderLiveScanTile)}
             <button type="button" className="add-anything-option add-anything-option--search" aria-label="Search by name. Find cards, sets, sealed products, UPCs, or SKUs." onClick={() => setQuickAddPath("search")}>
               <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="search" /></span>
               <strong>Search by name</strong>
@@ -341,12 +344,6 @@ export default function AddAnythingContent({ scope }) {
               <small>Ask for a catalog item when search cannot find it.</small>
             </button>
           </div>
-          <details className="scan-anything-unavailable">
-            <summary>Coming later <span>{comingLaterScanModes.length} scan modes</span></summary>
-            <div className="scan-anything-coming-soon-grid" aria-label="Scan modes coming later">
-              {comingLaterScanModes.map(renderComingLaterTile)}
-            </div>
-          </details>
           <p className="quick-add-missing-help">Unknown items route to search, manual entry, or Request Missing Item. Nothing is auto-submitted.</p>
         </div>
       );

@@ -75,7 +75,9 @@ assert.match(menuNavigationSource, /aria-label=\{`\$\{item\.label\}\. \$\{item\.
 assert.match(appSource, /aria-label="Restocks screenshot or photo review\. Try text extraction, then review before saving a restock report\."/);
 assert.match(appSource, /aria-label="Scan several cards\. Keep scanning with the camera, or read a whole binder page\."/);
 assert.match(appSource, /aria-label="Manual entry\. Add a record now and correct details before saving\."/);
-assert.match(appSource, /aria-label=\{`\$\{mode\.title\}\. \$\{mode\.helper\} Coming later\.`\}/);
+// Card, slab, listing and receipt scanning are live (Nov 17 2026): named buttons, not disabled "Coming later" tiles.
+assert.match(appSource, /aria-label=\{`\$\{mode\.title\}\. \$\{mode\.helper\}`\}\s*onClick=\{\(\) => onOpenScannerMode\(mode\.key\)\}/);
+assert.doesNotMatch(appSource, /Coming later\.`\}/);
 assert.match(operationsSource, /aria-label="Primary navigation"/);
 assert.match(operationsSource, /aria-current=\{item\.key === activeKey && !item\.isAction \? "page"/);
 assert.match(ownerCenterSource, /role="tablist" aria-label=\{label\}/);

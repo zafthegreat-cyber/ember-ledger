@@ -30,7 +30,10 @@
     "test-search-state-lifecycle.cjs",
     "test-settings-experience-browser.cjs",
     "test-shared-feedback-presentation.cjs",
-    "test-store-observation-browser.cjs"
+    "test-store-observation-browser.cjs",
+    "test-login-presentation.cjs",
+    "test-restock-shortcuts-browser.cjs",
+    "test-add-scan-layout-browser.cjs"
   ],
   "knownFailing": [
     {
@@ -47,10 +50,6 @@
     },
     {
       "file": "test-adaptive-restock-home-browser.cjs",
-      "firstError": "TimeoutError'"
-    },
-    {
-      "file": "test-add-scan-layout-browser.cjs",
       "firstError": "TimeoutError'"
     },
     {
@@ -158,10 +157,6 @@
       "firstError": ""
     },
     {
-      "file": "test-login-presentation.cjs",
-      "firstError": "TimeoutError'"
-    },
-    {
       "file": "test-manual-lifecycles-browser.cjs",
       "firstError": "TimeoutError'"
     },
@@ -195,10 +190,6 @@
     },
     {
       "file": "test-restock-save-reload-browser.cjs",
-      "firstError": ""
-    },
-    {
-      "file": "test-restock-shortcuts-browser.cjs",
       "firstError": ""
     },
     {

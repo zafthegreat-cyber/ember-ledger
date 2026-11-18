@@ -43564,6 +43564,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         onOpenItemPhoto: () => { const destination = quickAddWizard.destination; closeFlowModal(); openPictureLookupFlow(destination); },
         // Card reader (Nov 17): straight to the card photo screen, which reads the name and number.
         onOpenCardPhoto: () => { const destination = quickAddWizard.destination; closeFlowModal(); beginScanProduct(destination); setScanMode("card"); },
+        // Opens the scanner straight in one mode: "card", "slab", "listing" or "receipt".
+        onOpenScannerMode: (mode) => { const destination = quickAddWizard.destination; closeFlowModal(); beginScanProduct(destination); setScanMode(mode); },
         getCatalogPickerResults,
         getTideTradrMarketInfo,
         handleQuickAddPhotoFile,
