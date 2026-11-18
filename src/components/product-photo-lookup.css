@@ -9,3 +9,7 @@
 .product-photo-lookup__query{display:grid;gap:7px;min-width:0;font-size:.875rem;font-weight:600}.product-photo-lookup__query input{box-sizing:border-box;min-height:46px;width:100%;min-width:0;padding:10px 12px;border:1px solid var(--border-strong,#aa929d);border-radius:8px;background:var(--surface-inset,#fff);color:var(--text-primary,#251c20);font:400 1rem/1.5 var(--font-ui,Arial,sans-serif)}
 .product-photo-lookup .product-photo-lookup__search{background:var(--action-primary,#78081c);color:var(--on-primary,#fff);border-color:var(--action-primary,#78081c);justify-self:start}.product-photo-lookup .product-photo-lookup__error{color:var(--status-danger-text,#a42332)}
 .product-photo-lookup details{border-top:1px solid var(--border-subtle,#d6c9cf);min-width:0}.product-photo-lookup summary{padding:12px 0;min-height:44px;box-sizing:border-box;cursor:pointer;font-size:.875rem;font-weight:600}.product-photo-lookup pre{max-height:240px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:400 .8125rem/1.5 var(--font-ui,Arial,sans-serif);margin:0}
+
+/* Card frame camera (Nov 17): the main way to scan a card. */
+.app .product-photo-lookup__camera, .product-photo-lookup__camera { width: 100%; min-height: 52px; margin: 4px 0 10px; border: 0; border-radius: 12px; background: var(--action-primary, #E8C86B); color: var(--on-primary, #1A0F12); font: 700 16px/1 var(--font-ui, inherit); cursor: pointer; }
+.app .product-photo-lookup__camera:disabled { opacity: .6; }

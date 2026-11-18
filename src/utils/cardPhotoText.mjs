@@ -76,9 +76,18 @@ export function findCardName(text = "") {
     if (line.length > 40) continue;
     // Real names have a vowel and are not one letter repeated ("EE", "LLY", "III").
     if (!/[aeiouàâäéèêëïîôöüûAEIOU]/.test(line) || /^(.)\1+$/i.test(line.replace(/[^A-Za-z]/g, ""))) continue;
-    const words = line.split(" ");
+    // Drop number/symbol tokens ("100", "+60", ".70", "HE.@") and a stray
+    // stage label fragment in front of the name ("BAS", "LBASIC").
+    const words = line.split(" ")
+      .filter((word) => (word.match(/[A-Za-zÀ-ž]/g) || []).length >= Math.max(1, word.replace(/[’'.-]/g, "").length * 0.6))
+      .filter((word, index, all) => !(index === 0 && all.length > 1 && /^l?bas(?:ic?)?$/i.test(word)));
     // Short stray tokens from art and borders: keep known suffixes, drop other 1-2 letter bits.
-    const kept = words.filter((word, index) => word.length > 2 || SUFFIX.test(word) || (index > 0 && /^[A-Z][a-z]?\.?$/.test(word)));
+    const kept = words.filter((word, index) => {
+      if (SUFFIX.test(word)) return true;
+      // A short all-caps fragment after the name ("HE.", "BT") is border noise.
+      if (index > 0 && /^[A-Z]{1,3}\.?$/.test(word)) return false;
+      return word.length > 2 || (index > 0 && /^[A-Z][a-z]?\.?$/.test(word));
+    });
     if (!kept.length) continue;
     candidates.push(kept.join(" "));
   }
@@ -89,8 +98,39 @@ export function findCardName(text = "") {
  * Builds the reviewed search from the three reads of one card photo.
  * @param {{ nameText?: string, numberText?: string, fullText?: string }} reads
  */
-export function parseCardPhotoText({ nameText = "", numberText = "", fullText = "" } = {}) {
-  const names = [...findCardName(nameText), ...findCardName(fullText).slice(0, 2)];
+/**
+ * Ranks name candidates. A name that more than one read agrees on wins over
+ * the first line read; real names look like words (capital letter, 4+ letters).
+ */
+export function rankCardNames(candidateLists = []) {
+  const scores = new Map();
+  const display = new Map();
+  candidateLists.forEach((list, readIndex) => {
+    list.forEach((name, position) => {
+      const key = name.toLowerCase().replace(/[^a-z0-9à-ž]/g, "");
+      if (key.length < 3) return;
+      const entry = scores.get(key) || { reads: new Set(), best: Infinity };
+      entry.reads.add(readIndex);
+      entry.best = Math.min(entry.best, position);
+      scores.set(key, entry);
+      if (!display.has(key) || /^[A-Z]/.test(name)) display.set(key, name);
+    });
+  });
+  const rank = (key) => {
+    const name = display.get(key);
+    const entry = scores.get(key);
+    const letters = key.replace(/[^a-zà-ž]/g, "").length;
+    return entry.reads.size * 3
+      + (/^[A-ZÀ-Ž]/.test(name) ? 1 : 0)
+      + (letters >= 4 ? 1 : 0) + (letters >= 6 ? 0.5 : 0)
+      - (name === name.toUpperCase() && letters <= 4 ? 1.5 : 0)
+      - entry.best * 0.25;
+  };
+  return [...scores.keys()].sort((a, b) => rank(b) - rank(a)).map((key) => display.get(key));
+}
+
+export function parseCardPhotoText({ nameText = "", numberText = "", fullText = "", extraNameTexts = [] } = {}) {
+  const names = rankCardNames([findCardName(nameText), ...extraNameTexts.map((text) => findCardName(text)), findCardName(fullText).slice(0, 4)]);
   const numbers = [...findCardNumbers(numberText), ...findCardNumbers(fullText)];
   const seen = new Set();
   const suggestions = [];

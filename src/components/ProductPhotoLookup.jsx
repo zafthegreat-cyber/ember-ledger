@@ -1,4 +1,6 @@
-import {useEffect,useId,useRef,useState} from 'react';
+import {lazy,Suspense,useEffect,useId,useRef,useState} from 'react';
+// Live camera with a card-shaped frame; loads only when opened.
+const CardCameraFrame=lazy(()=>import('./CardCameraFrame.jsx'));
 import {normalizeProductPhotoQuery,readProductPhotoText,validateProductPhotoFile,PRODUCT_PHOTO_LIMITS} from '../utils/productPhotoLookup.mjs';
 // Card mode uses the card reader (name strip + number strip); it loads only when a card photo is chosen.
 const readCardPhoto=(file,options)=>import('../utils/cardPhotoReader.mjs').then(module=>module.readCardPhoto(file,options));
@@ -8,19 +10,23 @@ import './product-photo-lookup.css';
 // preview URL and complete OCR text are never sent to a parent or saved.
 export default function ProductPhotoLookup({onQuery,onDraftChange,initialQuery='',disabled=false,kind='item',reader=kind==='card'?readCardPhoto:readProductPhotoText}){
  const id=useId(),sequence=useRef(0),controller=useRef(null),previewRef=useRef(''),edited=useRef(false),queryRef=useRef(null);
- const [preview,setPreview]=useState(''),[fileName,setFileName]=useState(''),[query,setQuery]=useState(initialQuery),[text,setText]=useState(''),[suggestions,setSuggestions]=useState([]),[busy,setBusy]=useState(false),[searching,setSearching]=useState(false),[progress,setProgress]=useState(null),[message,setMessage]=useState(''),[error,setError]=useState('');
+ const [preview,setPreview]=useState(''),[fileName,setFileName]=useState(''),[query,setQuery]=useState(initialQuery),[text,setText]=useState(''),[suggestions,setSuggestions]=useState([]),[busy,setBusy]=useState(false),[searching,setSearching]=useState(false),[progress,setProgress]=useState(null),[message,setMessage]=useState(''),[error,setError]=useState(''),[cameraOpen,setCameraOpen]=useState(false);
  useEffect(()=>()=>{sequence.current++;controller.current?.abort();if(previewRef.current)URL.revokeObjectURL(previewRef.current);},[]);
  function stop(){sequence.current++;controller.current?.abort();controller.current=null;setBusy(false);setProgress(null);}
  function clearPreview(){if(previewRef.current)URL.revokeObjectURL(previewRef.current);previewRef.current='';setPreview('');setFileName('');}
  async function choose(event){
   const file=event.target.files?.[0];event.target.value='';if(!file)return;
+  await readFile(file);
+ }
+ // framed: the photo is the area inside the card-shaped camera frame.
+ async function readFile(file,{framed=false}={}){
   onDraftChange?.();
   stop();clearPreview();setError('');setMessage('');setText('');setSuggestions([]);setQuery('');edited.current=false;
   const invalid=validateProductPhotoFile(file);if(invalid){setError(invalid);return;}
   const request=sequence.current,abort=new AbortController();controller.current=abort;
   previewRef.current=URL.createObjectURL(file);setPreview(previewRef.current);setFileName(file.name);setBusy(true);
   try{
-   const result=await reader(file,{signal:abort.signal,onProgress:value=>{if(request===sequence.current)setProgress(value);}});
+   const result=await reader(file,{signal:abort.signal,framed,onProgress:value=>{if(request===sequence.current)setProgress(value);}});
    if(request!==sequence.current||abort.signal.aborted)return;
    setText(result.text||'');setSuggestions(result.suggestions||[]);if(!edited.current){onDraftChange?.();setQuery(result.query||'');}
    setMessage(result.message||'Review the text before searching.');
@@ -38,6 +44,8 @@ export default function ProductPhotoLookup({onQuery,onDraftChange,initialQuery='
  const subject=kind==='card'?'card':kind==='sealed'?'sealed product':'card or sealed product';
  return <section className="product-photo-lookup" aria-labelledby={`${id}-title`}>
   <header><h3 id={`${id}-title`}>Find from a photo</h3><p>Photograph the printed name, card number or barcode on your {subject}.</p></header>
+  {kind==='card'&&cameraOpen?<Suspense fallback={<p role="status">Opening the camera…</p>}><CardCameraFrame onCancel={()=>setCameraOpen(false)} onCapture={async file=>{setCameraOpen(false);await readFile(file,{framed:true});}}/></Suspense>:null}
+  {kind==='card'&&!cameraOpen?<button type="button" className="product-photo-lookup__camera" disabled={disabled||searching||busy} onClick={()=>setCameraOpen(true)}>Scan with the card frame</button>:null}
   <div className="product-photo-lookup__pickers">
    <label className="product-photo-lookup__picker">Take photo<input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" aria-label="Take a product photo" disabled={disabled||searching} onChange={choose}/></label>
    <label className="product-photo-lookup__picker">Choose image<input type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose a product image" disabled={disabled||searching} onChange={choose}/></label>

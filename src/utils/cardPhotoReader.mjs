@@ -81,10 +81,12 @@ export function findCardBounds(grey, width, height) {
   if (!clear) return null;
   const box = { x: left.index / width, y: top.index / height, w: (right.index - left.index) / width, h: (bottom.index - top.index) / height };
   const aspect = (box.w * width) / (box.h * height);
-  // Trading cards are about 63 x 88 mm (0.716). Accept upright cards only.
-  if (aspect < 0.55 || aspect > 0.9 || box.w < 0.35 || box.h < 0.35) return null;
+  // Trading cards are about 63 x 88 mm (0.716 upright, 1.40 lying sideways).
+  const upright = aspect >= 0.55 && aspect <= 0.9;
+  const sideways = aspect >= 1.15 && aspect <= 1.8;
+  if ((!upright && !sideways) || box.w < 0.2 || box.h < 0.2) return null;
   if (box.x < 0.03 && box.y < 0.03 && box.w > 0.94 && box.h > 0.94) return null;
-  return box;
+  return { ...box, sideways };
 }
 
 async function decode(file) {
@@ -121,8 +123,29 @@ function crop(source, sx, sy, sw, sh, targetWidth, enhance) {
 const toPng = (canvas) => new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(fail("invalid_image")), "image/png"))
   .then((blob) => blob.arrayBuffer()).then((buffer) => new Uint8Array(buffer));
 
-/** Locate the card, then return the three crops to read. Exported for the evaluation script. */
-export async function prepareCardCrops(file) {
+// Copies the card out of the photo, turned upright (rotate is 0, 90 or -90 degrees).
+function uprightCard(image, card, rotate, maxSide) {
+  const scale = Math.min(1, maxSide / Math.max(card.w, card.h));
+  const w = Math.max(1, Math.round(card.w * scale)), h = Math.max(1, Math.round(card.h * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = rotate ? h : w;
+  canvas.height = rotate ? w : h;
+  const context = canvas.getContext("2d");
+  if (!context) throw fail("unsupported");
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.imageSmoothingQuality = "high";
+  context.translate(canvas.width / 2, canvas.height / 2);
+  context.rotate((rotate * Math.PI) / 180);
+  context.drawImage(image, card.x, card.y, card.w, card.h, -w / 2, -h / 2, w, h);
+  return canvas;
+}
+
+/**
+ * Locate the card, then return the crops to read. Exported for the evaluation script.
+ * framed: the photo came from the card-shaped camera frame, so the whole image is the card.
+ */
+export async function prepareCardCrops(file, { framed = false } = {}) {
   const image = await decode(file);
   const width = image.width || image.naturalWidth;
   const height = image.height || image.naturalHeight;
@@ -134,7 +157,7 @@ export async function prepareCardCrops(file) {
   const pixels = context.getImageData(0, 0, thumb.width, thumb.height).data;
   const grey = new Uint8Array(thumb.width * thumb.height);
   for (let i = 0, p = 0; i < pixels.length; i += 4, p += 1) grey[p] = (pixels[i] * 299 + pixels[i + 1] * 587 + pixels[i + 2] * 114) / 1000;
-  const found = findCardBounds(grey, thumb.width, thumbHeight);
+  const found = framed ? null : findCardBounds(grey, thumb.width, thumbHeight);
   // A slightly tilted card has slanted edges; keep a small margin so the name is not cut off.
   const pad = 0.015;
   const box = found ? { x: Math.max(0, found.x - pad), y: Math.max(0, found.y - pad), w: Math.min(1, found.w + pad * 2), h: Math.min(1, found.h + pad * 2) } : { x: 0, y: 0, w: 1, h: 1 };
@@ -142,24 +165,38 @@ export async function prepareCardCrops(file) {
   const card = { x: box.x * width, y: box.y * height, w: box.w * width, h: box.h * height };
   const [nameTop, nameBottom] = CARD_PHOTO_READER.nameBand;
   const [numTop, numBottom] = CARD_PHOTO_READER.numberBand;
-  const name = crop(image, card.x, card.y + card.h * nameTop, card.w, card.h * (nameBottom - nameTop), CARD_PHOTO_READER.stripWidth, true);
-  // A taller second look at the top of the card, for tilted cards and tall name bars.
-  const nameWide = crop(image, card.x, card.y, card.w, card.h * 0.24, CARD_PHOTO_READER.stripWidth, true);
-  const number = crop(image, card.x, card.y + card.h * numTop, card.w, card.h * (numBottom - numTop), CARD_PHOTO_READER.stripWidth, true);
-  const fullScale = Math.min(1, CARD_PHOTO_READER.fullMaxSide / Math.max(card.w, card.h));
-  const full = crop(image, card.x, card.y, card.w, card.h, Math.round(card.w * fullScale), true);
+  // A card lying sideways is read both ways up; the reads that agree win.
+  const turns = found?.sideways ? [90, -90] : [0];
+  const images = [];
+  const canvases = [];
+  for (const [index, turn] of turns.entries()) {
+    const upright = uprightCard(image, card, turn, 2400);
+    const cw = upright.width, ch = upright.height;
+    const name = crop(upright, 0, ch * nameTop, cw, ch * (nameBottom - nameTop), CARD_PHOTO_READER.stripWidth, true);
+    // A taller second look at the top of the card, for tilted cards and tall name bars.
+    const nameWide = crop(upright, 0, 0, cw, ch * 0.24, CARD_PHOTO_READER.stripWidth, true);
+    const number = crop(upright, 0, ch * numTop, cw, ch * (numBottom - numTop), CARD_PHOTO_READER.stripWidth, true);
+    images.push(
+      { key: `name${index}`, psm: "6", image: await toPng(name) },
+      { key: `nameWide${index}`, psm: "11", image: await toPng(nameWide) },
+      { key: `number${index}`, psm: "11", image: await toPng(number) },
+    );
+    if (index === 0) {
+      // No clear card edge: the card may be small in a wide shot, so read the whole photo larger.
+      const fullSide = found || framed ? CARD_PHOTO_READER.fullMaxSide : 2400;
+      const fullScale = Math.min(1, fullSide / Math.max(cw, ch));
+      const full = crop(upright, 0, 0, cw, ch, Math.round(cw * fullScale), true);
+      images.push({ key: "full", psm: "11", image: await toPng(full) });
+      canvases.push(full);
+    }
+    canvases.push(upright, name, nameWide, number);
+  }
   image.close?.();
-  const images = [
-    { key: "name", psm: "6", image: await toPng(name) },
-    { key: "nameWide", psm: "11", image: await toPng(nameWide) },
-    { key: "number", psm: "11", image: await toPng(number) },
-    { key: "full", psm: "11", image: await toPng(full) },
-  ];
-  for (const canvas of [name, nameWide, number, full]) { canvas.width = 0; canvas.height = 0; }
-  return { images, foundCard: Boolean(found) };
+  for (const canvas of canvases) { canvas.width = 0; canvas.height = 0; }
+  return { images, foundCard: Boolean(found) || framed, sideways: Boolean(found?.sideways) };
 }
 
-export async function readCardPhoto(file, { signal, onProgress, timeoutMs = CARD_PHOTO_READER.timeoutMs, workerUrl } = {}) {
+export async function readCardPhoto(file, { signal, onProgress, timeoutMs = CARD_PHOTO_READER.timeoutMs, workerUrl, framed = false } = {}) {
   const invalid = validateProductPhotoFile(file);
   if (invalid) return result("invalid", "file_invalid", invalid);
   if (signal?.aborted) return result("cancelled", "cancelled", "Reading stopped. You can type the card name and number below.");
@@ -176,7 +213,7 @@ export async function readCardPhoto(file, { signal, onProgress, timeoutMs = CARD
   try {
     return await Promise.race([interrupted, (async () => {
       progress("Finding the card in your photo…");
-      const { images, foundCard } = await prepareCardCrops(file);
+      const { images, foundCard } = await prepareCardCrops(file, { framed });
       if (stopped) throw fail("cancelled");
       progress("Loading the private card reader…");
       worker = new Worker(workerUrl || new URL("/ocr/card-photo-v1.worker.js", window.location.href), { name: "Code 3 card reader" });
@@ -188,14 +225,14 @@ export async function readCardPhoto(file, { signal, onProgress, timeoutMs = CARD
           if (stopped) return;
           if (data?.type === "progress" && data.status === "recognizing text") {
             if (data.progress >= 1) readsDone += 1;
-            progress(`Reading the card (${Math.min(4, readsDone + 1)} of 4)…`, (readsDone + Number(data.progress || 0)) / 4);
+            progress(`Reading the card (${Math.min(images.length, readsDone + 1)} of ${images.length})…`, (readsDone + Number(data.progress || 0)) / images.length);
           } else if (data?.type === "result") resolve(data);
           else if (data?.type === "failure") reject(fail("ocr_failed"));
         };
         worker.postMessage({ type: "recognize-many", images, gzip: MODEL_GZIP }, images.map((entry) => entry.image.buffer));
       });
       const byKey = Object.fromEntries((response.texts || []).map((entry) => [entry.key, String(entry.text || "")]));
-      const parsed = parseCardPhotoText({ nameText: [byKey.name, byKey.nameWide].filter(Boolean).join("\n"), numberText: byKey.number, fullText: byKey.full });
+      const parsed = parseCardPhotoText({ nameText: byKey.name0, extraNameTexts: [byKey.nameWide0, byKey.name1, byKey.nameWide1].filter(Boolean), numberText: [byKey.number0, byKey.number1].filter(Boolean).join("\n"), fullText: byKey.full });
       const message = parsed.certainty === "name-and-number"
         ? "Found a name and card number. Check them, then review the matches."
         : parsed.certainty === "number-only"

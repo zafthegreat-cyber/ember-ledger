@@ -67,3 +67,25 @@ test("contrast stretch and card finder", () => {
   assert.ok(Math.abs(box.x - 0.2) < 0.03 && Math.abs(box.w - 0.6) < 0.04);
   assert.equal(findCardBounds(new Uint8Array(width * height).fill(128), width, height), null, "no border: use the whole photo");
 });
+
+test("names from real photos: junk tokens dropped, agreeing reads win", async () => {
+  const { rankCardNames } = await import("../src/utils/cardPhotoText.mjs");
+  assert.equal(findCardName("BAS Lickitung 100")[0], "Lickitung");
+  assert.equal(findCardName("Bulbasaur +60")[0], "Bulbasaur");
+  assert.equal(findCardName("Tangela HE.@")[0], "Tangela");
+  assert.equal(rankCardNames([["mes", "Mareep"], ["Mareep"], ["Mareep"]])[0], "Mareep", "agreement beats first line");
+  assert.equal(parseCardPhotoText({ nameText: "{ [sree 5010 5 |\nmes\nMareep\n50 HP", extraNameTexts: ["'Mareep\n50HP"], numberText: "67/109" }).query, "Mareep 67/109");
+});
+
+test("camera frame maps to the right part of the video (object-fit: cover)", async () => {
+  const { frameToVideoRect, CARD_ASPECT } = await import("../src/utils/cardCameraFrame.mjs");
+  assert.ok(Math.abs(CARD_ASPECT - 0.716) < 0.001);
+  // 1920x1080 video shown in a 300x400 box: scaled to height (400/1080), sides cropped.
+  const area = frameToVideoRect({ boxWidth: 300, boxHeight: 400, videoWidth: 1920, videoHeight: 1080, frame: { x: 50, y: 28, width: 200, height: 344 } });
+  const scale = 400 / 1080, offsetX = (300 - 1920 * scale) / 2;
+  assert.ok(Math.abs(area.x - (50 - offsetX) / scale) < 0.01);
+  assert.ok(Math.abs(area.y - 28 / scale) < 0.01);
+  assert.ok(Math.abs(area.width - 200 / scale) < 0.01 && Math.abs(area.height - 344 / scale) < 0.01);
+  const edge = frameToVideoRect({ boxWidth: 300, boxHeight: 400, videoWidth: 1920, videoHeight: 1080, frame: { x: -500, y: -10, width: 5000, height: 500 } });
+  assert.ok(edge.x >= 0 && edge.y >= 0 && edge.x + edge.width <= 1920 && edge.y + edge.height <= 1080, "never outside the video");
+});

@@ -23,6 +23,8 @@ fs.mkdirSync(out, { recursive: true });
 
 function answerFromName(file) {
   const base = path.basename(file).replace(/\.[^.]+$/, "");
+  // Camera file names (20261117_194123) carry no answer: read and listed, not scored.
+  if (/^[\d_\- ]+$/.test(base)) return { name: "", number: "", unlabeled: true };
   const code = base.match(/((?:OP|ST|EB|PRB)\d{2}-\d{3}|P-\d{3})$/i);
   if (code) return { name: base.slice(0, code.index).replace(/[-_]+/g, " ").trim(), number: code[1].toUpperCase() };
   const fraction = base.match(/[-_]((?:TG|GG|SV)?\d{1,3}[a-z]?)[-_]((?:TG|GG|SV)?\d{2,3})$/i);

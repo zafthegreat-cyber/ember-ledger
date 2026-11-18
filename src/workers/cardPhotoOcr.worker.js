@@ -6,7 +6,7 @@
 let started = false;
 self.onmessage = async ({ data }) => {
   if (started || data?.type !== "recognize-many" || !Array.isArray(data.images)) return;
-  if (!data.images.length || data.images.length > 4 || !data.images.every((entry) => entry?.image instanceof Uint8Array)) return;
+  if (!data.images.length || data.images.length > 8 || !data.images.every((entry) => entry?.image instanceof Uint8Array)) return;
   started = true;
   let worker;
   try {
