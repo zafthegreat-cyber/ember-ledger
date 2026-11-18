@@ -6107,6 +6107,8 @@ export default function App() {
   const [scanReview, setScanReview] = useState(null);
   // Grader, grade and cert number read from a slab label; carried to the save screen.
   const [scanSlabDetails, setScanSlabDetails] = useState(null);
+  // Site, price and shipping read from a listing screenshot (eBay, Marketplace…).
+  const [scanListingDetails, setScanListingDetails] = useState(null);
   const receiptReadRequestRef = useRef(0);
   const [scanDestination, setScanDestination] = useState("none");
   const [scanSearchState, setScanSearchState] = useState("idle");
@@ -17469,7 +17471,7 @@ export default function App() {
     return {
       scanId: makeId("scan"),
       rawValue,
-      scanType: scanMode === "upc" ? "upc" : (scanMode === "card" || scanMode === "slab") ? "card" : scanMode === "manual" ? "manual" : "barcode",
+      scanType: scanMode === "upc" ? "upc" : (scanMode === "card" || scanMode === "slab") ? "card" : scanMode === "listing" ? "screenshot" : scanMode === "manual" ? "manual" : "barcode",
       matchedCatalogItemId: product?.id || "",
       itemName: product?.name || product?.productName || product?.cardName || rawValue || "Unknown item",
       catalogType: product?.catalogType || "unknown",
@@ -17494,6 +17496,7 @@ export default function App() {
     scanLookupRequestRef.current += 1;
     setEditingItemId(null);
     setScanSlabDetails(null);
+    setScanListingDetails(null);
     setScanMode("upc");
     setScanMatches([]);
     setScanReview(null);
@@ -18887,6 +18890,25 @@ export default function App() {
       : "Similar catalog suggestion is already under review.");
   }
 
+  // Listing screenshot → price paid (price + shipping), want-list target, a note and any grade.
+  function listingScreenshotSeed(listing) {
+    if (!listing) return {};
+    const price = Number.parseFloat(String(listing.price || "").replace(/[$,]/g, ""));
+    const shipping = Number.parseFloat(String(listing.shipping || "").replace(/[$,]/g, "")) || 0;
+    if (!Number.isFinite(price) && !listing.graded) return {};
+    const total = Number.isFinite(price) ? Math.round((price + shipping) * 100) / 100 : "";
+    const site = String(listing.site || "").trim() || "a listing";
+    return {
+      ...(Number.isFinite(price) ? {
+        vault: { unitCost: String(total) },
+        forge: { unitCost: String(total) },
+        wishlist: { targetPrice: String(price) },
+        notes: `${listing.sold ? "Sold on" : "Seen on"} ${site} for ${price.toFixed(2)}${shipping ? ` + ${shipping.toFixed(2)} shipping` : ""}.`,
+      } : {}),
+      ...(listing.graded ? { graded: true, gradingCompany: listing.gradingCompany || "", grade: listing.grade || "" } : {}),
+    };
+  }
+
   async function confirmScannerDestination(destinationOverride = "") {
     const explicitDestination = typeof destinationOverride === "string" ? destinationOverride : "";
     const destination = normalizeAddDestinationValue(explicitDestination || scanDestination || scanReview?.destination || "none", "none", { allowIgnore: true });
@@ -18922,6 +18944,7 @@ export default function App() {
             grade: scanSlabDetails.grade || "",
             certificationNumber: scanSlabDetails.certificationNumber || "",
           } : {}),
+          ...listingScreenshotSeed(scanSlabDetails ? null : scanListingDetails),
         },
       });
     }
@@ -49847,7 +49870,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="modal-title-row modal-sticky-header scanner-modal-header">
               <div>
                 <h2 id="scanner-review-title">Scan</h2>
-                <p>Barcode, card, several cards, graded slab, photo or receipt.</p>
+                <p>Barcode, card, several cards, graded slab, listing screenshot, photo or receipt.</p>
                 <p>Nothing is saved until you review it.</p>
               </div>
               <button type="button" className="modal-close-button" aria-label="Close scanner" onClick={closeInventoryScanner}>X</button>
@@ -49858,6 +49881,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 ["card", "Card", "card", "▣"],
                 ["several", "Several cards", "card", "▣"],
                 ["slab", "Graded slab", "card", "▣"],
+                ["listing", "Screenshot", "photo", "□"],
                 ["picture", "Photo", "photo", "□"],
                 ["receipt", "Receipt", "receipt", "▤"],
                 ["manual", "Manual", "manual", "✎"],
@@ -49877,6 +49901,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     }
                     scanLookupRequestRef.current += 1;
                     setScanSlabDetails(null);
+                    setScanListingDetails(null);
                     setScanReview(null);
                     setScanMatches([]);
                     setScanSearchState("idle");
@@ -49938,6 +49963,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   Continue
                 </button>
                 {receiptScanMessage ? <p className="compact-subtitle scan-product-message">{receiptScanMessage}</p> : null}
+              </div>
+            ) : scanMode === "listing" ? (
+              <div className="scan-product-mode-panel scan-product-mode-panel--photo">
+                <ProductPhotoLookup key="listing" kind="listing" onListingDetails={setScanListingDetails} initialQuery={scanInput} disabled={scanSearchState === "loading"} onDraftChange={() => { scanLookupRequestRef.current += 1; setScanReview(null); setScanMatches([]); setScanSearchState("idle"); setScanMessage(""); }} onQuery={async query => {
+                  setPictureLookup(current => ({ ...current, text: query }));
+                  await handleCatalogScanMatch(query);
+                }} />
               </div>
             ) : scanMode === "slab" ? (
               <div className="scan-product-mode-panel scan-product-mode-panel--card">

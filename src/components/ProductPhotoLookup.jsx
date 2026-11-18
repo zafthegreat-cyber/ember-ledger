@@ -6,14 +6,26 @@ import {normalizeProductPhotoQuery,readProductPhotoText,validateProductPhotoFile
 const readCardPhoto=(file,options)=>import('../utils/cardPhotoReader.mjs').then(module=>module.readCardPhoto(file,options));
 // Graded slabs: reads the label for grader, grade, cert number and the card.
 const readSlabPhoto=(file,options)=>import('../utils/cardPhotoReader.mjs').then(module=>module.readSlabPhoto(file,options));
+// Listing screenshots (eBay, Marketplace, Mercari…): screenshot text reader, then the listing parser.
+const readListingScreenshot=async(file,options)=>{
+ const [{extractScoutScreenshotText},{parseListingScreenshot}]=await Promise.all([import('../utils/scoutScreenshotOcr.mjs'),import('../utils/listingScreenshotText.mjs')]);
+ const read=await extractScoutScreenshotText(file,options);
+ if(!read?.text)return {...read,suggestions:[],query:''};
+ const listing=parseListingScreenshot(read.text);
+ const found=[listing.site,listing.title&&'title',listing.price!==null&&'price'].filter(Boolean);
+ const suggestions=[listing.number&&{type:'card-number',value:listing.number,label:'Card number'},listing.title&&{type:'text',value:listing.title,label:'Listing title'}].filter(Boolean);
+ return {...listing,listing:true,status:found.length?'complete':'low_confidence',suggestions,message:found.length?`Read ${found.join(', ')}. Check the details, then review the matches.`:'Could not read this screenshot. Crop to the listing title and price, or type the details.'};
+};
+const LISTING_FIELDS=[['site','Site'],['price','Price'],['shipping','Shipping']];
+const money=value=>value===null||value===undefined||value===''?'':String(value);
 const SLAB_FIELDS=[['gradingCompany','Grader'],['grade','Grade'],['certificationNumber','Cert number']];
 import './product-photo-lookup.css';
 
 // Only the explicitly reviewed query leaves this component. The selected file,
 // preview URL and complete OCR text are never sent to a parent or saved.
-export default function ProductPhotoLookup({onQuery,onDraftChange,onSlabDetails,initialSlab=false,initialQuery='',disabled=false,kind='item',reader=kind==='card'?readCardPhoto:readProductPhotoText,slabReader=readSlabPhoto}){
+export default function ProductPhotoLookup({onQuery,onDraftChange,onSlabDetails,initialSlab=false,initialQuery='',disabled=false,kind='item',onListingDetails,reader=kind==='card'?readCardPhoto:kind==='listing'?readListingScreenshot:readProductPhotoText,slabReader=readSlabPhoto}){
  const id=useId(),sequence=useRef(0),controller=useRef(null),previewRef=useRef(''),edited=useRef(false),queryRef=useRef(null);
- const [preview,setPreview]=useState(''),[fileName,setFileName]=useState(''),[query,setQuery]=useState(initialQuery),[text,setText]=useState(''),[suggestions,setSuggestions]=useState([]),[busy,setBusy]=useState(false),[searching,setSearching]=useState(false),[progress,setProgress]=useState(null),[message,setMessage]=useState(''),[error,setError]=useState(''),[cameraOpen,setCameraOpen]=useState(false),[slab,setSlab]=useState(initialSlab),[slabDetails,setSlabDetails]=useState(initialSlab?{gradingCompany:'',grade:'',certificationNumber:''}:null);
+ const [preview,setPreview]=useState(''),[fileName,setFileName]=useState(''),[query,setQuery]=useState(initialQuery),[text,setText]=useState(''),[suggestions,setSuggestions]=useState([]),[busy,setBusy]=useState(false),[searching,setSearching]=useState(false),[progress,setProgress]=useState(null),[message,setMessage]=useState(''),[error,setError]=useState(''),[cameraOpen,setCameraOpen]=useState(false),[slab,setSlab]=useState(initialSlab),[slabDetails,setSlabDetails]=useState(initialSlab?{gradingCompany:'',grade:'',certificationNumber:''}:null),[listingDetails,setListingDetails]=useState(null);
  useEffect(()=>()=>{sequence.current++;controller.current?.abort();if(previewRef.current)URL.revokeObjectURL(previewRef.current);},[]);
  function stop(){sequence.current++;controller.current?.abort();controller.current=null;setBusy(false);setProgress(null);}
  function clearPreview(){if(previewRef.current)URL.revokeObjectURL(previewRef.current);previewRef.current='';setPreview('');setFileName('');}
@@ -32,6 +44,7 @@ export default function ProductPhotoLookup({onQuery,onDraftChange,onSlabDetails,
    const result=await (slab?slabReader:reader)(file,{signal:abort.signal,framed,onProgress:value=>{if(request===sequence.current)setProgress(value);}});
    if(request!==sequence.current||abort.signal.aborted)return;
    setText(result.text||'');setSuggestions(result.suggestions||[]);if(!edited.current){onDraftChange?.();setQuery(result.query||'');}
+   if(result.listing){const details={site:result.site||'',price:money(result.price),shipping:money(result.shipping),sold:Boolean(result.sold),title:result.title||'',condition:result.condition||'',graded:Boolean(result.graded),gradingCompany:result.gradingCompany||'',grade:result.grade||''};setListingDetails(details);onListingDetails?.(details);}
    if(slab){const details={gradingCompany:result.gradingCompany||'',grade:result.grade||'',certificationNumber:result.certificationNumber||''};setSlabDetails(details);onSlabDetails?.(details);}
    setMessage(result.message||'Review the text before searching.');
    if(['invalid','failed','unsupported','timeout'].includes(result.status))setError(result.message||'Type the details below to continue.');
@@ -45,17 +58,19 @@ export default function ProductPhotoLookup({onQuery,onDraftChange,onSlabDetails,
   catch{if(request===sequence.current)setError('Catalog search did not finish. Your search text is still here; try again.');}
   finally{if(request===sequence.current)setSearching(false);}
  }
- const subject=kind==='card'?'card':kind==='sealed'?'sealed product':'card or sealed product';
+  const subject=kind==='card'?'card':kind==='sealed'?'sealed product':'card or sealed product';
+ const isListing=kind==='listing';
  return <section className="product-photo-lookup" aria-labelledby={`${id}-title`}>
-  <header><h3 id={`${id}-title`}>Find from a photo</h3><p>Photograph the printed name, card number or barcode on your {subject}.</p></header>
+  <header><h3 id={`${id}-title`}>{isListing?'Read a listing screenshot':'Find from a photo'}</h3><p>{isListing?'Screenshot a listing on eBay, Facebook Marketplace, Mercari, TCGplayer, Whatnot or OfferUp. We read the title, price, shipping and condition.':`Photograph the printed name, card number or barcode on your ${subject}.`}</p></header>
   {kind==='card'?<label className="product-photo-lookup__slab"><input type="checkbox" checked={slab} disabled={disabled||busy||searching} onChange={event=>{const on=event.target.checked;setSlab(on);const next=on?{gradingCompany:'',grade:'',certificationNumber:''}:null;setSlabDetails(next);onSlabDetails?.(next);}}/>This is a graded slab (PSA, CGC, Beckett…)</label>:null}
   {slab&&slabDetails?<div className="product-photo-lookup__slab-fields" aria-label="Slab label details">{SLAB_FIELDS.map(([key,label])=><label key={key}>{label}<input value={slabDetails[key]} autoComplete="off" maxLength={40} disabled={disabled||searching} onChange={event=>{const next={...slabDetails,[key]:event.target.value};setSlabDetails(next);onSlabDetails?.(next);}}/></label>)}</div>:null}
   {kind==='card'&&cameraOpen?<Suspense fallback={<p role="status">Opening the camera…</p>}><CardCameraFrame slab={slab} onCancel={()=>setCameraOpen(false)} onCapture={async file=>{setCameraOpen(false);await readFile(file,{framed:true});}}/></Suspense>:null}
   {kind==='card'&&!cameraOpen?<button type="button" className="product-photo-lookup__camera" disabled={disabled||searching||busy} onClick={()=>setCameraOpen(true)}>{slab?'Scan with the slab frame':'Scan with the card frame'}</button>:null}
-  <div className="product-photo-lookup__pickers">
+  {isListing?<div className="product-photo-lookup__pickers"><label className="product-photo-lookup__picker">Choose screenshot<input type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose a listing screenshot" disabled={disabled||searching} onChange={choose}/></label></div>:<div className="product-photo-lookup__pickers">
    <label className="product-photo-lookup__picker">Take photo<input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" aria-label="Take a product photo" disabled={disabled||searching} onChange={choose}/></label>
    <label className="product-photo-lookup__picker">Choose image<input type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose a product image" disabled={disabled||searching} onChange={choose}/></label>
-  </div>
+  </div>}
+  {listingDetails?<div className="product-photo-lookup__slab-fields" aria-label="Listing details">{LISTING_FIELDS.map(([key,label])=><label key={key}>{label}<input value={listingDetails[key]} inputMode={key==='site'?'text':'decimal'} autoComplete="off" maxLength={40} disabled={disabled||searching} onChange={event=>{const next={...listingDetails,[key]:event.target.value};setListingDetails(next);onListingDetails?.(next);}}/></label>)}{listingDetails.sold?<p className="product-photo-lookup__note">This listing shows a sold price.</p>:null}{listingDetails.graded?<p className="product-photo-lookup__note">Graded: {listingDetails.gradingCompany} {listingDetails.grade}</p>:null}</div>:null}
   <p className="product-photo-lookup__privacy">Your photo stays on this device. Text reading does not identify artwork, foil, condition or grade.</p>
   {preview&&<div className="product-photo-lookup__source"><img src={preview} alt="Selected product photo"/><div><span>{fileName}</span><button type="button" disabled={disabled||searching} onClick={()=>{onDraftChange?.();stop();clearPreview();setText('');setSuggestions([]);setMessage('Photo removed. You can use the search text below.');}}>Remove photo</button></div></div>}
   {busy&&<div className="product-photo-lookup__progress"><p role="status">{progress?.label||'Preparing photo on this device…'}</p><progress aria-label="Reading photo text" max="1" value={Number.isFinite(progress?.progress)?progress.progress:undefined}/><button type="button" onClick={()=>{onDraftChange?.();stop();setMessage('Reading stopped. You can type the details below.');queryRef.current?.focus();}}>Stop reading</button></div>}
