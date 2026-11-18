@@ -71,6 +71,9 @@ jobs:
           node --no-warnings scripts/test-community-server.mjs
           node --no-warnings scripts/test-restock-alerts.mjs
           node --no-warnings scripts/test-easy-nationwide-ui.mjs
+          node --no-warnings scripts/test-catalog-barcode-evidence.mjs
+          node --no-warnings scripts/test-market-search-presentation.mjs
+          node --no-warnings scripts/test-sealed-inspection-safety.mjs
           node --no-warnings scripts/test-play-upload.mjs
           node --no-warnings scripts/test-tier-foundation.mjs
           npm run test:native

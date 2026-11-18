@@ -7,16 +7,37 @@ import { useMemo, useState } from "react";
 import ScoutTileMap from "../../components/ScoutTileMap.jsx";
 import { PrimaryButton, SecondaryButton } from "../../components/operations/OperationsUI.jsx";
 import { buildRestockMapRows, describeLatestReport } from "./restockMapRows.js";
+import { useNearbyPreference } from "../../utils/nearbyPreference.mjs";
 import "./restock-map-card.css";
 
-export default function RestockMapCard({ stores = [], reports = [], isFollowed, onOpenStore, onReportAtStore, onFollowStore, onBrowseAll, areaLabel = "" }) {
-  const rows = useMemo(() => buildRestockMapRows({ stores, reports, isFollowed }), [stores, reports, isFollowed]);
+export default function RestockMapCard({ stores = [], reports = [], isFollowed, onOpenStore, onReportAtStore, onFollowStore, onBrowseAll }) {
+  // The nearby area chosen in Restocks (if any) decides which stores are on the map.
+  const [location] = useNearbyPreference();
+  const area = location.mode === "nearby" ? location.area : null;
+  const radius = location.radius || 25;
+  const areaLabel = area ? `within ${radius} miles of ${area.label || `${area.city}, ${area.state}`}` : "";
+  const rows = useMemo(() => buildRestockMapRows({ stores, reports, isFollowed, area, radius }), [stores, reports, isFollowed, area, radius]);
   const [selectedId, setSelectedId] = useState("");
   // Shown as followed straight away; the parent's store list catches up on its next render.
   const [justFollowed, setJustFollowed] = useState(() => new Set());
   const selected = rows.find((row) => row.id === selectedId) || rows[0] || null;
   const withReports = rows.filter((row) => row.report).length;
-  if (!rows.length) return null;
+  if (!rows.length) {
+    if (!area) return null;
+    // Nothing near the chosen area yet: say so instead of showing far-away stores.
+    return (
+      <section className="restock-map-card restock-map-card--empty" aria-labelledby="restock-map-title">
+        <header className="restock-map-card__head">
+          <div>
+            <h3 id="restock-map-title">Restock map</h3>
+            <p>No stores {areaLabel} on the map yet. Report a store you visit and it shows up here for collectors near you.</p>
+          </div>
+          {onBrowseAll ? <button type="button" className="restock-map-card__all" onClick={onBrowseAll}>All reports</button> : null}
+        </header>
+        {onReportAtStore ? <div className="restock-map-card__actions"><PrimaryButton onClick={() => onReportAtStore(null)}>Report the first restock near you</PrimaryButton></div> : null}
+      </section>
+    );
+  }
   const latest = describeLatestReport(selected?.report);
   return (
     <section className="restock-map-card" aria-labelledby="restock-map-title">

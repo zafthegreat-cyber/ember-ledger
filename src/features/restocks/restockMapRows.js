@@ -1,6 +1,7 @@
 // Pure helpers for the restock map (RestockMapCard.jsx). Only the latest public
 // report per store within 48 hours is used: no history, no quantities.
 import { relativeUiTime } from "../../utils/uiTime.mjs";
+import { areaKey, distanceMiles } from "../../utils/nationwideLocation.mjs";
 
 export const RESTOCK_MAP_RECENT_HOURS = 48;
 const num = (value) => (value === null || value === undefined || String(value).trim() === "" ? NaN : Number(value));
@@ -16,7 +17,9 @@ const isPublic = (report = {}) => (report.visibility || "public") === "public" &
 const EMPTY_TYPES = new Set(["no_stock", "out_of_stock", "empty"]);
 
 /** Pure: which stores go on the map, in what order, with their latest report. */
-export function buildRestockMapRows({ stores = [], reports = [], isFollowed = () => false, now = Date.now(), maxPins = 12 } = {}) {
+// area (optional, the chosen nearby area { lat, lng, city, state }): only stores
+// within radius miles are shown, nearest first; followed stores always stay.
+export function buildRestockMapRows({ stores = [], reports = [], isFollowed = () => false, now = Date.now(), maxPins = 12, area = null, radius = 25 } = {}) {
   const latest = new Map();
   for (const report of reports) {
     const at = seenAt(report);
@@ -35,6 +38,14 @@ export function buildRestockMapRows({ stores = [], reports = [], isFollowed = ()
     if (!id || seen.has(id) || !(point || store.city)) continue;
     seen.add(id);
     const report = latest.get(storeId(store)) || latest.get(storeKey(store)) || null;
+    const followed = Boolean(isFollowed(store));
+    let distance = null;
+    if (area) {
+      distance = point ? distanceMiles(area, point) : null;
+      // No coordinates: a store in the chosen city counts as in the area.
+      if (distance === null && areaKey(store.city) && areaKey(store.city) === areaKey(area.city) && areaKey(store.state || store.stateCode) === areaKey(area.state)) distance = 0;
+      if (!followed && (distance === null || distance > radius)) continue;
+    }
     rows.push({
       id, store, report,
       name: store.nickname || store.name || store.storeName || "Store",
@@ -42,13 +53,14 @@ export function buildRestockMapRows({ stores = [], reports = [], isFollowed = ()
       area: [store.city, store.state || store.stateCode].filter(Boolean).join(", ") || "Area not listed",
       ...(point ? { latitude: point.lat, longitude: point.lng } : {}),
       city: store.city || "", exact: Boolean(point),
-      followed: Boolean(isFollowed(store)),
-      watchlisted: Boolean(isFollowed(store)),
+      followed,
+      watchlisted: followed,
+      distance,
     });
   }
   const rank = (row) => (row.report ? 0 : row.followed ? 1 : row.exact ? 2 : 3);
   return rows
-    .sort((a, b) => rank(a) - rank(b) || (b.report ? seenAt(b.report) : 0) - (a.report ? seenAt(a.report) : 0) || a.name.localeCompare(b.name))
+    .sort((a, b) => rank(a) - rank(b) || (b.report ? seenAt(b.report) : 0) - (a.report ? seenAt(a.report) : 0) || (a.distance ?? Infinity) - (b.distance ?? Infinity) || a.name.localeCompare(b.name))
     .slice(0, maxPins);
 }
 

@@ -60,3 +60,22 @@ test("competitive wiring: follow from the map, wants become alerts, value on Hom
   const home = read("src/pages/OperationsHome.jsx");
   assert.match(home, /!kidSafeView && collectionWorth\.knownCount > 0/, "no money shown in the kid-safe view");
 });
+
+test("with a chosen area, only nearby stores show, nearest first, followed stores kept", () => {
+  const austin = { lat: 30.2672, lng: -97.7431, city: "Austin", state: "TX" };
+  const stores = [
+    { id: "far", name: "Virginia Beach Target", city: "Virginia Beach", state: "VA", latitude: 36.85, longitude: -75.98 },
+    { id: "near", name: "Round Rock Target", city: "Round Rock", state: "TX", latitude: 30.5083, longitude: -97.6789 },
+    { id: "closer", name: "Austin Walmart", city: "Austin", state: "TX", latitude: 30.30, longitude: -97.74 },
+    { id: "nocoords", name: "Austin GameStop", city: "Austin", state: "TX" },
+    { id: "followed-far", name: "Richmond Best Buy", city: "Richmond", state: "VA", latitude: 37.54, longitude: -77.43 },
+  ];
+  const rows = buildRestockMapRows({ stores, isFollowed: (store) => store.id === "followed-far", area: austin, radius: 25 });
+  const ids = rows.map((row) => row.id);
+  assert.ok(!ids.includes("far"), "stores outside the radius are left off");
+  assert.ok(ids.includes("followed-far"), "followed stores always stay");
+  assert.ok(ids.includes("nocoords"), "a store in the chosen city counts as nearby");
+  assert.ok(ids.indexOf("closer") < ids.indexOf("near"), "nearest first");
+  assert.equal(buildRestockMapRows({ stores: [stores[0]], area: austin }).length, 0, "nothing nearby gives an empty map, not far-away pins");
+  assert.equal(buildRestockMapRows({ stores: [stores[0]] }).length, 1, "with no area chosen every store can show");
+});

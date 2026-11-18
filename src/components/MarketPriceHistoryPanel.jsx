@@ -138,7 +138,7 @@ function PriceChart({ points, productName }) {
   const highPath = buildChartPath(points, "highPrice", width, height, padding, minPrice, maxPrice);
   const dated = points.filter((point) => point.date);
   const label = (value) => new Date(value).toLocaleDateString(undefined, { month: "short", year: "numeric" });
-  const price = (value) => `${value >= 100 ? Math.round(value).toLocaleString() : value.toFixed(2)}`;
+  const price = (value) => `$${value >= 100 ? Math.round(value).toLocaleString() : value.toFixed(2)}`;
 
   return (
     <div className="market-history-chart">
@@ -340,9 +340,9 @@ function MarketPriceHistorySession({
 
       <div className="market-history-summary">
         <div className="card"><p>Market Price</p><h2>{asMoney(latestPoint.marketPrice || currentMarketPrice, money)}</h2></div>
-        <div className="card"><p>Direct low</p><h2>{asMoney(latestPoint.directLow, money)}</h2></div>
+        <div className="card"><p>Direct low</p><h2>{asMoney(latestPoint.directLow || fallbackPoint.directLow, money)}</h2></div>
         <div className="card"><p>Volatility</p><h2>{volatility}</h2></div>
-        <div className="card"><p>Mid price</p><h2>{asMoney(latestPoint.midPrice, money)}</h2></div>
+        <div className="card"><p>Mid price</p><h2>{asMoney(latestPoint.midPrice || fallbackPoint.midPrice, money)}</h2></div>
       </div>
 
       <div className="market-history-controls">
@@ -383,8 +383,9 @@ function MarketPriceHistorySession({
       {!error && historyPoints.length === 1 ? <p className="compact-subtitle">More history will appear as prices refresh.</p> : null}
 
       <div className="market-history-summary snapshot">
-        <div className="card"><p>Low quoted price</p><h2>{asMoney(stats.lowQuotedPrice, money)}</h2></div>
-        <div className="card"><p>High quoted price</p><h2>{asMoney(stats.highQuotedPrice, money)}</h2></div>
+        {/* Weekly history has market prices only; quoted low/high would always read N/A. */}
+        {weeklyPoints.length ? null : <div className="card"><p>Low quoted price</p><h2>{asMoney(stats.lowQuotedPrice, money)}</h2></div>}
+        {weeklyPoints.length ? null : <div className="card"><p>High quoted price</p><h2>{asMoney(stats.highQuotedPrice, money)}</h2></div>}
         <div className="card"><p>Lowest Market</p><h2>{asMoney(stats.lowestMarketPrice, money)}</h2></div>
         <div className="card"><p>Highest Market</p><h2>{asMoney(stats.highestMarketPrice, money)}</h2></div>
         <div className="card"><p>Average Market</p><h2>{asMoney(stats.averageMarketPrice, money)}</h2></div>
