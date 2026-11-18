@@ -1,6 +1,6 @@
+import PrintingPicker from "../../components/PrintingPicker.jsx";
 import "./multi-destination.css";
 import { useId, useRef, useState } from "react";
-import { cardVersionLabel } from "../../utils/cardVersions.mjs";
 import { PrivateStorageImage } from "../../components/PrivateReceipt.jsx";
 import { knownStorageLocations } from "../../utils/storageLocations.mjs";
 // App owns state, authority and handlers; only this existing renderer is deferred.
@@ -109,7 +109,6 @@ export default function MultiDestinationContent({ scope }) {
       ...(Array.isArray(selectedCatalog?.versions) ? selectedCatalog.versions : []),
       ...(Array.isArray(selectedCatalog?.variants) ? selectedCatalog.variants : []),
     ].map(version => version.variant || version.variantName || version.finish || version.label).filter(Boolean))];
-    const finishChoices = catalogFinishChoices.length ? catalogFinishChoices : selectedCatalog ? [selectedCatalog.variant || selectedCatalog.finish || selectedCatalog.priceSubtype].filter(Boolean) : ["Normal", "Holofoil", "Reverse Holofoil"];
     const marketAddFlowActive = isMarketAddFlowSource(activeFlowModal?.source);
     const itemTypeText = [
       multiDestinationForm.productType,
@@ -620,16 +619,7 @@ export default function MultiDestinationContent({ scope }) {
               />
             </Field>
             {addFlowIsCard ? (
-              <Field label="Variant / finish">
-                <input
-                  list={`${barcodeId}-variants`}
-                  value={multiDestinationForm.variant}
-                  onChange={(event) => updateMultiDestinationField("variant", event.target.value)}
-                  placeholder="Normal, Holofoil, Reverse Holofoil, promo..."
-                />
-                <datalist id={`${barcodeId}-variants`}>{finishChoices.map(value => <option key={value} value={value}>{cardVersionLabel(value)}</option>)}</datalist>
-                <small>{selectedCatalog ? "Choose a recorded catalog finish, or enter the finish printed on your copy." : "Common finishes are suggested. Confirm your card's actual finish; custom entries are welcome."}</small>
-              </Field>
+              <PrintingPicker value={multiDestinationForm.variant} catalogNames={catalogFinishChoices} onChange={(value) => updateMultiDestinationField("variant", value)} />
             ) : null}
             <Field label="UPC / SKU if known">
               <input

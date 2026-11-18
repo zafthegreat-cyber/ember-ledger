@@ -1,3 +1,5 @@
+import MultiCardScanner from "../../components/MultiCardScanner.jsx";
+import { COMMON_FINISHES, SPECIAL_PRINTINGS } from "../../utils/cardPrintings.mjs";
 import "./add-anything.css";
 import { useMemo } from "react";
 import { PrivateReceiptImage, PrivateStorageImage } from "../../components/PrivateReceipt.jsx";
@@ -38,6 +40,7 @@ export default function AddAnythingContent({ scope }) {
     closeFlowModal,
     collectorVisualTypeLabel,
     createQuickAddCardScanRow,
+    appendQuickAddCardScanRows,
     createQuickAddWizardState,
     detectCollectorItemVisualType,
     findCatalogProductsByBarcode,
@@ -276,7 +279,7 @@ export default function AddAnythingContent({ scope }) {
         destination: row.destination || "vault",
         itemKind: "single",
         productType: "Single Card",
-        note: "Scan page of cards manual review. Automatic card detection is coming later.",
+        note: "Scan several cards review. Rows read by the camera or from a binder page are checked before saving.",
       });
     };
     const reviewFirstCardScanRow = () => {
@@ -312,10 +315,10 @@ export default function AddAnythingContent({ scope }) {
               <strong>Restocks screenshot/photo review</strong>
               <small>Try text extraction, then review before saving a restock report.</small>
             </button>
-            <button type="button" className="add-anything-option add-anything-option--vault" aria-label="Scan page of cards. Manual multi-card review. Automatic card detection is not live yet." onClick={() => setQuickAddPath("cardPageReview")}>
+            <button type="button" className="add-anything-option add-anything-option--vault" aria-label="Scan several cards. Keep scanning with the camera, or read a whole binder page." onClick={() => setQuickAddPath("cardPageReview")}>
               <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="vault" /></span>
-              <strong>Scan page of cards</strong>
-              <small>Manual multi-card review. Add rows yourself; automatic card detection is not live yet.</small>
+              <strong>Scan several cards</strong>
+              <small>Keep scanning with the camera, or read a whole binder page.</small>
             </button>
             <button type="button" className="add-anything-option add-anything-option--search" aria-label="Search by name. Find cards, sets, sealed products, UPCs, or SKUs." onClick={() => setQuickAddPath("search")}>
               <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="search" /></span>
@@ -497,16 +500,18 @@ export default function AddAnythingContent({ scope }) {
         : [createQuickAddCardScanRow({ id: "card-scan-row-1" })];
       return (
         <div className="add-anything-flow add-anything-card-page-review">
-          {renderFlowHeader("Scan page of cards", "Manual multi-card review. Add rows yourself; automatic card detection is not live yet.")}
+          {renderFlowHeader("Scan several cards", "Scan cards one after another or a whole binder page. Each card becomes a row to check before saving.")}
+          {appendQuickAddCardScanRows ? <MultiCardScanner onRows={appendQuickAddCardScanRows} /> : null}
           <div className="scan-anything-principle-card">
             <strong>Review before saving.</strong>
             <p>Each row defaults to Vault. Change the destination only when the card should go somewhere else.</p>
           </div>
+          <datalist id="card-scan-printings">{[...COMMON_FINISHES, "1st Edition", "1st Edition Holo", "Unlimited", ...SPECIAL_PRINTINGS.map((item) => item.label.replace(/ (.*)$/, ""))].map((value) => <option key={value} value={value} />)}</datalist>
           <div className="quick-add-card-scan-list">
             {rows.map((row, index) => (
               <div className="quick-add-card-scan-row" key={row.id}>
                 <div className="quick-add-row-heading">
-                  <strong>Card row {index + 1}</strong>
+                  <strong>Card {index + 1}{row.pocket ? ` · ${row.pocket}` : ""}{row.scanNote ? <small className="quick-add-card-scan-note"> · {row.scanNote}</small> : null}</strong>
                   <div className="quick-add-row-actions">
                     <button type="button" className="secondary-button" onClick={() => openCardScanRowReview(row)}>Review this card</button>
                     <button type="button" className="ghost-button" onClick={() => removeCardScanRow(row.id)} disabled={rows.length <= 1}>Remove</button>
@@ -523,7 +528,7 @@ export default function AddAnythingContent({ scope }) {
                     <input value={row.cardNumber} onChange={(event) => updateCardScanRow(row.id, { cardNumber: event.target.value })} placeholder="025/165, SVP..." />
                   </Field>
                   <Field label="Variant">
-                    <input value={row.variant} onChange={(event) => updateCardScanRow(row.id, { variant: event.target.value })} placeholder="Holo, Reverse Holo, promo..." />
+                    <input list="card-scan-printings" value={row.variant} onChange={(event) => updateCardScanRow(row.id, { variant: event.target.value })} placeholder="Normal, Holo, Reverse Holo, Trick or Treat..." />
                   </Field>
                   <Field label="Condition">
                     <input value={row.condition} onChange={(event) => updateCardScanRow(row.id, { condition: event.target.value })} placeholder="Near mint, played..." />
@@ -842,7 +847,7 @@ export default function AddAnythingContent({ scope }) {
     const moreEntryOptions = [
       { key: "search-catalog", title: "Search cards & products", ariaLabel: "Search cards and products by name.", icon: "search", tone: "search", onClick: () => setQuickAddPath("search") },
       { key: "enter-upc", title: "Type a barcode number", ariaLabel: "Type a barcode number (UPC or SKU) to find a product.", icon: "scan", tone: "search", onClick: () => setQuickAddPath("upc") },
-      { key: "scan-page", title: "Scan page of cards", ariaLabel: "Scan page of cards with manual review.", icon: "inventory", tone: "vault", onClick: () => setQuickAddPath("cardPageReview") },
+      { key: "scan-page", title: "Scan several cards", ariaLabel: "Scan several cards: keep scanning with the camera, or read a binder page.", icon: "inventory", tone: "vault", onClick: () => setQuickAddPath("cardPageReview") },
       { key: "review-screenshot", title: "Review a restock screenshot", ariaLabel: "Review a restock screenshot before saving a report.", icon: "find", tone: "search", onClick: () => setQuickAddPath("scoutScreenshotReview") },
       { key: "request-missing-item", title: "Request Missing Item", ariaLabel: "Request a missing catalog item.", icon: "search", tone: "search", onClick: openQuickAddMissingProduct },
       { key: "add-auction", title: "Add Auction", ariaLabel: "Add Auction with timing, fees, risk, and a maximum bid.", icon: "calendar", tone: "search", onClick: () => openFindAction("auctions", "new") },

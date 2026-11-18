@@ -233,7 +233,7 @@ const homeKeys = page => page.locator("[data-home-card]").evaluateAll(rows => ro
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, "Add fixture fits viewport");
       await page.screenshot({ path: path.join(output, `${prefix}-adaptive-manual-add.png`) });
       await render("add", { personalizationPreferences: { pagePreferences: { quickAdd: { visibleKeys: ["searchCard", "scanUpc", "scanScreenshot", "scanCards", "requestMissingItem"], updatedAt: now } } } });
-      assert.deepEqual(await primaryAdd(page).allTextContents(), ["Search cards & products", "Type a barcode number", "Review a restock screenshot", "Scan page of cards", "Request Missing Item"], "Saved preferences point to their exact working actions");
+      assert.deepEqual(await primaryAdd(page).allTextContents(), ["Search cards & products", "Type a barcode number", "Review a restock screenshot", "Scan several cards", "Request Missing Item"], "Saved preferences point to their exact working actions");
       for (const [name, destination] of [[/^Search cards/, "search"], [/^Enter UPC/, "upc"], [/^Review a restock screenshot/, "scoutScreenshotReview"], [/^Scan page of cards/, "cardPageReview"]]) {
         await page.getByRole("button", { name }).click();
         assert.deepEqual(await page.evaluate(() => window.qaCalls.at(-1)), ["path", destination]);

@@ -19446,6 +19446,17 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     setQuickAddWizard((current) => ({ ...current, ...patch }));
   }
 
+  // Multi-card scanning (Nov 17): cards read by the camera or from a binder page
+  // are added as rows, safely, even when several reads finish close together.
+  function appendQuickAddCardScanRows(newRows = []) {
+    if (!newRows.length) return;
+    setQuickAddWizard((current) => {
+      const existing = Array.isArray(current.cardScanRows) ? current.cardScanRows : [];
+      const kept = existing.filter((row) => row.cardName || row.cardNumber || row.setName || row.variant || row.condition);
+      return { ...current, cardScanRows: [...kept, ...newRows.map((row) => createQuickAddCardScanRow(row))], message: "" };
+    });
+  }
+
   function setQuickAddPath(path, patch = {}) {
     if (path === "scoutScreenshotReview") {
       if (!closeFlowModal({ reset: false })) return;
@@ -43488,6 +43499,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         closeFlowModal,
         collectorVisualTypeLabel,
         createQuickAddCardScanRow,
+        appendQuickAddCardScanRows,
         createQuickAddWizardState,
         detectCollectorItemVisualType,
         getCatalogIdentifiers,

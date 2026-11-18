@@ -183,7 +183,7 @@ assert.match(appSource, /Reset to Recommended/);
 assert.match(appSource, /action === "scanScreenshot"/);
 assert.match(appSource, /action === "chooseWatchedStore"/);
 assert.match(appSource, /action === "reviewFlaggedReports"/);
-assert.match(addFlowSource, /Scan page of cards/);
+assert.match(addFlowSource, /Scan several cards/);
 assert.match(addFlowSource, /cardScanRows/);
 assert.match(addFlowSource, /Add card row/);
 assert.match(addFlowSource, /Review this card/);

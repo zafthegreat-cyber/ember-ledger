@@ -142,7 +142,7 @@ async function contrastReport(chooser) {
           { name: /^Search by name\./, selector: ".add-anything-search", title: "Search item" },
           { name: /^Type a barcode number/, selector: ".add-anything-upc", title: "Type a barcode number" },
           { name: /^Manual entry\./, selector: ".add-anything-manual", title: "Manual entry" },
-          { name: /^Scan page of cards\./, selector: ".add-anything-card-page-review", title: "Scan page of cards" },
+          { name: /^Scan several cards/, selector: ".add-anything-card-page-review", title: "Scan several cards" },
           { name: /^Scout screenshot or photo review\./, selector: ".add-anything-scout-scan-review", title: "Review Scout Scan" },
         ];
         for (const target of paths) {
