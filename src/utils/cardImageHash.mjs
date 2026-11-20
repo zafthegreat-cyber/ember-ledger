@@ -1,11 +1,6 @@
-// Card picture matching groundwork (Nov 19 2026). Not wired to any screen yet.
-//
-// Plan: a small index of picture fingerprints (64-bit difference hashes of each
-// card's artwork box) is built offline and loaded on demand. On the phone, the
-// framed card photo is fingerprinted the same way and the nearest fingerprints
-// become suggestions next to the text reader's result. The index holds only
-// fingerprints, never card images. See docs/CARD_IMAGE_RECOGNITION_PLAN.md for the
-// open decision on which images may be fingerprinted.
+// Card picture fingerprints (Nov 19 2026): difference hash, distance and nearest
+// search. Used by cardPictureMemory.mjs, which fingerprints only the user's own
+// card scans on their device. See docs/CARD_IMAGE_RECOGNITION_PLAN.md.
 
 /** Area of an upright card photo used for the fingerprint: the artwork box. */
 export const ART_BOX = { left: 0.08, top: 0.11, width: 0.84, height: 0.42 };

@@ -77,3 +77,4 @@
 .trade-scan__search button { min-height: 44px; }
 .app .trade-scan__results button, .trade-scan__results button { width: 100%; min-height: 48px; display: grid; gap: 2px; justify-items: start; text-align: left; padding: 6px 12px; border-radius: 12px; border: 1px solid var(--border-subtle, rgb(255 255 255 / 12%)); background: transparent; color: var(--text-primary); cursor: pointer; }
 .trade-scan__results small { color: var(--text-secondary); font-size: 13px; }
+

@@ -158,3 +158,4 @@ export function RecentScans({ scans, money, onOpen, onRemove, onClear }) {
     </details>
   );
 }
+

@@ -19,11 +19,15 @@ const readListingScreenshot=async(file,options)=>{
 const LISTING_FIELDS=[['site','Site'],['price','Price'],['shipping','Shipping']];
 const money=value=>value===null||value===undefined||value===''?'':String(value);
 const SLAB_FIELDS=[['gradingCompany','Grader'],['grade','Grade'],['certificationNumber','Cert number']];
+import PictureMatches from './PictureMatches.jsx';
 import './product-photo-lookup.css';
 
 // Only the explicitly reviewed query leaves this component. The selected file,
 // preview URL and complete OCR text are never sent to a parent or saved.
-export default function ProductPhotoLookup({onQuery,onDraftChange,onSlabDetails,initialSlab=false,initialQuery='',disabled=false,kind='item',onListingDetails,reader=kind==='card'?readCardPhoto:kind==='listing'?readListingScreenshot:readProductPhotoText,slabReader=readSlabPhoto}){
+// Card mode may also hand `onPicture` a 16-character fingerprint of the photo
+// (made on this device) so earlier confirmed scans can be suggested.
+const fingerprintCard=file=>import("../utils/cardPictureFingerprint.js").then(module=>module.fingerprintCardFile(file)).catch(()=>"");
+export default function ProductPhotoLookup({onQuery,onDraftChange,onSlabDetails,initialSlab=false,initialQuery='',disabled=false,kind='item',onListingDetails,onPicture,pictureMemory,reader=kind==='card'?readCardPhoto:kind==='listing'?readListingScreenshot:readProductPhotoText,slabReader=readSlabPhoto}){
  const id=useId(),sequence=useRef(0),controller=useRef(null),previewRef=useRef(''),edited=useRef(false),queryRef=useRef(null);
  const [preview,setPreview]=useState(''),[fileName,setFileName]=useState(''),[query,setQuery]=useState(initialQuery),[text,setText]=useState(''),[suggestions,setSuggestions]=useState([]),[busy,setBusy]=useState(false),[searching,setSearching]=useState(false),[progress,setProgress]=useState(null),[message,setMessage]=useState(''),[error,setError]=useState(''),[cameraOpen,setCameraOpen]=useState(false),[slab,setSlab]=useState(initialSlab),[slabDetails,setSlabDetails]=useState(initialSlab?{gradingCompany:'',grade:'',certificationNumber:''}:null),[listingDetails,setListingDetails]=useState(null);
  useEffect(()=>()=>{sequence.current++;controller.current?.abort();if(previewRef.current)URL.revokeObjectURL(previewRef.current);},[]);
@@ -40,6 +44,7 @@ export default function ProductPhotoLookup({onQuery,onDraftChange,onSlabDetails,
   const invalid=validateProductPhotoFile(file);if(invalid){setError(invalid);return;}
   const request=sequence.current,abort=new AbortController();controller.current=abort;
   previewRef.current=URL.createObjectURL(file);setPreview(previewRef.current);setFileName(file.name);setBusy(true);
+  if(kind==='card'&&!slab&&typeof onPicture==='function'){onPicture('');void fingerprintCard(file).then(hash=>{if(request===sequence.current&&hash)onPicture(hash);});}
   try{
    const result=await (slab?slabReader:reader)(file,{signal:abort.signal,framed,onProgress:value=>{if(request===sequence.current)setProgress(value);}});
    if(request!==sequence.current||abort.signal.aborted)return;
@@ -50,6 +55,13 @@ export default function ProductPhotoLookup({onQuery,onDraftChange,onSlabDetails,
    if(['invalid','failed','unsupported','timeout'].includes(result.status))setError(result.message||'Type the details below to continue.');
   }catch{if(request===sequence.current&&!abort.signal.aborted)setError('The photo could not be read. Type the product details below.');}
   finally{if(request===sequence.current){setBusy(false);setProgress(null);controller.current=null;}}
+ }
+ // A card picked from picture memory: stop reading the photo and search for it.
+ function pickQuery(text){
+  const value=normalizeProductPhotoQuery(text||'');if(!value||disabled||searching||typeof onQuery!=='function')return;
+  stop();edited.current=true;setQuery(value);setError('');setMessage('');
+  const request=sequence.current;setSearching(true);
+  Promise.resolve().then(()=>onQuery(value)).catch(()=>{if(request===sequence.current)setError('Catalog search did not finish. Your search text is still here; try again.');}).finally(()=>{if(request===sequence.current)setSearching(false);});
  }
  async function search(){
   const value=normalizeProductPhotoQuery(query);if(!value||disabled||busy||searching||typeof onQuery!=='function')return;
@@ -72,7 +84,8 @@ export default function ProductPhotoLookup({onQuery,onDraftChange,onSlabDetails,
   </div>}
   {listingDetails?<div className="product-photo-lookup__slab-fields" aria-label="Listing details">{LISTING_FIELDS.map(([key,label])=><label key={key}>{label}<input value={listingDetails[key]} inputMode={key==='site'?'text':'decimal'} autoComplete="off" maxLength={40} disabled={disabled||searching} onChange={event=>{const next={...listingDetails,[key]:event.target.value};setListingDetails(next);onListingDetails?.(next);}}/></label>)}{listingDetails.sold?<p className="product-photo-lookup__note">This listing shows a sold price.</p>:null}{listingDetails.graded?<p className="product-photo-lookup__note">Graded: {listingDetails.gradingCompany} {listingDetails.grade}</p>:null}</div>:null}
   <p className="product-photo-lookup__privacy">Your photo stays on this device. Text reading does not identify artwork, foil, condition or grade.</p>
-  {preview&&<div className="product-photo-lookup__source"><img src={preview} alt="Selected product photo"/><div><span>{fileName}</span><button type="button" disabled={disabled||searching} onClick={()=>{onDraftChange?.();stop();clearPreview();setText('');setSuggestions([]);setMessage('Photo removed. You can use the search text below.');}}>Remove photo</button></div></div>}
+  {preview&&<div className="product-photo-lookup__source"><img src={preview} alt="Selected product photo"/><div><span>{fileName}</span><button type="button" disabled={disabled||searching} onClick={()=>{onDraftChange?.();onPicture?.('');stop();clearPreview();setText('');setSuggestions([]);setMessage('Photo removed. You can use the search text below.');}}>Remove photo</button></div></div>}
+  {pictureMemory?<PictureMatches {...pictureMemory} disabled={disabled||searching} onPick={match=>pickQuery(pictureMemory.onPick?.(match))}/>:null}
   {busy&&<div className="product-photo-lookup__progress"><p role="status">{progress?.label||'Preparing photo on this device…'}</p><progress aria-label="Reading photo text" max="1" value={Number.isFinite(progress?.progress)?progress.progress:undefined}/><button type="button" onClick={()=>{onDraftChange?.();stop();setMessage('Reading stopped. You can type the details below.');queryRef.current?.focus();}}>Stop reading</button></div>}
   {!busy&&message&&!error&&<p role="status">{message}</p>}
   {error&&<p role="alert" className="product-photo-lookup__error">{error}</p>}

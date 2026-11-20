@@ -1,8 +1,19 @@
 # Recognizing cards by their picture: plan (Nov 19, 2026)
 
-Status: groundwork only. `src/utils/cardImageHash.mjs` (fingerprint, distance,
-nearest search) is in the repo with tests (`scripts/test-card-image-hash.mjs`).
-Nothing is wired to a screen and no image data has been downloaded.
+Status: option B is live (Nov 19, 2026). Fingerprints come only from the user's own
+card scans, on their device. Nothing is downloaded and no photo is stored.
+
+- `src/utils/cardPictureMemory.mjs`: remember/match/storage (key
+  `code3.scanner.pictures.v1`, up to 600 entries, 3 photos per card), plus
+  `fingerprintCardGray`, which finds the card edge before hashing the art box.
+- `src/utils/cardPictureFingerprint.js`: decodes a photo on the device.
+- Card scan (Add → Scan → Card): each photo is fingerprinted; earlier confirmed
+  scans that look alike are offered as "Looks like a card you scanned before".
+  Picking one searches for that card and puts it first.
+- A fingerprint is saved only when the user adds the card to Collection,
+  Business or Wants from the scan review (not for graded slabs).
+- "Forget them" clears the memory.
+- Tests: `scripts/test-card-picture-memory.mjs`.
 
 ## Why
 
@@ -28,7 +39,7 @@ model. If accuracy isn't good enough, the next step is a small on-device
 embedding model (about 5 to 15 MB). That is a bigger download and needs its own
 approval.
 
-## Decision needed from the owner
+## Decision (owner chose B on Nov 19, 2026)
 
 **Which images may be fingerprinted?** The index stores only fingerprints, never
 the pictures. But making it means downloading each card image once in CI.
@@ -40,11 +51,11 @@ Options:
   No rights question, but coverage starts empty and grows slowly.
 - **C. Skip picture matching** and keep improving the text reader.
 
-Until this is decided, nothing is downloaded and the feature stays off.
+Option A can be added later as a CI step that writes fingerprints into the same
+format, once the owner approves a source and its terms.
 
-## Next steps once decided
+## Next steps
 
-1. Write `scripts/build-card-fingerprints.mjs` (CI only) and its workflow.
-2. Add a lazy loader for the index plus a "Looks like…" row in the card reader
-   results.
-3. Measure on 100 real phone photos and set `maxDistance` from the results.
+1. Measure on real phone photos (same card, different light and angle; different
+   cards with similar art) and tune `maxDistance` (now 10 bits) from the results.
+2. Only if option A is approved: `scripts/build-card-fingerprints.mjs` (CI only).

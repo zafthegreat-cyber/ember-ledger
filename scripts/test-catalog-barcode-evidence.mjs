@@ -144,7 +144,7 @@ function scannerHarness({local=[],remote=[],loadSeed=async()=>local,configured=f
   buildAiCatalogMatchSummary:({matches})=>({outputSummary:matches.length+' matches'}),logAiAssistEvent:async()=>{},rememberScan:review=>{state.remembered=review;},AI_FEATURE_AREAS:{CATALOG_MATCH:'test'},scanDestination:'vault',
   buildScanReview:(raw,matches)=>{state.reviewBuilds++;return{rawValue:raw,selectedProduct:matches[0]?.item};}};
  const source=fs.readFileSync(new URL('../src/App.jsx',import.meta.url),'utf8');
- const start=source.indexOf('async function handleCatalogScanMatch(value)');
+ const start=source.indexOf('async function handleCatalogScanMatch(value');
  const end=source.indexOf('\n  function confirmScanMatch(',start);assert.ok(start>=0&&end>start,'Actual scanner function remains extractable');
  vm.runInNewContext(source.slice(start,end)+'\nglobalThis.run=handleCatalogScanMatch;',scope);
  return{state,run:scope.run,scope};
