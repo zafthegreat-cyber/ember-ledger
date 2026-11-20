@@ -4,7 +4,10 @@ import "./ui-workflow-details.css";
 
 const loadReader = () => import("@zxing/browser");
 
-export default function BarcodeScanner({ onScan, onClose, title = "Scan barcode", helper = "Point your camera at the barcode. Use good lighting and hold the barcode flat.", readyLabel = "", manualLabel = "Enter manually", readerLoader = loadReader }) {
+// continuous (Nov 19 2026): keep the camera on and report every new barcode, for
+// scanning a stack of sealed products back to back. The same code is ignored for
+// a moment so one box held in view is not counted twice.
+export default function BarcodeScanner({ onScan, onClose, title = "Scan barcode", helper = "Point your camera at the barcode. Use good lighting and hold the barcode flat.", readyLabel = "", manualLabel = "Enter manually", readerLoader = loadReader, continuous = false, repeatDelayMs = 2500 }) {
   const videoRef = useRef(null);
   const controlsRef = useRef(null);
   const onScanRef = useRef(onScan);
@@ -17,11 +20,13 @@ export default function BarcodeScanner({ onScan, onClose, title = "Scan barcode"
   const [torch, setTorch] = useState(false);
   const [torchBusy, setTorchBusy] = useState(false);
   const [controlNotice, setControlNotice] = useState("");
+  const [lastCode, setLastCode] = useState("");
   useEffect(() => { onScanRef.current = onScan; }, [onScan]);
   useEffect(() => {
     let active = true;
     let decoded = false;
     let ownControls;
+    let previous = { code: "", at: 0 };
     async function start() {
       setError(""); setStatus("starting"); setTorch(false); setTorchSupported(false); setControlNotice("");
       try {
@@ -33,6 +38,15 @@ export default function BarcodeScanner({ onScan, onClose, title = "Scan barcode"
         const result = value => {
           const text = String(value?.getText?.() || "").trim();
           if (!text || !active || decoded) return;
+          if (continuous) {
+            const now = Date.now();
+            if (text === previous.code && now - previous.at < repeatDelayMs) { previous.at = now; return; }
+            previous = { code: text, at: now };
+            setLastCode(text);
+            try { navigator.vibrate?.(40); } catch { /* Optional feedback. */ }
+            onScanRef.current?.(text);
+            return;
+          }
           decoded = true; setStatus("found");
           try { navigator.vibrate?.(40); } catch { /* Optional feedback. */ }
           ownControls?.stop(); onScanRef.current?.(text);
@@ -55,7 +69,7 @@ export default function BarcodeScanner({ onScan, onClose, title = "Scan barcode"
     }
     void start();
     return () => { active = false; ownControls?.stop(); if (controlsRef.current === ownControls) controlsRef.current = null; };
-  }, [retry, deviceId, readerLoader]);
+  }, [retry, deviceId, readerLoader, continuous, repeatDelayMs]);
   async function toggleTorch() {
     if (torchBusy || !controlsRef.current?.switchTorch) return;
     setTorchBusy(true); setControlNotice("");
@@ -65,7 +79,7 @@ export default function BarcodeScanner({ onScan, onClose, title = "Scan barcode"
   }
   return <section className="panel scanner-camera-panel">
     <h2>{title}</h2>
-    <strong className="scanner-ready-label" role="status" aria-live="polite">{status === "starting" ? "Starting camera…" : status === "found" ? "Barcode found. Looking it up…" : status === "error" ? "Camera unavailable" : readyLabel || "Camera on. Looking for a barcode…"}</strong>
+    <strong className="scanner-ready-label" role="status" aria-live="polite">{status === "starting" ? "Starting camera…" : status === "found" ? "Barcode found. Looking it up…" : status === "error" ? "Camera unavailable" : continuous && lastCode ? `Scanned ${lastCode}. Next one…` : readyLabel || "Camera on. Looking for a barcode…"}</strong>
     {error ? <div className="scanner-camera-empty"><p role="alert">{error}</p><button type="button" className="primary-button scanner-camera-retry" onClick={() => setRetry(value => value + 1)}>Try camera again</button></div> : <><p>{helper}</p><video ref={videoRef} autoPlay muted playsInline className="scanner-video" /></>}
     <div className="scanner-device-controls">
       {cameras.length > 1 && <label>Camera<select value={deviceId} onChange={event => setDeviceId(event.target.value)}><option value="">Automatic back camera</option>{cameras.map((camera, index) => <option key={camera.deviceId} value={camera.deviceId}>{camera.label || `Camera ${index + 1}`}</option>)}</select></label>}

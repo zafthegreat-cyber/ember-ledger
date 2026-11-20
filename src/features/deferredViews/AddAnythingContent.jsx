@@ -107,7 +107,10 @@ export default function AddAnythingContent({ scope }) {
       { key: "card", title: "Scan a card", helper: "Line a card up in the frame; the name and number are read for you.", icon: "scan", tone: "vault" },
       { key: "slab", title: "Graded slab", helper: "Reads the grader, grade and cert number from a PSA, CGC or Beckett label.", icon: "grade", tone: "vault" },
       { key: "listing", title: "Listing screenshot", helper: "eBay, Marketplace, Mercari or TCGplayer: title, price and shipping filled in.", icon: "scan", tone: "search" },
-      { key: "receipt", title: "Scan a receipt", helper: "Read a receipt photo on this device, then check each line.", icon: "receipt", tone: "forge" },
+      { key: "receipt", title: "Scan a receipt", helper: "Read a receipt photo or PDF on this device, then check each line.", icon: "receipt", tone: "forge" },
+      // Nov 19 2026
+      { key: "price", title: "Price check", helper: "Scan anything to see its market price and trend. Nothing is saved.", icon: "search", tone: "search" },
+      { key: "batch", title: "Scan several barcodes", helper: "Scan sealed boxes back to back with a running count, then save them all at once.", icon: "scan", tone: "vault" },
     ] : [];
     const runSearch = (value = quickAddWizard.query) => {
       const query = String(value || "").trim();
