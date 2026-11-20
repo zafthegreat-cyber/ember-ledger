@@ -6,12 +6,14 @@
 // Optional:
 //   SCANNER_AI_MODEL    defaults to claude-opus-5-5
 //   SCANNER_AI_DAILY_LIMIT  defaults to 40 per member per UTC day
+//   SCANNER_AI_EFFORT   low / medium / high / xhigh / max; defaults to high (accuracy first)
 import Anthropic from "npm:@anthropic-ai/sdk";
 import { AI_SCAN_DAILY_LIMIT, AI_SCAN_SCHEMA, AI_SCAN_SYSTEM, aiScanUserText, createAiScanHandler } from "./core.mjs";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const MODEL = Deno.env.get("SCANNER_AI_MODEL") || "claude-opus-5-5";
+const EFFORT = (["low", "medium", "high", "xhigh", "max"].includes(Deno.env.get("SCANNER_AI_EFFORT") ?? "") ? Deno.env.get("SCANNER_AI_EFFORT") : "high") as "low" | "medium" | "high" | "xhigh" | "max";
 const LIMIT = Number(Deno.env.get("SCANNER_AI_DAILY_LIMIT")) || AI_SCAN_DAILY_LIMIT;
 
 const service = (path: string, init: RequestInit = {}) => fetch(`${SUPABASE_URL}${path}`, {
@@ -23,7 +25,7 @@ const service = (path: string, init: RequestInit = {}) => fetch(`${SUPABASE_URL}
 let client: Anthropic | null = null;
 const anthropic = () => {
   if (!Deno.env.get("ANTHROPIC_API_KEY")) throw new Error("AI scans are not set up yet.");
-  client ??= new Anthropic({ timeout: 45_000, maxRetries: 1 });
+  client ??= new Anthropic({ timeout: 60_000, maxRetries: 1 });
   return client;
 };
 
@@ -53,11 +55,13 @@ Deno.serve(createAiScanHandler({
   async identify({ kind, mediaType, data, hint }: { kind: string; mediaType: "image/jpeg" | "image/png" | "image/webp"; data: string; hint: string }) {
     const response = await anthropic().beta.messages.create({
       model: MODEL,
-      max_tokens: 8000,
+      max_tokens: 16000,
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
       system: AI_SCAN_SYSTEM,
-      output_config: { effort: "medium", format: { type: "json_schema", schema: AI_SCAN_SCHEMA } },
+      // Accuracy first (owner, Nov 20 2026): let the model think before answering.
+      thinking: { type: "adaptive" },
+      output_config: { effort: EFFORT, format: { type: "json_schema", schema: AI_SCAN_SCHEMA } },
       messages: [{
         role: "user",
         content: [

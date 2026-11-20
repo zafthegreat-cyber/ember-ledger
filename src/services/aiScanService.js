@@ -3,7 +3,7 @@
 // sent, only when the member taps "Identify with AI", and it is not stored.
 import { isSupabaseConfigured, supabase } from "../supabaseClient";
 
-const MAX_EDGE = 1280;
+const MAX_EDGE = 2000; // small card numbers need detail; Opus reads up to 2576 px
 
 async function loadImage(file) {
   if (typeof createImageBitmap === "function") return createImageBitmap(file);
@@ -20,7 +20,7 @@ async function loadImage(file) {
   }
 }
 
-/** JPEG, longest edge at most 1280 px, as base64 without the data: prefix. */
+/** JPEG, longest edge at most 2000 px, as base64 without the data: prefix. */
 export async function shrinkPhotoForAi(file) {
   const source = await loadImage(file);
   try {
@@ -29,7 +29,7 @@ export async function shrinkPhotoForAi(file) {
     canvas.width = Math.max(1, Math.round(source.width * scale));
     canvas.height = Math.max(1, Math.round(source.height * scale));
     canvas.getContext("2d").drawImage(source, 0, 0, canvas.width, canvas.height);
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.88);
     return { mediaType: "image/jpeg", data: dataUrl.slice(dataUrl.indexOf(",") + 1) };
   } finally {
     source.close?.();

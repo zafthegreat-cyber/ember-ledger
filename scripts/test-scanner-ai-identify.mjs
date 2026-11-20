@@ -32,7 +32,7 @@ test("only paid plans and staff get AI scans; kids' accounts never do", () => {
 test("requests are checked before anything is charged or sent", async () => {
   assert.match(parseAiScanRequest({ image: { mediaType: "image/gif", data: "AAAA" } }).error, /JPEG/);
   assert.match(parseAiScanRequest({ image: { mediaType: "image/jpeg", data: "not base64!" } }).error, /could not be read/);
-  assert.match(parseAiScanRequest({ image: { mediaType: "image/jpeg", data: "A".repeat(2_100_000) } }).error, /too large/);
+  assert.match(parseAiScanRequest({ image: { mediaType: "image/jpeg", data: "A".repeat(3_500_000) } }).error, /too large/);
   assert.equal(parseAiScanRequest({ kind: "weird", image: PHOTO }).kind, "card");
   assert.equal(parseAiScanRequest({ image: PHOTO, hint: "a\u0000b".padEnd(400, "x") }).hint.length, 200);
 
