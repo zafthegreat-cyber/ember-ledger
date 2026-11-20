@@ -48,6 +48,7 @@ jobs:
           scripts/test-card-printings.mjs
           scripts/test-slab-label.mjs
           scripts/test-listing-screenshot.mjs
+          scripts/test-receipt-pdf.mjs
           scripts/test-market-history.mjs
           scripts/test-market-history-points.mjs
       - name: Domain suites (plain node)

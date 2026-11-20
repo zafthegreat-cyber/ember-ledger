@@ -17537,7 +17537,7 @@ export default function App() {
     if (!file) return;
     const supported = file.type.startsWith("image/") || file.type === "application/pdf";
     if (!supported) {
-      setReceiptScanMessage("Upload an image. PDF support is staged for later.");
+      setReceiptScanMessage("Choose a photo or a PDF of the receipt.");
       return;
     }
     setReceiptScanStatus("uploading");
@@ -17552,15 +17552,16 @@ export default function App() {
         source,
       };
     });
-    if (file.type === "application/pdf") {
-      setReceiptScanMessage("PDF received. Type or paste the receipt lines for review.");
-      return;
-    }
     // Nov 17 2026: read the receipt on this device and fill the lines for review.
-    setReceiptScanMessage("Reading the receipt on this device…");
+    // Nov 19 2026: PDFs too: their text is read directly; scanned pages are read like photos.
+    const isPdf = file.type === "application/pdf";
+    setReceiptScanMessage(isPdf ? "Reading the PDF on this device…" : "Reading the receipt on this device…");
     const request = (receiptReadRequestRef.current += 1);
-    import("./utils/cardPhotoReader.mjs")
-      .then((module) => module.readReceiptPhoto(file))
+    const reading = isPdf
+      ? Promise.all([import("./utils/receiptPdf.mjs"), import("./utils/cardPhotoReader.mjs")])
+        .then(([pdf, photo]) => pdf.readReceiptPdf(file, { readPhoto: photo.readReceiptPhoto }))
+      : import("./utils/cardPhotoReader.mjs").then((module) => module.readReceiptPhoto(file));
+    reading
       .then((read) => {
         if (request !== receiptReadRequestRef.current) return;
         if (read?.text) setReceiptScanForm((current) => (current.rawText?.trim() ? current : { ...current, rawText: read.text }));

@@ -101,6 +101,8 @@ function emberManualChunks(id) {
     }
     if (normalizedId.includes("/@supabase/")) return "supabase-vendor";
     if (normalizedId.includes("/@zxing/")) return "scanner-vendor";
+    // Receipt PDFs only: keep pdf.js out of the shared vendor chunk so it loads on demand.
+    if (normalizedId.includes("/pdfjs-dist/")) return "pdf-vendor";
     return "vendor";
   }
 
@@ -157,6 +159,7 @@ export default defineConfig({
           "catalog-seed",
           "store-directory",
           "scanner-vendor",
+          "pdf-vendor",
         ].some((chunkName) => dep.includes(chunkName)));
       },
     },
