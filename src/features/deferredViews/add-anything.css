@@ -54,3 +54,11 @@ html body .app[data-theme] .flow-modal[data-flow="addActionSheet"] .add-anything
 .flow-modal[data-flow="addActionSheet"] .scan-anything-unavailable[open] > summary::after { transform: rotate(225deg); }
 .flow-modal[data-flow="addActionSheet"] .scan-anything-coming-soon-grid { display: grid; grid-template-columns: minmax(0, 1fr); padding: 0 6px 6px; }
 html body .app[data-theme] .flow-modal[data-flow="addActionSheet"] .scan-anything-coming-soon-grid > .add-anything-option:last-child { border-bottom: 0 !important; }
+
+/* Set progress after scanning several cards (Nov 19 2026). */
+.card-scan-set-progress { display: grid; gap: 10px; margin: 12px 0; }
+.card-scan-set-progress__set { display: grid; gap: 6px; padding: 12px 14px; border-radius: 16px; border: 1px solid var(--border-strong, #6b5a5e); }
+.card-scan-set-progress__head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.card-scan-set-progress__head span, .card-scan-set-progress__set small { color: var(--text-secondary); font-size: 14px; line-height: 1.45; }
+.card-scan-set-progress__bar { height: 8px; border-radius: 999px; background: rgb(255 255 255 / 10%); overflow: hidden; }
+.card-scan-set-progress__bar span { display: block; height: 100%; border-radius: inherit; background: var(--binder-foil, linear-gradient(90deg, #C2604F, #E8C86B)); }

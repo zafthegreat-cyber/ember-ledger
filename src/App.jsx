@@ -12,7 +12,8 @@ import {readLegacyStorageLocation,writeLegacyStorageLocation} from './utils/lega
 import {reviewedScreenshotReportFields} from './utils/screenshotReviewExtras.mjs';
 import BarcodeScanner from "./components/BarcodeScanner.jsx";
 import { DealCheck, RapidBarcodeBatch, RecentScans, ScannerModeToggles, ScanPriceCheck } from "./features/scanner/ScannerExtras.jsx";
-import { addRecentScan, listingVerdict, readRecentScans, tallyBarcode, writeRecentScans } from "./utils/scannerExtras.mjs";
+import { addRecentScan, findSetRowByName, listingVerdict, readRecentScans, scanSetProgress, tallyBarcode, tradeSideSummary, writeRecentScans } from "./utils/scannerExtras.mjs";
+const TradeSideScanner = lazy(() => import("./features/scanner/TradeSideScanner.jsx"));
 import ItemPhoto from "./components/ItemPhoto.jsx";
 import DeferredModalBoundary from "./features/deferredViews/DeferredModalBoundary";
 import NationwideLocationPicker from './components/NationwideLocationPicker.jsx';
@@ -6571,6 +6572,8 @@ export default function App() {
   const [tradeCompassDraft, setTradeCompassDraft] = useState(BLANK_TRADE_COMPASS_DRAFT);
   const [tradeCompassMessage, setTradeCompassMessage] = useState("");
   const [tradeCompassSaving, setTradeCompassSaving] = useState(false);
+  // Trade mode (Nov 19 2026): scanned or searched lines for each side of a Trade Compass check.
+  const [tradeScanLines, setTradeScanLines] = useState({ your: [], their: [] });
   const [quickFindForm, setQuickFindForm] = useState(BLANK_QUICK_FIND_FORM);
   const [multiDestinationForm, setMultiDestinationForm] = useState(BLANK_MULTI_DESTINATION_FORM);
   const [multiDestinationStep, setMultiDestinationStep] = useState("item");
@@ -24260,10 +24263,54 @@ function mapCatalog(row) {
       ...options.seed,
     });
     setTradeCompassDraft(draft);
+    setTradeScanLines({ your: [], their: [] });
     setTradeCompassMessage("");
     setTradeCompassSaving(false);
     flowModalBaselineRef.current.tradeCompass = draft;
     openFlowModal("tradeCompass", { size: "medium", source: options.source || "forge-trade-compass" });
+  }
+
+  // Trade mode: a side's scanned lines set that side's description and value.
+  function setTradeSideLines(sideKey, lines) {
+    setTradeScanLines((current) => ({ ...current, [sideKey]: lines }));
+    const summary = tradeSideSummary(lines);
+    const nameField = sideKey === "your" ? "yourSide" : "theirSide";
+    const valueField = sideKey === "your" ? "yourValue" : "theirValue";
+    setTradeCompassDraft((current) => normalizeTradeCompassDraft({
+      ...current,
+      [nameField]: lines.length ? summary.names : "",
+      [valueField]: lines.length && summary.total > 0 ? summary.total : "",
+      ...(sideKey === "your" && lines.length ? { sourceItemId: "" } : {}),
+    }));
+  }
+
+  // Catalog search for trade lines: barcode first, then the online catalog, then local names.
+  async function searchCatalogForTrade(value) {
+    const lookupValue = String(value || "").trim();
+    if (!lookupValue) return [];
+    const seedProducts = await loadLocalCatalogSeed("trade search");
+    const searchPool = mergeCatalogProductLists(catalogProducts, seedProducts);
+    let products = findCatalogProductsByBarcode(searchPool, lookupValue);
+    if (!products.length && isSupabaseConfigured && supabase) {
+      try {
+        const exactIdentifier = isLikelyBarcodeValue(lookupValue);
+        const normalized = normalizeBarcodeValue(lookupValue) || lookupValue;
+        const result = await searchPokemonCatalogOnDemand({ supabase, query: exactIdentifier ? normalized : lookupValue, barcode: exactIdentifier ? normalized : "", mode: exactIdentifier ? "barcode" : detectCatalogSearchMode(lookupValue), page: 1, pageSize: 6, force: true });
+        products = (result.rows || []).map(mapCatalog);
+      } catch {
+        products = [];
+      }
+    }
+    if (!products.length) products = getBestCatalogMatches(lookupValue, searchPool).map((match) => match.item);
+    return products.slice(0, 6).map((product) => {
+      const marketInfo = getTideTradrMarketInfo(product);
+      return {
+        id: product.id,
+        name: catalogTitle(product),
+        detail: [product.setName || product.expansion, product.cardNumber || product.card_number].filter(Boolean).join(" · "),
+        value: marketInfo.currentMarketValue || product.marketPrice || product.midPrice || "",
+      };
+    });
   }
 
   function updateTradeDraftField(field, value) {
@@ -24649,6 +24696,11 @@ function mapCatalog(row) {
       difference: reading.hasYourValue && reading.hasTheirValue ? reading.difference : "",
       tradeCompass: true,
       tradeCompassReading: reading.label,
+      // Trade mode lines (Nov 19 2026), when the sides were scanned.
+      ...(tradeScanLines.your.length || tradeScanLines.their.length ? {
+        yourItems: tradeScanLines.your.map(({ name, quantity, value, catalogItemId }) => ({ name, quantity, value, catalogItemId: catalogItemId || "" })),
+        theirItems: tradeScanLines.their.map(({ name, quantity, value, catalogItemId }) => ({ name, quantity, value, catalogItemId: catalogItemId || "" })),
+      } : {}),
       conditionNotes: draft.conditionNotes,
       demandNotes: draft.demandNotes,
       personalImportanceNotes: draft.personalImportanceNotes,
@@ -42434,6 +42486,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
               <strong>{reading.yourLabel}</strong>
             </div>
+            <Suspense fallback={<p role="status">Loading the trade scanner…</p>}>
+              <TradeSideScanner label="Your side" lines={tradeScanLines.your} onLines={(lines) => setTradeSideLines("your", lines)} searchCatalog={searchCatalogForTrade} money={money} />
+            </Suspense>
             <Field label="Choose a Vault item" help="Optional. Pick one of your Vault items to prefill Your Side with saved item context.">
               <select
                 value={tradeCompassDraft.sourceItemId}
@@ -42487,6 +42542,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
               <strong>{reading.theirLabel}</strong>
             </div>
+            <Suspense fallback={<p role="status">Loading the trade scanner…</p>}>
+              <TradeSideScanner label="Their side" lines={tradeScanLines.their} onLines={(lines) => setTradeSideLines("their", lines)} searchCatalog={searchCatalogForTrade} money={money} />
+            </Suspense>
             <Field label="Their Side">
               <input
                 value={tradeCompassDraft.theirSide}
@@ -43731,11 +43789,17 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         // Card reader (Nov 17): straight to the card photo screen, which reads the name and number.
         onOpenCardPhoto: () => { const destination = quickAddWizard.destination; closeFlowModal(); beginScanProduct(destination); setScanMode("card"); },
         // Opens the scanner straight in one mode: "card", "slab", "listing" or "receipt".
+        // Nov 19 2026: set progress for the cards on the several-cards screen.
+        cardScanSetProgress: quickAddWizard.screen === "cardPageReview"
+          ? scanSetProgress(quickAddWizard.cardScanRows || [], (row) => findSetRowByName(vaultSetLibraryRows, row.setName) || findSetSummaryForItem({ setName: row.setName, cardNumber: row.cardNumber, name: row.cardName }, vaultSetCompletionRows))
+          : [],
         onOpenScannerMode: (mode) => {
           const destination = quickAddWizard.destination;
+          // Nov 19 2026: "trade" opens Trade Compass with a scanner on each side.
+          if (mode === "trade") { closeFlowModal(); openTradeCompassFlow({ source: "add-scan-trade" }); return; }
           closeFlowModal();
           beginScanProduct(destination);
-          // Nov 19 2026: "price" opens the barcode scanner with price check on; "batch" with scan-several on.
+          // "price" opens the barcode scanner with price check on; "batch" with scan-several on.
           if (mode === "price") { setScanMode("upc"); setScanPriceCheck(true); return; }
           if (mode === "batch") { setScanMode("upc"); setScanRapid(true); return; }
           setScanMode(mode);

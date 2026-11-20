@@ -57,3 +57,23 @@
 .scanner-recent__open strong { overflow-wrap: anywhere; }
 .scanner-recent__open small { color: var(--text-secondary); font-size: 13px; }
 .app .scanner-recent__remove, .app .scanner-recent__clear { min-height: 44px; }
+
+/* Trade mode (Nov 19 2026) */
+.trade-scan { display: grid; gap: 10px; margin-bottom: 12px; }
+.trade-scan__total { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 12px; border-radius: 12px; background: rgb(255 255 255 / 5%); }
+.trade-scan__total span { color: var(--text-secondary); font-size: 14px; }
+.trade-scan__total strong { font-size: 22px; color: var(--brand-gold, #E8C86B); }
+.trade-scan__lines, .trade-scan__results { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.trade-scan__lines li { display: grid; grid-template-columns: minmax(0, 1fr) 84px auto; gap: 8px; align-items: center; }
+.trade-scan__name { display: grid; min-width: 0; }
+.trade-scan__name strong { overflow-wrap: anywhere; font-size: 15px; }
+.trade-scan__name small, .trade-scan__note { color: var(--text-secondary); font-size: 13px; margin: 0; }
+.trade-scan__value input { width: 100%; min-height: 44px; }
+.trade-scan__add, .trade-scan__search { display: flex; gap: 8px; flex-wrap: wrap; }
+.trade-scan__add > button { flex: 1 1 140px; min-height: 48px; }
+.app .trade-scan__add > button[aria-pressed="true"] { border-color: var(--action-primary, #E8C86B); box-shadow: inset 0 0 0 1px var(--action-primary, #E8C86B); }
+.trade-scan__search label { flex: 1 1 180px; }
+.trade-scan__search input { width: 100%; min-height: 44px; }
+.trade-scan__search button { min-height: 44px; }
+.app .trade-scan__results button, .trade-scan__results button { width: 100%; min-height: 48px; display: grid; gap: 2px; justify-items: start; text-align: left; padding: 6px 12px; border-radius: 12px; border: 1px solid var(--border-subtle, rgb(255 255 255 / 12%)); background: transparent; color: var(--text-primary); cursor: pointer; }
+.trade-scan__results small { color: var(--text-secondary); font-size: 13px; }

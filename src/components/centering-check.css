@@ -1,0 +1,22 @@
+/* Centering check (Nov 19 2026). Warm tones only. */
+.centering-check { display: grid; gap: 10px; padding: 14px; border-radius: 20px; border: 1px solid var(--border-strong, #6b5a5e); }
+.centering-check__head p, .centering-check__status, .centering-check__note { margin: 4px 0 0; color: var(--text-secondary); font-size: 14px; line-height: 1.45; }
+.centering-check__side, .centering-check__inputs { display: flex; gap: 8px; flex-wrap: wrap; }
+.app .centering-check__side button, .centering-check__side button { min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--border-strong, #6b5a5e); background: transparent; color: var(--text-primary); font-weight: 600; cursor: pointer; }
+.app .centering-check__side button[aria-pressed="true"] { background: var(--action-primary, #E8C86B); color: var(--on-primary, #1A0F12); border-color: transparent; }
+.centering-check__inputs > * { flex: 1 1 150px; min-height: 48px; }
+.centering-check__photo { position: relative; width: min(100%, 360px); justify-self: center; overflow: hidden; border-radius: 10px; background: #000; }
+.centering-check__photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; }
+.centering-check__line { position: absolute; pointer-events: none; }
+.centering-check__line.is-vertical { top: 0; bottom: 0; width: 0; border-left: 2px solid; transform: translateX(-1px); }
+.centering-check__line.is-horizontal { left: 0; right: 0; height: 0; border-top: 2px solid; transform: translateY(-1px); }
+.centering-check__line.is-outer { border-color: #F3D987; }
+.centering-check__line.is-inner { border-color: #E07A4F; border-style: dashed; }
+.centering-check__result { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.centering-check__result div { display: grid; gap: 2px; padding: 10px 12px; border-radius: 12px; background: rgb(255 255 255 / 5%); }
+.centering-check__result small { color: var(--text-secondary); font-size: 13px; }
+.centering-check__result strong { font-size: 24px; }
+.centering-check__guides { margin: 0; padding-left: 18px; display: grid; gap: 2px; font-weight: 600; }
+.centering-check__adjust summary { min-height: 44px; display: flex; align-items: center; font-weight: 600; cursor: pointer; }
+.centering-check__adjust label { display: grid; gap: 2px; margin-bottom: 8px; font-size: 14px; }
+.centering-check__adjust input[type="range"] { width: 100%; min-height: 32px; accent-color: #E8C86B; }

@@ -112,7 +112,9 @@ assert.match(appSource, /role="status" aria-live="polite" aria-label=\{`Grade As
 assert.match(appSource, /aria-label=\{`Grade Assist \$\{field\.label\}`\}/);
 assert.match(appSource, /aria-label="Grade Assist Notes"/);
 assert.match(appSource, /alt=\{`\$\{item\.name \|\| "Vault item"\} front reference for Grade Assist`\}/);
-assert.match(appSource, /No AI, camera, OCR, authentication, or grading-company guarantee/);
+// Nov 19 2026: Grade Assist now measures centering from a photo, so it no longer says "no camera".
+assert.match(appSource, /No AI, authentication, or grading-company guarantee/);
+assert.match(appSource, /Centering is measured from your photo on this device/);
 assert.match(appSource, /Checklist storage is local to this browser for now\. Cloud sync needs backend Grade Assist storage\./);
 
 const unsafeClaimPhrases = [

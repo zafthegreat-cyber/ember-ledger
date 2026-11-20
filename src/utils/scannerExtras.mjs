@@ -102,6 +102,88 @@ export function createSteadyTracker({ threshold = 6, minDetail = 18, holdFrames 
   };
 }
 
+/** Totals for one side of a trade: item count, value, and which lines still need a value. */
+export function tradeSideSummary(lines = []) {
+  let count = 0;
+  let total = 0;
+  let missing = 0;
+  for (const line of lines) {
+    const quantity = Math.max(1, Number(line.quantity) || 1);
+    const value = toNumber(line.value);
+    count += quantity;
+    if (Number.isFinite(value)) total += value * quantity;
+    else missing += 1;
+  }
+  const names = lines.map((line) => `${line.name}${Number(line.quantity) > 1 ? ` x${line.quantity}` : ""}`).join(", ");
+  return { count, total: Math.round(total * 100) / 100, missing, names };
+}
+
+const setNameKey = (value) => String(value || "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]/g, "");
+
+/**
+ * Finds a set summary row from a typed or scanned set name ("151", "MEW",
+ * "Scarlet & Violet 151"): exact name, id, code or alias first, then a unique
+ * row whose name contains the typed words.
+ */
+export function findSetRowByName(rows = [], setName = "") {
+  const wanted = setNameKey(setName);
+  if (!wanted) return null;
+  const keysFor = (row) => [row.name, row.id, row.key?.replace(/^set:/, ""), row.code, row.setCode, ...(Array.isArray(row.aliases) ? row.aliases : [])].map(setNameKey).filter(Boolean);
+  const exact = rows.find((row) => keysFor(row).includes(wanted));
+  if (exact) return exact;
+  const words = String(setName).toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const partial = rows.filter((row) => {
+    const nameWords = String(row.name || "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+    return words.every((word) => nameWords.includes(word));
+  });
+  return partial.length === 1 ? partial[0] : null;
+}
+
+const numberKey = (value) => String(value || "").toLowerCase().replace(/^0+/, "").replace(/\/.*$/, "").replace(/[^a-z0-9]/g, "");
+
+/**
+ * Set progress for scanned cards: for each set in the scan, how many you have,
+ * how many the scan adds, and what is still missing afterwards.
+ * `findSummary(row)` returns the app's set summary for a scanned row (or null).
+ */
+export function scanSetProgress(rows = [], findSummary = () => null, { missingPreview = 12 } = {}) {
+  const groups = new Map();
+  for (const row of rows) {
+    const setName = String(row.setName || "").trim();
+    if (!setName || !(row.cardName || row.cardNumber)) continue;
+    const summary = findSummary(row);
+    if (!summary || summary.unknownSet) continue;
+    const key = summary.key || setName.toLowerCase();
+    if (!groups.has(key)) groups.set(key, { summary, rows: [] });
+    groups.get(key).rows.push(row);
+  }
+  return [...groups.values()].map(({ summary, rows: setRows }) => {
+    const ownedNumbers = new Set((summary.ownedCardItems || []).map((item) => numberKey(item.cardNumber || item.card_number || item.number)).filter(Boolean));
+    const newNumbers = new Set();
+    for (const row of setRows) {
+      const key = numberKey(row.cardNumber);
+      if (key && !ownedNumbers.has(key)) newNumbers.add(key);
+    }
+    const owned = Number(summary.ownedCount) || 0;
+    const total = Number(summary.totalCards) || 0;
+    const after = owned + newNumbers.size;
+    const missingAfter = (summary.missingCards || []).filter((card) => !newNumbers.has(numberKey(card.cardNumber || card.card_number || card.number)));
+    return {
+      key: summary.key,
+      setName: summary.name,
+      owned,
+      total,
+      adds: newNumbers.size,
+      scanned: setRows.length,
+      after: total ? Math.min(after, total) : after,
+      percentAfter: total ? Math.min(100, Math.round((after / total) * 100)) : null,
+      missingSupported: Boolean(summary.missingSupported),
+      missingAfterCount: summary.missingSupported ? missingAfter.length : null,
+      missingPreview: missingAfter.slice(0, missingPreview).map((card) => ({ number: card.cardNumber || card.card_number || card.number || "", name: card.name || card.cardName || "" })),
+    };
+  });
+}
+
 /** Running tally for rapid barcode scanning: the same code adds to its count. */
 export function tallyBarcode(batch = [], { code, itemName = "", catalogItemId = "", marketValue = "" } = {}) {
   const clean = String(code || "").trim();

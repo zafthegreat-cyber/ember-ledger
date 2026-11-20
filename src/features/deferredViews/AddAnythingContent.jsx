@@ -17,6 +17,7 @@ export default function AddAnythingContent({ scope }) {
     showFamilyExperience,
     onOpenSellTrade,
     onOpenExperienceSettings,
+    cardScanSetProgress,
     ADD_ITEM_QUICK_SEARCH_CHIPS,
     CommandGlyphIcon,
     Field,
@@ -111,6 +112,7 @@ export default function AddAnythingContent({ scope }) {
       // Nov 19 2026
       { key: "price", title: "Price check", helper: "Scan anything to see its market price and trend. Nothing is saved.", icon: "search", tone: "search" },
       { key: "batch", title: "Scan several barcodes", helper: "Scan sealed boxes back to back with a running count, then save them all at once.", icon: "scan", tone: "vault" },
+      { key: "trade", title: "Trade check", helper: "Scan both sides of a trade to see each side's value and whether it is fair.", icon: "inventory", tone: "search" },
     ] : [];
     const runSearch = (value = quickAddWizard.query) => {
       const query = String(value || "").trim();
@@ -502,6 +504,27 @@ export default function AddAnythingContent({ scope }) {
         <div className="add-anything-flow add-anything-card-page-review">
           {renderFlowHeader("Scan several cards", "Scan cards one after another or a whole binder page. Each card becomes a row to check before saving.")}
           {appendQuickAddCardScanRows ? <MultiCardScanner onRows={appendQuickAddCardScanRows} /> : null}
+          {cardScanSetProgress?.length ? (
+            <section className="card-scan-set-progress" aria-label="Set progress">
+              {cardScanSetProgress.map((set) => (
+                <div className="card-scan-set-progress__set" key={set.key || set.setName}>
+                  <div className="card-scan-set-progress__head">
+                    <strong>{set.setName}</strong>
+                    <span>{set.total ? `${set.after} of ${set.total}` : `${set.after} cards`}{set.adds ? ` · +${set.adds} new` : " · nothing new"}</span>
+                  </div>
+                  {set.percentAfter !== null ? (
+                    <div className="card-scan-set-progress__bar" role="progressbar" aria-label={`${set.setName} completion after saving`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={set.percentAfter}>
+                      <span style={{ width: `${set.percentAfter}%` }} />
+                    </div>
+                  ) : null}
+                  <small>
+                    {set.adds ? `Saving these adds ${set.adds} card${set.adds === 1 ? "" : "s"} you don't have yet (you have ${set.owned} now).` : "You already have every card from this set in this scan."}
+                    {set.missingSupported && set.missingAfterCount !== null ? ` Still missing ${set.missingAfterCount}${set.missingPreview.length ? `: ${set.missingPreview.map((card) => [card.number, card.name].filter(Boolean).join(" ")).join(", ")}${set.missingAfterCount > set.missingPreview.length ? "…" : ""}` : ""}.` : ""}
+                  </small>
+                </div>
+              ))}
+            </section>
+          ) : null}
           <div className="scan-anything-principle-card">
             <strong>Review before saving.</strong>
             <p>Each row defaults to Vault. Change the destination only when the card should go somewhere else.</p>

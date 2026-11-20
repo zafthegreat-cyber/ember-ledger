@@ -1,5 +1,7 @@
-import MarketPriceHistoryPanel from "../../components/MarketPriceHistoryPanel.jsx";
+import { lazy, Suspense } from "react";
 import { listingVerdict } from "../../utils/scannerExtras.mjs";
+
+const MarketPriceHistoryPanel = lazy(() => import("../../components/MarketPriceHistoryPanel.jsx"));
 import "./scanner-extras.css";
 
 // Scanner extras (Nov 19 2026): price check, deal check, rapid barcode batch and
@@ -63,6 +65,7 @@ export function ScanPriceCheck({ review, product, listing, money, onAdd, onScanA
       </div>
       <DealCheck verdict={verdict} site={listing?.site || ""} />
       {product ? (
+        <Suspense fallback={<p role="status">Loading price history…</p>}>
         <MarketPriceHistoryPanel
           compact
           marketItem={item}
@@ -77,6 +80,7 @@ export function ScanPriceCheck({ review, product, listing, money, onAdd, onScanA
           lastPriceChecked={item.lastPriceChecked || item.marketLastUpdated}
           money={money}
         />
+        </Suspense>
       ) : null}
       <div className="scanner-price-check__actions">
         <button type="button" className="primary-button" onClick={onScanAnother}>Check another</button>
