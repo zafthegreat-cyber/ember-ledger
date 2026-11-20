@@ -147,7 +147,8 @@
   "2026-10-22",
   "2026-10-29",
   "2026-11-05",
-  "2026-11-12"
+  "2026-11-12",
+  "2026-11-19"
  ],
  "groups": [
   {
@@ -500,7 +501,7 @@
   },
   {
    "groupId": 1528,
-   "products": 336
+   "products": 338
   },
   {
    "groupId": 1532,
@@ -672,7 +673,7 @@
   },
   {
    "groupId": 2289,
-   "products": 148
+   "products": 149
   },
   {
    "groupId": 2295,
@@ -692,7 +693,7 @@
   },
   {
    "groupId": 2374,
-   "products": 1527
+   "products": 1529
   },
   {
    "groupId": 2377,
@@ -924,7 +925,7 @@
   },
   {
    "groupId": 23537,
-   "products": 361
+   "products": 362
   },
   {
    "groupId": 23561,
@@ -972,7 +973,7 @@
   },
   {
    "groupId": 24451,
-   "products": 155
+   "products": 160
   },
   {
    "groupId": 24461,
@@ -1016,13 +1017,13 @@
   },
   {
    "groupId": 24864,
-   "products": 21
+   "products": 22
   },
   {
    "groupId": 24938,
    "products": 15
   }
  ],
- "builtAt": "2026-11-19T02:43:51.696Z",
+ "builtAt": "2026-11-20T02:30:03.153Z",
  "source": "TCGCSV daily TCGplayer price archives"
 }
