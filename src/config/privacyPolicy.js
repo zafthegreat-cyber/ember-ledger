@@ -10,7 +10,7 @@ export function privacyPublisherFromEnv(env = {}) {
 }
 
 export const PRIVACY_PUBLISHER = privacyPublisherFromEnv(import.meta.env || {});
-export const PRIVACY_POLICY_UPDATED = "November 14, 2026";
+export const PRIVACY_POLICY_UPDATED = "November 20, 2026";
 
 export function publicPrivacyRoute(pathname = "") {
   const path = pathname.replace(/\/$/, "") || "/";
@@ -68,6 +68,10 @@ export const PRIVACY_SECTIONS = Object.freeze([
   {
     key: "crash-reports", title: "Crash reports",
     body: "When the app hits an error, it can send a crash report to Sentry, our error-monitoring provider, so we can fix it. A report holds the error, the screen it happened on, the app version, and basic browser or device details. Before it leaves your device we remove email addresses, long number runs such as card or phone numbers, web-address query strings, sign-in tokens, anything you typed, and record contents; we do not attach your name, email or IP address. Crash reports are never sent while a kid-safe profile is in use. You can turn them off in Settings → Privacy.",
+  },
+  {
+    key: "ai-scans", title: "AI scans (paid plans)",
+    body: "The scanner reads text on your device. On a paid plan you can also tap Identify with AI: the app shrinks that one photo and sends it, with the text the scanner already read, to Anthropic, our AI provider, which tells the app what the card or product appears to be. The app then searches the catalog and you review the match before anything is saved. We do not store the photo; we keep only a daily count of AI scans per account to apply the daily limit. Anthropic processes the request under its commercial terms and does not use it to train its models. AI scans are never available on accounts marked as belonging to a child. Nothing is sent unless you tap the button.",
   },
   {
     key: "feedback", title: "Feedback you send",

@@ -20,3 +20,20 @@
 .product-photo-lookup__slab-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
 .product-photo-lookup__slab-fields label { display: grid; gap: 4px; font-size: 0.9rem; }
 .product-photo-lookup__slab-fields input { min-height: 44px; border-radius: 12px; padding: 0 12px; }
+
+/* AI scan (paid plans) */
+.product-photo-lookup__ai { display: grid; gap: 8px; }
+.product-photo-lookup__ai-button {
+  min-height: 48px;
+  border-radius: 999px;
+  border: 1px solid var(--action-primary, #E8C86B);
+  background: linear-gradient(90deg, rgb(176 64 120 / 22%), rgb(232 200 107 / 22%));
+  color: var(--text-primary, inherit);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.product-photo-lookup__ai-button.is-locked { opacity: 0.85; border-style: dashed; }
+.product-photo-lookup__ai-button:disabled { opacity: 0.6; cursor: progress; }
+.product-photo-lookup__ai-result { margin: 0; padding: 10px 12px; border-radius: 12px; border: 1px solid rgb(232 200 107 / 45%); }
+.product-photo-lookup__ai .product-photo-lookup__note { margin: 0; font-size: 0.85rem; opacity: 0.85; }

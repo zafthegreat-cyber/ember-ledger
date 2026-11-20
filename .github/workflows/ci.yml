@@ -53,6 +53,7 @@ jobs:
           scripts/test-card-centering.mjs
           scripts/test-card-image-hash.mjs
           scripts/test-card-picture-memory.mjs
+          scripts/test-scanner-ai-identify.mjs
           scripts/test-market-history.mjs
           scripts/test-market-history-points.mjs
       - name: Domain suites (plain node)

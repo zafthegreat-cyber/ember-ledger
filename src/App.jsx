@@ -12,6 +12,7 @@ import {readLegacyStorageLocation,writeLegacyStorageLocation} from './utils/lega
 import {reviewedScreenshotReportFields} from './utils/screenshotReviewExtras.mjs';
 import BarcodeScanner from "./components/BarcodeScanner.jsx";
 import { DealCheck, RapidBarcodeBatch, RecentScans, ScannerModeToggles, ScanPriceCheck } from "./features/scanner/ScannerExtras.jsx";
+import { identifyWithAi } from "./services/aiScanService.js";
 import { matchCardPicture, readCardPictures, rememberCardPicture, writeCardPictures } from "./utils/cardPictureMemory.mjs";
 import { addRecentScan, findSetRowByName, listingVerdict, readRecentScans, scanSetProgress, tallyBarcode, tradeSideSummary, writeRecentScans } from "./utils/scannerExtras.mjs";
 const TradeSideScanner = lazy(() => import("./features/scanner/TradeSideScanner.jsx"));
@@ -6688,6 +6689,13 @@ export default function App() {
   const roleAdminUser = [APP_ROLES.OWNER, APP_ROLES.ADMIN].includes(actualAppRole);
   const roleModeratorUser = actualAppRole === APP_ROLES.MODERATOR;
   const adminUser = isAdminUser(planProfile) || roleAdminUser;
+  // AI scan (Nov 20 2026): paid plans and staff; the server checks again and enforces the daily limit.
+  const aiScanAllowed = Boolean(user?.id) && (["collector", "family", "seller", "shop", "admin"].includes(currentTier) || adminUser);
+  const scannerAi = user?.id && isSupabaseConfigured && (!BETA_LOCAL_MODE || import.meta.env.DEV) ? {
+    allowed: aiScanAllowed,
+    onIdentify: identifyWithAi,
+    onUpgrade: () => { closeInventoryScanner(); setActiveTab("membership"); },
+  } : null;
   const explicitAdminRole = String(
     actualAppRole ||
     currentUserProfile?.role ||
@@ -50198,7 +50206,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
             {scanMode === "picture" ? (
               <div className="scan-product-mode-panel scan-product-mode-panel--photo">
-                <ProductPhotoLookup key="item" kind="item" initialQuery={scanInput} disabled={scanSearchState === "loading"} onDraftChange={() => { scanLookupRequestRef.current += 1; setScanReview(null); setScanMatches([]); setScanSearchState("idle"); setScanMessage(""); }} onQuery={async query => {
+                <ProductPhotoLookup key="item" ai={scannerAi} kind="item" initialQuery={scanInput} disabled={scanSearchState === "loading"} onDraftChange={() => { scanLookupRequestRef.current += 1; setScanReview(null); setScanMatches([]); setScanSearchState("idle"); setScanMessage(""); }} onQuery={async query => {
                   setPictureLookup(current => ({ ...current, text: query }));
                   await handleCatalogScanMatch(query);
                 }} />
@@ -50247,21 +50255,21 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
             ) : scanMode === "listing" ? (
               <div className="scan-product-mode-panel scan-product-mode-panel--photo">
-                <ProductPhotoLookup key="listing" kind="listing" onListingDetails={setScanListingDetails} initialQuery={scanInput} disabled={scanSearchState === "loading"} onDraftChange={() => { scanLookupRequestRef.current += 1; setScanReview(null); setScanMatches([]); setScanSearchState("idle"); setScanMessage(""); }} onQuery={async query => {
+                <ProductPhotoLookup key="listing" ai={scannerAi} kind="listing" onListingDetails={setScanListingDetails} initialQuery={scanInput} disabled={scanSearchState === "loading"} onDraftChange={() => { scanLookupRequestRef.current += 1; setScanReview(null); setScanMatches([]); setScanSearchState("idle"); setScanMessage(""); }} onQuery={async query => {
                   setPictureLookup(current => ({ ...current, text: query }));
                   await handleCatalogScanMatch(query);
                 }} />
               </div>
             ) : scanMode === "slab" ? (
               <div className="scan-product-mode-panel scan-product-mode-panel--card">
-                <ProductPhotoLookup key="slab" kind="card" initialSlab onSlabDetails={setScanSlabDetails} initialQuery={scanInput} disabled={scanSearchState === "loading"} onDraftChange={() => { scanLookupRequestRef.current += 1; setScanReview(null); setScanMatches([]); setScanSearchState("idle"); setScanMessage(""); }} onQuery={async query => {
+                <ProductPhotoLookup key="slab" ai={scannerAi} kind="card" initialSlab onSlabDetails={setScanSlabDetails} initialQuery={scanInput} disabled={scanSearchState === "loading"} onDraftChange={() => { scanLookupRequestRef.current += 1; setScanReview(null); setScanMatches([]); setScanSearchState("idle"); setScanMessage(""); }} onQuery={async query => {
                   setPictureLookup(current => ({ ...current, text: query }));
                   await handleCatalogScanMatch(query);
                 }} />
               </div>
             ) : scanMode === "card" ? (
               <div className="scan-product-mode-panel scan-product-mode-panel--card">
-                <ProductPhotoLookup key="card" kind="card" onPicture={setScanPictureHash} onSlabDetails={setScanSlabDetails} initialQuery={scanInput} disabled={scanSearchState === "loading"} onDraftChange={() => { scanLookupRequestRef.current += 1; setScanReview(null); setScanMatches([]); setScanSearchState("idle"); setScanMessage(""); }} onQuery={async query => {
+                <ProductPhotoLookup key="card" ai={scannerAi} kind="card" onPicture={setScanPictureHash} onSlabDetails={setScanSlabDetails} initialQuery={scanInput} disabled={scanSearchState === "loading"} onDraftChange={() => { scanLookupRequestRef.current += 1; setScanReview(null); setScanMatches([]); setScanSearchState("idle"); setScanMessage(""); }} onQuery={async query => {
                   setPictureLookup(current => ({ ...current, text: query }));
                   const preferId = scanPicturePreferRef.current;
                   scanPicturePreferRef.current = "";
