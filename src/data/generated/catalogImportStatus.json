@@ -1,21 +1,21 @@
 {
-  "lastImportedAt": "2026-11-19T18:20:15.891Z",
+  "lastImportedAt": "2026-11-20T17:51:50.678Z",
   "source": "tcgcsv-plus-local-seeds",
   "marketPriceSource": "TCGCSV public product/price JSON",
   "tcgcsvCategoryId": 3,
-  "tcgcsvGroupsAvailable": 221,
+  "tcgcsvGroupsAvailable": 222,
   "tcgcsvGroupsSynced": 215,
   "catalogProductsImported": 33130,
   "cardsImported": 28390,
   "sealedProductsImported": 4740,
-  "marketPricesImported": 46048,
-  "marketPricesJoinedByProductId": 46048,
+  "marketPricesImported": 46060,
+  "marketPricesJoinedByProductId": 46060,
   "referencePriceJoinCoverage": 1,
   "aliasesImported": 59,
   "productsWithPhotos": 33106,
   "productsMissingPhotos": 24,
-  "productsWithReferencePrices": 31972,
-  "productsMissingReferencePrices": 1158,
+  "productsWithReferencePrices": 31980,
+  "productsMissingReferencePrices": 1150,
   "priceFallbackLabel": "Price data unavailable",
   "imageFallbackLabel": "Code 3 TCG product placeholder",
   "photoSourcePolicy": "Use source image URLs when provided by public catalog data; otherwise render the branded app placeholder.",
@@ -73,6 +73,11 @@
   },
   "failedTcgcsvGroups": [
     {
+      "groupId": 24955,
+      "name": "ME07: Flowing Fists",
+      "error": "The group returned empty or malformed product/price data."
+    },
+    {
       "groupId": 24493,
       "name": "e-Reader Sample Cards",
       "error": "The group returned empty or malformed product/price data."
@@ -106,6 +111,6 @@
   "overpassError": "",
   "notes": "Generated from public TCGCSV product/price JSON and cached Virginia store directory data. No retailer scraping and no TCGplayer page scraping. Pricing is reference data, not a live offer.",
   "tcgcsvBuildTimestamp": "",
-  "tcgcsvLatestAvailableBuildTimestamp": "2026-11-18T20:05:56.000Z",
+  "tcgcsvLatestAvailableBuildTimestamp": "2026-11-19T20:04:34.000Z",
   "tcgcsvBuildComplete": false
 }
