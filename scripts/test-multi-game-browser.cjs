@@ -3,6 +3,12 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { chromium, expect } = require("@playwright/test");
 
+// Collection tools ("Organize & export", More) sit in a fold that starts closed (Nov 2026 declutter).
+async function openFold(fold) {
+  if (await fold.count() && !(await fold.first().evaluate(element => element.open))) await fold.first().locator(":scope > summary").click();
+}
+
+
 const base = new URL(process.env.APP_URL || "http://127.0.0.1:5271/");
 assert.ok(["127.0.0.1", "localhost", "[::1]"].includes(base.hostname), "Multi-game checks use disposable loopback data only");
 const output = path.resolve(process.env.QA_OUTPUT_DIR || "artifacts/qa/multi-game-browser");
@@ -130,6 +136,7 @@ async function geometry(page, region, testCase) {
 }
 
 async function enterSets(page, portfolio) {
+  await openFold(portfolio.locator(".collection-portfolio-tools"));
   const more = portfolio.locator(".everyday-more-menu");
   await more.locator(":scope > summary").click();
   await more.getByRole("button", { name: "Sets & Binders", exact: true }).click();
@@ -152,7 +159,7 @@ async function runCase(browser, testCase) {
     const items = portfolio.getByRole("list", { name: "Collection items", exact: true });
     await expect(items.locator("button")).toHaveCount(9);
     await expect(portfolio.getByTestId("portfolio-total")).toHaveText("$201.00");
-    await expect(items.getByRole("button", { name: "Open Arcane Magic card", exact: true }).locator("img")).toHaveCount(0);
+    await expect(items.getByRole("button", { name: /^Open Arcane Magic card(,|$)/ }).locator("img")).toHaveCount(0);
     result.pokemonCatalogIdentityDoesNotSupplyMagicArtwork = true;
     for (const [game, count] of [["Pokémon", 2], ["Magic: The Gathering", 2], ["Yu-Gi-Oh!", 1], ["One Piece", 1], ["Disney Lorcana", 1], ["Unspecified / other", 2]]) {
       await chooseGame(portfolio, game);
@@ -170,9 +177,9 @@ async function runCase(browser, testCase) {
     await expect(search).toHaveValue("");
     await expect(items.locator("button")).toHaveCount(9);
     await chooseGame(portfolio, "Magic: The Gathering");
-    await items.getByRole("button", { name: "Open Arcane Magic card", exact: true }).click();
+    await items.getByRole("button", { name: /^Open Arcane Magic card(,|$)/ }).click();
     await expect(page.getByRole("heading", { name: "Arcane Magic card", exact: true })).toBeVisible();
-    await page.getByRole("button", { name: "Back", exact: true }).click();
+    await page.getByRole("button", { name: "Back to collection", exact: true }).click();
     await expect(portfolio.locator('summary[aria-label^="Filter by game:"]')).toHaveAttribute("aria-label", "Filter by game: Magic: The Gathering");
     await expect(items.locator("button")).toHaveCount(2);
     result.collectionFiltersSearchResetAndExactRecordBack = true;
@@ -192,20 +199,24 @@ async function runCase(browser, testCase) {
     const magicFusion = setGrid.getByRole("button", { name: "Open Fusion Strike", exact: true });
     await expect(setGrid.locator("button")).toHaveCount(1);
     await expect(magicFusion).toContainText("$35.00");
-    await expect(magicFusion).toContainText("Checklist unavailable");
+    await expect(magicFusion).toContainText("1 unique card");
     await expect(magicFusion.locator("time")).toHaveCount(0);
     await magicFusion.click();
     await expect(detail).toContainText("$35.00");
     await expect(detail).not.toContainText("Aurora Pokémon card");
     await expect(detail).not.toContainText("Unsupported saved card");
-    const setItems = detail.getByRole("list", { name: "Collection items", exact: true });
-    await expect(setItems.locator("button")).toHaveCount(2);
-    await setItems.getByRole("button", { name: "Open Arcane Magic card", exact: true }).click();
-    await expect(page.getByRole("heading", { name: "Arcane Magic card", exact: true })).toBeVisible();
-    await page.goBack();
+    // Set detail is a catalog grid since the Nov 2026 redesign; saved items show as owned entries.
+    const setItems = detail.getByRole("list", { name: "Cards and sealed products", exact: true });
+    const arcane = setItems.getByRole("button", { name: /^View Arcane Magic card.*, owned/ });
+    await expect(arcane).toBeVisible();
+    await expect(detail).not.toContainText("Aurora Pokémon card");
+    await arcane.click();
+    const sheet = page.getByRole("dialog", { name: "Arcane Magic card", exact: true });
+    await expect(sheet).toContainText("Your saved copies");
+    await page.keyboard.press("Escape");
+    await expect(sheet).toHaveCount(0);
     await expect(detail).toBeVisible();
-    await expect(setItems.getByRole("button", { name: "Open Arcane Magic card", exact: true })).toBeFocused();
-    await detail.getByRole("button", { name: "Add an item", exact: true }).click();
+    await detail.getByRole("button", { name: "Add missing item", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Add to my collection", exact: true })).toBeVisible();
     await expect(page.getByRole("combobox", { name: "Trading card game", exact: true })).toHaveValue("magic");
     await expect(page.getByRole("textbox", { name: "Set", exact: true })).toHaveValue("Fusion Strike");
@@ -218,13 +229,13 @@ async function runCase(browser, testCase) {
     await chooseGame(region, "Pokémon");
     const pokemonFusion = setGrid.getByRole("button", { name: "Open Fusion Strike", exact: true });
     await expect(pokemonFusion).toContainText("$90.00");
-    await expect(pokemonFusion).toContainText("1/4");
+    await expect(pokemonFusion).toContainText("1 / 4");
     await expect(pokemonFusion.locator("time")).toHaveAttribute("datetime", "2021-11-12");
     await expect(setGrid.getByRole("button", { name: "Open Celebrations", exact: true })).toBeVisible();
     await chooseGame(region, "Unspecified / other");
     await expect(setGrid.locator("button")).toHaveCount(2);
     await expect(setGrid.getByRole("button", { name: "Open Fusion Strike", exact: true })).toContainText("$9.00");
-    await expect(setGrid.getByRole("button", { name: "Open Fusion Strike", exact: true })).toContainText("Checklist unavailable");
+    await expect(setGrid.getByRole("button", { name: "Open Fusion Strike", exact: true })).toContainText("unique card");
     await expect(setGrid.getByRole("button", { name: "Open Shared Custom Set", exact: true })).toContainText("$7.00");
     for (const [game, set, amount] of [["Yu-Gi-Oh!", "Duel custom set", "$10.00"], ["One Piece", "East Blue custom set", "$50.00"], ["Disney Lorcana", "Azure custom set", "$0.00"]]) {
       await chooseGame(region, game);
@@ -249,7 +260,7 @@ async function runCase(browser, testCase) {
     assert.equal(await ambiguousMagic.getAttribute("data-set-id"), magicSetId, "Back focuses the exact game namespace, not the first equal set name");
     await ambiguousOther.click();
     await expect(detail).toContainText("$9.00");
-    await detail.getByRole("button", { name: "Add an item", exact: true }).click();
+    await detail.getByRole("button", { name: "Add missing item", exact: true }).click();
     await expect(page.getByRole("combobox", { name: "Trading card game", exact: true })).toHaveValue("unspecified");
     await expect(page.getByRole("textbox", { name: "Set", exact: true })).toHaveValue("Fusion Strike");
     await expect.poll(() => page.evaluate(() => JSON.parse(sessionStorage.getItem("private-business-hub.form-draft.collection.new") || "{}").tcgGame)).toBe("unlisted-custom");
@@ -304,7 +315,7 @@ async function runEmptyGame(browser) {
     const before = await recordBytes(page); assertSeededRecords(before, records);
     await chooseGame(portfolio, "Magic: The Gathering");
     await expect(portfolio.getByRole("list", { name: "Collection items", exact: true })).toHaveCount(0);
-    await portfolio.getByRole("button", { name: "Add Item", exact: true }).click();
+    await page.getByRole("button", { name: "Add item", exact: true }).first().click(); // page header since the Nov 2026 redesign
     await expect(page.getByRole("combobox", { name: "Trading card game", exact: true })).toHaveValue("magic");
     await page.getByRole("button", { name: "Cancel", exact: true }).click();
     await expect(portfolio).toBeVisible();
@@ -314,7 +325,7 @@ async function runEmptyGame(browser) {
     await expect(region.getByRole("list", { name: "Trading card sets", exact: true })).toHaveCount(0);
     await expect(region).not.toContainText("Celebrations");
     await expect(region).not.toContainText("1/4");
-    await region.getByRole("button", { name: "Add an item", exact: true }).click();
+    await page.getByRole("button", { name: "Add item", exact: true }).first().click();
     await expect(page.getByRole("combobox", { name: "Trading card game", exact: true })).toHaveValue("magic");
     await expect(page.getByRole("textbox", { name: "Set", exact: true })).toHaveValue("");
     const options = await page.getByRole("combobox", { name: "Trading card game", exact: true }).locator("option").allTextContents();
@@ -326,15 +337,15 @@ async function runEmptyGame(browser) {
     assert.equal(await recordBytes(page), before);
     // Save exactly one disposable new record in this isolated browser context.
     // The preserved projection below excludes only that deliberate addition.
-    await region.getByRole("button", { name: "Add an item", exact: true }).click();
+    await page.getByRole("button", { name: "Add item", exact: true }).first().click();
     await page.getByRole("textbox", { name: "Item name", exact: true }).fill("Disposable new Magic card");
     await page.getByRole("textbox", { name: "Set", exact: true }).fill("Fusion Strike");
     await page.getByRole("textbox", { name: "Card number", exact: true }).fill("001");
     await page.getByRole("button", { name: "Continue", exact: true }).click();
     await page.getByRole("button", { name: "Continue", exact: true }).click();
-    await page.getByRole("button", { name: "Save Item", exact: true }).click();
+    await page.getByRole("button", { name: "Save item", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Disposable new Magic card", exact: true })).toBeVisible();
-    await page.getByRole("button", { name: "Back", exact: true }).click();
+    await page.getByRole("button", { name: /^Back( to (collection|set))?$/ }).first().click();
     await expect(region).toBeVisible();
     const after = JSON.parse(await recordBytes(page)), original = JSON.parse(before);
     assert.deepEqual(after.items, original.items);
@@ -353,7 +364,7 @@ async function runEmptyGame(browser) {
     for (const field of ["sales", "purchases", "lots", "expenses", "mileage"]) assert.deepEqual(repoAfter[field], repoBefore[field]);
     const magicSet = region.getByRole("list", { name: "Trading card sets", exact: true }).getByRole("button", { name: "Open Fusion Strike", exact: true });
     await expect(magicSet).toBeVisible();
-    await expect(magicSet).toContainText("Checklist unavailable");
+    await expect(magicSet).toContainText("1 unique card");
     await expect(magicSet.locator("time")).toHaveCount(0);
     assert.deepEqual(safety.blockedWrites, []); assert.deepEqual(safety.blockedExternal, []); assert.deepEqual(safety.pageErrors, []);
     return { test: "Empty non-Pokémon library remains honest; game-prefilled manual draft can be cancelled and one disposable Magic record saved", passed: true, newDisposableRecordOnly: true, originalRecordsAndPricesPreserved: true, network: safety };
@@ -373,9 +384,14 @@ async function runLegacyGameCorrection(browser) {
     await expect(portfolio).toBeVisible({ timeout: 45000 }); await warmCatalog(page);
     const before = await recordBytes(page); assertSeededRecords(before, records);
     await chooseGame(portfolio, "Magic: The Gathering");
-    await portfolio.getByRole("list", { name: "Collection items", exact: true }).getByRole("button", { name: "Open Legacy imported game label", exact: true }).click();
-    await page.locator(".ops-detail-more > summary").click();
-    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await portfolio.getByRole("list", { name: "Collection items", exact: true }).getByRole("button", { name: /^Open Legacy imported game label(,|$)/ }).click();
+    // Product page first since the Nov 2026 redesign: Copies tab, then the saved copy, then Edit.
+    const product = page.getByTestId("collection-product-detail");
+    await product.getByRole("tab", { name: "Copies", exact: true }).click();
+    await product.getByRole("button", { name: /^Open copy record 1/ }).click();
+    const edit = page.getByRole("button", { name: "Edit", exact: true });
+    if (!(await edit.isVisible())) await page.locator(".ops-detail-more > summary").click();
+    await edit.click();
     const game = page.getByRole("combobox", { name: "Trading card game", exact: true });
     await expect(game).toHaveValue("magic");
     await game.selectOption("pokemon");

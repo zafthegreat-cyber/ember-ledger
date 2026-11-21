@@ -33,13 +33,11 @@
     "test-store-observation-browser.cjs",
     "test-login-presentation.cjs",
     "test-restock-shortcuts-browser.cjs",
-    "test-add-scan-layout-browser.cjs"
+    "test-add-scan-layout-browser.cjs",
+    "beta-smoke.cjs",
+    "test-multi-game-browser.cjs"
   ],
   "knownFailing": [
-    {
-      "file": "beta-smoke.cjs",
-      "firstError": "TimeoutError'"
-    },
     {
       "file": "test-account-ops-native-consistency.cjs",
       "firstError": "Error: element(s) not found"
@@ -163,10 +161,6 @@
     {
       "file": "test-menu-drawer-browser.cjs",
       "firstError": "AssertionError [ERR_ASSERTION]: Opening and cancelling reporting preserves existing records"
-    },
-    {
-      "file": "test-multi-game-browser.cjs",
-      "firstError": "TimeoutError'"
     },
     {
       "file": "test-private-beta-journeys.cjs",

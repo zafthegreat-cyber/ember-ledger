@@ -1942,12 +1942,13 @@ async function main() {
     await step("app opens and local beta shell loads", async () => {
       await resetBetaData();
       await assertVisibleText("Code 3");
-      await assertVisibleText("Needs Attention");
+      // Collector Home (Nov 2026 redesign): restock reports and the getting-started steps.
+      await assertVisibleText("Restock reports");
       await assertVisibleText("Home");
     });
 
     await step("Global Add opens from the application shell", async () => {
-      await nav("Hearth");
+      await nav("Home");
       await page.locator('button[aria-label="Open global Add menu"]').first().waitFor({ state: "attached", timeout: 10000 });
       const commandCenterButtons = [
         page.locator('button[aria-label="Open global Add menu"]'),
@@ -1967,14 +1968,13 @@ async function main() {
       assert.equal(opened, true, "Global Add entry should be visible");
       const quickAddModal = page.locator('.flow-modal[data-flow="addActionSheet"]').first();
       await quickAddModal.waitFor({ state: "visible", timeout: 5000 });
-      await assertVisibleText("Scan Listing");
-      await assertVisibleText("Analyze Deal");
+      // Collector Add sheet: the common actions first, the rest under More.
+      await assertVisibleText("Report a restock");
       await assertVisibleText("Add to my collection");
-      await assertNotVisibleText("Add Resale Inventory");
-      await assertNotVisibleText("Add Kids Pack");
+      await assertNotVisibleText("Scan several cards");
       await quickAddModal.locator("summary", { hasText: /^More$/ }).click();
-      await assertVisibleText("Add Resale Inventory");
-      await assertVisibleText("Add Kids Pack");
+      await assertVisibleText("Scan several cards");
+      await assertVisibleText("Request Missing Item");
       await quickAddModal.locator(".modal-close-button").click();
       await quickAddModal.waitFor({ state: "hidden", timeout: 5000 });
     });
@@ -1989,9 +1989,10 @@ async function main() {
       await assertVisibleText("Search collection");
     });
 
-    await step("Business opens", async () => {
-      await nav("Business");
-      await assertVisibleText("Purchases");
+    // Business tools (Sell) only show for seller accounts; the smoke run uses the collector view.
+    await step("Sets opens", async () => {
+      await nav("Sets");
+      await assertVisibleText("Card sets");
     });
 
     await finishRun();
