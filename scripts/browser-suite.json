@@ -35,7 +35,8 @@
     "test-restock-shortcuts-browser.cjs",
     "test-add-scan-layout-browser.cjs",
     "beta-smoke.cjs",
-    "test-multi-game-browser.cjs"
+    "test-multi-game-browser.cjs",
+    "test-collection-sets-browser.cjs"
   ],
   "knownFailing": [
     {
@@ -101,10 +102,6 @@
     {
       "file": "test-collection-portfolio-browser.cjs",
       "firstError": "TimeoutError'\r"
-    },
-    {
-      "file": "test-collection-sets-browser.cjs",
-      "firstError": ""
     },
     {
       "file": "test-community-integration.mjs",
