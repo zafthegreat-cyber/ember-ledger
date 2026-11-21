@@ -1326,6 +1326,7 @@ export default function Scout({
   // A deduped directory can omit a saved record ID that still owns reports and sightings.
   const [storeDetailRecords, setStoreDetailRecords] = useState([]);
   const [scoutSubTab, setScoutSubTab] = useState("overview");
+  const [showAllAlerts, setShowAllAlerts] = useState(false);
   const [selectedStoreTargetId, setSelectedStoreId] = useState("");
   const selectedStore = resolveScoutStoreRecord(selectedStoreTargetId, stores, storeDetailRecords, adminMode);
   const selectedStoreId = selectedStore?.id || selectedStoreTargetId;
@@ -4406,7 +4407,7 @@ async function handleUpdateStore(e) {
     const id = alert.reportId || alert.alertId || `${alert.reportType}-${alert.productName}-${alert.createdAt}`;
     return !dismissedAlertIds.includes(id);
   });
-  const topActiveAlerts = visibleScoutAlerts.slice(0, 5);
+  const topActiveAlerts = showAllAlerts ? visibleScoutAlerts : visibleScoutAlerts.slice(0, 5);
   const alertPreferenceRows = [
     { key: "enabled", label: "Restock alerts", description: "Turn Restocks alerting on or off." },
     { key: "favoriteStoresOnly", label: "Favorite store alerts", description: "Prioritize reports from stores you care about." },
@@ -5610,13 +5611,6 @@ async function handleUpdateStore(e) {
                       <p style={styles.tiny}>Preview: {tipImport.screenshotName}</p>
                     </div>
                   ) : null}
-                  <button
-                    type="button"
-                    style={styles.buttonSoft}
-                    onClick={() => setError("OCR/image extraction is coming later. For beta, review the screenshot and enter the fields manually.")}
-                  >
-                    Extract with AI Later
-                  </button>
                   <input style={styles.input} value={tipImport.productName} onChange={(e) => updateTipImport("productName", e.target.value)} placeholder="Product name" />
                   <input style={styles.input} value={tipImport.quantitySeen} onChange={(e) => updateTipImport("quantitySeen", e.target.value)} placeholder="Quantity seen" />
                   <input style={styles.input} value={tipImport.price} onChange={(e) => updateTipImport("price", e.target.value)} placeholder="Price if visible" />
@@ -6128,7 +6122,7 @@ async function handleUpdateStore(e) {
             <div style={{ ...styles.card, boxShadow: "none", marginTop: "14px", padding: "14px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", alignItems: "center" }}>
                 <h3 style={{ margin: 0 }}>Active Alerts</h3>
-                {visibleScoutAlerts.length > topActiveAlerts.length ? <button type="button" style={styles.buttonSoft} onClick={() => setError("Full alert history view is coming later. Showing the top active alerts for beta.")}>View all alerts</button> : null}
+                {visibleScoutAlerts.length > 5 ? <button type="button" style={styles.buttonSoft} onClick={() => setShowAllAlerts((value) => !value)}>{showAllAlerts ? "Show fewer" : `View all ${visibleScoutAlerts.length} alerts`}</button> : null}
               </div>
               <div style={{ display: "grid", gap: "10px", marginTop: "12px" }}>
                 {topActiveAlerts.length === 0 ? <p style={styles.empty}>No active alerts yet. Favorite stores, add watchlist items, or submit reports to make Restocks smarter.</p> : null}
@@ -6149,15 +6143,11 @@ async function handleUpdateStore(e) {
                       {alert.storeName || "Restocks"} {alert.productName ? `- ${alert.productName}` : ""}
                       {alert.duplicateCount > 1 ? ` (${alert.duplicateCount} similar)` : ""}
                     </p>
-                    <p style={styles.tiny}>Last updated: {alert.createdAt || "Local beta"}</p>
+                    <p style={styles.tiny}>Last updated: {alert.createdAt || "Saved on this device"}</p>
                     <div className="scout-alert-actions" style={styles.row}>
-                      <button type="button" style={styles.buttonSoft} onClick={() => {
-                        if (getDropWebsiteUrl(alert)) {
-                          openDropWebsiteFromUserAction(alert);
-                          return;
-                        }
-                        setError("Alert detail view is coming later. Use restock reports or Stores for details now.");
-                      }}>View Website</button>
+                      {getDropWebsiteUrl(alert) ? (
+                        <button type="button" style={styles.buttonSoft} onClick={() => openDropWebsiteFromUserAction(alert)}>View Website</button>
+                      ) : null}
                       <button type="button" style={styles.buttonSoft} onClick={() => {
                         setDismissedAlertIds((current) => [...new Set([...current, alertId])]);
                         setError("Alert dismissed.");

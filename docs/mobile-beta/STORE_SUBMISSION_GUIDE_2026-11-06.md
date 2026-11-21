@@ -134,7 +134,7 @@ Answer **yes, data is collected**. Nothing is used for tracking or advertising, 
 | Data | Collected for | Linked to user | Optional |
 | --- | --- | --- | --- |
 | Email address, name, user ID | Account, app functionality | Yes | Required for an account |
-| Photos (reports, collection, receipts, feedback) | App functionality | Yes | Optional |
+| Photos (reports, collection, receipts, feedback; on paid plans, one photo per tap of Identify with AI, sent to Anthropic as our service provider and not stored) | App functionality | Yes | Optional |
 | Other user content (collection, reports, posts, notes) | App functionality | Yes | Optional |
 | Purchase history / other financial info (seller and receipt records) | App functionality | Yes | Optional |
 | Precise and approximate location (only when the user taps "use my location"; ZIP/city if typed) | App functionality | Yes | Optional |
@@ -142,6 +142,8 @@ Answer **yes, data is collected**. Nothing is used for tracking or advertising, 
 | Customer support messages | App functionality | Yes | Optional |
 | Device or other IDs (push notification token, once phone alerts are on) | App functionality | Yes | Optional |
 | Crash logs and diagnostics (Sentry crash reports with no personal details; server request logs) | App functionality, security | No | — |
+
+The iPhone privacy manifest (`ios/App/App/PrivacyInfo.xcprivacy`) lists the same data types (updated Nov 21, 2026). If this table changes, change the manifest too.
 
 ## Age rating and audience
 

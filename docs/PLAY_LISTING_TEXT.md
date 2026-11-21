@@ -42,7 +42,7 @@ BUILT FOR COLLECTORS, NOT SCALPERS
 • No checkout bots and no auto-buying
 • No store delivery schedules or restock pattern history
 • Reports are reviewed, and each one shows when it was seen and whether it was confirmed
-• Kid-safe view for younger collectors, with a moderated community
+• Teen accounts get a safer view: they can browse restocks and keep a collection, but cannot post reports or listings
 
 FAIR PRICES
 • Look up a card or product before you buy or trade

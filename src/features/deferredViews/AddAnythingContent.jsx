@@ -683,7 +683,7 @@ export default function AddAnythingContent({ scope }) {
     if (quickAddScreen === "photo") {
       return (
         <div className="add-anything-flow add-anything-photo">
-          {renderFlowHeader("Photo reference", "Automatic photo, binder, slab, and receipt recognition are coming later. Use the photo only as a manual reference for now.")}
+          {renderFlowHeader("Photo reference", "The photo is kept as a reference. To identify a card, slab, listing or receipt from a photo, use Scan.")}
           <div className="quick-add-photo-panel">
             {quickAddWizard.photoPreviewUrl ? (
               <div className="picture-lookup-preview quick-add-photo-preview">

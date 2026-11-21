@@ -1630,7 +1630,7 @@ const IMPORT_SOURCE_GUIDES = [
     value: "photo_reference",
     label: "Photos or screenshots",
     mode: BATCH_INTAKE_MODES.TRANSFER,
-    instructions: "Upload the image for reference and type the visible text. Full AI photo recognition is coming later, but for now we'll use the text you provide to suggest matches.",
+    instructions: "Upload the image for reference and type the visible text. We use that text to suggest matches. To identify a single card from a photo, use Scan.",
     bestFormat: "Image upload for reference plus typed visible text in the paste box.",
   },
   {
@@ -13701,7 +13701,7 @@ export default function App() {
           originalText: file.name,
           itemName: "Image reference upload",
           referenceOnly: true,
-          notes: "Image/OCR import is coming later. Type the visible text into the paste box for beta matching.",
+          notes: "Image kept as a reference. Type the visible text into the paste box to find matches.",
         }, "photo_reference", 0),
       ]);
       setImportBatchMessage("Image uploaded as a reference only. Type visible text into the paste box, then review matches before saving.");
@@ -39532,7 +39532,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <p className="section-kicker">Public Profile preview</p>
               <h2>{publicCommunity.publicUsernameLabel}</h2>
               <p>{publicCommunity.contributionLine}</p>
-              <p>@{handleSource} · {isKidProfile ? "Kid collector" : "Collector"}</p>
+              <p>@{handleSource} · {isKidProfile ? "Teen collector" : "Collector"}</p>
             </div>
           </div>
           <div className="profile-privacy-note">

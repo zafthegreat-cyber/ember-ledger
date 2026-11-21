@@ -907,7 +907,6 @@ function VaultGroupedCardDetail({ cardGroup, setSummary, onClose, onViewSet, onA
             <div><span>Owned variants</span><strong>{cardGroup.variantOwnedCount || 0}</strong></div>
             <div><span>Wishlist</span><strong>{cardGroup.variantWishlistCount || 0}</strong></div>
           </div>
-          <p className="vault-detail-action-note">Interactive card preview coming later.</p>
         </div>
       </div>
       <div className="vault-master-detail-note">
