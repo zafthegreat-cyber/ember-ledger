@@ -37,7 +37,8 @@
     "beta-smoke.cjs",
     "test-multi-game-browser.cjs",
     "test-collection-sets-browser.cjs",
-    "test-collection-portfolio-browser.cjs"
+    "test-collection-portfolio-browser.cjs",
+    "test-global-search-presentation.cjs"
   ],
   "knownFailing": [
     {
@@ -131,10 +132,6 @@
     {
       "file": "test-experience-menu-app-browser.cjs",
       "firstError": "AssertionError [ERR_ASSERTION]: Preview preserves original record arrays"
-    },
-    {
-      "file": "test-global-search-presentation.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: See global-search-presentation/results.json for failures"
     },
     {
       "file": "test-item-photos-app-browser.cjs",

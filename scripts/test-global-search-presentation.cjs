@@ -59,8 +59,11 @@ const { chromium, expect } = require("@playwright/test");
         // Queries inspect existing local data; no search destination that invokes a remote service is run.
         await input.fill("collection");
         await expect(search.getByRole("heading", { name: "Local matches", exact: true })).toBeVisible();
-        const lastResult = search.locator(".app-search-local-results button").last();
-        await lastResult.focus();
+        // Local matches keep arriving while the catalog warms up, so pin the button that was focused
+        // instead of re-resolving ".last()" after more results render.
+        await search.locator(".app-search-local-results button").last().evaluate(button => { button.dataset.qaLastResult = "true"; button.focus(); });
+        const lastResult = search.locator('[data-qa-last-result="true"]');
+        await expect(lastResult).toBeFocused();
         await assertExposedFocus("Last local result must scroll into view without being covered");
         await page.screenshot({ path: `${output}/${theme}-${width}-${route.slice(1).replaceAll("/", "-")}-results.png` });
         if (width === 360) {
