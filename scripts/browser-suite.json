@@ -36,7 +36,8 @@
     "test-add-scan-layout-browser.cjs",
     "beta-smoke.cjs",
     "test-multi-game-browser.cjs",
-    "test-collection-sets-browser.cjs"
+    "test-collection-sets-browser.cjs",
+    "test-collection-portfolio-browser.cjs"
   ],
   "knownFailing": [
     {
@@ -98,10 +99,6 @@
     {
       "file": "test-code3-workspace-browser.cjs",
       "firstError": "TimeoutError'"
-    },
-    {
-      "file": "test-collection-portfolio-browser.cjs",
-      "firstError": "TimeoutError'\r"
     },
     {
       "file": "test-community-integration.mjs",

@@ -3,6 +3,29 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { chromium, expect } = require("@playwright/test");
 
+// Collection tools ("Organize & export", More) and "Most valuable items" sit in folds
+// that start closed since the Nov 2026 declutter; open them the way a person would.
+async function openFold(fold) {
+  if (await fold.count() && !(await fold.first().evaluate(element => element.open))) await fold.first().locator(":scope > summary").click();
+}
+// Export opens a review sheet first since Nov 2026; Download CSV starts the file.
+async function exportCsv(page, region) {
+  await region.getByRole("button", { name: "Export whole portfolio", exact: true }).click();
+  await page.getByRole("dialog", { name: "Review collection export", exact: true }).getByRole("button", { name: "Download CSV", exact: true }).click();
+}
+async function mostValuable(region) {
+  await openFold(region.locator(".collection-portfolio-highlights"));
+  return region.getByRole("list", { name: "Most valuable items", exact: true });
+}
+// Each portfolio item row is a styled label around its checkbox; tap the row.
+async function tickPortfolioItem(form, item) {
+  const row = form.locator("label.collection-portfolio-checkbox").filter({ has: form.page().locator("strong").getByText(item, { exact: true }) }).first();
+  const box = row.locator("input[type=checkbox]");
+  if (!(await box.isChecked())) await row.click();
+  await expect(box).toBeChecked();
+}
+
+
 const base = new URL(process.env.APP_URL || "http://127.0.0.1:5271/");
 assert.ok(["127.0.0.1", "localhost", "[::1]"].includes(base.hostname), "Collection portfolio checks require disposable loopback data");
 const output = path.resolve(process.env.QA_OUTPUT_DIR || "artifacts/qa/collection-portfolio-browser");
@@ -220,8 +243,9 @@ async function exercisePortfolio(page, region, testCase, result) {
   await expect(grid.locator(".collection-portfolio-item")).toHaveCount(4);
   await expect(region).not.toContainText("Excluded resale item");
   await expect(grid).toContainText("Excluded held item"); // Historical fixture name; Hold now belongs in Collection.
-  await expect(region.getByRole("list", { name: "Most valuable items", exact: true }).locator("button")).toHaveCount(3);
+  await expect((await mostValuable(region)).locator("button")).toHaveCount(3);
   result.metrics = await checkGeometry(page, region, testCase);
+  await openFold(region.locator(".collection-portfolio-tools"));
   const more = region.locator(".everyday-more-menu");
   await more.locator(":scope > summary").click();
   result.moreMenuMetrics = await checkGeometry(page, more, testCase);
@@ -244,14 +268,14 @@ async function exercisePortfolio(page, region, testCase, result) {
   await expect(grid).toContainText("Aurora legacy collectible");
   await expect(region.locator(".collection-portfolio-value")).toHaveText("$877.00");
   await search.fill("");
-  await region.getByRole("button", { name: "Filter", exact: true }).click();
+  await region.getByRole("button", { name: /^Filters/ }).click();
   const filters = page.getByRole("dialog", { name: "Filter collection", exact: true });
   await filters.getByLabel("Condition", { exact: true }).selectOption("Mint");
   await filters.getByRole("button", { name: "Close", exact: true }).click();
   await expect(grid.locator("button")).toHaveCount(1);
   await expect(grid).toContainText("Zenith repository collectible");
   await expect(region.locator(".collection-portfolio-value")).toHaveText("$877.00");
-  await region.getByRole("button", { name: "Filter", exact: true }).click();
+  await region.getByRole("button", { name: /^Filters/ }).click();
   await filters.getByRole("button", { name: "Clear Filter", exact: true }).click();
   await expect(grid.locator("button")).toHaveCount(4);
   await region.getByRole("combobox", { name: "Sort collection", exact: true }).selectOption("value");
@@ -260,7 +284,7 @@ async function exercisePortfolio(page, region, testCase, result) {
   await region.getByRole("button", { name: "List", exact: true }).click();
   await expect(grid).toHaveAttribute("data-mode", "list");
   await expect(region.getByRole("button", { name: "List", exact: true })).toHaveAttribute("aria-pressed", "true");
-  await grid.getByRole("button", { name: "Open Zenith repository collectible", exact: true }).click();
+  await grid.getByRole("button", { name: /^Open Zenith repository collectible(,|$)/ }).click();
   await expect(page.getByRole("heading", { name: "Zenith repository collectible", exact: true })).toBeVisible();
   let product = page.getByTestId("collection-product-detail");
   await expect(product.getByRole("tab", { name: "Overview", exact: true })).toHaveAttribute("aria-selected", "true");
@@ -271,14 +295,14 @@ async function exercisePortfolio(page, region, testCase, result) {
   await expect(product).toContainText("$10.00");
   await product.getByRole("button", { name: "Open copy record 1: Personal collection, quantity 1", exact: true }).click();
   await expect(page.locator(".ops-record-detail")).toContainText("QA Zenith Set");
-  await page.getByRole("button", { name: "Back", exact: true }).click();
+  await page.locator(".ops-record-detail .ops-detail-back").first().click(); // its label names where it returns
   await expect(product.getByRole("tab", { name: "Copies", exact: true })).toHaveAttribute("aria-selected", "true");
   await product.getByRole("button", { name: "Back to collection", exact: true }).click();
   await expect(region).toBeVisible();
   await expect(grid).toHaveAttribute("data-mode", "list");
   await region.getByRole("button", { name: "Grid", exact: true }).click();
   await expect(grid).toHaveAttribute("data-mode", "grid");
-  await region.getByRole("list", { name: "Most valuable items", exact: true }).getByRole("button", { name: "Open Aurora legacy collectible", exact: true }).click();
+  await (await mostValuable(region)).getByRole("button", { name: /^Open Aurora legacy collectible(,|$)/ }).click();
   await expect(page.getByRole("heading", { name: "Aurora legacy collectible", exact: true })).toBeVisible();
   product = page.getByTestId("collection-product-detail");
   await product.getByRole("tab", { name: "Copies", exact: true }).click();
@@ -286,7 +310,7 @@ async function exercisePortfolio(page, region, testCase, result) {
   await expect(product).toContainText("$10.00");
   await product.getByRole("button", { name: "Open copy record 1: Personal collection, quantity 2", exact: true }).click();
   await expect(page.locator(".ops-record-detail")).toContainText("QA Aurora Set");
-  await page.getByRole("button", { name: "Back", exact: true }).click();
+  await page.locator(".ops-record-detail .ops-detail-back").first().click(); // its label names where it returns
   await expect(product.getByRole("tab", { name: "Copies", exact: true })).toHaveAttribute("aria-selected", "true");
   await product.getByRole("button", { name: "Back to collection", exact: true }).click();
   await expect(region).toBeVisible();
@@ -315,7 +339,7 @@ async function createPortfolio(page, region, name, itemNames) {
   const form = page.getByRole("dialog", { name: "New portfolio", exact: true });
   await expect(form).toBeVisible();
   await form.getByLabel("Portfolio name", { exact: true }).fill(name);
-  for (const item of itemNames) await form.getByRole("checkbox", { name: item, exact: true }).check();
+  for (const item of itemNames) await tickPortfolioItem(form, item);
   await form.getByRole("button", { name: "Save portfolio", exact: true }).click();
   await expect(form).toHaveCount(0);
   await settle(page);
@@ -346,9 +370,9 @@ async function exerciseOrganization(page, region, testCase, result) {
   await expect(chooser.getByRole("button", { name: "Remove Trade shelf from favorites", exact: true })).toHaveAttribute("aria-pressed", "true");
   await chooser.getByRole("button", { name: "Manage Trade shelf", exact: true }).click();
   let form = page.getByRole("dialog", { name: "Manage portfolio", exact: true });
-  await expect(form.getByRole("checkbox", { name: "Aurora legacy collectible", exact: true })).toBeChecked();
+  await expect(form.locator("label.collection-portfolio-checkbox").filter({ has: page.locator("strong").getByText("Aurora legacy collectible", { exact: true }) }).locator("input")).toBeChecked();
   await form.getByLabel("Portfolio name", { exact: true }).fill("Weekend collection");
-  await form.getByRole("checkbox", { name: "Unknown estimate collectible", exact: true }).check();
+  await tickPortfolioItem(form, "Unknown estimate collectible");
   result.manageMetrics = await checkGeometry(page, form, testCase);
   const labels = await form.locator(".collection-portfolio-checkbox").evaluateAll(elements => elements.map(element => ({ name: element.textContent.trim(), height: element.getBoundingClientRect().height, width: element.getBoundingClientRect().width })));
   assert.ok(labels.every(label => label.height >= 44 && label.width >= 44), "Portfolio item checkbox labels provide usable touch targets");
@@ -383,7 +407,7 @@ async function exerciseOrganization(page, region, testCase, result) {
   assert.deepEqual(afterRemove.portfolios.map(row => row.name), ["Main", "Weekend collection"]);
   assert.equal(afterRemove.memberships["repository:qa-portfolio-repository"], undefined, "Removing metadata returns an item to Main");
   await choosePortfolio(page, region, "Main");
-  await expect(region.getByRole("list", { name: "Collection items", exact: true }).getByRole("button", { name: "Open Zenith repository collectible", exact: true })).toBeVisible();
+  await expect(region.getByRole("list", { name: "Collection items", exact: true }).getByRole("button", { name: /^Open Zenith repository collectible(,|$)/ })).toBeVisible();
   await choosePortfolio(page, region, "All portfolios");
   await expect(region.locator('[data-testid="portfolio-total"]')).toHaveText("$877.00");
   assert.equal((await metadata(page))[privateKey], privateBefore, "Organization never reads or changes another account/workspace's metadata");
@@ -406,7 +430,7 @@ async function exerciseHistoryAndExport(page, region, testCase, result) {
   assert.equal(first.portfolioId, "all");
   assert.equal(first.total, 877); assert.equal(first.knownCount, 3); assert.equal(first.totalCount, 4); assert.equal(first.quantity, 5);
   assert.ok(Date.parse(first.at) >= started && Date.parse(first.at) <= Date.now() + 1000, "A snapshot records the actual present, not invented historical prices");
-  await expect(history).toContainText("No value history yet");
+  await expect(history).toContainText("At least two dated saved snapshots are needed");
   await history.getByRole("button", { name: "Save value snapshot", exact: true }).click();
   await expect(history.locator("svg[role=img]")).toHaveCount(1);
   state = JSON.parse((await metadata(page))[result.scopeKey]);
@@ -427,20 +451,25 @@ async function exerciseHistoryAndExport(page, region, testCase, result) {
   await expect(history.locator("table")).toHaveCount(0);
   await expect(history.getByRole("button", { name: "Save value snapshot", exact: true })).toBeDisabled();
   const hiddenDownload = page.waitForEvent("download");
-  await region.getByRole("button", { name: "Export", exact: true }).click();
+  await openFold(region.locator(".collection-portfolio-tools"));
+  await exportCsv(page, region);
   const hiddenCsv = fs.readFileSync(await (await hiddenDownload).path(), "utf8");
   assert.ok(!hiddenCsv.includes("estimate USD") && !hiddenCsv.includes("50.00") && !hiddenCsv.includes("877.00") && !hiddenCsv.includes("777.00"), "Hidden-value CSV omits all monetary columns");
   assert.ok(hiddenCsv.includes("Aurora legacy collectible") && hiddenCsv.includes("Zenith repository collectible") && hiddenCsv.includes("Unknown estimate collectible"));
   await region.getByRole("button", { name: "Show values", exact: true }).click();
   const downloadPromise = page.waitForEvent("download");
-  await region.getByRole("button", { name: "Export", exact: true }).click();
+  await openFold(region.locator(".collection-portfolio-tools"));
+  await exportCsv(page, region);
   const download = await downloadPromise;
   assert.equal(download.suggestedFilename(), "code3-tcg-portfolio.csv");
   const csv = fs.readFileSync(await download.path(), "utf8");
-  assert.ok(csv.includes('"Unit estimate USD"') && csv.includes('"Total estimate USD"'));
-  assert.ok(csv.includes('"Aurora legacy collectible","Game not recorded","Supply","QA Aurora Set","2","25","50"'));
-  assert.ok(csv.includes('"Zenith repository collectible","Game not recorded","Supply","QA Zenith Set","1","50","50"'));
-  assert.ok(!csv.includes("Excluded resale item") && csv.includes('"Excluded held item","Game not recorded","Supply","","1","777","777"'));
+  // Reviewed export (Nov 2026): the default columns, one unit estimate plus its currency.
+  const csvLines = csv.replace(/^﻿/, "").split(/\r?\n/);
+  assert.equal(csvLines[0], '"Name","Game","Set","Quantity","Language","Finish","Unit estimate","Currency"');
+  const csvRow = (name) => csvLines.find(line => line.startsWith(`"${name}",`)) || "";
+  assert.ok(csvRow("Aurora legacy collectible").startsWith('"Aurora legacy collectible","Game not recorded","QA Aurora Set","2",') && csvRow("Aurora legacy collectible").endsWith('"25","USD"'));
+  assert.ok(csvRow("Zenith repository collectible").startsWith('"Zenith repository collectible","Game not recorded","QA Zenith Set","1",') && csvRow("Zenith repository collectible").endsWith('"50","USD"'));
+  assert.ok(!csv.includes("Excluded resale item") && csvRow("Excluded held item").endsWith('"777","USD"'));
   await region.getByRole("button", { name: "Overview", exact: true }).click();
   await expect(region.getByRole("list", { name: "Collection items", exact: true }).locator("button")).toHaveCount(4);
   result.actualCurrentSnapshotsAccessibleHistoryPeriodsAndCsv = true;
@@ -466,15 +495,19 @@ async function variantCase(browser, kind, scopeKey) {
       await region.getByRole("button", { name: "Performance", exact: true }).click();
       const locked = page.getByRole("dialog", { name: "Feature Locked", exact: true });
       await expect(locked).toBeVisible();
-      await expect(locked).toContainText("Portfolio Value");
+      await expect(locked).toContainText(/Portfolio Value|Price History/);
       await locked.getByRole("button", { name: "Close locked feature notice", exact: true }).click();
       await expect(locked).toHaveCount(0);
       await expect(region.getByRole("button", { name: "Overview", exact: true })).toHaveAttribute("aria-pressed", "true");
-      await region.getByRole("button", { name: "Export", exact: true }).click();
-      await expect(locked).toBeVisible();
-      await expect(locked).toContainText("Collection Export");
-      await locked.getByRole("button", { name: "Close locked feature notice", exact: true }).click();
-      assert.deepEqual(downloads, [], "A free account cannot bypass export entitlement");
+      await openFold(region.locator(".collection-portfolio-tools"));
+      await region.getByRole("button", { name: "Export whole portfolio", exact: true }).click();
+      // Export is open to every public plan (featureGates ALL_PUBLIC_PLANS): it opens the review, not a lock.
+      const review = page.getByRole("dialog", { name: "Review collection export", exact: true });
+      await expect(review).toBeVisible();
+      await expect(locked).toHaveCount(0);
+      await page.keyboard.press("Escape");
+      await expect(review).toHaveCount(0);
+      assert.deepEqual(downloads, [], "Opening the export review does not download anything");
       assert.deepEqual(Object.keys(await metadata(page)).filter(key => !key.includes("unrelated-user")), [], "Locked actions do not write snapshots or portfolio settings");
     } else if (kind === "corrupt") {
       await expect(region.getByRole("alert")).toContainText("original device copy was kept");
@@ -493,7 +526,7 @@ async function variantCase(browser, kind, scopeKey) {
       await page.getByRole("dialog", { name: "Choose portfolio", exact: true }).getByRole("button", { name: "Add portfolio", exact: false }).click();
       const form = page.getByRole("dialog", { name: "New portfolio", exact: true });
       await form.getByLabel("Portfolio name", { exact: true }).fill("Quota-failure portfolio");
-      await form.getByRole("checkbox", { name: "Aurora legacy collectible", exact: true }).check();
+      await tickPortfolioItem(form, "Aurora legacy collectible");
       await form.getByRole("button", { name: "Save portfolio", exact: true }).click();
       await expect(form.getByRole("alert")).toContainText("Existing item records are unchanged");
       await expect(form.getByRole("alert")).toContainText("Synthetic portfolio-only quota failure");
