@@ -115,11 +115,38 @@ async function seedApp(context, { theme, admin = false, family = false }) {
   }, { theme, admin, family });
 }
 
+// Start-up saves (workspace backfill, catalog seed) land shortly after load; take baselines
+// only once et-tcg-beta-data has been unchanged for ~500ms.
+async function settledSnapshot(page) {
+  let last = null, stableSince = Date.now();
+  const deadline = Date.now() + 15000;
+  while (Date.now() < deadline) {
+    const current = await page.evaluate(() => localStorage.getItem("et-tcg-beta-data"));
+    if (current !== last) { last = current; stableSince = Date.now(); }
+    else if (Date.now() - stableSince >= 500) break;
+    await page.waitForTimeout(100);
+  }
+  return appSnapshot(page);
+}
+
 async function appSnapshot(page) {
   return page.evaluate(() => {
     const data = JSON.parse(localStorage.getItem("et-tcg-beta-data"));
     return { records: JSON.stringify([data.items, data.sales, data.expenses]), subscription: JSON.stringify(data.subscriptionProfile), role: data.profile?.appRole, preferences: JSON.stringify(data.appSetupPersonalization) };
   });
+}
+
+// Home "Customize" now opens the inline Home shortcut editor (OperationsHome.jsx), not Settings.
+// Reach Settings in-app (no reload, so preview state is kept) through the profile menu.
+async function openSettingsInApp(page) {
+  const sidebar = page.locator(".ops-desktop-sidebar");
+  if (await sidebar.isVisible()) { await sidebar.getByRole("button", { name: "Settings", exact: true }).click(); return; }
+  await page.locator("button[aria-label='Open profile and menu']:visible").first().click();
+  const menu = page.locator(".code3-menu-drawer[role='dialog']");
+  await expect(menu).toBeVisible();
+  const settings = menu.locator("[data-menu-key='settings']").first();
+  if (!await settings.isVisible()) await menu.locator("[data-menu-section]").filter({ has: page.locator("[data-menu-key='settings']") }).locator(".menu-section-toggle").click();
+  await settings.click();
 }
 
 async function openAppPreferences(page) {
@@ -140,7 +167,7 @@ async function adminAppChecks(browser, item) {
     const control = page.getByRole("region", { name: "Admin display controls" });
     await expect(control.getByRole("combobox", { name: "Preview plan", exact: true })).toBeVisible({ timeout: 30000 });
     await expect(page.locator("[data-home-card='vaultSnapshot']")).toBeVisible();
-    const before = await appSnapshot(page);
+    const before = await settledSnapshot(page);
     assert.equal(before.role, "owner");
     assert.ok(JSON.parse(before.preferences).pagePreferences.quickAdd.visibleKeys.includes("reviewFlaggedReports"), "Opening Regular preview retains the admin's saved Add layout");
     for (const id of ["qa-preserved-card", "qa-preserved-sale", "qa-preserved-expense"]) assert.ok(before.records.includes(id), `${id} exists before preview`);
@@ -192,10 +219,13 @@ async function adminAppChecks(browser, item) {
         await page.screenshot({ path: path.join(output, `${item.width}-${item.theme}-admin-top.png`) });
       }
       await page.screenshot({ path: path.join(output, `${item.width}-${item.theme}-${tier}-preview.png`), fullPage: true });
-      await membership.getByRole("button", { name: /Back to (Home|Hearth)/ }).click();
+      // Previewed (non-admin) presentations get the quiet command board, which shows only one
+      // helper action ("Ask Admin"); "Back to Home" is not rendered there. Return with browser Back.
+      const backToHome = membership.getByRole("button", { name: /Back to (Home|Hearth)/ });
+      if (await backToHome.count()) await backToHome.click(); else await page.goBack();
       await expect(page.locator("[data-home-card='vaultSnapshot']")).toBeVisible();
     }
-    await page.getByRole("button", { name: "Customize", exact: true }).click();
+    await openSettingsInApp(page);
     const preferences = await openAppPreferences(page);
     for (const input of await preferences.locator("input").all()) await expect(input).toBeDisabled();
     assert.deepEqual(await appSnapshot(page), before, "Previewing tiers does not change subscriptions, actual role, preferences, or records");
@@ -221,7 +251,7 @@ async function collectorAppChecks(browser) {
     await expect(page.locator("[data-home-card='vaultSnapshot']")).toBeVisible({ timeout: 30000 });
     await expect(page.getByRole("region", { name: "Admin display controls" })).toHaveCount(0);
     await expect(page.locator("[data-home-card='forgeSummary']")).toHaveCount(0);
-    const before = await appSnapshot(page);
+    const before = await settledSnapshot(page);
     const originalLayout = JSON.parse(before.preferences).pagePreferences;
     assert.ok(originalLayout.quickAdd.visibleKeys.includes("addSale"), "Collector presentation keeps hidden saved layout choices in storage");
     await page.getByRole("button", { name: "Open profile and menu", exact: true }).click();
@@ -246,7 +276,7 @@ async function collectorAppChecks(browser) {
     await expect(page.locator("[data-home-card='vaultSnapshot']")).toBeVisible();
     await expect(page.locator("[data-home-card='forgeSummary']")).toHaveCount(0);
     assert.equal((await appSnapshot(page)).preferences, before.preferences, "One occasional sale/trade visit does not switch persona");
-    await page.getByRole("button", { name: "Customize", exact: true }).click();
+    await openSettingsInApp(page);
     const preferences = await openAppPreferences(page);
     await expect(preferences.getByRole("radio", { name: /^Collector/ })).toBeChecked();
     for (const checkbox of await preferences.getByRole("checkbox").all()) await expect(checkbox).not.toBeChecked();
@@ -281,7 +311,7 @@ async function familyPreferenceChecks(browser) {
     const preferences = await openAppPreferences(page);
     const family = preferences.getByRole("checkbox", { name: /^Family tools/ });
     await expect(family).toBeChecked();
-    const before = await appSnapshot(page);
+    const before = await settledSnapshot(page);
     await family.uncheck();
     await expect(family).not.toBeChecked();
     await expect.poll(async () => JSON.parse((await appSnapshot(page)).preferences).optionalToolsCustomized).toContain("family");

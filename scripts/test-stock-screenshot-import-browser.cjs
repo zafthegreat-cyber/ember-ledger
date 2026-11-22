@@ -14,6 +14,21 @@ const observed = "2026-09-15T10:30";
 const privateMarker = "PRIVATE_AUTHOR_SYNTHETIC";
 const northId = "screenshot-fixture-north";
 
+// After text is read, StockScreenshotImport collapses the source block ("Change screenshot or source");
+// the private post-text disclosure lives inside it, so open the outer disclosure first.
+async function openPostText(intake) {
+  const source = intake.locator("details.stock-screenshot-source");
+  if (!(await source.evaluate((element) => element.open))) await source.locator(":scope > summary").click();
+  const postText = intake.locator("details.stock-screenshot-source-text");
+  if (!(await postText.evaluate((element) => element.open))) await postText.locator(":scope > summary").click();
+  await expect(intake.getByLabel(/^Private screenshot text/)).toBeVisible();
+}
+
+// "Products mentioned" became a fieldset of per-product rows (Product 1, Product 2, ...) in Nov 2026.
+function productRow(intake) {
+  return intake.locator(".stock-screenshot-product-rows").getByLabel("Product 1", { exact: true });
+}
+
 async function snapshot(page) {
   return page.evaluate(() => {
     const scout = JSON.parse(localStorage.getItem("et-tcg-beta-scout"));
@@ -128,9 +143,9 @@ async function makeScreenshot(page, theme) {
         await fileInput.setInputFiles(fixture);
         await expect(intake.getByText("Text read. Check the suggestions below before using them.", { exact: true })).toBeVisible({ timeout: 90000 });
         phase = "review";
-        await intake.getByText("Paste or correct post text", { exact: true }).click();
+        await openPostText(intake);
         await expect(intake.getByLabel(/^Private screenshot text/)).toHaveValue(/Prismatic Evolutions/);
-        await expect(intake.getByLabel(/^Products mentioned/)).toHaveValue(/Prismatic Evolutions/);
+        await expect(productRow(intake)).toHaveValue(/Prismatic Evolutions/);
         await expect(intake.getByLabel(/^Product category/)).toHaveValue("Pokemon TCG");
         await expect(intake.getByLabel(/^Stock status in the post/)).toHaveValue("stock_on_shelf");
         await expect(intake.getByLabel(/^Exact store/)).toHaveValue("");
@@ -163,7 +178,7 @@ async function makeScreenshot(page, theme) {
         await presentation(page, modal, result, "screenshot-applied");
         await editDetails.click();
         await expect(intake.getByRole("heading", { name: "Review screenshot details", exact: true })).toBeFocused();
-        await expect(intake.getByLabel(/^Products mentioned/)).toHaveValue(/Prismatic Evolutions/);
+        await expect(productRow(intake)).toHaveValue(/Prismatic Evolutions/);
         await expect(intake.getByLabel(/^Product category/)).toHaveValue("Pokemon TCG");
         await expect(intake.getByLabel(/^Stock status in the post/)).toHaveValue("stock_on_shelf");
         await expect(intake.getByLabel(/^Exact store/)).toHaveValue(northId);
@@ -227,12 +242,12 @@ async function makeScreenshot(page, theme) {
           for (const entry of ["direct", "scan-anything"]) {
             await addOpener.click();
             const addModal = page.locator('.flow-modal[data-flow="addActionSheet"]');
-            const entryButton = addModal.getByRole("button", { name: entry === "direct" ? /^Review a restock screenshot before saving/ : /^Scan (Listing|or review)\./ });
+            const entryButton = addModal.getByRole("button", { name: entry === "direct" ? /^Review a restock screenshot before saving/ : /^Scan (Listing|or review|with camera)\./ });
             if (!(await entryButton.isVisible())) await addModal.locator(".add-anything-more > summary").click();
             await entryButton.click();
             if (entry === "scan-anything") {
               await expect(addModal.locator(".add-anything-scan-foundation")).toBeVisible();
-              await addModal.getByRole("button", { name: /^Scout screenshot or photo review\./ }).click();
+              await addModal.getByRole("button", { name: /^Restocks screenshot or photo review\./ }).click();
             }
             await expect(modal).toBeVisible();
             await expect(modal.locator(".stock-screenshot-panel")).toBeVisible();
@@ -252,14 +267,14 @@ async function makeScreenshot(page, theme) {
           await intake.getByRole("button", { name: /^Use a screenshot/ }).click();
           await intake.getByRole("button", { name: "Enter details myself", exact: true }).click();
           await expect(intake.getByRole("heading", { name: "Review screenshot details", exact: true })).toBeFocused();
-          await intake.getByLabel(/^Products mentioned/).fill("Reviewer selected product");
+          await productRow(intake).fill("Reviewer selected product");
           await intake.getByLabel(/^Product category/).selectOption("Magic: The Gathering");
           await intake.getByLabel(/^Stock status in the post/).selectOption("low_stock");
           await fileInput.setInputFiles({ name: "unsupported.svg", mimeType: "image/svg+xml", buffer: Buffer.from("<svg></svg>") });
           await expect(intake.getByRole("alert")).toContainText("Choose a JPG, PNG, or WebP screenshot");
-          await expect(intake.getByLabel(/^Products mentioned/)).toHaveCount(0);
+          await expect(productRow(intake)).toHaveCount(0);
           await intake.getByRole("button", { name: "Enter details myself", exact: true }).click();
-          await expect(intake.getByLabel(/^Products mentioned/)).toHaveValue("Reviewer selected product");
+          await expect(productRow(intake)).toHaveValue("Reviewer selected product");
           await expect(intake.getByLabel(/^Product category/)).toHaveValue("Magic: The Gathering");
           await expect(intake.getByLabel(/^Stock status in the post/)).toHaveValue("low_stock");
           let pending = false;
@@ -276,16 +291,16 @@ async function makeScreenshot(page, theme) {
             await expect(intake.getByRole("button", { name: "Enter details myself", exact: true })).toBeFocused();
             await expect.poll(() => page.workers().length, { timeout: 3000 }).toBe(0);
           } finally { release(); await context.unroute("**/ocr/tesseract-7.0.0/lang/eng.traineddata.gz", holdModel); }
-          await expect(intake.getByLabel(/^Products mentioned/)).toHaveCount(0);
+          await expect(productRow(intake)).toHaveCount(0);
           await intake.getByRole("button", { name: "Enter details myself", exact: true }).click();
-          await expect(intake.getByLabel(/^Products mentioned/)).toHaveValue("Reviewer selected product");
+          await expect(productRow(intake)).toHaveValue("Reviewer selected product");
           await expect(intake.getByLabel(/^Product category/)).toHaveValue("Magic: The Gathering");
           await expect(intake.getByLabel(/^Stock status in the post/)).toHaveValue("low_stock");
           const privateText = intake.getByLabel(/^Private screenshot text/);
-          if (!(await privateText.isVisible())) await intake.getByText("Paste or correct post text", { exact: true }).click();
+          if (!(await privateText.isVisible())) await openPostText(intake);
           await privateText.fill("Target Norfolk\nPokemon Prismatic Evolutions ETBs in stock\nPRIVATE_AUTHOR_SYNTHETIC");
           await intake.getByRole("button", { name: "Find report details", exact: true }).click();
-          await expect(intake.getByLabel(/^Products mentioned/)).toHaveValue("Reviewer selected product");
+          await expect(productRow(intake)).toHaveValue("Reviewer selected product");
           await expect(intake.getByLabel(/^Product category/)).toHaveValue("Magic: The Gathering");
           await expect(intake.getByLabel(/^Stock status in the post/)).toHaveValue("low_stock");
           await expect(intake.getByRole("heading", { name: "Review screenshot details", exact: true })).toBeFocused();
@@ -294,7 +309,7 @@ async function makeScreenshot(page, theme) {
           await apply.click();
           await expect(intake.getByRole("status")).toContainText("Reviewed details added");
           await editDetails.click();
-          await intake.getByLabel(/^Products mentioned/).fill("Replacement reviewed product");
+          await productRow(intake).fill("Replacement reviewed product");
           await expect(intake.getByLabel(/^Replace report fields I already entered/)).not.toBeChecked();
           await apply.click();
           await expect(intake.getByRole("status")).toContainText("existing product choice was kept");
@@ -302,7 +317,7 @@ async function makeScreenshot(page, theme) {
           await expect(modal.locator(".scout-proof-step").getByLabel("Product name (optional)", { exact: true })).toHaveValue("Reviewer selected product");
           await modal.getByRole("button", { name: "Back", exact: true }).filter({ visible: true }).click();
           await intake.getByRole("button", { name: "Enter details myself", exact: true }).click();
-          await intake.getByLabel(/^Products mentioned/).fill("Replacement reviewed product");
+          await productRow(intake).fill("Replacement reviewed product");
           await intake.getByLabel(/^Product category/).selectOption("Magic: The Gathering");
           await intake.getByLabel(/^Stock status in the post/).selectOption("low_stock");
           await intake.getByRole("button", { name: /^Use the time already entered:/ }).click();

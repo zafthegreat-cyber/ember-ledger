@@ -115,7 +115,10 @@ function validateLayout(layout, viewport) {
   if (layout.clippedHeadings.length) failures.push(`clipped headings: ${layout.clippedHeadings.join(" | ")}`);
   if (layout.hero && layout.hero.scrollHeight > layout.hero.clientHeight + 2) failures.push("hero content is clipped");
   if (layout.statusStrip && layout.statusStrip.scrollHeight > layout.statusStrip.clientHeight + 2) failures.push("status strip content is clipped");
-  if (layout.statusLast && layout.body && layout.statusLast.bottom + 5 > layout.body.top) failures.push("status strip overlaps Exchange content");
+  // Non-admin boards fold the status strip into a closed "More on this page" <details>
+  // (CommandBoardV4.jsx), where it has no rendered box; check overlap only when it is shown.
+  const statusStripShown = layout.statusStrip && layout.statusStrip.height > 0;
+  if (statusStripShown && layout.statusLast && layout.body && layout.statusLast.bottom + 5 > layout.body.top) failures.push("status strip overlaps Exchange content");
 
   if (viewport.name === "desktop") {
     if (!layout.lower || layout.lower.display === "none") failures.push("desktop lower decision band is hidden");
@@ -160,6 +163,12 @@ async function main() {
   try {
     for (const viewport of viewports) {
       const context = await browser.newContext({ viewport });
+      // The Exchange command board is the seller/store layout; plain collectors get the simpler
+      // "Sell or trade" page (src/pages/Forge.jsx CollectorSellTrade). Seed a seller persona.
+      await context.addInitScript(() => {
+        if (localStorage.getItem("et-tcg-beta-data")) return;
+        localStorage.setItem("et-tcg-beta-data", JSON.stringify({ userType: "seller", dashboardPreset: "seller", forgeModeSettings: { personalForgeEnabled: true, lockToEmberTide: false } }));
+      });
       const page = await context.newPage();
       const browserErrors = [];
       page.on("console", (message) => {

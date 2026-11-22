@@ -34,7 +34,8 @@ async function verifyRestrictedNavigation(browser) {
       window.qaRenderExperience=input=>{const experience=resolveExperiencePresentation(input);root.render(<MenuNavigation sections={sections} NavIcon={Icon} isItemActive={()=>false} onSelect={item=>window.qaSelections.push(item.key)} onAdd={()=>window.qaSelections.push('quick-add')} modeLabel={experience.personaLabel} experiencePresentation={experience} workspaces={workspaces} currentWorkspaceId="COLLECT" onSelectWorkspace={workspace=>window.qaSelections.push(workspace.id)} />);};
       window.qaRenderExperience({});
     `, resolveDir: process.cwd(), loader: "jsx" },
-    bundle: true, jsx: "automatic", format: "esm", write: false,
+    // MenuNavigation now imports menu-preferences.css; this unstyled behaviour fixture ignores CSS.
+    bundle: true, jsx: "automatic", format: "esm", write: false, loader: { ".css": "empty" },
   });
   const context = await browser.newContext({ viewport: { width: 390, height: 900 } });
   const unexpectedRequests = [];

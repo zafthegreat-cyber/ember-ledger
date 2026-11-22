@@ -78,56 +78,19 @@
     "test-sale-return-workflow.cjs",
     "test-workspace-recovery-browser.cjs",
     "test-account-ops-workspace-browser.cjs",
-    "test-account-ops-native-consistency.cjs"
+    "test-account-ops-native-consistency.cjs",
+    "test-deferred-performance.cjs",
+    "test-exchange-layout.cjs",
+    "test-experience-controls-browser.cjs",
+    "test-experience-menu-app-browser.cjs",
+    "test-item-photos-app-browser.cjs",
+    "test-legacy-presentation.cjs",
+    "test-manual-lifecycles-browser.cjs",
+    "test-menu-drawer-browser.cjs",
+    "test-private-beta-journeys.cjs",
+    "test-scout-store-presentation.cjs",
+    "test-semantic-theme.cjs",
+    "test-stock-screenshot-import-browser.cjs"
   ],
-  "knownFailing": [
-    {
-      "file": "test-deferred-performance.cjs",
-      "firstError": "TimeoutError'"
-    },
-    {
-      "file": "test-exchange-layout.cjs",
-      "firstError": ""
-    },
-    {
-      "file": "test-experience-controls-browser.cjs",
-      "firstError": "TimeoutError'"
-    },
-    {
-      "file": "test-experience-menu-app-browser.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: Preview preserves original record arrays"
-    },
-    {
-      "file": "test-item-photos-app-browser.cjs",
-      "firstError": ""
-    },
-    {
-      "file": "test-legacy-presentation.cjs",
-      "firstError": ""
-    },
-    {
-      "file": "test-manual-lifecycles-browser.cjs",
-      "firstError": "TimeoutError'"
-    },
-    {
-      "file": "test-menu-drawer-browser.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: Opening and cancelling reporting preserves existing records"
-    },
-    {
-      "file": "test-private-beta-journeys.cjs",
-      "firstError": "Error: element(s) not found"
-    },
-    {
-      "file": "test-scout-store-presentation.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: .scout-metric-label text is too small"
-    },
-    {
-      "file": "test-semantic-theme.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: 15 semantic theme cases failed; inspect results.json"
-    },
-    {
-      "file": "test-stock-screenshot-import-browser.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: Stock screenshot app checks failed: C:\\Users\\dillo\\OneDrive\\Desktop\\Anchor&WingLLC\\Code 3\\Development\\App wo"
-    }
-  ]
+  "knownFailing": []
 }
