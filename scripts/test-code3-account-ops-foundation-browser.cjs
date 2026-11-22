@@ -464,7 +464,7 @@ async function verifySpoofedOwnerDenied(browser, accountOpsState, externalReques
 
   try {
     await page.goto(accountOpsUrl({ owner: false, theme: "light" }), { waitUntil: "domcontentloaded" });
-    await page.getByText(/Sign In Required|Owner Access Required|Owner access unavailable|Sign in/i).first().waitFor();
+    await page.getByText(/Sign In Required|Owner Access Required|Owner access unavailable|Sign in/i).filter({ visible: true }).first().waitFor();
     const body = await page.locator("body").innerText();
     match(body, /Sign In Required|Owner Access Required|Owner access unavailable|Sign in/i, "query-string OWNER claims cannot bypass verified authorization");
     equal(await page.getByTestId("account-ops").count(), 0, "the denied browser cannot mount Account Ops records");

@@ -11,8 +11,11 @@ const FLIP_SCOUT_STORAGE_KEY = "ember-and-tide.flip-scout.v1";
 const WORKSPACE_PREFERENCE_KEY = "code3.workspace-preference.v1";
 const ACCOUNT_OPS_STORAGE_KEY = "code3.account-ops.v1";
 const FIXED_NOW = "2026-08-26T16:00:00.000Z";
-const PUBLIC_WORKSPACES = ["Collect", "Find", "Sell", "Business"];
-const OWNER_WORKSPACES = ["Collect", "Find", "Sell", "Bot", "Business"];
+// A guest collector sees Collect and Find; Sell and Business appear once someone sells.
+const PUBLIC_WORKSPACES = ["Collect", "Find"];
+// The local beta owner session may open owner routes such as /bot, but the switcher
+// lists Bot only for an admin viewing as admin, which this local session is not.
+const OWNER_WORKSPACES = ["Collect", "Find", "Sell", "Business"];
 const REPRESENTATIVE_DARK = new Set([
   "collect-populated",
   "find-populated",
@@ -358,13 +361,13 @@ async function verifyFixture(page, fixture) {
       await page.getByTestId("collect-workspace-home").waitFor();
       match(await body(), /Items\s*1[\s\S]*Moonlit Dragon Card/i, "Collect populated state should use shared collection records");
       await page.getByRole("button", { name: "Sets", exact: true }).first().click();
-      await page.getByTestId("collection-workspace").getByRole("heading", { level: 1, name: "Sets & Binders", exact: true }).waitFor();
+      await page.getByTestId("collection-workspace").getByRole("heading", { level: 1, name: "Card sets", exact: true }).waitFor();
       equal(new URL(page.url()).pathname, "/collection/sets", "Collect Sets action should update the visible route");
       await page.getByRole("navigation", { name: "Primary navigation" }).getByRole("button", { name: "Collection", exact: true }).click();
       await page.getByLabel("Search collection", { exact: true }).waitFor();
       equal(new URL(page.url()).pathname, "/collection", "Collection dock action should update the visible view and URL");
       await page.goBack();
-      await page.getByTestId("collection-workspace").getByRole("heading", { level: 1, name: "Sets & Binders", exact: true }).waitFor();
+      await page.getByTestId("collection-workspace").getByRole("heading", { level: 1, name: "Card sets", exact: true }).waitFor();
       equal(new URL(page.url()).pathname, "/collection/sets", "browser Back should restore the Sets view");
       await page.goBack();
       await page.getByTestId("collect-workspace-home").waitFor();
@@ -394,13 +397,13 @@ async function verifyFixture(page, fixture) {
       await page.getByTestId("sell-workspace-home").waitFor();
       match(await body(), /Ready to list\s*1[\s\S]*Listed\s*1/i, "Sell populated state should derive resale workload");
       await page.getByRole("navigation", { name: "Primary navigation" }).getByRole("button", { name: "Inventory", exact: true }).click();
-      await page.getByText("Current inventory", { exact: true }).waitFor();
+      await page.getByRole("region", { name: "Current inventory", exact: true }).waitFor();
       equal(new URL(page.url()).pathname, "/business/inventory", "Sell Inventory dock action should update the visible Business view and URL");
       await page.getByRole("navigation", { name: "Primary navigation" }).getByRole("button", { name: "Sales", exact: true }).click();
-      await page.getByText("Recent sales", { exact: true }).waitFor();
+      await page.getByRole("heading", { name: "Sales history", exact: true }).waitFor();
       equal(new URL(page.url()).pathname, "/business/sales", "Sell Sales dock action should update the visible Business view and URL");
       await page.goBack();
-      await page.getByText("Current inventory", { exact: true }).waitFor();
+      await page.getByRole("region", { name: "Current inventory", exact: true }).waitFor();
       equal(new URL(page.url()).pathname, "/business/inventory", "browser Back should restore the Inventory view");
       await page.goBack();
       await page.getByTestId("sell-workspace-home").waitFor();
@@ -419,7 +422,7 @@ async function verifyFixture(page, fixture) {
     case "bot-owner-only":
       await page.getByTestId("bot-workspace-home").waitFor();
       await page.getByTestId("bot-operations").waitFor();
-      match(await body(), /Owner only[\s\S]*No bot integrations are connected/i, "Bot should remain an honest owner-only foundation");
+      match(await body(), /Owner-only workspace[\s\S]*Code 3 does not start, stop or configure bots/i, "Bot should remain an honest owner-only foundation");
       excludes(await body(), /tasks completed|orders placed|checkout success/i, "Bot must not fabricate operational results");
       await assertSwitcherContext(page, "Bot");
       break;
@@ -461,7 +464,7 @@ async function verifyFixture(page, fixture) {
     case "legacy-route-redirect":
       await page.getByTestId("business-workspace").waitFor();
       equal(new URL(page.url()).pathname, "/business/sales", "legacy /sell should redirect to the canonical sales route");
-      match(await body(), /Recent sales/i, "legacy redirect should resolve to a real page, not a blank surface");
+      match(await body(), /Completed sales/i, "legacy redirect should resolve to a real page, not a blank surface");
       break;
     case "remembered-workspace": {
       const switcher = await openSwitcher(page);
@@ -482,9 +485,10 @@ async function verifyFixture(page, fixture) {
       await switcher.getByRole("button", { name: /^Sell\b/ }).click();
       await page.getByTestId("sell-workspace-home").waitFor();
       equal(new URL(page.url()).pathname, "/sell/home", "workspace switch action should navigate directly to Sell Home without changing the shared workspaceHome tab");
-      await page.waitForFunction(() => window.scrollY === 0 && document.activeElement?.matches("main.main"));
+      // Focus lands on the main landmark or the new page title inside it.
+      await page.waitForFunction(() => window.scrollY === 0 && document.activeElement?.matches("main.main, main.main h1"));
       equal(await page.evaluate(() => window.scrollY), 0, "same-tab workspace switching should reset scroll to the new workspace home");
-      ok(await page.evaluate(() => document.activeElement?.matches("main.main")), "same-tab workspace switching should restore focus to the application main landmark");
+      ok(await page.evaluate(() => document.activeElement?.matches("main.main, main.main h1")), "same-tab workspace switching should move focus into the application main landmark");
       const after = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)).deals.map((record) => record.id), FLIP_SCOUT_STORAGE_KEY);
       equal(after.join("|"), before.join("|"), "workspace switching must not clone or rewrite the source opportunity");
       const stored = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), WORKSPACE_PREFERENCE_KEY);

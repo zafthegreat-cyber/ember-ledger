@@ -56,7 +56,10 @@
     "test-code3-inventory-creation-browser.cjs",
     "test-code3-inventory-reconciliation-browser.cjs",
     "test-deferred-app-views.cjs",
-    "test-code3-bot-ops-browser.cjs"
+    "test-code3-bot-ops-browser.cjs",
+    "test-legacy-app-storage.cjs",
+    "test-code3-account-ops-foundation-browser.cjs",
+    "test-code3-workspace-browser.cjs"
   ],
   "knownFailing": [
     {
@@ -66,14 +69,6 @@
     {
       "file": "test-app-render-regressions.cjs",
       "firstError": "Error: element(s) not found"
-    },
-    {
-      "file": "test-code3-account-ops-foundation-browser.cjs",
-      "firstError": "TimeoutError'"
-    },
-    {
-      "file": "test-code3-workspace-browser.cjs",
-      "firstError": "TimeoutError'"
     },
     {
       "file": "test-community-integration.mjs",
@@ -105,10 +100,6 @@
     },
     {
       "file": "test-item-photos-app-browser.cjs",
-      "firstError": ""
-    },
-    {
-      "file": "test-legacy-app-storage.cjs",
       "firstError": ""
     },
     {

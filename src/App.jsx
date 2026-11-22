@@ -7004,7 +7004,9 @@ export default function App() {
   });
   const switcherWorkspaces = presentedProductWorkspaces.map((workspace) => ({
     id: workspace.id,
-    label: workspace.id === WORKSPACE_IDS.SELL ? experiencePresentation.copy.sellingLabel : workspace.id === WORKSPACE_IDS.BUSINESS && experiencePresentation.isStore ? "Store" : workspace.label,
+    // Workspace names are always Collect, Find and Sell (AGENTS.md, Nov 14, 2026);
+    // persona wording such as "Selling tools" stays on the screens themselves.
+    label: workspace.id === WORKSPACE_IDS.BUSINESS && experiencePresentation.isStore ? "Store" : workspace.label,
     icon: workspace.iconKey,
     shortPurpose: workspace.description,
     ownerOnly: workspace.requiredAuthority === AUTHORITY_REQUIREMENTS.VERIFIED_OWNER,
