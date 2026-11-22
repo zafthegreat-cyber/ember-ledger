@@ -38,7 +38,8 @@
     "test-multi-game-browser.cjs",
     "test-collection-sets-browser.cjs",
     "test-collection-portfolio-browser.cjs",
-    "test-global-search-presentation.cjs"
+    "test-global-search-presentation.cjs",
+    "test-adaptive-restock-home-browser.cjs"
   ],
   "knownFailing": [
     {
@@ -48,10 +49,6 @@
     {
       "file": "test-account-ops-recovery-guards.mjs",
       "firstError": "Error: strict mode violation: getByRole('heading', { name: 'Profiles', exact: true }) resolved to 2 elements:\r"
-    },
-    {
-      "file": "test-adaptive-restock-home-browser.cjs",
-      "firstError": "TimeoutError'"
     },
     {
       "file": "test-app-fallbacks-browser.cjs",

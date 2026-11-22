@@ -92,7 +92,7 @@ const homeKeys = page => page.locator("[data-home-card]").evaluateAll(rows => ro
       await page.screenshot({ path: path.join(output, `${prefix}-actual-find-restocks.png`), fullPage: true });
       await restocks.getByRole("button", { name: "Browse reports", exact: true }).click();
       await expect(page).toHaveURL(/\/scout\/reports(?:\?|$)/);
-      const reportFeed = page.getByRole("heading", { name: "Recent restock reports", exact: true });
+      const reportFeed = page.getByRole("heading", { name: "Restock reports", exact: true });
       await expect(reportFeed).toBeVisible({ timeout: 20000 });
       const preservedReport = page.locator(".scout-reports-landing__feed .scout-feed-report-card").filter({ has: page.getByRole("heading", { name: "QA Corner Store", exact: true }) });
       await expect(preservedReport).toHaveCount(1); await expect(preservedReport).toContainText("Synthetic collector packs");
@@ -119,12 +119,13 @@ const homeKeys = page => page.locator("[data-home-card]").evaluateAll(rows => ro
       await savedReportDetail.getByRole("button", { name: "Close report details", exact: true }).click();
       await expect(savedReportDetail).toHaveCount(0); await expect(reportFeed).toBeVisible();
       await preservedReport.getByRole("button", { name: "View details", exact: true }).click();
-      await savedReportDetail.locator(".location-modal-actions").getByRole("button", { name: "Add details", exact: true }).click();
-      await expect(page.getByRole("heading", { name: "Submit Store Report", exact: true })).toBeVisible();
-      await expect(page.getByText("Editing mode is open in the report form above.", { exact: true })).toBeVisible();
-      await page.getByRole("button", { name: "Cancel / Clear", exact: true }).click();
+      // Owner actions belong to the signed-in reporter only (87745e2); this local viewer is not signed in.
+      await expect(savedReportDetail.getByRole("button", { name: "Add details", exact: true })).toHaveCount(0);
+      await expect(savedReportDetail.getByRole("button", { name: "Report a new visit", exact: true })).toBeVisible();
+      await savedReportDetail.getByRole("button", { name: "Close report details", exact: true }).click();
+      await expect(savedReportDetail).toHaveCount(0);
       await expect(reportFeed).toBeVisible(); await expect(preservedReport).toContainText("Synthetic collector packs");
-      await page.getByRole("button", { name: "Report a restock", exact: true }).click();
+      await page.locator(".scout-reports-landing__header").getByRole("button", { name: "Report a restock", exact: true }).click();
       await expect(reportModal).toBeVisible();
       await page.goBack(); await expect(reportModal).toHaveCount(0); await expect(reportFeed).toBeVisible();
       await page.screenshot({ path: path.join(output, `${prefix}-actual-community-reports.png`), fullPage: true });
@@ -147,12 +148,15 @@ const homeKeys = page => page.locator("[data-home-card]").evaluateAll(rows => ro
       const initialNavigation = await navigation();
       const report = page.getByRole("button", { name: "Report a restock", exact: true });
       await expect(report).toBeVisible();
+      // Since the Nov 2026 Home redesign (search and Cards/Wants/Stores tiles first), the restock card can sit
+      // just below the fold on 568px-tall phones; there it must be one short scroll away and clear of the nav.
+      if (height < 600) await report.evaluate(element => element.scrollIntoView({ block: "center" }));
       const reportBox = await report.boundingBox(); assert.ok(reportBox.width >= 44 && reportBox.height >= 44, "Home report touch target is at least 44px");
       await expect(report).toBeInViewport({ ratio: 1 });
       const mobileNav = page.locator(".ops-mobile-nav").filter({ visible: true });
       if (await mobileNav.count()) {
         const navBox = await mobileNav.boundingBox();
-        assert.ok(reportBox.y + reportBox.height <= navBox.y, "The initial Report action is fully above the mobile navigation without scrolling");
+        assert.ok(reportBox.y + reportBox.height <= navBox.y, "The Report action is fully above the mobile navigation");
       }
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, "Actual Home has no horizontal overflow");
       await page.screenshot({ path: path.join(output, `${prefix}-actual-home.png`), fullPage: true });
@@ -213,7 +217,7 @@ const homeKeys = page => page.locator("[data-home-card]").evaluateAll(rows => ro
       await page.screenshot({ path: path.join(output, `${prefix}-adaptive-collection-home.png`), fullPage: true });
 
       step = `${prefix}: adaptive Add choices and manual preferences`;
-      await render("add"); const defaultAdd = await primaryAdd(page).allTextContents(); assert.deepEqual(defaultAdd, ["Add to my collection", "Scan a card", "Search cards & products", "Scan with camera", "Type a barcode number"]);
+      await render("add"); const defaultAdd = await primaryAdd(page).allTextContents(); assert.deepEqual(defaultAdd, ["Add to my collection", "Search cards & products", "Scan with camera", "Type a barcode number", "Sell or trade"]);
       await render("add", { adaptiveActivity: { collection: records("collection") } }); assert.equal((await primaryAdd(page).allTextContents())[0], "Add to my collection");
       await render("add", { ...seller, adaptiveActivity: { sales: records("sale") } }); assert.equal((await primaryAdd(page).allTextContents())[0], "Record Sale");
       await render("add", { ...seller, adaptiveActivity: { sales: [] } }, { sales: records("native-sale") }); assert.equal((await primaryAdd(page).allTextContents())[0], "Record Sale");
@@ -234,7 +238,7 @@ const homeKeys = page => page.locator("[data-home-card]").evaluateAll(rows => ro
       await page.screenshot({ path: path.join(output, `${prefix}-adaptive-manual-add.png`) });
       await render("add", { personalizationPreferences: { pagePreferences: { quickAdd: { visibleKeys: ["searchCard", "scanUpc", "scanScreenshot", "scanCards", "requestMissingItem"], updatedAt: now } } } });
       assert.deepEqual(await primaryAdd(page).allTextContents(), ["Search cards & products", "Type a barcode number", "Review a restock screenshot", "Scan several cards", "Request Missing Item"], "Saved preferences point to their exact working actions");
-      for (const [name, destination] of [[/^Search cards/, "search"], [/^Enter UPC/, "upc"], [/^Review a restock screenshot/, "scoutScreenshotReview"], [/^Scan page of cards/, "cardPageReview"]]) {
+      for (const [name, destination] of [[/^Search cards/, "search"], [/^Type a barcode number/, "upc"], [/^Review a restock screenshot/, "scoutScreenshotReview"], [/^Scan several cards/, "cardPageReview"]]) {
         await page.getByRole("button", { name }).click();
         assert.deepEqual(await page.evaluate(() => window.qaCalls.at(-1)), ["path", destination]);
       }
