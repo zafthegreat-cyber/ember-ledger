@@ -60,7 +60,9 @@
     "test-legacy-app-storage.cjs",
     "test-code3-account-ops-foundation-browser.cjs",
     "test-code3-workspace-browser.cjs",
-    "test-community-integration.mjs"
+    "test-community-integration.mjs",
+    "test-deal-finder-persistence.cjs",
+    "test-deal-finder-presentation.cjs"
   ],
   "knownFailing": [
     {
@@ -70,14 +72,6 @@
     {
       "file": "test-app-render-regressions.cjs",
       "firstError": "Error: element(s) not found"
-    },
-    {
-      "file": "test-deal-finder-persistence.cjs",
-      "firstError": "TimeoutError'"
-    },
-    {
-      "file": "test-deal-finder-presentation.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: See deal-finder/results.json"
     },
     {
       "file": "test-deferred-performance.cjs",

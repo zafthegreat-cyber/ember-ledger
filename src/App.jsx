@@ -26280,7 +26280,11 @@ function renderDealFinderContent() {
         <div>
           <h2>Deal Finder</h2>
           <p>Start with product, quantity, and asking price. Optional values stay tucked away.</p>
-          <p className="compact-subtitle">What it does: you enter a price someone is asking and Deal Finder compares it with the catalog's market value, MSRP and your cost to say whether it is a good buy. It does not search stores or the web for deals yet; your saved checks stay on this device.</p>
+          {/* Folded so the form and Calculate stay above the sticky footer on small phones. */}
+          <details className="compact-subtitle deal-finder-explainer">
+            <summary>What Deal Finder does</summary>
+            <p>You enter a price someone is asking and Deal Finder compares it with the catalog's market value, MSRP and your cost to say whether it is a good buy. It does not search stores or the web for deals yet; your saved checks stay on this device.</p>
+          </details>
         </div>
         <span className="status-badge">{dealRecommendation}</span>
       </div>
