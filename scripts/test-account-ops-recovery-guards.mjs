@@ -282,7 +282,7 @@ async function browserChecks() {
           await page.waitForTimeout(150);
           assert.equal(await page.getByRole("heading", { name: "Account Ops recovery required", exact: true }).isVisible(), true);
           await page.getByRole("button", { name: "Reload Account Ops", exact: true }).click();
-          await page.getByRole("heading", { name: "Profiles", exact: true }).waitFor();
+          await page.getByRole("heading", { name: "Profiles", exact: true, level: 2 }).waitFor();
           assert.ok((await page.locator(".account-ops").innerText()).includes("Fresh recovered synthetic profile"));
           await unchanged(page, JSON.stringify(replacement));
           await evidence(page, `reloaded-${theme}-${width}`);
@@ -295,7 +295,7 @@ async function browserChecks() {
         const errors = []; page.on("pageerror", (error) => errors.push(error.message));
         try {
           await page.goto(url(theme));
-          await page.getByRole("heading", { name: "Profiles", exact: true }).waitFor();
+          await page.getByRole("heading", { name: "Profiles", exact: true, level: 2 }).waitFor();
           const peer = await context.newPage();
           await peer.route("**/__guard-peer", (route) => route.fulfill({ contentType: "text/html", body: "<title>Synthetic peer</title>" }));
           await peer.goto(`${base.origin}/__guard-peer`);
@@ -312,7 +312,7 @@ async function browserChecks() {
         const batchedErrors = []; batchedPage.on("pageerror", (error) => batchedErrors.push(error.message));
         try {
           await batchedPage.goto(url(theme));
-          await batchedPage.getByRole("heading", { name: "Profiles", exact: true }).waitFor();
+          await batchedPage.getByRole("heading", { name: "Profiles", exact: true, level: 2 }).waitFor();
           await batchedPage.evaluate((JOURNAL) => {
             localStorage.setItem(JOURNAL, "batched-pending");
             window.__guardPrivateWrites = [];
@@ -345,13 +345,13 @@ async function browserChecks() {
       const page = await context.newPage(); const errors = []; page.on("pageerror", (error) => errors.push(error.message));
       try {
         await page.goto(url("dark"));
-        await page.getByRole("heading", { name: "Profiles", exact: true }).waitFor();
+        await page.getByRole("heading", { name: "Profiles", exact: true, level: 2 }).waitFor();
         await page.evaluate((JOURNAL) => {
           window.dispatchEvent(new StorageEvent("storage", { key: JOURNAL, newValue: "session-only", storageArea: sessionStorage }));
           window.dispatchEvent(new StorageEvent("storage", { key: JOURNAL, newValue: "unproven-history" }));
         }, JOURNAL);
         await page.waitForTimeout(100);
-        assert.equal(await page.getByRole("heading", { name: "Profiles", exact: true }).isVisible(), true);
+        assert.equal(await page.getByRole("heading", { name: "Profiles", exact: true, level: 2 }).isVisible(), true);
         const peer = await context.newPage();
         await peer.route("**/__guard-peer", (route) => route.fulfill({ contentType: "text/html", body: "<title>Synthetic peer</title>" }));
         await peer.goto(`${base.origin}/__guard-peer`);
@@ -360,7 +360,7 @@ async function browserChecks() {
         assert.equal(await page.evaluate((JOURNAL) => localStorage.getItem(JOURNAL), JOURNAL), null);
         await unchanged(page);
         await page.getByRole("button", { name: "Reload Account Ops", exact: true }).click();
-        await page.getByRole("heading", { name: "Profiles", exact: true }).waitFor();
+        await page.getByRole("heading", { name: "Profiles", exact: true, level: 2 }).waitFor();
         assert.deepEqual(errors, []);
       } finally { await context.close(); }
     });
@@ -380,7 +380,7 @@ async function browserChecks() {
         await page.waitForTimeout(100);
         assert.equal(await page.getByRole("heading", { name: "Account Ops unavailable", exact: true }).isVisible(), true);
         await page.getByRole("button", { name: "Reload Account Ops", exact: true }).click();
-        await page.getByRole("heading", { name: "Profiles", exact: true }).waitFor();
+        await page.getByRole("heading", { name: "Profiles", exact: true, level: 2 }).waitFor();
         await unchanged(page);
         assert.deepEqual(errors, []);
       } finally { await context.close(); }
@@ -390,7 +390,7 @@ async function browserChecks() {
       const page = await context.newPage(); const errors = []; page.on("pageerror", (error) => errors.push(error.message));
       try {
         await page.goto(url("light"));
-        await page.getByRole("heading", { name: "Profiles", exact: true }).waitFor();
+        await page.getByRole("heading", { name: "Profiles", exact: true, level: 2 }).waitFor();
         await page.getByRole("button", { name: "Create Profile", exact: true }).click();
         const dialog = page.getByRole("dialog");
         await dialog.getByLabel("Display name", { exact: true }).fill("Unsaved synthetic profile");

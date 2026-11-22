@@ -46,20 +46,14 @@
     "test-restock-save-reload-browser.cjs",
     "test-restock-feed-browser.cjs",
     "test-workspace-storage-quota-browser.cjs",
-    "test-cloud-account-ui-browser.cjs"
+    "test-cloud-account-ui-browser.cjs",
+    "test-account-ops-recovery-guards.mjs",
+    "test-app-fallbacks-browser.cjs"
   ],
   "knownFailing": [
     {
       "file": "test-account-ops-native-consistency.cjs",
       "firstError": "Error: element(s) not found"
-    },
-    {
-      "file": "test-account-ops-recovery-guards.mjs",
-      "firstError": "Error: strict mode violation: getByRole('heading', { name: 'Profiles', exact: true }) resolved to 2 elements:\r"
-    },
-    {
-      "file": "test-app-fallbacks-browser.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:"
     },
     {
       "file": "test-app-render-regressions.cjs",

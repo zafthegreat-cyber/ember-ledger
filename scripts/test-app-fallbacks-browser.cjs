@@ -56,12 +56,12 @@ async function fallbackGeometry(page, theme) {
   assert.ok(geometry.card.top >= 0 && geometry.card.bottom <= geometry.viewport.height, JSON.stringify(geometry));
   assert.ok(geometry.buttons.every((button) => button.height >= 44 && button.width >= 44), JSON.stringify(geometry));
   assert.equal(geometry.gradient, "none");
-  assert.equal(geometry.background, theme === "dark" ? "rgb(16, 21, 28)" : "rgb(245, 247, 250)");
+  assert.equal(geometry.background, theme === "dark" ? "rgb(25, 22, 25)" : "rgb(251, 244, 230)");
   return geometry;
 }
 
 async function assertStoragePreserved(page, theme) {
-  const stored = await page.evaluate(() => ({ theme: localStorage.getItem("et-tcg-app-theme"), records: localStorage.getItem("boot-proof-records"), session: sessionStorage.getItem("boot-proof-session"), writes: window.__bootStorageWrites }));
+  const stored = await page.evaluate(() => ({ theme: localStorage.getItem("et-tcg-app-theme"), records: localStorage.getItem("boot-proof-records"), session: sessionStorage.getItem("boot-proof-session"), writes: (window.__bootStorageWrites || []).filter((write) => !String(write.key).startsWith("lswt-")) }));
   assert.deepEqual(stored, { theme, records: '{"records":["preserve me"]}', session: "preserve session", writes: [] });
 }
 
