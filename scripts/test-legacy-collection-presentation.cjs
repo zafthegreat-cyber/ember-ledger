@@ -96,7 +96,7 @@ async function main() {
         if (populated) {
           const search = panel.getByRole("textbox", { name: "Search collection", exact: true });
           await search.fill("no matching local record");
-          await expect(panel.getByRole("heading", { name: "No matching Vault items.", exact: true })).toBeVisible();
+          await expect(panel.getByRole("heading", { name: "No matching collection items.", exact: true })).toBeVisible();
           await panel.getByRole("button", { name: "Reset Filters", exact: true }).click();
           await expect(search).toHaveValue(""); await expect(panel.locator(".vault-item-card")).toHaveCount(2);
           const filters = panel.locator(".vault-mobile-filter-drawer > summary");
@@ -112,8 +112,10 @@ async function main() {
           await page.keyboard.press("Enter");
           const card = panel.locator(".vault-item-card").filter({ has: page.getByRole("heading", { name: "Archive Binder", exact: true }) });
           const more = card.getByRole("button", { name: "More actions", exact: true });
-          await more.focus(); await page.keyboard.press("Enter"); await assertFocus(more);
-          await expect(more).toHaveAttribute("aria-expanded", "true"); await page.keyboard.press("Tab");
+          // OverflowMenu follows the menu-button pattern (f1a5d3f): opening moves focus to the
+          // first menu item, Arrow keys move within it, and Tab closes it back to the trigger.
+          await more.focus(); await assertFocus(more); await page.keyboard.press("Enter");
+          await expect(more).toHaveAttribute("aria-expanded", "true");
           await assertFocus(card.getByRole("menuitem", { name: "Edit", exact: true }));
           await assertControls(card); await assertFrame(page);
           await page.screenshot({ path: path.join(output, `more-${theme}-${width}.png`) });

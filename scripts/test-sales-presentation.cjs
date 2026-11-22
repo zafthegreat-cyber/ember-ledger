@@ -51,7 +51,11 @@ async function inspect(page, label) {
     for (const node of all.filter(visible)) {
       const style = getComputedStyle(node);
       const rect = node.getBoundingClientRect();
-      if (style.backgroundImage.includes("gradient")) failures.push(`Gradient: ${node.className}`);
+      // The holo-tech theme (19-holo-tech.css, --holo-panel) deliberately gives panel surfaces a subtle
+      // two-stop vertical gradient; any other gradient inside Sales is still a defect.
+      const holoPanelSurface = node.matches(".panel, .card, .compact-card, .small-empty-state, .et-mockup-page-hero, .et-mockup-section-card, .et-mockup-stat-card")
+        && /^linear-gradient\(rgb[^()]*\([^()]*\), rgba?\([^()]*\)\)(, none)?$/.test(style.backgroundImage);
+      if (style.backgroundImage.includes("gradient") && !holoPanelSurface) failures.push(`Gradient: ${node.className} ${style.backgroundImage}`);
       if (node.matches("button, input, summary") && (rect.width < 43.9 || rect.height < 43.9)) failures.push(`Small control: ${node.textContent.trim()} ${rect.width}x${rect.height}`);
       for (const text of node.childNodes) {
         if (text.nodeType !== Node.TEXT_NODE || !text.textContent.trim()) continue;
@@ -132,7 +136,7 @@ async function checkOverview(page, theme, width) {
   await summary.focus();
   await page.keyboard.press("Enter");
   await expect(overview).toHaveAttribute("open", "");
-  await expect(page.getByRole("heading", { name: "Forge Decision Desk", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Business Decision Desk", exact: true })).toBeVisible();
   await expect(overview.locator(".forge-mockup-summary-grid > article")).toHaveCount(4);
   await expect(overview.locator(".forge-mockup-guardrail-strip > span")).toHaveCount(4);
   await expect(overview.locator(".et-mockup-pill-row > .et-mockup-pill")).toHaveCount(3);
@@ -160,7 +164,7 @@ async function main() {
         ({ context, page, errors: result.pageErrors } = await contextFor(browser, width, theme, true));
         const original = await page.evaluate(() => JSON.stringify(JSON.parse(localStorage.getItem("et-tcg-beta-data")).sales));
         result.overview = await checkOverview(page, theme, width);
-        for (const [button, heading] of [["Newest", "Forge Sales"], ["Oldest", "Forge Sales"], ["By date", "Forge Sales by Date"], ["Same items", "Forge Sales by Item"]]) {
+        for (const [button, heading] of [["Newest", "Business Sales"], ["Oldest", "Business Sales"], ["By date", "Business Sales by Date"], ["Same items", "Business Sales by Item"]]) {
           await page.getByRole("group", { name: "Sales view mode" }).getByRole("button", { name: new RegExp(`^${button}`) }).click();
           await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
           if (button === "Same items") {

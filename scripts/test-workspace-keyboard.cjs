@@ -178,6 +178,10 @@ async function journey(browser, theme, width) {
     const collection = page.getByTestId("collection-workspace");
     const collectionMore = collection.locator(".everyday-more-menu");
     await collection.getByLabel("Search collection", { exact: true }).fill("Synthetic keyboard filter");
+    // The Collection More menu now lives inside the collapsed "Organize & export" tools disclosure.
+    const portfolioTools = collection.locator(".collection-portfolio-tools");
+    await portfolioTools.locator(":scope > summary").click();
+    await expect(portfolioTools).toHaveJSProperty("open", true);
     await collectionMore.locator("summary").focus(); await page.keyboard.press("Enter");
     await page.keyboard.press("Tab");
     await expect(collectionMore.getByRole("button", { name: "Sets & Binders", exact: true })).toBeFocused();
@@ -185,10 +189,10 @@ async function journey(browser, theme, width) {
     await expect(collectionMore).toHaveJSProperty("open", false);
     await expect(collectionMore.locator("summary")).toBeFocused();
     await page.keyboard.press("Enter"); await page.keyboard.press("Tab"); await page.keyboard.press("Tab");
-    await expect(collectionMore.getByRole("button", { name: "Wishlist", exact: true })).toBeFocused();
+    await expect(collectionMore.getByRole("button", { name: "Wants", exact: true })).toBeFocused();
     await page.keyboard.press("Enter");
     await expect.poll(() => new URL(page.url()).pathname).toBe("/collection/wishlist");
-    await expect(collection.getByRole("heading", { name: "Wishlist", exact: true }).first()).toBeVisible();
+    await expect(collection.getByRole("heading", { name: "Wants", exact: true }).first()).toBeVisible();
     await expect(collectionMore).toHaveJSProperty("open", false);
     await collection.getByRole("button", { name: "Back to Collection", exact: true }).click();
     await expect(collection.getByLabel("Search collection", { exact: true })).toHaveValue("Synthetic keyboard filter");

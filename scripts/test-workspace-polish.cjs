@@ -4,14 +4,29 @@ const { chromium } = require("@playwright/test");
 (async () => {
   const browser = await chromium.launch();
   try {
-    const page = await browser.newPage({ viewport: { width: 360, height: 800 } });
+    // Home's resale shortcuts (Find deals, Inventory, Sales, Purchases) are only shown to
+    // seller/store personas since "Prioritize restocks and personalize Home and Add" (783a4fc),
+    // so seed a seller persona before the app loads.
+    const context = await browser.newContext({ viewport: { width: 360, height: 800 } });
+    await context.addInitScript(() => {
+      if (localStorage.getItem("__qa_workspace_polish_seeded")) return;
+      localStorage.setItem("__qa_workspace_polish_seeded", "true");
+      localStorage.setItem("et-tcg-beta-data", JSON.stringify({ userType: "seller", dashboardPreset: "seller", appSetupPersonalization: { experiencePersona: "seller" } }));
+    });
+    const page = await context.newPage();
     const base = process.env.APP_URL || "http://127.0.0.1:5217/";
     const url = (path) => new URL(path + "?betaLocalMode=true&themeInspect=light", base).href;
+    const shortcutButtons = {
+      Find: { card: "marketWatch", name: "Explore Find" },
+      Purchases: { card: "forgeSummary", name: "Purchases" },
+      Inventory: { card: "forgeSummary", name: /inventory$/i },
+      Sales: { card: "forgeSummary", name: "Sales" },
+    };
     for (const label of ["Find", "Purchases", "Inventory", "Sales"]) {
       await page.goto(url("/"));
-      const shortcuts = page.getByRole("navigation", { name: "Workspace shortcuts" });
-      await shortcuts.getByRole("button", { name: new RegExp("^" + label) }).click();
-      await page.waitForTimeout(1200);
+      const { card, name } = shortcutButtons[label];
+      const shortcuts = page.getByLabel("Personalized shortcuts", { exact: true }).locator(`[data-home-card="${card}"]`);
+      await shortcuts.getByRole("button", typeof name === "string" ? { name, exact: true } : { name }).click();
       if (label === "Find") await page.getByRole("heading", { name: "Deal Feed", exact: true }).waitFor();
       else await page.waitForURL(new RegExp("/business/" + label.toLowerCase()));
       console.log("Home shortcut opened:", label, page.url());
@@ -27,9 +42,12 @@ const { chromium } = require("@playwright/test");
     await destination.waitFor();
     const style = await destination.evaluate(el => {
       const s = getComputedStyle(el);
-      return { border: s.borderTopWidth, background: s.backgroundColor, height: el.getBoundingClientRect().height };
+      return { border: s.borderBottomWidth, borderStyle: s.borderBottomStyle, accentTop: parseFloat(s.borderTopWidth), background: s.backgroundColor, height: el.getBoundingClientRect().height };
     });
+    // Cards keep a 1px outline; brand refresh (1b8c0dd) adds a deliberate 3px colored top accent.
     assert.equal(style.border, "1px");
+    assert.notEqual(style.borderStyle, "none");
+    assert.ok(style.accentTop >= 1, "Destination card keeps a visible top edge");
     assert.ok(style.height >= 100);
     await destination.click();
     await page.getByRole("heading", { name: "Purchases & Receiving", exact: true }).waitFor();

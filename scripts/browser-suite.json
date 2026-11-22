@@ -63,13 +63,24 @@
     "test-community-integration.mjs",
     "test-deal-finder-persistence.cjs",
     "test-deal-finder-presentation.cjs",
-    "test-app-render-regressions.cjs"
+    "test-app-render-regressions.cjs",
+    "test-purchase-email-import-browser.cjs",
+    "test-sales-presentation.cjs",
+    "test-scout-layout.cjs",
+    "test-scout-map-interactions.cjs",
+    "test-scout-store-handoff.cjs",
+    "test-scout-store-records.cjs",
+    "test-viewport-guard.cjs",
+    "test-workspace-keyboard.cjs",
+    "test-workspace-polish.cjs",
+    "test-device-transfer-browser.cjs",
+    "test-legacy-collection-presentation.cjs",
+    "test-sale-return-workflow.cjs",
+    "test-workspace-recovery-browser.cjs",
+    "test-account-ops-workspace-browser.cjs",
+    "test-account-ops-native-consistency.cjs"
   ],
   "knownFailing": [
-    {
-      "file": "test-account-ops-native-consistency.cjs",
-      "firstError": "Error: element(s) not found"
-    },
     {
       "file": "test-deferred-performance.cjs",
       "firstError": "TimeoutError'"
@@ -107,32 +118,8 @@
       "firstError": "Error: element(s) not found"
     },
     {
-      "file": "test-purchase-email-import-browser.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: No collateral storage writes"
-    },
-    {
-      "file": "test-sales-presentation.cjs",
-      "firstError": "Error: element(s) not found"
-    },
-    {
-      "file": "test-scout-layout.cjs",
-      "firstError": ""
-    },
-    {
-      "file": "test-scout-map-interactions.cjs",
-      "firstError": ""
-    },
-    {
-      "file": "test-scout-store-handoff.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: See scout-store-handoff/results.json"
-    },
-    {
       "file": "test-scout-store-presentation.cjs",
       "firstError": "AssertionError [ERR_ASSERTION]: .scout-metric-label text is too small"
-    },
-    {
-      "file": "test-scout-store-records.cjs",
-      "firstError": "Error: element(s) not found"
     },
     {
       "file": "test-semantic-theme.cjs",
@@ -141,38 +128,6 @@
     {
       "file": "test-stock-screenshot-import-browser.cjs",
       "firstError": "AssertionError [ERR_ASSERTION]: Stock screenshot app checks failed: C:\\Users\\dillo\\OneDrive\\Desktop\\Anchor&WingLLC\\Code 3\\Development\\App wo"
-    },
-    {
-      "file": "test-viewport-guard.cjs",
-      "firstError": ""
-    },
-    {
-      "file": "test-workspace-keyboard.cjs",
-      "firstError": "Error: element(s) not found"
-    },
-    {
-      "file": "test-workspace-polish.cjs",
-      "firstError": "TimeoutError'"
-    },
-    {
-      "file": "test-workspace-recovery-browser.cjs",
-      "firstError": "Timing-sensitive: Web Lock from the closed tab is still held (fails on pre-merge code too, Nov 15, 2026)."
-    },
-    {
-      "file": "test-device-transfer-browser.cjs",
-      "firstError": "locator.setInputFiles timeout — started failing with UI improvements 101-200 (#49); fails on that commit too."
-    },
-    {
-      "file": "test-legacy-collection-presentation.cjs",
-      "firstError": "expect(locator).toBeFocused() failed — started failing with UI improvements 101-200 (#49); fails on that commit too."
-    },
-    {
-      "file": "test-sale-return-workflow.cjs",
-      "firstError": "locator.click timeout — started failing with UI improvements 101-200 (#49); fails on that commit too."
-    },
-    {
-      "file": "test-account-ops-workspace-browser.cjs",
-      "firstError": "768-dark: Back returns focus to selected row — fails on the Linux CI runner only (passes on Windows), Nov 15, 2026."
     }
   ]
 }

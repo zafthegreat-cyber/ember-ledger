@@ -77,6 +77,9 @@ const results = [];
         const [download] = await Promise.all([page.waitForEvent("download"), exportButton.click()]);
         const buffer = fs.readFileSync(await download.path()); assert.equal(JSON.parse(buffer).format, "code3-device-transfer");
         await expect(panel).toContainText("Included: 2 device records, 1 cloud records, and 0 cloud attachments.");
+        // The panel now splits Original device (save) and New device (compare) steps.
+        const newDevice = panel.getByRole("group", { name: "Which device are you using?" }).getByRole("button", { name: "New device", exact: true });
+        await newDevice.click(); await expect(newDevice).toHaveAttribute("aria-pressed", "true");
         await panel.locator('input[type="file"]').setInputFiles({ name: "synthetic-transfer.json", mimeType: "application/json", buffer });
         await expect(panel).toContainText("All compared source records match");
         assert.equal(await page.evaluate(() => JSON.stringify(Object.entries(localStorage).sort()) === window.before), true);

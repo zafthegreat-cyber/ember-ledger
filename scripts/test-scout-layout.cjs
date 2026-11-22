@@ -93,7 +93,11 @@ function validateLayout(layout, viewport, theme) {
   const failures = [];
   if (layout.boardCount !== 1) failures.push(`expected one command board, found ${layout.boardCount}`);
   if (!layout.board || !layout.hero || !layout.radar || !layout.mapStage || !layout.mapCanvas || !layout.sideRail) failures.push("missing core Scout surfaces");
-  if (layout.shellChildren.length !== 1) failures.push(`expected one visible Scout shell child, found ${layout.shellChildren.length}`);
+  // The regional community banner (RegionalCommunityBanner, added Nov 2026) deliberately sits above the board.
+  const boardChildren = layout.shellChildren.filter((child) => !String(child.className).includes("regional-community-banner"));
+  const bannerChildren = layout.shellChildren.length - boardChildren.length;
+  if (boardChildren.length !== 1) failures.push(`expected one visible Scout board shell child, found ${boardChildren.length}`);
+  if (bannerChildren > 1) failures.push(`expected at most one community banner, found ${bannerChildren}`);
   if (layout.oldOverviewVisible || layout.oldDailyReportVisible) failures.push("legacy Scout overview is visible");
   if (layout.document.scrollWidth > layout.document.clientWidth + 2) failures.push(`horizontal overflow ${layout.document.scrollWidth - layout.document.clientWidth}px`);
   if (layout.clippedHeadings.length) failures.push(`clipped headings: ${layout.clippedHeadings.join(" | ")}`);
@@ -107,11 +111,15 @@ function validateLayout(layout, viewport, theme) {
   if (theme === "dark" && boardBrightness !== null && boardBrightness > 90) failures.push(`dark board is too light (${layout.boardBackground})`);
 
   if (viewport.name === "mobile") {
-    if (layout.document.scrollHeight > 1500) failures.push(`mobile page is too long (${layout.document.scrollHeight}px)`);
+    // Length budget applies to the Scout board itself; the community banner above it is a separate, deliberate block.
+    const bannerHeight = layout.shellChildren.filter((child) => String(child.className).includes("regional-community-banner")).reduce((sum, child) => sum + child.height, 0);
+    if (layout.document.scrollHeight - bannerHeight > 1500) failures.push(`mobile page is too long (${layout.document.scrollHeight}px, ${bannerHeight}px of it community banner)`);
     if (!layout.mobileDock || layout.mobileDock.height < 44) failures.push("mobile dock is missing or too small");
   } else {
     // Readable cards may extend below the fold; keep them inside a scrollable page.
-    if (!layout.metrics?.height || !layout.lower?.height) failures.push(`${viewport.name} supporting intelligence is missing`);
+    // The metric grid is admin-only since the declutter pass (Scout.jsx fullBoard = showAdminTools); the
+    // supporting content section stays for everyone.
+    if (!layout.lower?.height) failures.push(`${viewport.name} supporting intelligence is missing`);
     if (layout.lower && layout.board && layout.lower.bottom > layout.board.bottom + 2) failures.push(`${viewport.name} supporting intelligence extends outside its board`);
     const emptyTail = layout.document.scrollHeight - Math.max(viewport.height, layout.board?.bottom || 0);
     if (emptyTail > 144) failures.push(`${viewport.name} has ${emptyTail}px of empty space after the board`);

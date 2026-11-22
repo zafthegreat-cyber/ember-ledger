@@ -765,7 +765,7 @@ export default function VaultWorkspaceContent({ scope }) {
                 })}
                 {visibleVaultItems.length === 0 ? (
                   <div className="empty-state">
-                    <h3>No matching Vault items.</h3>
+                    <h3>No matching collection items.</h3>
                     <p>Filters are hiding items, or this search term is not in your collection yet.</p>
                     <div className="quick-actions">
                       <button type="button" className="secondary-button" onClick={clearVaultFilters}>Reset Filters</button>
