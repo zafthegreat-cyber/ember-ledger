@@ -117,6 +117,10 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts
+      # `npm run dev` does this in predev; starting vite directly skips it, and the stock
+      # screenshot test needs the local OCR files (copied from node_modules, gitignored).
+      - name: Prepare local OCR files
+        run: npm run prepare:scout-ocr
       - name: Install Chromium for Playwright
         run: npx playwright install --with-deps chromium
       - name: Start the app
