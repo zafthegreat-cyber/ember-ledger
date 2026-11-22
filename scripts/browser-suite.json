@@ -41,7 +41,8 @@
     "test-global-search-presentation.cjs",
     "test-adaptive-restock-home-browser.cjs",
     "test-restock-details-browser.cjs",
-    "test-restock-phone-navigation-browser.cjs"
+    "test-restock-phone-navigation-browser.cjs",
+    "test-restock-report-browser.cjs"
   ],
   "knownFailing": [
     {
@@ -159,10 +160,6 @@
     {
       "file": "test-purchase-email-import-browser.cjs",
       "firstError": "AssertionError [ERR_ASSERTION]: No collateral storage writes"
-    },
-    {
-      "file": "test-restock-report-browser.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: Restock browser checks failed; see C:\\Users\\dillo\\OneDrive\\Desktop\\Anchor&WingLLC\\Code 3\\Development\\App wor"
     },
     {
       "file": "test-restock-save-reload-browser.cjs",

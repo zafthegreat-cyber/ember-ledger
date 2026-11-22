@@ -151,8 +151,8 @@ async function checkPresentation(page, modal, name, result) {
         localStorage.setItem("__qa_restock_seeded", "true");
         localStorage.setItem("et-tcg-app-theme", theme);
         localStorage.setItem("et-tcg-beta-data", JSON.stringify({ items: [{ id: "retained-card", name: "Retained collection card", quantity: 3 }], sales: [], expenses: [], catalogProducts: [
-          { id: "restock-fixture-catalog", name: fixtureCatalogName, productName: fixtureCatalogName, productType: "Booster Bundle", productKind: "sealed", setName: "Fixture Aurora", imageUrl: "/assets/brand/code3tcg-app-icon.svg", sourceType: "manual", marketValue: 37.25 },
-          { id: "restock-fixture-catalog-other", name: "Fixture Aurora Collector Tin", productName: "Fixture Aurora Collector Tin", productType: "Tin", productKind: "sealed", setName: "Fixture Aurora", imageUrl: "/__qa-broken-catalog.png", sourceType: "manual", marketValue: 14.5 },
+          { id: "restock-fixture-catalog", game: "pokemon", name: fixtureCatalogName, productName: fixtureCatalogName, productType: "Booster Bundle", productKind: "sealed", setName: "Fixture Aurora", imageUrl: "/assets/brand/code3tcg-app-icon.svg", sourceType: "manual", marketValue: 37.25 },
+          { id: "restock-fixture-catalog-other", game: "pokemon", name: "Fixture Aurora Collector Tin", productName: "Fixture Aurora Collector Tin", productType: "Tin", productKind: "sealed", setName: "Fixture Aurora", imageUrl: "/__qa-broken-catalog.png", sourceType: "manual", marketValue: 14.5 },
         ] }));
         localStorage.setItem("et-tcg-beta-scout", JSON.stringify({
           stores: [
@@ -225,6 +225,13 @@ async function checkPresentation(page, modal, name, result) {
           await modal.getByRole("button", { name: "Can't find store?", exact: true }).click();
           await modal.getByPlaceholder("Store name, city, or general location", { exact: true }).fill("Fixture Corner Shop, Norfolk VA");
           await next().click();
+          // A typed-in store also needs its city and state so the report lands in the right area.
+          await expect(modal.locator(".form-error").first()).toContainText("Enter the store city and choose its state");
+          const manualArea = modal.locator(".scout-manual-store-area > details");
+          await openDisclosure(manualArea);
+          await manualArea.getByLabel("Manual store city", { exact: true }).fill("Norfolk");
+          await manualArea.getByLabel("Manual store state", { exact: true }).selectOption("VA");
+          await next().click();
           await expect(modal.locator(".form-error").first()).toContainText("Confirm the manual store/location");
           await expect(modal.getByRole("alert").first()).toContainText("Confirm the manual store/location");
           await modal.getByRole("checkbox").check();
@@ -241,7 +248,8 @@ async function checkPresentation(page, modal, name, result) {
         await expect(modal.getByRole("heading", { name: "What did you see?", exact: true })).toBeVisible();
         await assertStepFocus(page, modal, "store to shelf details", result);
         await expect(modal.getByRole("group", { name: "Shelf status", exact: true }).getByRole("button")).toHaveCount(4);
-        await expect(modal.locator(".scout-proof-disclosure")).not.toHaveAttribute("open", "");
+        // Proof / photos opens by default since 783a4fc so a photo is one tap away.
+        await expect(modal.locator(".scout-proof-disclosure")).toHaveAttribute("open", "");
         const observations = modal.getByText("Other shelf observations", { exact: true });
         await observations.click();
         await expect(modal.getByRole("group", { name: "Other shelf observations", exact: true }).getByRole("button")).toHaveCount(5);
@@ -291,6 +299,8 @@ async function checkPresentation(page, modal, name, result) {
         await expect(modal.getByRole("heading", { name: "Ready to share this report?", exact: true })).toBeVisible();
         await expect(modal.locator(".scout-report-review-grid").first()).toContainText(changedCategory);
         await modal.getByRole("button", { name: "Back", exact: true }).filter({ visible: true }).click();
+        // Categories are games now; catalog matches only list products from the chosen game.
+        await categories.first().click();
         await openDisclosure(modal.locator(".stock-report-product-disclosure"));
         await productInput.fill("Fixture Aurora");
         await matches.getByRole("button", { name: `Use ${fixtureCatalogName}`, exact: true }).click();
@@ -312,7 +322,7 @@ async function checkPresentation(page, modal, name, result) {
         const notesInput = modal.locator(".scout-report-notes-field textarea");
         await expect(notesInput).toBeFocused();
         const proofDisclosure = modal.locator(".scout-proof-disclosure");
-        await proofDisclosure.locator("summary").click();
+        await openDisclosure(proofDisclosure);
         const proofText = proofDisclosure.getByLabel("Proof text or link", { exact: true });
         const sourceText = "Synthetic fixture shelf tag; no personal information.";
         await proofText.fill(sourceText);
