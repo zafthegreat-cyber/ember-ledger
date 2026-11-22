@@ -62,15 +62,12 @@
     "test-code3-workspace-browser.cjs",
     "test-community-integration.mjs",
     "test-deal-finder-persistence.cjs",
-    "test-deal-finder-presentation.cjs"
+    "test-deal-finder-presentation.cjs",
+    "test-app-render-regressions.cjs"
   ],
   "knownFailing": [
     {
       "file": "test-account-ops-native-consistency.cjs",
-      "firstError": "Error: element(s) not found"
-    },
-    {
-      "file": "test-app-render-regressions.cjs",
       "firstError": "Error: element(s) not found"
     },
     {

@@ -138,10 +138,11 @@ async function checkBrowser() {
         await page.locator('button[aria-label="Open global Add menu"]:visible').first().click();
         const quickAdd = page.locator('.flow-modal[data-flow="addActionSheet"]');
         await expect(quickAdd).toBeVisible();
+        // Seller sheet: everyday seller actions on top; scans and collection adds sit under More.
+        await expect(quickAdd.getByRole("button", { name: /^Add selling inventory / })).toBeVisible();
+        await quickAdd.getByText("More", { exact: true }).click();
         await expect(quickAdd.getByRole("button", { name: /^Scan Listing\./ })).toBeVisible();
         await expect(quickAdd.getByRole("button", { name: /^Add to my collection / })).toBeVisible();
-        await quickAdd.getByText("More", { exact: true }).click();
-        await expect(quickAdd.getByRole("button", { name: /^Add Resale Inventory / })).toBeVisible();
         await quickAdd.getByRole("button", { name: /^Analyze Deal\./ }).click();
         await expect(quickAdd).toHaveCount(0);
         await page.waitForURL(/\/find\/deal-analysis\?/);
