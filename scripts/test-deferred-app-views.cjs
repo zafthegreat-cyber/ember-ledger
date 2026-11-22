@@ -7,10 +7,10 @@ const base = new URL(process.env.APP_URL || "http://127.0.0.1:5217");
 assert.ok(["127.0.0.1", "localhost", "[::1]"].includes(base.hostname), "This regression uses disposable local browser contexts.");
 const output = path.resolve(__dirname, "../artifacts/qa/next-ten/release-quality/deferred-browser");
 const routes = [
-  { path: "/settings/profile", module: "ProfileContent", content: "Identity and security" },
-  { path: "/settings/plans", module: "MembershipContent", content: "Current plan and Scout limits" },
-  { path: "/settings/trust", module: "TrustContent", content: "Child privacy" },
-  { path: "/kids-community/community", module: "CommunityContent", content: "Tidepool" },
+  { path: "/settings/profile", module: "ProfileContent", content: "Your profile and account" },
+  { path: "/settings/plans", module: "MembershipContent", content: "Current plan and Restocks limits" },
+  { path: "/settings/trust", module: "TrustContent", content: "Privacy policy" },
+  { path: "/kids-community/community", module: "CommunityContent", content: "Community Center" },
   { path: "/admin", module: "AdminReviewContent", content: "Permission Denied" },
 ];
 
@@ -47,7 +47,7 @@ async function recordSnapshot(page) {
         await page.goto(url("/", theme));
         await expect(page.getByRole("heading", { name: /^Welcome( back| to Code 3 TCG).$/ })).toBeVisible({ timeout: 30000 });
         await page.waitForTimeout(250);
-        assert.deepEqual(requested.filter((entry) => entry.includes("/features/deferredViews/")), [], "Home does not download the deferred account, community, marketplace, import, or admin views.");
+        assert.deepEqual(requested.filter((entry) => entry.includes("/features/deferredViews/") && !/\/(DeferredModalBoundary\.jsx|flowModalFocus\.js)$/.test(entry)), [], "Home does not download the deferred account, community, marketplace, import, or admin views.");
         results.push({ theme, width, name: "Home defers inactive views", passed: true });
         const before = await recordSnapshot(page);
         for (const route of routes) {

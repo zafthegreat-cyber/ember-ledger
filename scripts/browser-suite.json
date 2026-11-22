@@ -50,7 +50,13 @@
     "test-account-ops-recovery-guards.mjs",
     "test-app-fallbacks-browser.cjs",
     "test-buy-offer-browser.cjs",
-    "test-bot-provider-setup-browser.cjs"
+    "test-bot-provider-setup-browser.cjs",
+    "test-code3-accountant-review-browser.cjs",
+    "test-code3-inventory-correction-browser.cjs",
+    "test-code3-inventory-creation-browser.cjs",
+    "test-code3-inventory-reconciliation-browser.cjs",
+    "test-deferred-app-views.cjs",
+    "test-code3-bot-ops-browser.cjs"
   ],
   "knownFailing": [
     {
@@ -64,26 +70,6 @@
     {
       "file": "test-code3-account-ops-foundation-browser.cjs",
       "firstError": "TimeoutError'"
-    },
-    {
-      "file": "test-code3-accountant-review-browser.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: query-role spoofing cannot bypass OWNER authorization"
-    },
-    {
-      "file": "test-code3-bot-ops-browser.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: normal Bot runtime should use the honest disconnected state"
-    },
-    {
-      "file": "test-code3-inventory-correction-browser.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: query authority spoofing remains denied"
-    },
-    {
-      "file": "test-code3-inventory-creation-browser.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: query role spoofing cannot establish OWNER authority"
-    },
-    {
-      "file": "test-code3-inventory-reconciliation-browser.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: query authority spoofing remains denied"
     },
     {
       "file": "test-code3-workspace-browser.cjs",
@@ -100,10 +86,6 @@
     {
       "file": "test-deal-finder-presentation.cjs",
       "firstError": "AssertionError [ERR_ASSERTION]: See deal-finder/results.json"
-    },
-    {
-      "file": "test-deferred-app-views.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: Home does not download the deferred account, community, marketplace, import, or admin views."
     },
     {
       "file": "test-deferred-performance.cjs",
