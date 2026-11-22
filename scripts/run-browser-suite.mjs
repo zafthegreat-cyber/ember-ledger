@@ -31,7 +31,13 @@ for (const file of files) {
   } else {
     failed.push(file);
     console.log(`FAIL ${file} (${seconds}s)`);
-    console.log(`${result.stdout || ""}\n${result.stderr || ""}`.trim().split("\n").slice(-25).join("\n"));
+    const tail = `${result.stdout || ""}\n${result.stderr || ""}`.trim().split("\n").slice(-25).join("\n");
+    console.log(tail);
+    // Annotations show on the run page without signing in, unlike the full log.
+    if (process.env.GITHUB_ACTIONS) {
+      const escape = (text) => text.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
+      console.log(`::error title=FAIL ${file}::${escape(tail.split("\n").slice(-12).join("\n"))}`);
+    }
   }
 }
 console.log(`\n${files.length - failed.length}/${files.length} browser tests passed; ${suite.knownFailing.length} known-failing tests not run.`);

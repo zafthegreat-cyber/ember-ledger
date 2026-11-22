@@ -104,11 +104,11 @@ jobs:
     # Pinned: ubuntu-latest became Ubuntu 26 (Oct 2026), which Playwright 1.59 can't install browsers on.
     runs-on: ubuntu-24.04
     timeout-minutes: 45
-    # 90 tests take about as long as one job's limit, so they run as three parallel shards.
+    # 90 tests take well over one job's limit, so they run as five parallel shards.
     strategy:
       fail-fast: false
       matrix:
-        shard: ['1/3', '2/3', '3/3']
+        shard: ['1/5', '2/5', '3/5', '4/5', '5/5']
     name: browser (${{ matrix.shard }})
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
