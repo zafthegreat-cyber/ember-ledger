@@ -39,7 +39,8 @@
     "test-collection-sets-browser.cjs",
     "test-collection-portfolio-browser.cjs",
     "test-global-search-presentation.cjs",
-    "test-adaptive-restock-home-browser.cjs"
+    "test-adaptive-restock-home-browser.cjs",
+    "test-restock-details-browser.cjs"
   ],
   "knownFailing": [
     {
@@ -157,10 +158,6 @@
     {
       "file": "test-purchase-email-import-browser.cjs",
       "firstError": "AssertionError [ERR_ASSERTION]: No collateral storage writes"
-    },
-    {
-      "file": "test-restock-details-browser.cjs",
-      "firstError": "Error: element(s) not found"
     },
     {
       "file": "test-restock-phone-navigation-browser.cjs",
