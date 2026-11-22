@@ -59,7 +59,8 @@
     "test-code3-bot-ops-browser.cjs",
     "test-legacy-app-storage.cjs",
     "test-code3-account-ops-foundation-browser.cjs",
-    "test-code3-workspace-browser.cjs"
+    "test-code3-workspace-browser.cjs",
+    "test-community-integration.mjs"
   ],
   "knownFailing": [
     {
@@ -69,10 +70,6 @@
     {
       "file": "test-app-render-regressions.cjs",
       "firstError": "Error: element(s) not found"
-    },
-    {
-      "file": "test-community-integration.mjs",
-      "firstError": "Error: element(s) not found\r"
     },
     {
       "file": "test-deal-finder-persistence.cjs",
