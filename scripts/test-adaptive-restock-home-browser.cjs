@@ -79,7 +79,7 @@ const homeKeys = page => page.locator("[data-home-card]").evaluateAll(rows => ro
       const restocks = page.locator(".restock-start");
       await expect(restocks.getByRole("heading", { name: "Restocks", exact: true })).toBeVisible({ timeout: 30000 });
       assert.equal(new URL(page.url()).pathname, "/find/restocks");
-      const originalRestockData = await page.evaluate(() => { const value = JSON.parse(localStorage.getItem("et-tcg-beta-data")); return JSON.stringify([value.items, value.sales, value.expenses]); });
+      const originalRestockData = await page.evaluate(() => { const value = JSON.parse(localStorage.getItem("et-tcg-beta-data")); return JSON.stringify([value.items, value.sales, value.expenses].map(rows => (rows || []).map(row => Object.fromEntries(Object.entries(row).filter(([key]) => !/^workspace/.test(key)))))); });
       const originalScoutReports = await page.evaluate(() => JSON.stringify(JSON.parse(localStorage.getItem("et-tcg-beta-scout")).reports));
       const directReport = restocks.getByRole("button", { name: "Report a restock", exact: true });
       await expect(directReport).toBeEnabled();
@@ -131,7 +131,7 @@ const homeKeys = page => page.locator("[data-home-card]").evaluateAll(rows => ro
       await page.screenshot({ path: path.join(output, `${prefix}-actual-community-reports.png`), fullPage: true });
       await page.goBack(); await expect(restocks).toBeVisible();
       assert.equal(new URL(page.url()).pathname, "/find/restocks", "Back returns to the originating Restocks page");
-      const afterRestockData = await page.evaluate(() => { const value = JSON.parse(localStorage.getItem("et-tcg-beta-data")); return JSON.stringify([value.items, value.sales, value.expenses]); });
+      const afterRestockData = await page.evaluate(() => { const value = JSON.parse(localStorage.getItem("et-tcg-beta-data")); return JSON.stringify([value.items, value.sales, value.expenses].map(rows => (rows || []).map(row => Object.fromEntries(Object.entries(row).filter(([key]) => !/^workspace/.test(key)))))); });
       assert.equal(afterRestockData, originalRestockData, "Direct report/browse/Back keeps original records");
       assert.equal(await page.evaluate(() => JSON.stringify(JSON.parse(localStorage.getItem("et-tcg-beta-scout")).reports)), originalScoutReports, "Existing saved report bytes stay unchanged through browse, refresh, report cancellation and Back");
       if (restockEntryOnly) {
@@ -143,7 +143,7 @@ const homeKeys = page => page.locator("[data-home-card]").evaluateAll(rows => ro
       step = `${prefix}: actual app Home and Add report entry`;
       await page.goto(`${base}/?betaLocalMode=true`);
       await expect(page.getByRole("heading", { name: /^Welcome( back| to Code 3 TCG).$/ })).toBeVisible({ timeout: 30000 });
-      const original = await page.evaluate(() => { const value = JSON.parse(localStorage.getItem("et-tcg-beta-data")); return JSON.stringify([value.items, value.sales, value.expenses]); });
+      const original = await page.evaluate(() => { const value = JSON.parse(localStorage.getItem("et-tcg-beta-data")); return JSON.stringify([value.items, value.sales, value.expenses].map(rows => (rows || []).map(row => Object.fromEntries(Object.entries(row).filter(([key]) => !/^workspace/.test(key)))))); });
       const navigation = async () => page.locator("nav").filter({ visible: true }).evaluateAll(nodes => nodes.map(node => node.textContent));
       const initialNavigation = await navigation();
       const report = page.getByRole("button", { name: "Report a restock", exact: true });
@@ -186,7 +186,7 @@ const homeKeys = page => page.locator("[data-home-card]").evaluateAll(rows => ro
       await page.getByRole("button", { name: "Back to Sell or trade", exact: true }).click();
       await expect(page.locator(".collector-trade-records")).toBeVisible();
       await page.screenshot({ path: path.join(output, `${prefix}-actual-collector-sell-trade.png`), fullPage: true });
-      const after = await page.evaluate(() => { const value = JSON.parse(localStorage.getItem("et-tcg-beta-data")); return JSON.stringify([value.items, value.sales, value.expenses]); });
+      const after = await page.evaluate(() => { const value = JSON.parse(localStorage.getItem("et-tcg-beta-data")); return JSON.stringify([value.items, value.sales, value.expenses].map(rows => (rows || []).map(row => Object.fromEntries(Object.entries(row).filter(([key]) => !/^workspace/.test(key)))))); });
       assert.equal(after, original, "Actual App preserves seeded data when opening and cancelling report flows");
       }
 

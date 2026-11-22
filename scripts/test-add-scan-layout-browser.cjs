@@ -81,7 +81,13 @@ async function contrastReport(chooser) {
       lastStep = `${prefix}: load home and open Add`;
       await page.goto(`${base}/?betaLocalMode=true`);
       await expect(page.getByRole("heading", { name: /^Welcome( back| to Code 3 TCG).$/ })).toBeVisible({ timeout: 30000 });
-      const dataSnapshot = () => page.evaluate(() => { const data = JSON.parse(localStorage.getItem("et-tcg-beta-data")); return JSON.stringify([data.items, data.sales, data.expenses]); });
+      // The app's one-time workspace labelling can stamp workspace fields onto seeded rows at any point
+      // during start-up; those labels are not user changes, so they are left out of the comparison.
+      const dataSnapshot = () => page.evaluate(() => {
+        const data = JSON.parse(localStorage.getItem("et-tcg-beta-data"));
+        const strip = rows => (rows || []).map(row => Object.fromEntries(Object.entries(row).filter(([key]) => !/^workspace/.test(key))));
+        return JSON.stringify([strip(data.items), strip(data.sales), strip(data.expenses)]);
+      });
       const before = await dataSnapshot();
       const opener = page.getByRole("button", { name: "Open global Add menu", exact: true }).filter({ visible: true }).first();
       await opener.click();

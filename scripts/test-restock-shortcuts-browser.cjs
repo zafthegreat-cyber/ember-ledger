@@ -99,7 +99,9 @@ async function save(modal, { visibility = '', expectedVisibility = 'private_from
         await selectFacts(modal); await save(modal);
         const final = await sources(page);
         assert.equal(final.scout.reports.length, original.scout.reports.length + 2);
-        for (const field of ['items', 'sales', 'expenses']) assert.deepEqual(final.core[field], original.core[field]);
+        // Workspace labels the app stamps on start-up are not user changes, so they are left out.
+        const unlabelled = rows => (rows || []).map(row => Object.fromEntries(Object.entries(row).filter(([key]) => !/^workspace/.test(key))));
+        for (const field of ['items', 'sales', 'expenses']) assert.deepEqual(unlabelled(final.core[field]), unlabelled(original.core[field]));
         for (const report of original.scout.reports) assert.deepEqual(final.scout.reports.find(row => row.id === report.id), report);
         await modal.getByRole('button', { name: 'Check cloud saving', exact: true }).click();
         await expect(modal).toHaveCount(0); await expect(page.getByRole('heading', { name: 'Settings', exact: true }).first()).toBeVisible({ timeout: 30000 });
