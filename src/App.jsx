@@ -7243,8 +7243,10 @@ export default function App() {
     const toast = {
       id,
       createdAt: Date.now(),
-      durationMs: payload.durationMs || TOAST_AUTO_DISMISS_MS[payload.type] || TOAST_AUTO_DISMISS_MS.info,
       ...payload,
+      // After the spread: normalizeToastPayload always sets durationMs (often undefined),
+      // which used to overwrite the per-type duration so errors closed after 4.6s, not 7.8s.
+      durationMs: payload.durationMs || TOAST_AUTO_DISMISS_MS[payload.type] || TOAST_AUTO_DISMISS_MS.info,
     };
     setAppToasts((current) => [toast, ...current.filter((entry) => entry.title !== toast.title || entry.message !== toast.message)].slice(0, 3));
     return id;

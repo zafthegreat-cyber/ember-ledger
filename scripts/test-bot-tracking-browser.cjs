@@ -282,7 +282,9 @@ async function componentCase(browser, fixture, testCase) {
     await assertOverviewAndHistory(page, fixture, id);
     const search = tracker(page).getByLabel("Search tasks", { exact: true });
     await search.focus(); await page.keyboard.press("Tab"); await page.keyboard.press("Shift+Tab");
-    await expect(search).toBeFocused(); assert.notEqual(await search.evaluate(node => getComputedStyle(node).outlineStyle), "none");
+    await expect(search).toBeFocused(); // The holo-tech look (19-holo-tech.css) marks focused inputs with a lit border and glow instead of an outline.
+    const focusMark = await search.evaluate(node => { const style = getComputedStyle(node); return { outline: style.outlineStyle, shadow: style.boxShadow }; });
+    assert.ok(focusMark.outline !== "none" || (focusMark.shadow && focusMark.shadow !== "none"), `Keyboard focus is visible on Search tasks: ${JSON.stringify(focusMark)}`);
     await assertLayout(page);
     await page.screenshot({ path: path.join(output, `${id}-tracking.png`), fullPage: true });
     step = `${id}: all eight bot installations offered and local plan saves`;
