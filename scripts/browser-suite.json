@@ -44,7 +44,9 @@
     "test-restock-phone-navigation-browser.cjs",
     "test-restock-report-browser.cjs",
     "test-restock-save-reload-browser.cjs",
-    "test-restock-feed-browser.cjs"
+    "test-restock-feed-browser.cjs",
+    "test-workspace-storage-quota-browser.cjs",
+    "test-cloud-account-ui-browser.cjs"
   ],
   "knownFailing": [
     {
@@ -70,10 +72,6 @@
     {
       "file": "test-buy-offer-browser.cjs",
       "firstError": "AssertionError [ERR_ASSERTION]: Calculator operations do not write business data or preferences"
-    },
-    {
-      "file": "test-cloud-account-ui-browser.cjs",
-      "firstError": "Error: Build failed with 2 errors:"
     },
     {
       "file": "test-code3-account-ops-foundation-browser.cjs",
@@ -206,10 +204,6 @@
     {
       "file": "test-workspace-polish.cjs",
       "firstError": "TimeoutError'"
-    },
-    {
-      "file": "test-workspace-storage-quota-browser.cjs",
-      "firstError": "Error: Build failed with 2 errors:"
     },
     {
       "file": "test-workspace-recovery-browser.cjs",
