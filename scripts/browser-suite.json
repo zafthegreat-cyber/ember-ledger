@@ -43,7 +43,8 @@
     "test-restock-details-browser.cjs",
     "test-restock-phone-navigation-browser.cjs",
     "test-restock-report-browser.cjs",
-    "test-restock-save-reload-browser.cjs"
+    "test-restock-save-reload-browser.cjs",
+    "test-restock-feed-browser.cjs"
   ],
   "knownFailing": [
     {
@@ -221,10 +222,6 @@
     {
       "file": "test-legacy-collection-presentation.cjs",
       "firstError": "expect(locator).toBeFocused() failed — started failing with UI improvements 101-200 (#49); fails on that commit too."
-    },
-    {
-      "file": "test-restock-feed-browser.cjs",
-      "firstError": "expect(locator).toBeVisible() failed — started failing with UI improvements 101-200 (#49); fails on that commit too."
     },
     {
       "file": "test-sale-return-workflow.cjs",
