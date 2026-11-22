@@ -139,7 +139,12 @@ async function openCostReconciliation(page) {
         const confirm = dialog.getByRole("button", { name: "Confirm COGS Adjustment", exact: true });
         await confirm.focus();
         await confirm.evaluate((button) => { button.click(); button.click(); });
-        await page.getByText(/Historical reconciliation recorded once/i).waitFor();
+        // On failure, report what the page said instead (CI logs need a sign-in; this reaches the annotation).
+        await page.getByText(/Historical reconciliation recorded once/i).waitFor({ timeout: 60000 }).catch(async (error) => {
+          const shown = await page.locator(".ops-toast, [role='status'], [role='alert']").allInnerTexts().catch(() => []);
+          const confirmState = await confirm.evaluate((button) => ({ connected: button.isConnected, disabled: button.disabled, text: button.innerText })).catch(() => "gone");
+          throw new Error(`${scenario.label}: no reconciliation confirmation. Messages: ${JSON.stringify(shown).slice(0, 400)}; confirm: ${JSON.stringify(confirmState)}; ${error.message.split("\n")[0]}`);
+        });
         const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), INVENTORY_KEY);
         assert.deepEqual(saved.sales[0], originalSale, "completed Sale bytes remain unchanged after reconciliation"); assertions += 1;
         equal(saved.inventoryReconciliationEvents.length, 1, "one append-only reconciliation event is recorded");
