@@ -40,7 +40,8 @@
     "test-collection-portfolio-browser.cjs",
     "test-global-search-presentation.cjs",
     "test-adaptive-restock-home-browser.cjs",
-    "test-restock-details-browser.cjs"
+    "test-restock-details-browser.cjs",
+    "test-restock-phone-navigation-browser.cjs"
   ],
   "knownFailing": [
     {
@@ -158,10 +159,6 @@
     {
       "file": "test-purchase-email-import-browser.cjs",
       "firstError": "AssertionError [ERR_ASSERTION]: No collateral storage writes"
-    },
-    {
-      "file": "test-restock-phone-navigation-browser.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: Phone navigation checks failed; see C:\\Users\\dillo\\OneDrive\\Desktop\\Anchor&WingLLC\\Code 3\\Development\\App wo"
     },
     {
       "file": "test-restock-report-browser.cjs",

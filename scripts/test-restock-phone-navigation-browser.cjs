@@ -59,9 +59,12 @@ async function warmCatalog(page) {
 
 async function filterFeed(page) {
   const feed = page.locator(".scout-reports-landing");
-  await expect(feed.getByRole("heading", { name: "Recent restock reports", exact: true })).toBeVisible({ timeout: 30000 });
+  await expect(feed.getByRole("heading", { name: "Restock reports", exact: true })).toBeVisible({ timeout: 30000 });
   await feed.getByRole("searchbox", { name: "Search reports", exact: true }).fill("NORFOLK aurora");
-  await feed.getByRole("button", { name: "Low stock", exact: true }).click();
+  await feed.getByRole("button", { name: /^Low stock, \d+ reports?$/ }).click();
+  // Date, game and location filters live in the "More filters" fold, closed at first.
+  const moreFilters = feed.locator("details.restock-browser-area");
+  if (!(await moreFilters.evaluate(element => element.open))) await moreFilters.locator(":scope > summary").click();
   await feed.getByLabel("Observed", { exact: true }).selectOption("24h");
   await expect(feed.locator(".scout-feed-report-card")).toHaveCount(1);
   return { feed, launch: feed.getByRole("button", { name: "View details", exact: true }) };
@@ -70,7 +73,7 @@ async function filterFeed(page) {
 async function feedUnchanged(page, feed, url) {
   assert.equal(page.url(), url, "Closing a child detail retains the exact route and query");
   await expect(feed.getByRole("searchbox", { name: "Search reports", exact: true })).toHaveValue("NORFOLK aurora");
-  await expect(feed.getByRole("button", { name: "Low stock", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(feed.getByRole("button", { name: /^Low stock, \d+ reports?$/ })).toHaveAttribute("aria-pressed", "true");
   await expect(feed.getByLabel("Observed", { exact: true })).toHaveValue("24h");
   await expect(feed.locator(".scout-feed-report-card")).toHaveCount(1);
 }
@@ -150,16 +153,13 @@ async function ordinaryCase(browser, testCase) {
     result.newVisitFreshAndNonRacing = true;
 
     await expect(feed).toBeVisible(); await launch.click(); await expect(detail).toBeVisible();
-    await detail.getByRole("button", { name: "Add details", exact: true }).click();
+    // Owner actions belong to the signed-in reporter only (87745e2); this local viewer is not the reporter.
+    await expect(detail.getByRole("button", { name: "Add details", exact: true })).toHaveCount(0);
+    await detail.getByRole("button", { name: "Close report details", exact: true }).click();
     await expect(detail).toHaveCount(0); await settle(page);
-    const cancelEdit = page.getByRole("button", { name: "Cancel / Clear", exact: true });
-    await expect(cancelEdit).toBeVisible();
-    await expect(page.getByRole("button", { name: "Save Report", exact: true })).toBeVisible();
-    assert.equal(page.url(), url, "Add details handoff cannot race out of its existing route");
-    assert.equal(await recordBytes(page), original, "Opening Add details preserves original observations and prices");
-    await cancelEdit.click(); await settle(page);
-    assert.equal(await recordBytes(page), original, "Cancelling Add details preserves original observations and prices");
-    result.addDetailsNonRacingAndCancelPreservesData = true;
+    assert.equal(page.url(), url, "Closing the detail keeps its existing route");
+    assert.equal(await recordBytes(page), original, "Opening and closing the detail preserves original observations and prices");
+    result.ownerOnlyActionsHiddenAndDataPreserved = true;
     assert.deepEqual(safety.blockedWrites, []); assert.deepEqual(safety.pageErrors, []);
     result.escapedExternalRequests = 0; result.sourceRecordsAndPricesBytePreserved = true; result.passed = true;
     console.log(`PASS phone history ${testCase.width}/${testCase.theme}`);
