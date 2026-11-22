@@ -94,7 +94,14 @@ async function checkPhoto(locator, expectedSource) {
         const cards = page.locator(screen === "collection" ? ".collection-portfolio-grid .collection-portfolio-item" : ".inventory-browser-products .inventory-product");
         await expect(cards).toHaveCount(3, { timeout: 45000 });
         await expect(page.locator(".app[data-theme]")).toHaveAttribute("data-theme", theme);
-        const before = await snapshot(page);
+        // Start-up fills in sale and expense defaults and saves shortly after load; take the
+        // baseline once storage has been unchanged for a second.
+        let before = await snapshot(page);
+        for (let stableSince = Date.now(), deadline = Date.now() + 15000; Date.now() < deadline && Date.now() - stableSince < 1000;) {
+          await page.waitForTimeout(100);
+          const current = await snapshot(page);
+          if (JSON.stringify(current) !== JSON.stringify(before)) { before = current; stableSince = Date.now(); }
+        }
         assert.equal(before.items, JSON.stringify(screen === "repository-inventory" ? [] : records), "Startup retains each original photo field and price");
         if (screen === "repository-inventory") assert.deepEqual(JSON.parse(before.repository).inventory, records, "Repository-only fixtures retain their original data");
         const expected = [[records[0], personalPhoto], [records[1], snakePhoto], [records[2], catalogPhoto]];

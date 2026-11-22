@@ -149,7 +149,12 @@ async function runLocal() {
         // comparing the entire core record object across report operations.
         await page.reload();
         await expect(page.locator('.home-restock-hero')).toBeVisible({ timeout: 45000 });
-        const original = await sources(page);
+        let original = await sources(page);
+        for (let stableSince = Date.now(), deadline = Date.now() + 15000; Date.now() < deadline && Date.now() - stableSince < 1000;) {
+          await page.waitForTimeout(100);
+          const current = await sources(page);
+          if (JSON.stringify(current) !== JSON.stringify(original)) { original = current; stableSince = Date.now(); }
+        }
         const created = await createReviewedCategoryReport(page);
         assert.match(created.savedText, /Saved locally/);
         const afterSave = await sources(page);

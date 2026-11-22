@@ -51,7 +51,14 @@ async function save(modal, { visibility = '', expectedVisibility = 'private_from
       try {
         await page.goto(new URL('/?betaLocalMode=true', base).href);
         await expect(page.locator('.home-restock-hero')).toBeVisible({ timeout: 60000 });
-        const original = await sources(page);
+        // Start-up fills in record defaults and saves shortly after load; take the baseline once
+        // storage has been unchanged for a second.
+        let original = await sources(page);
+        for (let stableSince = Date.now(), deadline = Date.now() + 15000; Date.now() < deadline && Date.now() - stableSince < 1000;) {
+          await page.waitForTimeout(100);
+          const current = await sources(page);
+          if (JSON.stringify(current) !== JSON.stringify(original)) { original = current; stableSince = Date.now(); }
+        }
         await page.locator('.home-restock-hero').getByRole('button', { name: 'Report a restock', exact: true }).click();
         const modal = page.locator('.flow-modal[data-flow="scoutSubmit"]');
         const recent = modal.getByRole('region', { name: 'Your recent report stores', exact: true });
