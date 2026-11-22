@@ -41,7 +41,9 @@ html:root body .app:is(.app-command-shell, .app-signed-out)[data-theme] {
   --c3-surface-inset: #F1E6D5;
   --c3-surface-elevated: #FFFFFF;
   --c3-border: #EADFCF;
-  --c3-control-border: #B59E86;
+  /* At least 3:1 against every light surface (#F1E6D5 is the darkest), so
+     input and button outlines stay visible. Was #B59E86 (2.1:1). */
+  --c3-control-border: #957E67;
   --c3-action: #7A0F1E;
   --c3-action-hover: #5D0B17;
   --c3-on-action: #FFF8EC;

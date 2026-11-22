@@ -135,10 +135,15 @@ export default function StockScreenshotImport({ stores = EMPTY_STORES, reportDra
   }
   // F02: a new screenshot is a new source. Its store, observed time, confirmation
   // and replacement choice must not carry over from the previous image.
+  // Products, category and status the reviewer typed themselves are not part of
+  // the source and stay; clearSuggestions() clears the ones that came from text.
   function resetSourceReview() {
-    edited.current = new Set();
+    edited.current = new Set([...edited.current].filter((field) => ["items", "category", "status"].includes(field)));
     setChosenStore(""); setStoreQuery(""); setSourceExpanded(false); setObservedTime(""); setTimeConfirmed(false); setReplace(false); setRowAmounts([]); setKeptDuplicates([]); setFieldDecisions({store:"keep",products:"keep",status:"keep",time:"reviewed"}); setOriginalText(""); setPreviousText(null); setUndo(null); setSourceUrl(""); setIncludeSourceUrl(false); setCaptureConfirmed(false); setCaptureTime(""); setMinutesAgo(""); setTimeChoice("");
-    setProductName(""); setCategory(""); setStatus(""); setCaptureChoice("");
+    if (!edited.current.has("items")) setProductName("");
+    if (!edited.current.has("category")) setCategory("");
+    if (!edited.current.has("status")) setStatus("");
+    setCaptureChoice("");
   }
   function suggest(value) {
     const parsed = parseStockScreenshotText(value, { stores: knownStores });
@@ -156,9 +161,10 @@ export default function StockScreenshotImport({ stores = EMPTY_STORES, reportDra
   async function readImage(event) {
     const file = event.target.files?.[0];
     if (!file) return;
-    clearImage(); clearSuggestions(); resetSourceReview(); setError(""); setMessage(""); setStage("intake");
+    // A rejected file is not a new source: keep what the reviewer already entered.
     const invalid = validateScoutScreenshotFile(file);
-    if (invalid) { setError(invalid.message); return; }
+    if (invalid) { setMessage(""); setStage("intake"); setError(invalid.message); return; }
+    clearImage(); clearSuggestions(); resetSourceReview(); setError(""); setMessage(""); setStage("intake");
     const imageUrl = URL.createObjectURL(file);
     previewRef.current = imageUrl; setPreview(imageUrl); setFileName(file.name);
     const generation = ++sequence.current;

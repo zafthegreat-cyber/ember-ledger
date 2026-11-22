@@ -61,6 +61,9 @@ const VISIBLE_PHRASE_REPLACEMENTS = [
   [/Add to Vault/gi, "Add to Collection"],
   [/Move to Vault/gi, "Move to Collection"],
   [/\bin (?:your |the )?Vault\b/gi, "in your Collection"],
+  // Seller screens: "separate from Vault", "Move from Vault", "List from Vault", "Vault items".
+  [/\bfrom Vault\b/g, "from Collection"],
+  [/\bVault (items?|collection records)\b/g, "collection $1"],
   [/Forge Command Center/gi, "Business"],
   [/Forge Workshop/gi, "Business Workspace"],
   [/Forge settings/gi, "Business settings"],

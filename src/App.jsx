@@ -27732,12 +27732,12 @@ function renderForgeHeader() {
         brand="Business"
         mark={BRAND_ASSETS.mark}
         title="Business Decision Desk"
-        detail="Trade, listing, inventory, receipt, mileage, and sales records stay private, exact-copy aware, and separate from Vault."
+        detail="Trade, listing, inventory, receipt, mileage, and sales records stay private, exact-copy aware, and separate from your Collection."
         points={{ value: forgeTotalProductQuantity || 0, label: "Sellable items" }}
         pills={[
           { label: "Private Business", tone: "collector" },
           { label: "No checkout", tone: "gold" },
-          { label: "Separate from Vault", tone: "beta" },
+          { label: "Separate from Collection", tone: "beta" },
         ]}
         todayAction={{
           label: "Decision first",
