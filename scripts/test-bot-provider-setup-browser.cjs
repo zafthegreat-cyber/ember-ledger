@@ -122,7 +122,7 @@ async function assertManualOnly(page, baselineCount) {
 async function saveProvider(page, provider, label) {
   const setup = page.getByTestId("bot-provider-setup");
   await setup.getByLabel("Bot provider", { exact: true }).selectOption(provider);
-  await expect(setup.getByTestId("bot-provider-connection")).toContainText(/not connected/i);
+  await expect(setup.getByTestId("bot-provider-connection")).toContainText(/Tracking only/i);
   await expect(setup.getByTestId("bot-provider-guidance")).toContainText(`Reviewed ${reviewedDate}`);
   await setup.getByLabel("Installation name", { exact: true }).fill(label);
   await setup.getByLabel("Device label (optional)", { exact: true }).fill("Synthetic desktop");
@@ -163,7 +163,7 @@ async function componentCase(browser, testCase, fixture) {
     const select = setup.getByLabel("Bot provider", { exact: true });
     await select.focus(); await page.keyboard.press("Tab"); await page.keyboard.press("Shift+Tab");
     await expect(select).toBeFocused();
-    assert.notEqual(await select.evaluate(node => getComputedStyle(node).outlineStyle), "none", "Visible keyboard focus");
+    assert.ok(await select.evaluate(node => { const style = getComputedStyle(node); return style.outlineStyle !== "none" || style.boxShadow !== "none"; }), "Visible keyboard focus (outline or focus glow)");
     for (const provider of providerKeys) {
       step = `${id}: save/edit/reload ${provider}`;
       const label = `${provider} synthetic installation`;

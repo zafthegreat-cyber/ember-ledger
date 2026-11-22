@@ -48,7 +48,9 @@
     "test-workspace-storage-quota-browser.cjs",
     "test-cloud-account-ui-browser.cjs",
     "test-account-ops-recovery-guards.mjs",
-    "test-app-fallbacks-browser.cjs"
+    "test-app-fallbacks-browser.cjs",
+    "test-buy-offer-browser.cjs",
+    "test-bot-provider-setup-browser.cjs"
   ],
   "knownFailing": [
     {
@@ -58,14 +60,6 @@
     {
       "file": "test-app-render-regressions.cjs",
       "firstError": "Error: element(s) not found"
-    },
-    {
-      "file": "test-bot-provider-setup-browser.cjs",
-      "firstError": ""
-    },
-    {
-      "file": "test-buy-offer-browser.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: Calculator operations do not write business data or preferences"
     },
     {
       "file": "test-code3-account-ops-foundation-browser.cjs",
