@@ -423,7 +423,7 @@ test("release notes: newest first, seen tracking, hidden for brand-new accounts"
   assert.equal(notes.readWhatsNewSeen(storage), "x");
   assert.equal(notes.readWhatsNewSeen({ getItem() { throw new Error("no"); } }), "");
   const app = src("src/App.jsx");
-  assert.match(app, /const releaseUpdates = RELEASE_NOTES\.map/);
+  assert.match(src("src/features/deferredViews/WhatsNewContent.jsx"), /const releaseUpdates = RELEASE_NOTES\.map/);
   assert.match(app, /onOpenFeedback: openQuickFeedback,/);
   assert.match(src("src/features/feedback/QuickFeedback.jsx"), /window\.addEventListener\(OPEN_FEEDBACK_EVENT, onOpen\)/);
   assert.match(src("src/pages/OperationsHome.jsx"), /<WhatsNewCard isNewAccount=/);

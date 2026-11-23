@@ -12,6 +12,10 @@ const routes = [
   { path: "/settings/trust", module: "TrustContent", content: "Privacy policy" },
   { path: "/kids-community/community", module: "CommunityContent", content: "Community Center" },
   { path: "/admin", module: "AdminReviewContent", content: "Permission Denied" },
+  { path: "/kids-community/parent", module: "ParentCenterContent", content: "Parent Center" },
+  { path: "/settings/partnerships", module: "SponsorInterestContent", content: "Shop Portal" },
+  { path: "/settings/announcements", module: "WhatsNewContent", content: "Kids Program Updates" },
+  { path: "/settings/known-limitations", module: "KnownLimitationsContent", content: "Beta limitations" },
 ];
 
 function url(pathname, theme) {
@@ -66,7 +70,7 @@ async function recordSnapshot(page) {
           results.push({ theme, width, name: `${route.module} loads, preserves records and supports Back`, passed: true });
         }
         assert.ok(!requested.some((entry) => /\/(AdminOperationsContent|BetaReviewContent|BetaUsersContent)\.jsx$/.test(entry)), "An unprivileged admin visit does not load authorized admin subviews.");
-        console.log(`PASS deferred loading, five routes, record preservation, Back and layout: ${theme} ${width}`);
+        console.log(`PASS deferred loading, ${routes.length} routes, record preservation, Back and layout: ${theme} ${width}`);
       } finally { await context.close(); }
     }
   } catch (error) {
