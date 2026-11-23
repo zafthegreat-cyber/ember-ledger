@@ -261,6 +261,7 @@ test("F19: the reviewed export callback preserves scope, redaction, duplicate gu
 test("F20: password auth handler has a synchronous in-flight guard cleared in finally", () => {
   const app = src("src/App.jsx");
   assert.match(app, /const authInFlightRef = useRef\(false\);/);
-  assert.match(app, /if \(authInFlightRef\.current\) return;\n\s+authInFlightRef\.current = true;\n\s+setAuthLoading\(true\);/);
-  assert.match(app, /authInFlightRef\.current = false;\n\s+setAuthLoading\(false\);/);
+  // \r?\n: Windows checkouts use CRLF (core.autocrlf).
+  assert.match(app, /if \(authInFlightRef\.current\) return;\r?\n\s+authInFlightRef\.current = true;\r?\n\s+setAuthLoading\(true\);/);
+  assert.match(app, /authInFlightRef\.current = false;\r?\n\s+setAuthLoading\(false\);/);
 });

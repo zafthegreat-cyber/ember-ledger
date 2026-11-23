@@ -15757,7 +15757,10 @@ export default function App() {
       return undefined;
     }
 
-    checkUser();
+    // Inline (was checkUser) so the effect lists everything it uses.
+    supabase.auth.getUser().then(({ data, error }) => {
+      if (!error) receiveAuthUser(data.user);
+    });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user?.id) setAccountDeletionCompletedForId((previous) => previous === session.user.id ? previous : "");
       receiveAuthUser(session?.user || null);
@@ -16655,12 +16658,6 @@ export default function App() {
       receiveAuthUser(null);
       setActiveTab("dashboard");
     }
-  }
-
-  async function checkUser() {
-    if (!isSupabaseConfigured || !supabase) return;
-    const { data, error } = await supabase.auth.getUser();
-    if (!error) receiveAuthUser(data.user);
   }
 
   async function handleAuth(event) {

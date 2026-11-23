@@ -63,12 +63,12 @@ check("cloud debug delivery is labeled, public-configured and does not become st
   assert.match(read("docs/mobile-beta/BETA_PACKAGE_READINESS_2026-10-24.md"), /Do not uninstall|do not uninstall/);
 });
 
-check("all workflow actions use verified immutable official v4 commits", () => {
+check("all workflow actions use verified immutable official Node 24 commits (checkout v7.0.1, setup-node v7.1.0, setup-java v6.3.0, upload-artifact v7.0.2; Nov 23, 2026)", () => {
   const verified = {
-    "actions/checkout": "11d5960a326750d5838078e36cf38b85af677262",
-    "actions/setup-node": "49933ea5288caeca8642d1e84afbd3f7d6820020",
-    "actions/setup-java": "cf277c60eb25467037889841efdb72551f06f6c3",
-    "actions/upload-artifact": "ea165f8d65b6e75b540449e92b4886f43607fa02",
+    "actions/checkout": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+    "actions/setup-node": "949feb2413d6458794dcd2491c4babbbce0c15c1",
+    "actions/setup-java": "d1374f8ac74474200d16ef8ecee22c7ae7a51880",
+    "actions/upload-artifact": "cf430e030ddbb5b0abf93d22962f4752f3646cd9",
   };
   const uses = [...read(".github/workflows/native-beta-checks.yml").matchAll(/uses:\s*(\S+)@(\S+)/g)];
   assert.equal(uses.length, 7);
@@ -101,7 +101,7 @@ check("iOS TestFlight build is manual-only, pinned, checks the build number and 
   assert.match(workflow, /<key>method<\/key><string>app-store-connect<\/string>/);
   assert.match(workflow, /if: always\(\)\n\s+run: \|\n\s+rm -f "\$RUNNER_TEMP\/code3-asc\.p8"/);
   assert.doesNotMatch(workflow, /path:[^\n]*\.p8|cat [^\n]*\.p8|echo "\$ASC_PRIVATE_KEY"/);
-  const verified = ["11d5960a326750d5838078e36cf38b85af677262", "49933ea5288caeca8642d1e84afbd3f7d6820020", "ea165f8d65b6e75b540449e92b4886f43607fa02"];
+  const verified = ["3d3c42e5aac5ba805825da76410c181273ba90b1", "949feb2413d6458794dcd2491c4babbbce0c15c1", "cf430e030ddbb5b0abf93d22962f4752f3646cd9"];
   const uses = [...workflow.matchAll(/uses:\s*\S+@(\S+)/g)].map(match => match[1]);
   assert.deepEqual(uses, verified);
 });
