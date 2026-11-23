@@ -96,9 +96,11 @@ async function records(page) {
         console.log(`PASS store observations ${width}/${theme}: exact IDs, observation/upload dates, historical/future/unknown/empty states and unchanged data`);
       } catch (error) {
         result.passed = false; result.error = error.message;
+        console.error(`FAIL store observations ${width}/${theme}: ${error.stack || error.message}`);
         await page.screenshot({ path: path.join(output, `${width}-${theme}-failure.png`), fullPage: true }).catch(() => {});
       } finally { results.push(result); await context.close(); }
     }
   } finally { await browser.close(); fs.writeFileSync(path.join(output, "results.json"), JSON.stringify({ syntheticOnly: true, actualApp: true, results }, null, 2)); }
-  assert.ok(results.every(result => result.passed), `Store observation browser checks failed; see ${path.join(output, "results.json")}`);
+  const failures=results.filter(result=>!result.passed).map(result=>`${result.width}/${result.theme}: ${result.error}`).join("\n");
+  assert.ok(!failures, `Store observation browser checks failed:\n${failures}\nSee ${path.join(output, "results.json")}`);
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -133,6 +133,7 @@ jobs:
         env:
           APP_URL: http://127.0.0.1:5217
           SHARD: ${{ matrix.shard }}
+          BROWSER_FAIL_FAST: '1'
         run: node scripts/run-browser-suite.mjs
       - name: App server log
         if: failure()

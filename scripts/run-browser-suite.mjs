@@ -17,6 +17,7 @@ const [shardIndex, shardCount] = shardMatch ? [Number(shardMatch[1]), Number(sha
 if (shardIndex < 1 || shardIndex > shardCount) throw new Error(`Invalid SHARD "${process.env.SHARD}"`);
 const files = only.length ? only : suite.passing.filter((_, index) => index % shardCount === shardIndex - 1);
 const failed = [];
+let executed=0;
 for (const file of files) {
   const started = Date.now();
   const result = spawnSync(process.execPath, ["--no-warnings", `scripts/${file}`], {
@@ -26,6 +27,7 @@ for (const file of files) {
     maxBuffer: 64 * 1024 * 1024,
   });
   const seconds = Math.round((Date.now() - started) / 1000);
+  executed++;
   if (result.status === 0) {
     console.log(`PASS ${file} (${seconds}s)`);
   } else {
@@ -38,7 +40,8 @@ for (const file of files) {
       const escape = (text) => text.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
       console.log(`::error title=FAIL ${file}::${escape(tail.split("\n").slice(-12).join("\n"))}`);
     }
+    if(process.env.BROWSER_FAIL_FAST==="1")break;
   }
 }
-console.log(`\n${files.length - failed.length}/${files.length} browser tests passed; ${suite.knownFailing.length} known-failing tests not run.`);
+console.log(`\n${executed - failed.length}/${executed} browser tests passed; ${suite.knownFailing.length} known-failing tests not run.${executed<files.length?` ${files.length-executed} tests not run after failure.`:""}`);
 if (failed.length) process.exit(1);
