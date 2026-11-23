@@ -21,8 +21,85 @@ export const CARD_PHOTO_READER = Object.freeze({
 });
 
 const MODEL_GZIP = import.meta.env?.VITE_NATIVE_BUILD !== "true";
+// Characters a printed card number or set code can contain ("SV1 EN 125/198", "TG05/TG30", "OP01-001").
+const NUMBER_CHARACTERS = "0123456789/-ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const fail = (code) => Object.assign(new Error(code), { code });
 const result = (status, code, message, extra = {}) => ({ status, code, message, text: "", suggestions: [], query: "", ...extra });
+
+// One text reader stays loaded between scans (Nov 23 2026). Loading the model takes
+// 2-4 s on a phone; before this every card, slab and receipt paid that again. The
+// worker is ended after READER_IDLE_MS without a read, and immediately when a read
+// is cancelled or times out (a running recognition cannot be interrupted otherwise).
+export const READER_IDLE_MS = 120_000;
+const readers = new Map();
+let readSequence = 0;
+const defaultWorkerUrl = () => new URL("/ocr/card-photo-v2.worker.js", window.location.href).href;
+
+function closeReader(url, code) {
+  const reader = readers.get(url);
+  if (!reader) return;
+  readers.delete(url);
+  clearTimeout(reader.idleTimer);
+  reader.worker.terminate();
+  for (const job of reader.pending.values()) job.reject(fail(code));
+  reader.pending.clear();
+}
+
+function scheduleIdleClose(url) {
+  const reader = readers.get(url);
+  if (!reader) return;
+  clearTimeout(reader.idleTimer);
+  if (reader.pending.size) return;
+  reader.idleTimer = setTimeout(() => closeReader(url, "cancelled"), READER_IDLE_MS);
+}
+
+function openReader(url) {
+  const existing = readers.get(url);
+  if (existing) return existing;
+  const worker = new Worker(url, { name: "Code 3 card reader" });
+  const reader = { worker, pending: new Map(), idleTimer: 0, warmed: false };
+  worker.onerror = (event) => { event.preventDefault?.(); closeReader(url, "ocr_failed"); };
+  worker.onmessageerror = () => closeReader(url, "ocr_failed");
+  worker.onmessage = ({ data }) => {
+    const id = String(data?.id || "");
+    const job = reader.pending.get(id);
+    if (!job) return;
+    if (data.type === "progress") { try { job.onProgress?.(data); } catch { /* presentation only */ } return; }
+    if (data.type !== "result" && data.type !== "failure") return;
+    reader.pending.delete(id);
+    if (data.type === "result") job.resolve(data); else job.reject(fail("ocr_failed"));
+    scheduleIdleClose(url);
+  };
+  readers.set(url, reader);
+  return reader;
+}
+
+const readerSupported = () => typeof window !== "undefined" && typeof Worker === "function" && typeof WebAssembly === "object";
+
+/** Start loading the text model before the first photo, e.g. when the card camera opens. Safe to call often. */
+export function warmCardReader({ workerUrl } = {}) {
+  if (!readerSupported()) return;
+  try {
+    const url = String(workerUrl || defaultWorkerUrl());
+    const reader = openReader(url);
+    if (!reader.warmed) {
+      reader.warmed = true;
+      reader.worker.postMessage({ type: "warm", gzip: MODEL_GZIP });
+    }
+    scheduleIdleClose(url);
+  } catch { /* warming is only a head start */ }
+}
+
+/** Reads the prepared images on the shared reader. cancel() ends the reader so a stuck read stops at once. */
+function recognizeImages(images, { workerUrl, onProgress } = {}) {
+  const url = String(workerUrl || defaultWorkerUrl());
+  const reader = openReader(url);
+  clearTimeout(reader.idleTimer);
+  const id = `read-${++readSequence}`;
+  const promise = new Promise((resolve, reject) => { reader.pending.set(id, { resolve, reject, onProgress }); });
+  reader.worker.postMessage({ type: "recognize-many", id, images, gzip: MODEL_GZIP }, images.map((entry) => entry.image.buffer));
+  return { promise, cancel: (code = "cancelled") => { if (readers.get(url)?.pending.has(id)) closeReader(url, code); } };
+}
 
 /** Pure: stretch contrast on RGBA pixels in place, returning greyscale. Exported for tests. */
 export function enhanceForText(pixels) {
@@ -183,6 +260,17 @@ export async function prepareCardCrops(file, { framed = false } = {}) {
       { key: `number${index}`, psm: "11", image: await toPng(number) },
     );
     if (index === 0) {
+      // Nov 23 2026: the number is tiny and sits in a corner (bottom left on Scarlet &
+      // Violet and later, bottom right on older cards). Read each corner as one line,
+      // enlarged, with only the characters a card number can have.
+      const cornerTop = ch * 0.875, cornerHeight = ch * 0.115;
+      const numberLeft = crop(upright, 0, cornerTop, cw * 0.5, cornerHeight, 1200, true);
+      const numberRight = crop(upright, cw * 0.5, cornerTop, cw * 0.5, cornerHeight, 1200, true);
+      images.push(
+        { key: "numberLeft0", psm: "7", whitelist: NUMBER_CHARACTERS, image: await toPng(numberLeft) },
+        { key: "numberRight0", psm: "7", whitelist: NUMBER_CHARACTERS, image: await toPng(numberRight) },
+      );
+      canvases.push(numberLeft, numberRight);
       // No clear card edge: the card may be small in a wide shot, so read the whole photo larger.
       const fullSide = found || framed ? CARD_PHOTO_READER.fullMaxSide : 2400;
       const fullScale = Math.min(1, fullSide / Math.max(cw, ch));
@@ -204,9 +292,9 @@ export async function readCardPhoto(file, { signal, onProgress, timeoutMs = CARD
   if (typeof window === "undefined" || typeof Worker !== "function" || typeof document === "undefined" || typeof WebAssembly !== "object") {
     return result("unsupported", "unsupported", "This device cannot read cards automatically. Type the card name and number below.");
   }
-  let worker, timer, stopped = false, rejectStop;
+  let job, timer, stopped = false, rejectStop;
   const interrupted = new Promise((_, reject) => { rejectStop = reject; });
-  const stop = (code) => { stopped = true; worker?.terminate(); rejectStop(fail(code)); };
+  const stop = (code) => { stopped = true; job?.cancel(code); rejectStop(fail(code)); };
   const abort = () => stop("cancelled");
   const progress = (label, value = null) => { if (!stopped) try { onProgress?.({ label, progress: Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : null }); } catch { /* presentation only */ } };
   signal?.addEventListener("abort", abort, { once: true });
@@ -217,23 +305,19 @@ export async function readCardPhoto(file, { signal, onProgress, timeoutMs = CARD
       const { images, foundCard } = await prepareCardCrops(file, { framed });
       if (stopped) throw fail("cancelled");
       progress("Loading the private card reader…");
-      worker = new Worker(workerUrl || new URL("/ocr/card-photo-v1.worker.js", window.location.href), { name: "Code 3 card reader" });
       let readsDone = 0;
-      const response = await new Promise((resolve, reject) => {
-        worker.onerror = (event) => { event.preventDefault(); reject(fail("ocr_failed")); };
-        worker.onmessageerror = () => reject(fail("ocr_failed"));
-        worker.onmessage = ({ data }) => {
-          if (stopped) return;
-          if (data?.type === "progress" && data.status === "recognizing text") {
-            if (data.progress >= 1) readsDone += 1;
-            progress(`Reading the card (${Math.min(images.length, readsDone + 1)} of ${images.length})…`, (readsDone + Number(data.progress || 0)) / images.length);
-          } else if (data?.type === "result") resolve(data);
-          else if (data?.type === "failure") reject(fail("ocr_failed"));
-        };
-        worker.postMessage({ type: "recognize-many", images, gzip: MODEL_GZIP }, images.map((entry) => entry.image.buffer));
+      const count = images.length;
+      job = recognizeImages(images, {
+        workerUrl,
+        onProgress: (data) => {
+          if (stopped || data.status !== "recognizing text") return;
+          if (data.progress >= 1) readsDone += 1;
+          progress(`Reading the card (${Math.min(count, readsDone + 1)} of ${count})…`, (readsDone + Number(data.progress || 0)) / count);
+        },
       });
+      const response = await job.promise;
       const byKey = Object.fromEntries((response.texts || []).map((entry) => [entry.key, String(entry.text || "")]));
-      const parsed = parseCardPhotoText({ nameText: byKey.name0, extraNameTexts: [byKey.nameWide0, byKey.name1, byKey.nameWide1].filter(Boolean), numberText: [byKey.number0, byKey.number1].filter(Boolean).join("\n"), fullText: byKey.full });
+      const parsed = parseCardPhotoText({ nameText: byKey.name0, extraNameTexts: [byKey.nameWide0, byKey.name1, byKey.nameWide1].filter(Boolean), numberText: [byKey.numberLeft0, byKey.numberRight0, byKey.number0, byKey.number1].filter(Boolean).join("\n"), fullText: byKey.full });
       const message = parsed.certainty === "name-and-number"
         ? "Found a name and card number. Check them, then review the matches."
         : parsed.certainty === "number-only"
@@ -255,7 +339,6 @@ export async function readCardPhoto(file, { signal, onProgress, timeoutMs = CARD
     stopped = true;
     clearTimeout(timer);
     signal?.removeEventListener("abort", abort);
-    worker?.terminate();
   }
 }
 
@@ -270,9 +353,9 @@ export async function readSlabPhoto(file, { signal, onProgress, timeoutMs = CARD
   if (invalid) return result("invalid", "file_invalid", invalid);
   if (signal?.aborted) return result("cancelled", "cancelled", "Reading stopped. You can type the slab details below.");
   if (typeof window === "undefined" || typeof Worker !== "function" || typeof document === "undefined") return result("unsupported", "unsupported", "This device cannot read slabs automatically. Type the details below.");
-  let worker, timer, rejectStop;
+  let job, timer, rejectStop;
   const interrupted = new Promise((_, reject) => { rejectStop = reject; });
-  const stop = (code) => { worker?.terminate(); rejectStop(fail(code)); };
+  const stop = (code) => { job?.cancel(code); rejectStop(fail(code)); };
   const abort = () => stop("cancelled");
   signal?.addEventListener("abort", abort, { once: true });
   timer = setTimeout(() => stop("timeout"), Math.min(180_000, Math.max(1, timeoutMs)));
@@ -293,12 +376,8 @@ export async function readSlabPhoto(file, { signal, onProgress, timeoutMs = CARD
       ];
       label.width = 0; whole.width = 0;
       onProgress?.({ label: "Reading the label…", progress: null });
-      worker = new Worker(workerUrl || new URL("/ocr/card-photo-v1.worker.js", window.location.href), { name: "Code 3 slab reader" });
-      const response = await new Promise((resolve, reject) => {
-        worker.onerror = (event) => { event.preventDefault(); reject(fail("ocr_failed")); };
-        worker.onmessage = ({ data }) => { if (data?.type === "result") resolve(data); else if (data?.type === "failure") reject(fail("ocr_failed")); };
-        worker.postMessage({ type: "recognize-many", images, gzip: MODEL_GZIP }, images.map((entry) => entry.image.buffer));
-      });
+      job = recognizeImages(images, { workerUrl });
+      const response = await job.promise;
       const byKey = Object.fromEntries((response.texts || []).map((entry) => [entry.key, String(entry.text || "")]));
       const slab = parseSlabLabel([byKey.label6, byKey.label11, byKey.whole].filter(Boolean).join("\n"));
       const found = [slab.gradingCompany && "grader", slab.grade && "grade", slab.certificationNumber && "cert number", (slab.name || slab.number) && "card"].filter(Boolean);
@@ -316,7 +395,6 @@ export async function readSlabPhoto(file, { signal, onProgress, timeoutMs = CARD
   } finally {
     clearTimeout(timer);
     signal?.removeEventListener("abort", abort);
-    worker?.terminate();
   }
 }
 
@@ -330,9 +408,9 @@ export async function readReceiptPhoto(file, { signal, onProgress, timeoutMs = C
   if (invalid) return result("invalid", "file_invalid", invalid);
   if (signal?.aborted) return result("cancelled", "cancelled", "Reading stopped. Type the receipt lines below.");
   if (typeof window === "undefined" || typeof Worker !== "function" || typeof document === "undefined") return result("unsupported", "unsupported", "This device cannot read receipts automatically. Type the lines below.");
-  let worker, timer, rejectStop;
+  let job, timer, rejectStop;
   const interrupted = new Promise((_, reject) => { rejectStop = reject; });
-  const stop = (code) => { worker?.terminate(); rejectStop(fail(code)); };
+  const stop = (code) => { job?.cancel(code); rejectStop(fail(code)); };
   const abort = () => stop("cancelled");
   signal?.addEventListener("abort", abort, { once: true });
   timer = setTimeout(() => stop("timeout"), Math.min(180_000, Math.max(1, timeoutMs)));
@@ -348,12 +426,8 @@ export async function readReceiptPhoto(file, { signal, onProgress, timeoutMs = C
       const images = [{ key: "receipt", psm: "6", image: await toPng(page) }];
       page.width = 0;
       onProgress?.({ label: "Reading the receipt…", progress: null });
-      worker = new Worker(workerUrl || new URL("/ocr/card-photo-v1.worker.js", window.location.href), { name: "Code 3 receipt reader" });
-      const response = await new Promise((resolve, reject) => {
-        worker.onerror = (event) => { event.preventDefault(); reject(fail("ocr_failed")); };
-        worker.onmessage = ({ data }) => { if (data?.type === "result") resolve(data); else if (data?.type === "failure") reject(fail("ocr_failed")); };
-        worker.postMessage({ type: "recognize-many", images, gzip: MODEL_GZIP }, images.map((entry) => entry.image.buffer));
-      });
+      job = recognizeImages(images, { workerUrl });
+      const response = await job.promise;
       const text = String(response.texts?.[0]?.text || "")
         .split(/\r?\n/).map((line) => line.replace(/\s+/g, " ").trim()).filter((line) => line.length >= 2).join("\n").slice(0, 20_000);
       const priced = text.split("\n").filter((line) => /\d+[.,]\d{2}\b/.test(line)).length;
@@ -372,6 +446,5 @@ export async function readReceiptPhoto(file, { signal, onProgress, timeoutMs = C
   } finally {
     clearTimeout(timer);
     signal?.removeEventListener("abort", abort);
-    worker?.terminate();
   }
 }

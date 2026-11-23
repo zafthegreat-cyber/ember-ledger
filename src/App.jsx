@@ -17520,19 +17520,37 @@ export default function App() {
     };
   }
 
-  function beginScanProduct(defaultDestination = "none") {
+  // Fewer steps after a scan (Nov 23 2026): the scanner starts on the place the
+  // person saved to last on this device (Collection the first time), not on "Choose".
+  function readLastScanDestination() {
+    try {
+      const saved = window.localStorage.getItem("code3.scanner.lastDestination");
+      if (saved === "forge" && !activeForgeWorkspace) return "vault";
+      return ["vault", "wishlist", "forge"].includes(saved) ? saved : "vault";
+    } catch {
+      return "vault";
+    }
+  }
+
+  function rememberScanDestination(destination) {
+    if (!["vault", "wishlist", "forge"].includes(destination)) return;
+    try { window.localStorage.setItem("code3.scanner.lastDestination", destination); } catch { /* Optional convenience. */ }
+  }
+
+  // mode: the scanner tab to open on ("upc" barcode, "card", ...). Scan card actions open on Card.
+  function beginScanProduct(defaultDestination = "none", mode = "upc") {
     scanLookupRequestRef.current += 1;
     setEditingItemId(null);
     setScanSlabDetails(null);
     setScanListingDetails(null);
-    setScanMode("upc");
+    setScanMode(mode);
     setScanPriceCheck(false);
     setScanRapid(false);
     setScanPictureHash("");
     setScanMatches([]);
     setScanReview(null);
     setScanSearchState("idle");
-    setScanDestination(normalizeAddDestinationValue(defaultDestination, "none", { allowIgnore: true }));
+    setScanDestination(normalizeAddDestinationValue(defaultDestination === "none" ? readLastScanDestination() : defaultDestination, "none", { allowIgnore: true }));
     setScanMessage("");
     setScanInput("");
     setScanManualDraft({ itemType: "Sealed", quantity: 1, purchasePrice: "" });
@@ -18712,10 +18730,21 @@ export default function App() {
     const mode = detectCatalogSearchMode(lookupValue);
     const normalizedLookupCode = normalizeBarcodeValue(lookupValue);
     const exactIdentifier = ["barcode", "id"].includes(mode) || isLikelyBarcodeValue(lookupValue);
-    const seedProducts = await loadLocalCatalogSeed("barcode scan");
-    if (requestId !== scanLookupRequestRef.current) return;
-    const searchPool = mergeCatalogProductLists(catalogProducts, seedProducts);
-    const localBarcodeProducts = findCatalogProductsByBarcode(searchPool, lookupValue);
+    // Scanner speed (Nov 23 2026): the local sealed seed is a large file. Start it,
+    // but check the products already in memory first and run the online lookup at
+    // the same time; the seed is only awaited when neither of those found a match.
+    const seedPromise = loadLocalCatalogSeed("barcode scan").catch(() => []);
+    let searchPool = catalogProducts;
+    let localBarcodeProducts = findCatalogProductsByBarcode(searchPool, lookupValue);
+    const addSeedProducts = async () => {
+      const seedProducts = await seedPromise;
+      searchPool = mergeCatalogProductLists(catalogProducts, seedProducts);
+      if (!localBarcodeProducts.length) localBarcodeProducts = findCatalogProductsByBarcode(searchPool, lookupValue);
+    };
+    if (!localBarcodeProducts.length && !(isSupabaseConfigured && supabase && lookupValue.length >= 2)) {
+      await addSeedProducts();
+      if (requestId !== scanLookupRequestRef.current) return;
+    }
     matches = localBarcodeProducts.map(item => ({
       item,
       score: 1200,
@@ -18759,7 +18788,11 @@ export default function App() {
     }
 
     if (!matches.length) {
-      matches = getBestCatalogMatches(lookupValue, searchPool);
+      await addSeedProducts();
+      if (requestId !== scanLookupRequestRef.current) return;
+      matches = localBarcodeProducts.length
+        ? localBarcodeProducts.map(item => ({ item, score: 1200, confidencePercent: 98, explanation: localBarcodeProducts.length > 1 ? "Shared barcode — choose the matching artwork and package" : "Exact UPC/EAN/GTIN or SKU match — review before saving", reason: "local identifier match" }))
+        : getBestCatalogMatches(lookupValue, searchPool);
     }
     // A picture-memory pick: put the remembered card first when the search found it.
     if (preferId) {
@@ -19143,12 +19176,16 @@ export default function App() {
         if (!await persistScannerIntake(destination, "confirmed")) return;
       }
       rememberScanPicture(product);
+      rememberScanDestination(destination);
       closeInventoryScanner();
       return openProductAddFlow({
         product,
         source: "scanner",
         destinations: destinationDefaults({ [destination]: true }),
         seed: {
+          // The scan already chose the item and the place: open on the last step
+          // (Business still needs cost details first). Back still reaches every step.
+          initialStep: destination === "forge" ? "details" : "review",
           catalogSearchQuery: scanReview?.rawValue || scanInput || catalogTitle(product),
           ...(scanSlabDetails ? {
             graded: true,
@@ -21922,7 +21959,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       return;
     }
     if (action === "scanUpc") return openQuickFindFlow({ source: "quick-add-upc" });
-    if (action === "scanCard") return beginScanProduct("none");
+    if (action === "scanCard") return beginScanProduct("vault", "card");
     if (action === "comparePrice") {
       setActiveTab("market");
       return openDealFinderModal();
@@ -50267,14 +50304,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
             ) : scanMode === "slab" ? (
               <div className="scan-product-mode-panel scan-product-mode-panel--card">
-                <ProductPhotoLookup key="slab" ai={scannerAi} kind="card" initialSlab onSlabDetails={setScanSlabDetails} initialQuery={scanInput} disabled={scanSearchState === "loading"} onDraftChange={() => { scanLookupRequestRef.current += 1; setScanReview(null); setScanMatches([]); setScanSearchState("idle"); setScanMessage(""); }} onQuery={async query => {
+                <ProductPhotoLookup key="slab" ai={scannerAi} kind="card" autoCamera initialSlab onSlabDetails={setScanSlabDetails} initialQuery={scanInput} disabled={scanSearchState === "loading"} onDraftChange={() => { scanLookupRequestRef.current += 1; setScanReview(null); setScanMatches([]); setScanSearchState("idle"); setScanMessage(""); }} onQuery={async query => {
                   setPictureLookup(current => ({ ...current, text: query }));
                   await handleCatalogScanMatch(query);
                 }} />
               </div>
             ) : scanMode === "card" ? (
               <div className="scan-product-mode-panel scan-product-mode-panel--card">
-                <ProductPhotoLookup key="card" ai={scannerAi} kind="card" onPicture={setScanPictureHash} onSlabDetails={setScanSlabDetails} initialQuery={scanInput} disabled={scanSearchState === "loading"} onDraftChange={() => { scanLookupRequestRef.current += 1; setScanReview(null); setScanMatches([]); setScanSearchState("idle"); setScanMessage(""); }} onQuery={async query => {
+                <ProductPhotoLookup key="card" ai={scannerAi} kind="card" autoCamera onPicture={setScanPictureHash} onSlabDetails={setScanSlabDetails} initialQuery={scanInput} disabled={scanSearchState === "loading"} onDraftChange={() => { scanLookupRequestRef.current += 1; setScanReview(null); setScanMatches([]); setScanSearchState("idle"); setScanMessage(""); }} onQuery={async query => {
                   setPictureLookup(current => ({ ...current, text: query }));
                   const preferId = scanPicturePreferRef.current;
                   scanPicturePreferRef.current = "";

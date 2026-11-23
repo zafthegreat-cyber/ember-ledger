@@ -493,6 +493,24 @@ function applyFilters(query, filters = {}) {
   return next;
 }
 
+/**
+ * card_number clauses for a collector number (Nov 23 2026). Rows store "4", "04",
+ * "004", "4/102" or "004/102"; list those exact spellings. The older "%04" pattern
+ * also matched 104, 204, ... and filled the bounded candidate page with wrong cards.
+ */
+export function collectorNumberClauses(collectorNumber = "") {
+  const [firstPart] = String(collectorNumber).split("/");
+  const [, prefix = "", digits = firstPart, suffix = ""] = /^([a-z]*)(\d+)([a-z]*)$/.exec(firstPart) || [];
+  const spellings = [...new Set([digits, digits.padStart(2, "0"), digits.padStart(3, "0")])].map((value) => `${prefix}${value}${suffix}`.replace(/[,()]/g, ""));
+  return spellings.flatMap((value) => [`card_number.ilike.${value}`, `card_number.ilike.${value}/%`]).join(",");
+}
+
+/** First four letters of the longest name word (4+ letters), or "" when the name gives nothing usable. */
+export function collectorNameHint(words = []) {
+  const longest = [...words].filter((word) => /^[a-z]{4,}$/.test(word)).sort((a, b) => b.length - a.length)[0] || "";
+  return longest.slice(0, 4);
+}
+
 function buildPriorityTextClauses(terms = []) {
   return [...new Set(terms.map(safeOrTerm).filter((term) => term.length >= 3))]
     .slice(0, 6)
@@ -882,10 +900,7 @@ async function runTextSearchAgainstSource({ supabase, sourceName, query, barcode
     // A104/A105 (2026-11-01): search the card's own number alone; the stored
     // column may or may not include the "/total" part. The full identity is
     // still required client-side before a row ranks.
-    const [firstPart] = collectorQuery.collectorNumber.split("/");
-    const [, prefix, digits, suffix] = /^([a-z]*)(\d+)([a-z]*)$/.exec(firstPart) || [null, "", firstPart, ""];
-    const numberPattern = [prefix, digits, suffix].filter(Boolean).join("%");
-    dbQuery = dbQuery.or(`card_number.ilike.${numberPattern},card_number.ilike.${numberPattern}/%,card_number.ilike.%0${numberPattern},card_number.ilike.%0${numberPattern}/%`);
+    dbQuery = dbQuery.or(collectorNumberClauses(collectorQuery.collectorNumber));
   } else if (remoteSearchTerms.length) {
     const orClauses = remoteSearchTerms.flatMap((term) =>
       remoteTextFields.map((field) => `${field}.ilike.${matchMode === "prefix" ? `${safeOrTerm(term)}%` : `%${safeOrTerm(term)}%`}`)
@@ -900,7 +915,19 @@ async function runTextSearchAgainstSource({ supabase, sourceName, query, barcode
   if (error) throw error;
 
   let priorityRows = [];
-  if (!collectorQuery && sort === "bestMatch" && searchTerms.length > 1 && !broadMultiTokenSearch) {
+  // Scanner (Nov 23 2026): a common number like "4" exists in almost every set, so
+  // the bounded number query can miss the right card. Also fetch rows with this
+  // number whose name contains the start of the longest name word (OCR keeps short
+  // runs right more often than whole words), so the right card is always a candidate.
+  const nameHint = collectorQuery ? collectorNameHint(collectorQuery.requiredWords) : "";
+  if (collectorQuery && nameHint) {
+    let hintQuery = supabase.from(sourceName).select(selectFields).limit(60);
+    hintQuery = applyFilters(hintQuery, filters);
+    hintQuery = hintQuery.or(collectorNumberClauses(collectorQuery.collectorNumber)).ilike("name", `%${nameHint}%`);
+    const hintResult = await withAbortSignal(hintQuery, signal);
+    if (hintResult.error) throw hintResult.error;
+    priorityRows = hintResult.data || [];
+  } else if (!collectorQuery && sort === "bestMatch" && searchTerms.length > 1 && !broadMultiTokenSearch) {
     const priorityClauses = buildPriorityTextClauses([exactTerm, ...searchTerms]);
     if (priorityClauses.length) {
       let priorityQuery = supabase

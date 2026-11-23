@@ -61,6 +61,8 @@ test("remote card lookup queries the number column and excludes wrong names befo
     eq() { return this; },
     neq() { return this; },
     or(value) { clauses.push(value); return this; },
+    ilike(column, value) { clauses.push(`${column}.ilike.${value}`); return this; },
+    limit() { return this; },
     order() { return this; },
     range() { return this; },
     then(resolve) { return Promise.resolve({ data: [charizard, energy, { ...energy, id: "wrong-name", cardNumber: "004/102" }], error: null, count: 99 }).then(resolve); },
@@ -70,6 +72,21 @@ test("remote card lookup queries the number column and excludes wrong names befo
   assert.equal(result.count, 1);
   assert.equal(result.hasMore, false);
   // A104/A105: the number is searched alone (with and without a "/total" suffix) so rows that store only "4" or "004" are found.
-  assert.ok(clauses.some(clause => clause.includes("card_number.ilike.4,") && clause.includes("card_number.ilike.4/%") && clause.includes("card_number.ilike.%04")));
+  assert.ok(clauses.some(clause => clause.includes("card_number.ilike.4,") && clause.includes("card_number.ilike.4/%") && clause.includes("card_number.ilike.04,") && clause.includes("card_number.ilike.004/%")));
+  // Nov 23 2026: exact zero-padded spellings only; "%04" also matched 104, 204, ...
+  assert.equal(clauses.some(clause => clause.includes("%04")), false);
+  // A second, name-guided lookup keeps the right card among the candidates for common numbers.
+  assert.ok(clauses.includes("name.ilike.%char%"));
   assert.equal(clauses.some(clause => clause.includes("Charizard Base Set")), false);
+});
+
+test("scanner misreads: near-miss names and stray marks still match the same number; other names do not", async () => {
+  const { nameWordsMatch, catalogCardQueryMatchesRow: matches } = await import("../src/utils/catalogResultIdentity.mjs");
+  const row = { name: "Charizard ex", cardNumber: "125/197", setName: "Obsidian Flames" };
+  assert.equal(matches("Charizarb ex 125/197", row), true, "one wrong letter");
+  assert.equal(matches("LBASIC Eo Charizard 125/197", row), true, "stray marks from the card frame");
+  assert.equal(matches("Pikachu 125/197", row), false, "a different card with the same number");
+  assert.equal(matches("Charizard ex 126/197", row), false, "the number still has to match");
+  assert.equal(nameWordsMatch(["blastoise", "ex"], ["charizard", "ex"]), false, "a short shared word is not enough");
+  assert.equal(matches("Charizard Base Set 4/102", { name: "Fire Energy", cardNumber: "4/102", setName: "Base Set" }), false, "set words alone are not a name match");
 });

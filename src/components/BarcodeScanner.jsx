@@ -32,9 +32,13 @@ export default function BarcodeScanner({ onScan, onClose, title = "Scan barcode"
       try {
         if (!navigator.mediaDevices?.getUserMedia) throw new Error("Camera access is not available in this browser. Enter the barcode manually.");
         if (window.isSecureContext === false) throw new Error("A secure HTTPS connection is required.");
-        const { BrowserMultiFormatReader } = await readerLoader();
+        // Sealed products carry 1D codes (UPC-A, UPC-E, EAN-13, EAN-8, Code 128). The
+        // 1D-only reader skips QR, Data Matrix and the other 2D decoders on every frame,
+        // so each attempt is cheaper and can run more often (scanner, Nov 23 2026).
+        const library = await readerLoader();
         if (!active) return;
-        const reader = new BrowserMultiFormatReader(undefined, { delayBetweenScanAttempts: 150, delayBetweenScanSuccess: 1500 });
+        const Reader = library.BrowserMultiFormatOneDReader || library.BrowserMultiFormatReader;
+        const reader = new Reader(undefined, { delayBetweenScanAttempts: 80, delayBetweenScanSuccess: 1500 });
         const result = value => {
           const text = String(value?.getText?.() || "").trim();
           if (!text || !active || decoded) return;
@@ -86,6 +90,7 @@ export default function BarcodeScanner({ onScan, onClose, title = "Scan barcode"
       {torchSupported && !error && <button type="button" className="secondary-button" disabled={torchBusy} aria-pressed={torch} onClick={toggleTorch}>{torch ? "Turn flashlight off" : "Turn flashlight on"}</button>}
       <button type="button" className="secondary-button scanner-camera-help" onClick={onClose}>{manualLabel}</button>
     </div>
+    {status === "found" && !continuous && <button type="button" className="primary-button scanner-camera-retry" onClick={() => setRetry(value => value + 1)}>Scan another barcode</button>}
     {controlNotice && <p role="status">{controlNotice}</p>}
   </section>;
 }
