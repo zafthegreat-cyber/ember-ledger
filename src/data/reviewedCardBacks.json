@@ -35,7 +35,22 @@
       "identitySources": [
         "https://sleevenocardbehind.com/every-pokemon-card-back-and-where-it-came-from/",
         "https://asia.pokemon-card.com/hk-en/archives/3803/"
-      ]
+      ],
+      "originalSha256": "d3d6ea146dc8f9482a6f13d37b92e120af01b584eb6946c75f51a851e08f34c8",
+      "originalDimensions": [
+        1200,
+        1600
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        1200,
+        1600
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
+      }
     },
     "worlds2005": {
       "src": "/assets/inspection/pokemon-worlds-2005-back.webp",
@@ -72,7 +87,22 @@
       "identitySources": [
         "https://sleevenocardbehind.com/every-pokemon-card-back-and-where-it-came-from/",
         "https://www.ebay.com/itm/396927567264"
-      ]
+      ],
+      "originalSha256": "bbb9d25e3c850cd89016900df3a47a025c411e5410c5623ff0f0c0d456b721f1",
+      "originalDimensions": [
+        1200,
+        1600
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        1200,
+        1600
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
+      }
     },
     "worlds2006": {
       "src": "/assets/inspection/pokemon-worlds-2006-back.jpg",
@@ -109,7 +139,22 @@
       "identitySources": [
         "https://sleevenocardbehind.com/every-pokemon-card-back-and-where-it-came-from/",
         "https://www.ebay.com/itm/314921821015"
-      ]
+      ],
+      "originalSha256": "8bdcc983201e584122567e19e9c90dd44ee993dffb3b2c5aa68595a60f7c1e09",
+      "originalDimensions": [
+        1200,
+        1600
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        1200,
+        1600
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
+      }
     },
     "worlds2007": {
       "src": "/assets/inspection/pokemon-worlds-2007-back.jpg",
@@ -146,7 +191,22 @@
       "identitySources": [
         "https://sleevenocardbehind.com/every-pokemon-card-back-and-where-it-came-from/",
         "https://www.ebay.com/itm/394188489987"
-      ]
+      ],
+      "originalSha256": "ed84507f02c171b0cca77dd367e5f2dcad0ad09bc159c920f9852a1ad7ca482c",
+      "originalDimensions": [
+        1200,
+        1600
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        1200,
+        1600
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
+      }
     },
     "worlds2008": {
       "src": "/assets/inspection/pokemon-worlds-2008-back.jpg",
@@ -183,7 +243,22 @@
       "identitySources": [
         "https://sleevenocardbehind.com/every-pokemon-card-back-and-where-it-came-from/",
         "https://www.ebay.com/itm/304451800068"
-      ]
+      ],
+      "originalSha256": "a6939b34f985210a1672c89849b6dcc9fb567801658fd97e116a05e72c863876",
+      "originalDimensions": [
+        1200,
+        1200
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        1200,
+        1200
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
+      }
     },
     "worlds2009": {
       "src": "/assets/inspection/pokemon-worlds-2009-back.jpg",
@@ -220,7 +295,22 @@
       "identitySources": [
         "https://sleevenocardbehind.com/every-pokemon-card-back-and-where-it-came-from/",
         "https://www.ebay.com/itm/325256810347"
-      ]
+      ],
+      "originalSha256": "71aaa463e1a4138c290d7e6b3f7ddd3ffa3a08f8a30c9fcca5a61b463a88b650",
+      "originalDimensions": [
+        1057,
+        1453
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        1057,
+        1453
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
+      }
     },
     "worlds2010": {
       "src": "/assets/inspection/pokemon-worlds-2010-back.jpg",
@@ -257,7 +347,22 @@
       "identitySources": [
         "https://sleevenocardbehind.com/every-pokemon-card-back-and-where-it-came-from/",
         "https://www.ebay.com/itm/224766993421"
-      ]
+      ],
+      "originalSha256": "1122df2bbc33d11b4209f658bc38a3ce26e0f36f6e53483166b34ee66b6fd14a",
+      "originalDimensions": [
+        900,
+        1200
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        900,
+        1200
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
+      }
     },
     "worlds2011": {
       "src": "/assets/inspection/pokemon-worlds-2011-back.jpg",
@@ -294,7 +399,22 @@
       "identitySources": [
         "https://sleevenocardbehind.com/every-pokemon-card-back-and-where-it-came-from/",
         "https://www.ebay.com/itm/185815754428"
-      ]
+      ],
+      "originalSha256": "46edbd6cf8a19881e68f307513312d75bc1f1f18b1058b167dfd231e044c3d6f",
+      "originalDimensions": [
+        1200,
+        1600
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        1200,
+        1600
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
+      }
     },
     "worlds2012": {
       "src": "/assets/inspection/pokemon-worlds-2012-back.jpg",
@@ -331,7 +451,22 @@
       "identitySources": [
         "https://sleevenocardbehind.com/every-pokemon-card-back-and-where-it-came-from/",
         "https://www.ebay.com/itm/325256812357"
-      ]
+      ],
+      "originalSha256": "f3bbd73d6845103a5984c85ea7d6fc0c9cc765b3ed8d5356327ff336bfa01234",
+      "originalDimensions": [
+        1089,
+        1459
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        1089,
+        1459
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
+      }
     },
     "worlds2014": {
       "src": "/assets/inspection/pokemon-worlds-2014-back.jpg",
@@ -368,15 +503,30 @@
       "identitySources": [
         "https://sleevenocardbehind.com/every-pokemon-card-back-and-where-it-came-from/",
         "https://www.ebay.com/itm/294847636691"
-      ]
+      ],
+      "originalSha256": "dbc24dc794fff3248e8f87337f1edd7cc10b36087ebf9e26388c676e9220242f",
+      "originalDimensions": [
+        1600,
+        1600
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        1600,
+        1600
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
+      }
     },
     "worlds2013": {
-      "src": "/assets/inspection/pokemon-worlds-2013-back.jpg",
+      "src": "/assets/inspection/optimized-20261123/ccc31feb45fd0f2b/pokemon-worlds-2013-back.webp",
       "reference": true,
       "label": "2013 World Championships card back",
       "sourcePage": "https://www.ebay.com/itm/314356428230",
       "sourceImage": "https://i.ebayimg.com/images/g/VRQAAOSw1IRj1cKB/s-l1600.jpg",
-      "sha256": "8f2ef4bdf494b667a807a294c17c408752bbe10998b9ccad8c293555504f5693",
+      "sha256": "ccc31feb45fd0f2b8c170cf8730cd0694de3a78f38010f1224e665747201b038",
       "sourcePixelDimensions": [
         1200,
         1600
@@ -384,20 +534,20 @@
       "sourceContentType": "image/jpeg",
       "quad": [
         [
-          0.17916666666666667,
-          0.219375
+          0.1076923076923077,
+          0.0019267822736030828
         ],
         [
-          0.7841666666666667,
-          0.23125
+          0.9668639053254438,
+          0.02023121387283237
         ],
         [
-          0.8058333333333333,
-          0.865625
+          0.9976331360946745,
+          0.9980732177263969
         ],
         [
-          0.105,
-          0.853125
+          0.002366863905325444,
+          0.9788053949903661
         ]
       ],
       "checkedAt": "2026-11-14",
@@ -405,7 +555,46 @@
       "identitySources": [
         "https://sleevenocardbehind.com/every-pokemon-card-back-and-where-it-came-from/",
         "https://www.ebay.com/itm/314356428230"
-      ]
+      ],
+      "originalSha256": "8f2ef4bdf494b667a807a294c17c408752bbe10998b9ccad8c293555504f5693",
+      "originalDimensions": [
+        1200,
+        1600
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        845,
+        1038
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "lossless",
+        "psnr": 100,
+        "crop": {
+          "left": 124,
+          "top": 349,
+          "width": 845,
+          "height": 1038
+        },
+        "originalQuad": [
+          [
+            0.17916666666666667,
+            0.219375
+          ],
+          [
+            0.7841666666666667,
+            0.23125
+          ],
+          [
+            0.8058333333333333,
+            0.865625
+          ],
+          [
+            0.105,
+            0.853125
+          ]
+        ]
+      }
     },
     "worlds2015": {
       "src": "/assets/inspection/pokemon-worlds-2015-back.jpg",
@@ -442,7 +631,22 @@
       "identitySources": [
         "https://sleevenocardbehind.com/every-pokemon-card-back-and-where-it-came-from/",
         "https://www.ebay.com/itm/373277135191"
-      ]
+      ],
+      "originalSha256": "9fa7ea748080e997fdd1be41ba0a27ccd8c506e26fef2b95ebabc4ec1b9db8d7",
+      "originalDimensions": [
+        1268,
+        1600
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        1268,
+        1600
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
+      }
     },
     "worlds2016": {
       "src": "/assets/inspection/pokemon-worlds-2016-back.jpg",
@@ -479,15 +683,30 @@
       "identitySources": [
         "https://sleevenocardbehind.com/every-pokemon-card-back-and-where-it-came-from/",
         "https://www.ebay.com/itm/403905666600"
-      ]
+      ],
+      "originalSha256": "7443fabac0ec862029ad01cacbf0369bbcf02b8f2e4c0804dacff7434f9be77a",
+      "originalDimensions": [
+        899,
+        1200
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        899,
+        1200
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
+      }
     },
     "worlds2017": {
-      "src": "/assets/inspection/pokemon-worlds-2017-back.jpg",
+      "src": "/assets/inspection/optimized-20261123/863921e19d52b19f/pokemon-worlds-2017-back.webp",
       "reference": true,
       "label": "2017 World Championships card back",
       "sourcePage": "https://www.ebay.com/p/16044742890",
       "sourceImage": "https://i.ebayimg.com/images/g/SrcAAOSw2xlkPqwZ/s-l1600.jpg",
-      "sha256": "26949817ebae6b85489096c65978968fd639eb2353a281c83b0270313b45675b",
+      "sha256": "863921e19d52b19f728e6d7fce6ce53331fe77c699a8c0d2bf6c411e88061dc2",
       "sourcePixelDimensions": [
         1200,
         1600
@@ -495,20 +714,20 @@
       "sourceContentType": "image/jpeg",
       "quad": [
         [
-          0.2425,
-          0.251875
+          0.12,
+          0.0024968789013732834
         ],
         [
-          0.6958333333333333,
-          0.254375
+          0.9569230769230769,
+          0.00749063670411985
         ],
         [
-          0.7175,
-          0.75
+          0.9969230769230769,
+          0.9975031210986267
         ],
         [
-          0.17916666666666667,
-          0.743125
+          0.003076923076923077,
+          0.9837702871410736
         ]
       ],
       "checkedAt": "2026-11-14",
@@ -516,7 +735,46 @@
       "identitySources": [
         "https://sleevenocardbehind.com/every-pokemon-card-back-and-where-it-came-from/",
         "https://www.ebay.com/p/16044742890"
-      ]
+      ],
+      "originalSha256": "26949817ebae6b85489096c65978968fd639eb2353a281c83b0270313b45675b",
+      "originalDimensions": [
+        1200,
+        1600
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        650,
+        801
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "lossless",
+        "psnr": 100,
+        "crop": {
+          "left": 213,
+          "top": 401,
+          "width": 650,
+          "height": 801
+        },
+        "originalQuad": [
+          [
+            0.2425,
+            0.251875
+          ],
+          [
+            0.6958333333333333,
+            0.254375
+          ],
+          [
+            0.7175,
+            0.75
+          ],
+          [
+            0.17916666666666667,
+            0.743125
+          ]
+        ]
+      }
     },
     "worlds2018": {
       "src": "/assets/inspection/pokemon-worlds-2018-back.jpg",
@@ -553,7 +811,22 @@
       "identitySources": [
         "https://sleevenocardbehind.com/every-pokemon-card-back-and-where-it-came-from/",
         "https://www.ebay.com/itm/155507036371"
-      ]
+      ],
+      "originalSha256": "17e0c050a4ffa52cbd59da5506c7601fe82547490f64127e245ae6bf5003ae80",
+      "originalDimensions": [
+        1200,
+        1600
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        1200,
+        1600
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
+      }
     },
     "worlds2019": {
       "src": "/assets/inspection/pokemon-worlds-2019-back.jpg",
@@ -590,15 +863,30 @@
       "identitySources": [
         "https://sleevenocardbehind.com/every-pokemon-card-back-and-where-it-came-from/",
         "https://www.ebay.com/itm/395611033359"
-      ]
+      ],
+      "originalSha256": "ed1671f9486308a3282fe3a5451b09c8f3d2ea7c5623299f5c57653c60c7acf2",
+      "originalDimensions": [
+        848,
+        1200
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        848,
+        1200
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
+      }
     },
     "myFirstBattle": {
-      "src": "/assets/inspection/pokemon-my-first-battle-back.jpg",
+      "src": "/assets/inspection/optimized-20261123/e2e6e0b2726a679c/pokemon-my-first-battle-back.webp",
       "reference": true,
       "label": "My First Battle card back",
       "sourcePage": "https://www.pokebeach.com/2023/09/my-first-battle-cards-revealed-feature-blue-borders-and-unique-backs",
       "sourceImage": "https://www.pokebeach.com/news/2023/09/My-First-Battle-Back.jpeg",
-      "sha256": "2ebb999166cc2b28b2a6141b329f565ac318ddd18dc7e4f4976f745b8d9c6949",
+      "sha256": "e2e6e0b2726a679cae708739c7d17b601daa8b70ff553636efb884517cd9895d",
       "sourcePixelDimensions": [
         1536,
         2048
@@ -606,20 +894,20 @@
       "sourceContentType": "image/jpeg",
       "quad": [
         [
-          0.26953125,
-          0.2431640625
+          0.02203856749311295,
+          0.0020876826722338203
         ],
         [
-          0.6848958333333334,
-          0.2470703125
+          0.9008264462809917,
+          0.010438413361169102
         ],
         [
-          0.73046875,
-          0.6982421875
+          0.9972451790633609,
+          0.9749478079331941
         ],
         [
-          0.2604166666666667,
-          0.708984375
+          0.0027548209366391185,
+          0.9979123173277662
         ]
       ],
       "checkedAt": "2026-11-14",
@@ -627,7 +915,46 @@
       "identitySources": [
         "https://www.pokemon.com/us/pokemon-tcg/product-gallery/my-first-battle",
         "https://www.pokebeach.com/2023/09/my-first-battle-cards-revealed-feature-blue-borders-and-unique-backs"
-      ]
+      ],
+      "originalSha256": "2ebb999166cc2b28b2a6141b329f565ac318ddd18dc7e4f4976f745b8d9c6949",
+      "originalDimensions": [
+        1536,
+        2048
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        726,
+        958
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "lossless",
+        "psnr": 100,
+        "crop": {
+          "left": 398,
+          "top": 496,
+          "width": 726,
+          "height": 958
+        },
+        "originalQuad": [
+          [
+            0.26953125,
+            0.2431640625
+          ],
+          [
+            0.6848958333333334,
+            0.2470703125
+          ],
+          [
+            0.73046875,
+            0.6982421875
+          ],
+          [
+            0.2604166666666667,
+            0.708984375
+          ]
+        ]
+      }
     },
     "worlds2022-sebastian-lashmet": {
       "src": "/assets/inspection/pokemon-worlds2022-sebastian-lashmet-back20261114h.webp",
@@ -669,6 +996,21 @@
         "player": "Sebastian Lashmet",
         "frontSource": "https://i.ebayimg.com/images/g/g1IAAeSwMPVqPW2D/s-l1600.webp",
         "frontSha256": "396cfe2eedf31bf93bf78d0621bc125726f0f3aeb7596045f1c8db9bfced125d"
+      },
+      "originalSha256": "6e7fa606e42436d61492b754a7b5ae0aa798d7d3e7b0c195ac7e7502bcb0b13c",
+      "originalDimensions": [
+        1173,
+        1600
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        1173,
+        1600
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
       }
     },
     "worlds2022-rikuto-ohashi": {
@@ -711,6 +1053,21 @@
         "player": "Rikuto Ohashi",
         "frontSource": "https://i.ebayimg.com/images/g/9mUAAeSwVXhqsDZ3/s-l1600.webp",
         "frontSha256": "66d1d8bd8a5ddc49641cc24375575c2d37cc30d9416e034eb5028cac6c6bef16"
+      },
+      "originalSha256": "8619d5bafa8abdb25ad70b77b3b437a5abade52f1409d636440bf887721002f3",
+      "originalDimensions": [
+        1207,
+        1600
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        1207,
+        1600
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
       }
     },
     "worlds2022-andre-chiasson": {
@@ -753,6 +1110,21 @@
         "player": "Andre Chiasson",
         "frontSource": "https://i.ebayimg.com/images/g/6f4AAeSwcddqLQl8/s-l1600.webp",
         "frontSha256": "d4edc44cf19ba12dacd8a3a00058837157c62d876bc8f5483e0e28d8829e7e4a"
+      },
+      "originalSha256": "1077a69f0b9f79bbe71c45228c4ce058409f40abced2d0c068fae6af797e8422",
+      "originalDimensions": [
+        863,
+        1156
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        863,
+        1156
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
       }
     },
     "worlds2022-ondrej-skubal": {
@@ -795,6 +1167,21 @@
         "player": "Ondrej Skubal",
         "frontSource": "https://i.ebayimg.com/images/g/~gwAAeSwP3hqIkNy/s-l1600.webp",
         "frontSha256": "6a7afa2b4e2693cbbfb75cf3ce973ff8eb541700dd7393ec41e0bfa3e97ba9a0"
+      },
+      "originalSha256": "687f45394265cf649a5b928cb3f60ec576e2fc9a59aa5bef9bd2a4467fd80bf6",
+      "originalDimensions": [
+        1145,
+        1600
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        1145,
+        1600
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
       }
     },
     "worlds2023-tord-reklev": {
@@ -837,6 +1224,21 @@
         "player": "Tord Reklev",
         "frontSource": "https://i.ebayimg.com/images/g/hhoAAeSwnBtqv1FL/s-l1600.webp",
         "frontSha256": "84ac739e7900ff95c52d4162f49927b8f043c78c1e07818ca9d656fff37dd1cf"
+      },
+      "originalSha256": "87e21d4d3bf8eb291ebddd918004e5d7f4a9403010bd2bec66c7d2d70f2e7dc1",
+      "originalDimensions": [
+        814,
+        1109
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        814,
+        1109
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
       }
     },
     "worlds2023-shao-tong-yen": {
@@ -879,6 +1281,21 @@
         "player": "Shao Tong Yen",
         "frontSource": "https://i.ebayimg.com/images/g/zLYAAeSwYylqsxV0/s-l1600.webp",
         "frontSha256": "58952fc5802ff4d596cf3b6a63ff0300c9baa53958d61cae34481acfb72c1f57"
+      },
+      "originalSha256": "801e70040b3b4572c108e315473aae780d66337761fa3f8f5631f9d223b8f6ab",
+      "originalDimensions": [
+        813,
+        1102
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        813,
+        1102
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
       }
     },
     "worlds2023-vance-kelley": {
@@ -921,6 +1338,21 @@
         "player": "Vance Kelley",
         "frontSource": "https://i.ebayimg.com/images/g/XXkAAeSwR~Vpb-Ek/s-l1600.webp",
         "frontSha256": "9c0ff017c752fe6bc7d3453518a974148688087692485ec359a2b7fad93137c4"
+      },
+      "originalSha256": "e09fca933e7f0fea961a721bc193da8430bf98a3eb0512846695e57bec33f03d",
+      "originalDimensions": [
+        765,
+        1065
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        765,
+        1065
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
       }
     },
     "worlds2023-gabriel-fernandez": {
@@ -963,6 +1395,21 @@
         "player": "Gabriel Fernandez",
         "frontSource": "https://i.ebayimg.com/images/g/BxQAAeSwI11o1m3U/s-l1600.webp",
         "frontSha256": "31887015625b0ebe702a336800caea4379aa1ce82dff4c04101f46ad6f5fdd74"
+      },
+      "originalSha256": "37a931306b19f05f85692c114d60c8db4a69015813aa591780de5112aec9470e",
+      "originalDimensions": [
+        948,
+        1600
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        948,
+        1600
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
       }
     },
     "worlds2024-sakuya-o": {
@@ -1005,6 +1452,21 @@
         "player": "Sakuya O",
         "frontSource": "https://i.ebayimg.com/images/g/JUkAAeSwF05opmIv/s-l1600.webp",
         "frontSha256": "70e2a7f0a62da2940ed65aefe1e5a1009519f212ba3277c44cd61745f229ae78"
+      },
+      "originalSha256": "97c6c7de7837655f65d3e0807ed68dee3c626f892910d3f76c295f35dbbb0a6d",
+      "originalDimensions": [
+        599,
+        802
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        599,
+        802
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
       }
     },
     "worlds2024-fernando-cifuentes": {
@@ -1047,6 +1509,21 @@
         "player": "Fernando Cifuentes",
         "frontSource": "https://i.ebayimg.com/images/g/TiAAAeSw~RxqFPaI/s-l1600.webp",
         "frontSha256": "5a985c80634b598b2a7365511a21f4eec53af79d9a909ac9c5a7fd340fbddac1"
+      },
+      "originalSha256": "ca011114a72e1401ae7183309b6b995de517f654fdcf0f983fa92e2ac458eb3c",
+      "originalDimensions": [
+        1200,
+        1600
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        1200,
+        1600
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
       }
     },
     "worlds2024-evan-pavelski": {
@@ -1089,6 +1566,21 @@
         "player": "Evan Pavelski",
         "frontSource": "https://i.ebayimg.com/images/g/Zs8AAeSwmMpopUhZ/s-l1600.webp",
         "frontSha256": "c0f504dddf9df660a18b1f3774e67cbd0ebb5eb6708500a5ecbe68f009918703"
+      },
+      "originalSha256": "7236e29503120d98ac831dc39183889159893493496ac92cfeee19dbeadab704",
+      "originalDimensions": [
+        602,
+        801
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        602,
+        801
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
       }
     },
     "worlds2024-jesse-parker": {
@@ -1131,6 +1623,21 @@
         "player": "Jesse Parker",
         "frontSource": "https://i.ebayimg.com/images/g/tNoAAeSwUYdqKKxj/s-l1600.webp",
         "frontSha256": "e59decb3dd54757063141a5d7d1b283e42395081d23d29facb61456961b8acf3"
+      },
+      "originalSha256": "1ca11358e12511e44b2ff68f3cb1a7c3024940a7c99e9214735cd2bba48693bc",
+      "originalDimensions": [
+        1600,
+        1600
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        1600,
+        1600
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
       }
     },
     "worlds2025-riley-mckay": {
@@ -1173,6 +1680,21 @@
         "player": "Riley McKay",
         "frontSource": "https://i.ebayimg.com/images/g/2bwAAeSwFKNqUxfR/s-l1600.webp",
         "frontSha256": "7a94e181383138a11d36b6dc09f970b62e4a4485cb2466fba5efeadd9a379b32"
+      },
+      "originalSha256": "583452979ce4aab484f79e86e8a4e229fc3dee7370f1296a1a76c68afe561aff",
+      "originalDimensions": [
+        1161,
+        1600
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        1161,
+        1600
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
       }
     },
     "worlds2025-liao-fu-guan": {
@@ -1216,6 +1738,21 @@
         "player": "Liao Fu Guan",
         "frontSource": "https://i.ebayimg.com/images/g/044AAeSwT21qRsMh/s-l1600.webp",
         "frontSha256": "30da331a431ca197d73099789cc66e465852723867671722f0a3c666e3da5aed"
+      },
+      "originalSha256": "5c57d5d9109170701d1f16dbd0e18a7a16e474a8bc52317432d7b489b513c16a",
+      "originalDimensions": [
+        805,
+        1128
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        805,
+        1128
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
       }
     },
     "worlds2025-jose-cruz-galindo-resendiz": {
@@ -1258,6 +1795,21 @@
         "player": "Jose Cruz Galindo Resendiz",
         "frontSource": "https://i.ebayimg.com/images/g/f3UAAeSwtD9qVWxV/s-l1600.webp",
         "frontSha256": "0ec8342774da91a9376bef61a0195cb24328b2333aeb6446535a9c1d9dfd62ed"
+      },
+      "originalSha256": "8c8315e9d48874d9e8038bd8313a77c4ded6d0427b36f2e7776b1fd0e5c97373",
+      "originalDimensions": [
+        497,
+        686
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        497,
+        686
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
       }
     },
     "worlds2025-yuya-okita": {
@@ -1300,6 +1852,21 @@
         "player": "Yuya Okita",
         "frontSource": "https://i.ebayimg.com/images/g/YcwAAeSweXxqXYMr/s-l1600.webp",
         "frontSha256": "61eca0afd769210343a35d2bf16d93fb8c0e5450680c6b9c9a079d8a943c42bb"
+      },
+      "originalSha256": "3ae2b012e526dc3e0900407d1ad31a4ba922feaa39638dff07746f2455c69df3",
+      "originalDimensions": [
+        1202,
+        1600
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        1202,
+        1600
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
       }
     }
   },

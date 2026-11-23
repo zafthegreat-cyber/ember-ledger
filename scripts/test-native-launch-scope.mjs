@@ -21,12 +21,12 @@ test("unfinished screens are hidden only in the phone apps", () => {
   assert.match(app, /if \(nativeHiddenTab\) setActiveTab\("dashboard"\);/);
 });
 
-test("phone apps show only their own images and members' uploads", () => {
-  for (const url of ["https://tcgplayer-cdn.tcgplayer.com/product/635011_200w.jpg", "https://images.pokemontcg.io/sv1/1.png", "http://example.com/a.png"]) {
+test("phone apps allow reviewed catalog providers and reject unknown hosts", () => {
+  for (const url of ["https://untrusted.example/a.png", "https://tcgplayer-cdn.tcgplayer.com.evil.example/a.jpg", "http://example.com/a.png"]) {
     assert.equal(nativeAllowsRemoteProductImage(url, true), false, url);
     assert.equal(nativeAllowsRemoteProductImage(url, false), true, url);
   }
-  for (const url of ["https://gxsfququorfczvhrkudl.supabase.co/storage/v1/object/sign/x.jpg", "/assets/placeholder.png", "data:image/png;base64,AA", "blob:https://localhost/1", "https://code3tcg.app/icon.png"]) {
+  for (const url of ["https://tcgplayer-cdn.tcgplayer.com/product/635011_200w.jpg", "https://images.pokemontcg.io/sv1/1.png", "https://gxsfququorfczvhrkudl.supabase.co/storage/v1/object/sign/x.jpg", "/assets/placeholder.png", "data:image/png;base64,AA", "blob:https://localhost/1", "https://code3tcg.app/icon.png"]) {
     assert.equal(nativeAllowsRemoteProductImage(url, true), true, url);
   }
 });
@@ -109,12 +109,12 @@ test("tapping a notification opens only an in-app path", async () => {
   assert.deepEqual(opened, ["/find/restocks"]);
 });
 
-test("phone apps ship without product inspection photos", async () => {
+test("phone apps retain reviewed geometry while omitting packaged photos", async () => {
   const { resolveInspectionArtwork } = await import("../src/utils/productInspection.mjs");
   const { inspectionCardBack, inspectionCardFront } = await import("../src/utils/cardBacks.mjs");
   const registry = { "tcgplayer:1": { name: "Test Box", identity: {} } };
   assert.ok(resolveInspectionArtwork({ tcgplayerProductId: "1" }, registry, { native: false }));
-  assert.equal(resolveInspectionArtwork({ tcgplayerProductId: "1" }, registry, { native: true }), null);
+  assert.ok(resolveInspectionArtwork({ tcgplayerProductId: "1" }, registry));
   assert.equal(inspectionCardBack({ name: "Pikachu", cardNumber: "1" }, { native: true }), null);
   assert.equal(inspectionCardFront({ tcgplayerProductId: "1" }, { native: true }), null);
   assert.match(read("scripts/native-build.mjs"), /\/\\\.\(jpe\?g\|png\|webp\|avif\)\$\/i/, "the phone build removes inspection photos");

@@ -20,7 +20,7 @@ test('My First Battle cards use their actual reverse while whole retail packages
  const rows=JSON.parse(readFileSync('src/data/generated/pokemonTcgCards.json')).filter(r=>r.setName==='My First Battle');
  const cards=rows.filter(r=>!['520781','520782'].includes(String(r.tcgplayerProductId)));
  assert.equal(cards.length,48);
- for(const row of cards){const before=JSON.stringify(row);assert.equal(inspectionCardBack(row)?.src,'/assets/inspection/pokemon-my-first-battle-back.jpg');assert.equal(inspectionCardBack({...row,set_name:'Base Set'}),null);assert.equal(inspectionCardBack({...row,language:'Japanese'}),null);assert.equal(inspectionCardBack({...row,collector_number:'1/102'}),null);assert.equal(inspectionCardBack({...row,tcgplayerProductId:'unreviewed'}),null);assert.equal(JSON.stringify(row),before);}
+ for(const row of cards){const before=JSON.stringify(row);assert.equal(inspectionCardBack(row)?.src,'/assets/inspection/optimized-20261123/e2e6e0b2726a679c/pokemon-my-first-battle-back.webp');assert.equal(inspectionCardBack({...row,set_name:'Base Set'}),null);assert.equal(inspectionCardBack({...row,language:'Japanese'}),null);assert.equal(inspectionCardBack({...row,collector_number:'1/102'}),null);assert.equal(inspectionCardBack({...row,tcgplayerProductId:'unreviewed'}),null);assert.equal(JSON.stringify(row),before);}
  for(const row of rows.filter(r=>!cards.includes(r))){assert.equal(inspectionCardBack(row),null);assert.equal(productInspectionProfile(row).shape,'photo');}
 });
 
@@ -64,7 +64,7 @@ test('2006 through 2019 exact printing backs reject unknown and conflicting iden
  for(const [year,count] of [[2006,94],[2007,99],[2008,94],[2009,84],[2010,106],[2011,89],[2012,84],[2013,87],[2014,99],[2015,67],[2016,89],[2017,94],[2018,92],[2019,89]]){
   const rows=catalog.filter(r=>r.setName==='World Championship Decks'&&r.name.includes(' '+year+' ')&&String(r.tcgplayerProductId)!=='479839');
   assert.equal(rows.length,count);
-  for(const row of rows){const before=JSON.stringify(row);assert.equal(inspectionCardBack(row)?.src,'/assets/inspection/pokemon-worlds-'+year+'-back.jpg');assert.equal(inspectionCardBack({...row,printing:'World Championships 2024'}),null);assert.equal(inspectionCardBack({...row,collector_number:'incorrect'}),null);assert.equal(JSON.stringify(row),before);}
+  for(const row of rows){const before=JSON.stringify(row);assert.match(inspectionCardBack(row)?.src,new RegExp('^/assets/inspection/(?:optimized-20261123/[a-f0-9]{16}/)?pokemon-worlds-'+year+'-back\\.(?:jpg|webp)$'));assert.equal(inspectionCardBack({...row,printing:'World Championships 2024'}),null);assert.equal(inspectionCardBack({...row,collector_number:'incorrect'}),null);assert.equal(JSON.stringify(row),before);}
  }
  assert.equal(inspectionCardBack(catalog.find(r=>String(r.tcgplayerProductId)==='479839')),null,'Energy artwork year cannot determine a different player deck year');
 });

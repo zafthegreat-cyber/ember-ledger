@@ -33,9 +33,9 @@ test('all catalog lookups preserve record content and never give a code card or 
   if(artwork)assert.equal(artwork.name,row.name,row.id);
   if(/\bcode card\b/i.test(row.name))assert.equal(artwork,null,row.name);
  }
- assert.ok(sealedCatalog.length>=4739,String(sealedCatalog.length));
- // The daily price refresh adds new products, so the catalog only grows; every row above is checked.
- assert.ok(catalog.length>=33123,String(catalog.length));
+ // The production catalog grows independently of these visual fixtures.
+ assert.ok(sealedCatalog.length>=4739);
+ assert.ok(catalog.length>=33125);
 });
 test('non-ETB nested identity metadata rejects a contradictory UPC or physical model',()=>{
  const product=catalog.find(row=>row.tcgplayerProductId==='502005'),artwork=registry['tcgplayer:502005'];
@@ -44,6 +44,14 @@ test('non-ETB nested identity metadata rejects a contradictory UPC or physical m
  assert.equal(resolveInspectionArtwork({...product,upc:'0001111111111'},registry),null);
  assert.equal(resolveInspectionArtwork({...product,modelNumber:'wrong-model'},registry),null);
 });
+test('printed UPC separators preserve exact product matching without accepting different digits or letters',()=>{
+ const product=sealedCatalog.find(row=>row.tcgplayerProductId==='221312'),artwork=registry['tcgplayer:221312'];
+ assert.ok(artwork);
+ for(const upc of ['0-820650-807497','0 820650 807497','0820650807497','820650807497'])assert.equal(resolveInspectionArtwork({...product,upc},registry),artwork,upc);
+ for(const upc of ['0-820650-807498','0820650807497x'])assert.equal(resolveInspectionArtwork({...product,upc},registry),null,upc);
+ assert.equal(resolveInspectionArtwork({...product,language:'Japanese'},registry),null);
+});
+
 test('cuboids require six distinct valid face crops and explicit finite positive dimensions',()=>{
  const profile=productInspectionProfile(perfect,model);assert.equal(inspectionGeometry(profile),'box');
  for(const name of ['front','back','left','right','top','bottom']){

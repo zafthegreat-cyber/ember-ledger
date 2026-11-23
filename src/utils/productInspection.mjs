@@ -1,6 +1,6 @@
 import { cardSurfaceProfile } from "./cardSurface.mjs";
 import { nonCardProduct, inspectionCardBack } from "./cardBacks.mjs";
-import { NATIVE_BUILD } from "../config/nativeLaunchScope.js";
+
 
 const text = value => typeof value === "string" ? value.trim() : "";
 const normalize = value => text(value).toLowerCase().replace(/[-_]+/g, " ").replace(/\s+/g, " ");
@@ -15,10 +15,8 @@ const packageMarkers = value => {
 
 // An exact catalog identity is necessary but not sufficient when an owner has edited
 // the record's language or packaging. Contradictory metadata must not borrow art.
-export function resolveInspectionArtwork(product = {}, registry = {}, { native = NATIVE_BUILD } = {}) {
-  // The phone apps ship without these product photos (rights, and Play's 200 MB
-  // bundle limit); scripts/native-build.mjs removes them from dist-native.
-  if (native) return null;
+export function resolveInspectionArtwork(product = {}, registry = {}) {
+  // Native keeps reviewed identities; photos load on demand in the viewer.
   const id = String(product.tcgplayerProductId ?? "").trim();
   // A small number of catalog entries have no provider ID. They may only use
   // an explicitly registered internal catalog ID; names never grant artwork.
@@ -50,13 +48,14 @@ export function resolveInspectionArtwork(product = {}, registry = {}, { native =
   if (explicitName && expectedNames.length && !expectedNames.includes(explicitName)) return null;
   if (text(product.edition) && text(expected.edition) && identityText(product.edition) !== identityText(expected.edition)) return null;
   if (text(product.packageUnit) && text(expected.packageUnit) && identityText(product.packageUnit) !== identityText(expected.packageUnit)) return null;
-  const expectedUpc = String(model.upc || expected.upc || "").replace(/^0+/, "");
+  const normalizedUpc = value => String(value ?? "").replace(/[\s-]/g, "").replace(/^0+/, "");
+  const expectedUpc = normalizedUpc(model.upc || expected.upc);
   // A documented catalog metadata discrepancy is not a second physical barcode.
   // This exception is reached only after exact ID/name/language/edition validation.
   const catalogMetadataUpcs = (model.catalogMetadataUpcs || [])
     .filter(entry => entry.value && entry.sourcePage && entry.reason)
-    .map(entry => String(entry.value).replace(/^0+/, ""));
-  if (String(product.upc ?? "").trim() && expectedUpc && ![expectedUpc, ...catalogMetadataUpcs].includes(String(product.upc).replace(/^0+/, ""))) return null;
+    .map(entry => normalizedUpc(entry.value));
+  if (String(product.upc ?? "").trim() && expectedUpc && ![expectedUpc, ...catalogMetadataUpcs].includes(normalizedUpc(product.upc))) return null;
   const expectedModel = identityText(model.model || expected.model);
   const actualModel = identityText(product.model || product.modelNumber || product.model_number);
   if (actualModel && expectedModel && actualModel !== expectedModel) return null;
@@ -79,11 +78,21 @@ export function inspectionGeometry(profile = {}) {
     return profile.wrapperEligible && photographed(front) && photographed(back) && `${front.src}:${JSON.stringify(front.quad)}` !== `${back.src}:${JSON.stringify(back.quad)}` ? "pack" : "photo";
   }
   if (profile.shape !== "box" || profile.cuboidEligible === false) return "photo";
+  if (profile.headerRequired && !validInspectionHeader(profile.header)) return "photo";
   const dimensions = profile.dimensions;
   const validDimensions = dimensions && ["width", "height", "depth"].every(axis => Number.isFinite(dimensions[axis]) && dimensions[axis] > 0);
   const completeFaces = INSPECTION_FACE_NAMES.every(face => text(profile.faces?.[face]?.src) && !profile.faces[face].reference && validInspectionQuad(profile.faces[face].quad));
   const distinctFaces = new Set(INSPECTION_FACE_NAMES.map(face => `${profile.faces?.[face]?.src}:${JSON.stringify(profile.faces?.[face]?.quad)}`)).size === 6;
   return validDimensions && completeFaces && distinctFaces ? "box" : "photo";
+}
+
+// A hanging carton needs two genuine header surfaces in addition to its six
+// body faces. Missing header evidence must never silently become a plain box.
+export function validInspectionHeader(header) {
+  return Boolean(header && Number.isFinite(header.width) && header.width > 0 && header.width <= 1
+    && Number.isFinite(header.height) && header.height > 0 && header.height <= .3
+    && ["front", "back"].every(face => text(header[face]?.src) && !header[face].reference
+      && validInspectionQuad(header[face].quad) && /^\/assets\/inspection\/[a-z0-9-]+\.svg$/.test(header[face].mask || "")));
 }
 
 // Presentation hints only. Never assign a finish, image or shape to a saved record.
@@ -112,8 +121,9 @@ export function productInspectionProfile(product = {}, artwork = null) {
     wrapperEligible: shape === "pack" && (artwork?.geometry === "wrapper" || (!artwork && Boolean(namedFaces.front && namedFaces.back))),
     cuboidEligible: !/\b(tin|chest|ball|blister|code card)\b/.test(identityText(product.productType) + " " + identityText(name)),
     surface: cardSurfaceProfile(product, { fullArt }),
-    inkMask: String(product.tcgplayerProductId) === "85317" && !NATIVE_BUILD ? "/assets/inspection/espeon-h9-ink-mask.svg" : "",
+    inkMask: String(product.tcgplayerProductId) === "85317" ? "/assets/inspection/espeon-h9-ink-mask.svg" : "",
     faces: namedFaces, dimensions: artwork?.dimensions, surfaceColor: artwork?.surfaceColor,
+    headerRequired: artwork?.geometry === "hanging-box", header: artwork?.header,
     back: text(namedFaces.back?.src),
     left: text(product.leftImageUrl || product.left_image_url),
     right: text(product.rightImageUrl || product.right_image_url),

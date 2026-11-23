@@ -51,6 +51,21 @@ test('a stock card photoUrl alias retains the rounded-card surface, while a pers
  await render('Tile',personal,personal.displayImage);assert.equal(document.querySelector('.catalog-item-display__surface').dataset.card,'false');assert.equal(document.querySelector('img').getAttribute('src'),personal.displayImage);
 }));
 
+test('edge-to-edge manufacturer faces avoid a second projection while angled photos keep their crop',async()=>environment(async({render,imageEvent})=>{
+ await render('Viewer',row('593355'));
+ const front=document.querySelector('.product-inspect__front .product-inspect__texture');
+ const image=front.querySelector('img');
+ await imageEvent(image,'load',[2688,2348]);
+ assert.equal(front.dataset.projected,'false');
+ assert.equal(front.dataset.fit,'card');
+ assert.equal(image.style.transform,'');
+ assert.equal(image.style.width,'');
+ const side=document.querySelector('.product-inspect__left .product-inspect__texture');
+ await imageEvent(side.querySelector('img'),'load',[1600,1600]);
+ assert.equal(side.dataset.projected,'true');
+ assert.match(side.querySelector('img').style.transform,/^matrix3d\(/);
+}));
+
 test('actual tile preserves an explicit personal box photo even with a valid stock catalog identity',async()=>environment(async({render,imageEvent})=>{
  const product=Object.freeze({...perfect,displayImage:'/owner-box.jpg',photoUrl:'/owner-box.jpg'});const before=JSON.stringify(product);
  await render('Tile',product,product.displayImage);const image=document.querySelector('img');

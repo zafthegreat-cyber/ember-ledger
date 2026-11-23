@@ -3,6 +3,7 @@ import { PrivateStorageImage } from "./PrivateReceipt.jsx";
 import { faceProjection, inspectionImageUrl } from "../utils/faceProjection.mjs";
 import { getDisplayImageCandidates } from "../utils/imagePresentation.mjs";
 import { inspectionCardFront } from "../utils/cardBacks.mjs";
+import { inspectionAssetUrl } from "../utils/inspectionAssetUrl.mjs";
 export default function FaceArtwork({ texture, src, product = {}, title, face, onReady, fit, loading = "eager" }) {
   const photo = texture?.src || src || "";
   const [failedSources, setFailedSources] = useState([]);
@@ -15,10 +16,15 @@ export default function FaceArtwork({ texture, src, product = {}, title, face, o
   const reviewedFallback = face === "front" && !texture && !existingSource ? inspectionCardFront(product) : null;
   const fallback = reviewedFallback && !failedSources.includes(reviewedFallback.src) ? reviewedFallback : null;
   const displayedTexture = fallback || texture;
+  // A head-on, edge-to-edge photo needs no perspective projection. Let the
+  // browser size it directly instead of rasterizing a second scaled 3D layer.
+  const fullFace = displayedTexture?.quad?.length === 4 && displayedTexture.quad.every(([x,y],index) =>
+    x === [0,1,1,0][index] && y === [0,0,1,1][index]);
+  const projected = Boolean(displayedTexture?.quad && !fullFace);
   const current = existingSource || fallback?.src;
   const sourceSize = nativeSize?.source === current ? nativeSize : null;
   useLayoutEffect(() => {
-    if (!displayedTexture?.quad || !host.current) return;
+    if (!projected || !host.current) return;
     const element = host.current;
     // Keep the photograph at its native pixel size before projection. Shrinking
     // it to a thin box edge first discards detail before the crop is enlarged.
@@ -31,11 +37,11 @@ export default function FaceArtwork({ texture, src, product = {}, title, face, o
     update();
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
     observer?.observe(element); return () => observer?.disconnect();
-  }, [displayedTexture, sourceSize, current]);
+  }, [displayedTexture, sourceSize, current, projected]);
   const failed = !current;
-  const projection = displayedTexture?.quad && matrix?.source === current ? matrix.value : null;
+  const projection = projected && matrix?.source === current ? matrix.value : null;
   const catalogCard = fit === "card" && /^https:\/\/(?:tcgplayer-cdn\.tcgplayer\.com|images\.pokemontcg\.io)\//.test(current || photo);
-  return <div className="product-inspect__texture" ref={host} data-projected={Boolean(displayedTexture?.quad)} data-fit={displayedTexture?.reference || catalogCard ? "card" : undefined}>
-    {!failed ? <PrivateStorageImage key={current} src={current} alt={displayedTexture?.reference ? displayedTexture.label : `${title}, ${face}`} draggable={false} loading={loading} style={projection ? {transform:`matrix3d(${projection.join(",")})`,...(sourceSize ? {width:sourceSize.width,height:sourceSize.height,"--face-source-width":`${sourceSize.width}px`,"--face-source-height":`${sourceSize.height}px`} : {})} : undefined} onLoad={event=>{const size={width:event.currentTarget.naturalWidth,height:event.currentTarget.naturalHeight};if(displayedTexture?.quad)setNativeSize(previous=>previous?.source===current&&previous?.width===size.width&&previous?.height===size.height?previous:{source:current,...size});onReady?.(true,size);}} onError={()=>{setFailedSources(sources => [...sources,current]);onReady?.(false);}}/> : face === "front" ? <span className="product-inspect__missing">Photo unavailable</span> : null}
+  return <div className="product-inspect__texture" ref={host} data-projected={projected} data-fit={displayedTexture?.reference || catalogCard || fullFace ? "card" : undefined}>
+    {!failed ? <PrivateStorageImage key={current} src={inspectionAssetUrl(current, {sha256:displayedTexture?.sha256})} alt={displayedTexture?.reference ? displayedTexture.label : `${title}, ${face}`} draggable={false} loading={loading} style={projection ? {transform:`matrix3d(${projection.join(",")})`,...(sourceSize ? {width:sourceSize.width,height:sourceSize.height,"--face-source-width":`${sourceSize.width}px`,"--face-source-height":`${sourceSize.height}px`} : {})} : undefined} onLoad={event=>{const size={width:event.currentTarget.naturalWidth,height:event.currentTarget.naturalHeight};if(displayedTexture?.quad)setNativeSize(previous=>previous?.source===current&&previous?.width===size.width&&previous?.height===size.height?previous:{source:current,...size});onReady?.(true,size);}} onError={()=>{setFailedSources(sources => [...sources,current]);onReady?.(false);}}/> : face === "front" ? <span className="product-inspect__missing">Photo unavailable</span> : null}
   </div>;
 }

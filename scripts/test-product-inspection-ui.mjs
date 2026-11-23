@@ -72,6 +72,58 @@ async function environment(run) {
   finally { await act(async () => root.unmount()); dom.window.close(); for (const [key, descriptor] of previous) if (descriptor) Object.defineProperty(globalThis, key, descriptor); else delete globalThis[key]; }
 }
 
+test("a failed box face can be retried without changing the product or saved prices", async () => environment(async ({render,click,dom}) => {
+  const item=Object.freeze({tcgplayerProductId:672401,catalogType:"sealed",quantity:2,unitCost:50,marketPrice:69.22});
+  const before=JSON.stringify(item);
+  await render({product:item});
+  await act(async()=>document.querySelector('.product-inspect__left img').dispatchEvent(new dom.window.Event('error')));
+  assert.equal(document.querySelector('.product-inspect__stage').dataset.shape,"photo");
+  assert.match(document.body.textContent,/Some photos couldn’t load/);
+  await act(async()=>click('Retry photos'));
+  assert.equal(document.querySelector('.product-inspect__stage').dataset.shape,"box");
+  assert.equal(document.querySelectorAll('.product-inspect__object img').length,6);
+  await act(async()=>{for(const image of document.querySelectorAll('.product-inspect__object img')) image.dispatchEvent(new dom.window.Event('load'));});
+  assert.equal(document.querySelector('.product-inspect__retry'),null);
+  assert.equal(JSON.stringify(item),before);
+}));
+
+test("hanging header remains separate and retries safely when its photo fails", async () => environment(async ({render,click,dom}) => {
+  const item=Object.freeze({tcgplayerProductId:"668590",name:"Pokemon Day 2026 Collection",catalogType:"sealed",quantity:2,marketPrice:31.05});
+  const before=JSON.stringify(item);
+  await render({product:item});
+  assert.equal(document.querySelectorAll('.product-inspect__face').length,6);
+  assert.equal(document.querySelectorAll('.product-inspect__header').length,2);
+  assert.match(document.querySelector('.product-inspect__header--front').style.maskImage,/header-front-mask/);
+  await act(async()=>document.querySelector('.product-inspect__header--back img').dispatchEvent(new dom.window.Event('error')));
+  assert.equal(document.querySelector('.product-inspect__stage').dataset.shape,"photo");
+  assert.equal(document.querySelector('.product-inspect__header'),null);
+  await act(async()=>click('Retry photos'));
+  assert.equal(document.querySelector('.product-inspect__stage').dataset.shape,"box");
+  assert.equal(document.querySelectorAll('.product-inspect__header').length,2);
+  assert.equal(JSON.stringify(item),before);
+}));
+
+test("a successful card fallback clears the failed-photo notice", async () => environment(async ({render,dom}) => {
+  const row=Object.freeze(JSON.parse(readFileSync('src/data/generated/pokemonTcgCards.json')).find(r=>String(r.tcgplayerProductId)==='690281'));
+  await render({product:row,src:row.imageUrl});
+  await act(async()=>document.querySelector('.product-inspect__front img').dispatchEvent(new dom.window.Event('error')));
+  await act(async()=>document.querySelector('.product-inspect__front img').dispatchEvent(new dom.window.Event('load')));
+  assert.equal(document.querySelector('.product-inspect__retry'),null);
+}));
+
+test("retrying a full-screen photo keeps the inspection dialog open", async () => environment(async ({render,click,dom}) => {
+  await render();
+  await act(async()=>click('Full screen'));
+  const dialog=document.querySelector('dialog');
+  assert.ok(dialog.hasAttribute('open'));
+  await act(async()=>dialog.querySelector('.product-inspect__back img').dispatchEvent(new dom.window.Event('error')));
+  await act(async()=>click('Retry photos'));
+  assert.equal(document.querySelector('dialog'),dialog);
+  assert.ok(dialog.hasAttribute('open'));
+  assert.ok(dialog.querySelector('.product-inspect__back img'));
+  assert.equal(dialog.querySelector('.product-inspect__retry'),null);
+}));
+
 test("actual version metadata drives foil; the viewer never offers invented finish variants", async () => environment(async ({ render }) => {
   const before = JSON.stringify(product); await render();
   assert.equal(document.querySelector('[data-finish]').dataset.finish, "reverse");
@@ -138,6 +190,28 @@ test("grouped collection opens the same viewer and keeps each original copy acce
   assert.equal(document.querySelector('[role="dialog"]'), null); assert.match(document.body.textContent, /Total quantity2/);
   await act(async () => root.render(React.createElement(module.exports.ProductDetail, { group, activeTab: "copies" })));
   assert.match(document.body.textContent, /Recorded cost\$8.00/); assert.equal(JSON.stringify(group), before);
+}));
+
+test("reviewed gallery panels use their own proportions without inventing missing faces", async () => environment(async ({render,click,dom}) => {
+  const item=Object.freeze({tcgplayerProductId:"539305",catalogType:"sealed",quantity:2,marketPrice:69.22});
+  const before=JSON.stringify(item);
+  await render({product:item});
+  assert.equal(document.querySelector('.product-inspect__object').dataset.shape,'box');
+  await act(async()=>document.querySelector('.product-inspect__top img').dispatchEvent(new dom.window.Event('error')));
+  await act(async()=>click('Left'));
+  const object=document.querySelector('.product-inspect__object');
+  assert.equal(object.dataset.shape,'photo');
+  assert.equal(object.style.getPropertyValue('--photo-aspect'),'6.44');
+  assert.equal(object.querySelector('.product-inspect__texture').dataset.projected,'true');
+  assert.equal(object.querySelectorAll('img').length,1);
+  assert.deepEqual([...document.querySelectorAll('[aria-label="Product photos"] button')].map(b=>b.textContent),['Front','Back','Left','Right','Bottom']);
+  const photo=object.querySelector('img');
+  Object.defineProperties(photo,{naturalWidth:{value:1080},naturalHeight:{value:1080}});
+  await act(async()=>photo.dispatchEvent(new dom.window.Event('load')));
+  assert.equal(object.style.getPropertyValue('--photo-aspect'),'6.44','original square photo must not stretch the reviewed narrow panel');
+  await act(async()=>click('Front'));
+  assert.equal(object.querySelector('.product-inspect__texture').dataset.projected,'false','unreviewed gallery aspect preserves original framing');
+  assert.equal(JSON.stringify(item),before);
 }));
 
 test("inventory detail keeps partial box photographs truthful and preserves existing summary/actions", async () => environment(async ({ root, click }) => {
