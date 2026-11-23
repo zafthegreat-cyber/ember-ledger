@@ -12,7 +12,13 @@ const catalogPhoto = `${base}/__qa/photos/catalog.svg`;
 const personalPhoto = `${base}/__qa/photos/personal.svg`;
 const snakePhoto = `${base}/__qa/photos/snake.svg`;
 const catalogId = "qa-photo-catalog-product";
-const catalogRows = [{ id: catalogId, name: "QA catalog reference", productName: "QA catalog reference", setName: "QA photo set", productType: "Supply", imageUrl: catalogPhoto, marketPrice: 999 }];
+// Collection groups records that share a catalog product into one card (ef03fb2, "Group Collection
+// products"), so the personal-photo record and the catalog-photo record point at two catalog rows.
+const catalogOnlyId = "qa-photo-catalog-product-2";
+const catalogRows = [
+  { id: catalogId, name: "QA catalog reference", productName: "QA catalog reference", setName: "QA photo set", productType: "Supply", imageUrl: catalogPhoto, marketPrice: 999 },
+  { id: catalogOnlyId, name: "QA catalog reference two", productName: "QA catalog reference two", setName: "QA photo set", productType: "Supply", imageUrl: catalogPhoto, marketPrice: 999 },
+];
 const cases = [
   ...["collection", "legacy-inventory", "repository-inventory"].flatMap(screen => [{ screen, width: 320, theme: "dark" }, { screen, width: 1440, theme: "light" }]),
   { screen: "collection", width: 390, theme: "light" },
@@ -25,7 +31,7 @@ function recordsFor(screen) {
   return [
     { ...shared, id: `qa-${screen}-personal`, name: "QA personal item photo", itemImage: personalPhoto, catalogProductId: catalogId },
     { ...shared, id: `qa-${screen}-snake`, name: "QA saved item photo", item_image: snakePhoto },
-    { ...shared, id: `qa-${screen}-catalog`, name: "QA matched catalog photo", catalogProductId: catalogId },
+    { ...shared, id: `qa-${screen}-catalog`, name: "QA matched catalog photo", catalogProductId: catalogOnlyId },
   ];
 }
 
@@ -85,21 +91,34 @@ async function checkPhoto(locator, expectedSource) {
       const name = `${screen}-${width}-${theme}`;
       try {
         await page.goto(`${base}${screen === "collection" ? "/collection" : "/business/inventory"}?betaLocalMode=true&themeInspect=${theme}`);
-        const cards = page.locator(screen === "collection" ? ".collection-portfolio-grid .collection-portfolio-item" : ".everyday-record-list .everyday-record-card");
+        const cards = page.locator(screen === "collection" ? ".collection-portfolio-grid .collection-portfolio-item" : ".inventory-browser-products .inventory-product");
         await expect(cards).toHaveCount(3, { timeout: 45000 });
         await expect(page.locator(".app[data-theme]")).toHaveAttribute("data-theme", theme);
-        const before = await snapshot(page);
+        // Start-up fills in sale and expense defaults and saves shortly after load; take the
+        // baseline once storage has been unchanged for a second.
+        let before = await snapshot(page);
+        for (let stableSince = Date.now(), deadline = Date.now() + 15000; Date.now() < deadline && Date.now() - stableSince < 1000;) {
+          await page.waitForTimeout(100);
+          const current = await snapshot(page);
+          if (JSON.stringify(current) !== JSON.stringify(before)) { before = current; stableSince = Date.now(); }
+        }
         assert.equal(before.items, JSON.stringify(screen === "repository-inventory" ? [] : records), "Startup retains each original photo field and price");
         if (screen === "repository-inventory") assert.deepEqual(JSON.parse(before.repository).inventory, records, "Repository-only fixtures retain their original data");
         const expected = [[records[0], personalPhoto], [records[1], snakePhoto], [records[2], catalogPhoto]];
         for (const [record, source] of expected) {
-          const card = screen === "collection" ? page.locator(".collection-portfolio-grid").getByRole("button", { name: `Open ${record.name}`, exact: true }) : page.getByRole("button", { name: `Open ${record.name}`, exact: true });
+          // Collection and Inventory both show grouped product cards ("Open <name>, quantity N, ...") that open the
+          // product detail page (CollectionProductDetail.jsx); Inventory keeps per-record detail.
+          const isCollection = screen === "collection";
+          const card = isCollection ? page.locator(".collection-portfolio-grid").getByRole("button", { name: `Open ${record.name}, quantity` }) : page.locator(".inventory-browser-products").getByRole("button", { name: `Open ${record.name}, ` });
           await checkPhoto(card.locator("img"), source);
           await card.click();
-          await expect(page.locator(".ops-record-detail")).toBeVisible();
-          await checkPhoto(page.locator(".ops-detail-hero img"), source);
-          await expect(page.locator(".ops-record-detail")).not.toContainText("$999.00");
-          await page.getByRole("button", { name: "Back", exact: true }).click();
+          // Inventory (InventoryBrowser.jsx) groups products and lists purchase records in a sheet first.
+          if (!isCollection) await page.locator(".inventory-lots > button").first().click();
+          const detail = page.locator(isCollection ? ".collection-product-detail" : ".ops-record-detail");
+          await expect(detail).toBeVisible();
+          await checkPhoto(page.locator(isCollection ? ".collection-product-photo img" : ".ops-detail-hero img").first(), source);
+          await expect(detail).not.toContainText("$999.00");
+          await page.getByRole("button", { name: isCollection ? "Back to collection" : "Back to Inventory", exact: true }).click();
           await expect(cards).toHaveCount(3);
         }
         assert.ok(catalogRequests >= 1, "The current workspace warms the catalog without requiring a visit to legacy Vault or Market");

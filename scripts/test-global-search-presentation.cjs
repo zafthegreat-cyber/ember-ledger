@@ -59,11 +59,28 @@ const { chromium, expect } = require("@playwright/test");
         // Queries inspect existing local data; no search destination that invokes a remote service is run.
         await input.fill("collection");
         await expect(search.getByRole("heading", { name: "Local matches", exact: true })).toBeVisible();
-        const lastResult = search.locator(".app-search-local-results button").last();
-        await lastResult.focus();
+        // Local matches keep arriving while the catalog warms up, so pin the button that was focused
+        // instead of re-resolving ".last()" after more results render.
+        await search.locator(".app-search-local-results button").last().evaluate(button => { button.dataset.qaLastResult = "true"; button.focus(); });
+        const lastResult = search.locator('[data-qa-last-result="true"]');
+        // A slow first load can finish its own focus work (route heading, search input) after this,
+        // so focus again until it holds.
+        await expect(async () => {
+          await lastResult.evaluate(button => button.focus());
+          await expect(lastResult).toBeFocused({ timeout: 500 });
+        }).toPass({ timeout: 10000 });
         await assertExposedFocus("Last local result must scroll into view without being covered");
         await page.screenshot({ path: `${output}/${theme}-${width}-${route.slice(1).replaceAll("/", "-")}-results.png` });
         if (width === 360) {
+          // Wait until the panel's controls stop changing (late results and the "Open full record
+          // search" link), so the wrap below is measured against the finished panel.
+          const controlCount = () => search.evaluate(panel => panel.querySelectorAll("button, input, a[href]").length);
+          for (let last = await controlCount(), stableSince = Date.now(), deadline = Date.now() + 15000; Date.now() < deadline && Date.now() - stableSince < 750;) {
+            await page.waitForTimeout(100);
+            const current = await controlCount();
+            if (current !== last) { last = current; stableSince = Date.now(); }
+          }
+          await lastResult.focus();
           await page.keyboard.press("Tab");
           assert.equal(await page.evaluate(() => !!document.activeElement.closest(".app-search.expanded")), true, "Mobile Search keyboard focus must remain in its full-screen panel");
           await assertExposedFocus("Wrapped mobile Search focus");

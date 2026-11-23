@@ -23,15 +23,16 @@ const { chromium } = require("@playwright/test");
           return { logo: logo.width, cardTop: card.top, cardRight: card.right, inputs, overflow: document.documentElement.scrollWidth - innerWidth };
         });
         assert.ok(geometry.logo <= 48, JSON.stringify(geometry));
-        assert.ok(geometry.cardTop < 160 && geometry.cardRight <= width, JSON.stringify(geometry));
+        // The "Track your collection" headline sits above the card (owner, Nov 17 2026); the card still starts on the first screen.
+        assert.ok(geometry.cardTop < 600 && geometry.cardRight <= width, JSON.stringify(geometry));
         assert.ok(geometry.inputs.every(input => input.width >= 180 && input.height >= 44));
         assert.ok(geometry.overflow <= 1);
         assert.deepEqual(errors, []);
         await page.screenshot({ path: output + "/" + theme + "-" + width + ".png", fullPage: true });
         await page.getByRole("button", { name: "Forgot password?", exact: true }).click();
         await page.getByRole("heading", { name: "Reset Password", exact: true }).waitFor();
-        await page.getByRole("button", { name: "Back to Log In", exact: true }).click();
-        await page.getByRole("button", { name: "Request Beta Access", exact: true }).click();
+        await page.getByRole("button", { name: "Back to sign in", exact: true }).click();
+        await page.getByRole("button", { name: "Create account", exact: true }).first().click();
         await page.getByRole("heading", { name: "Create your account", exact: true }).waitFor();
         const signupGeometry = await page.evaluate(() => {
           const username = document.querySelector('.auth-form input[autocomplete="nickname"]').getBoundingClientRect();

@@ -97,7 +97,7 @@ export const WORKSPACE_DEFINITIONS = deepFreeze({
   [WORKSPACE_IDS.FIND]: {
     id: WORKSPACE_IDS.FIND,
     label: "Find",
-    description: "Deals, auctions, restocks, and sourcing research.",
+    description: "Restock reports, plus listing and auction checks for sellers.",
     homePath: "/find/home",
     iconKey: "find",
     switcherEligible: true,

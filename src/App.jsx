@@ -11,6 +11,11 @@ import { pausedAlertIds } from './utils/notificationBrowse.mjs';
 import {readLegacyStorageLocation,writeLegacyStorageLocation} from './utils/legacyStorageMetadata.mjs';
 import {reviewedScreenshotReportFields} from './utils/screenshotReviewExtras.mjs';
 import BarcodeScanner from "./components/BarcodeScanner.jsx";
+import { DealCheck, RapidBarcodeBatch, RecentScans, ScannerModeToggles, ScanPriceCheck } from "./features/scanner/ScannerExtras.jsx";
+import { identifyWithAi } from "./services/aiScanService.js";
+import { matchCardPicture, readCardPictures, rememberCardPicture, writeCardPictures } from "./utils/cardPictureMemory.mjs";
+import { addRecentScan, findSetRowByName, listingVerdict, readRecentScans, scanSetProgress, tallyBarcode, tradeSideSummary, writeRecentScans } from "./utils/scannerExtras.mjs";
+const TradeSideScanner = lazy(() => import("./features/scanner/TradeSideScanner.jsx"));
 import ItemPhoto from "./components/ItemPhoto.jsx";
 import DeferredModalBoundary from "./features/deferredViews/DeferredModalBoundary";
 import NationwideLocationPicker from './components/NationwideLocationPicker.jsx';
@@ -84,6 +89,7 @@ import AgeConfirmationGate from "./features/auth/AgeConfirmationGate.jsx";
 import { crashReportingAllowed, setCrashReportingAllowed, setCrashReportingKidSafe } from "./features/monitoring/crashReporting.js";
 import { rowsToCsvAsync } from "./features/exports/csv.js";
 import { RELEASE_NOTES } from "./features/tour/releaseNotes.js";
+import { SAVED_SEARCHES_CHANGED_EVENT, addSavedSearch, isSavedSearch, readSavedSearches, syncSavedSearches, writeSavedSearches } from "./features/market/savedSearches.js";
 import { reportHandledError } from "./features/monitoring/crashReporting.js";
 import {
   readWorkspacePreference,
@@ -1624,7 +1630,7 @@ const IMPORT_SOURCE_GUIDES = [
     value: "photo_reference",
     label: "Photos or screenshots",
     mode: BATCH_INTAKE_MODES.TRANSFER,
-    instructions: "Upload the image for reference and type the visible text. Full AI photo recognition is coming later, but for now we'll use the text you provide to suggest matches.",
+    instructions: "Upload the image for reference and type the visible text. We use that text to suggest matches. To identify a single card from a photo, use Scan.",
     bestFormat: "Image upload for reference plus typed visible text in the paste box.",
   },
   {
@@ -6104,6 +6110,24 @@ export default function App() {
   const [scanMode, setScanMode] = useState("upc");
   const [scanMatches, setScanMatches] = useState([]);
   const [scanReview, setScanReview] = useState(null);
+  // Grader, grade and cert number read from a slab label; carried to the save screen.
+  const [scanSlabDetails, setScanSlabDetails] = useState(null);
+  // Site, price and shipping read from a listing screenshot (eBay, Marketplace…).
+  const [scanListingDetails, setScanListingDetails] = useState(null);
+  // Nov 19 2026 scanner extras: price check (shows prices, saves nothing), rapid
+  // barcode batch, and the last 20 scans on this device.
+  const [scanPriceCheck, setScanPriceCheck] = useState(false);
+  const [scanRapid, setScanRapid] = useState(false);
+  const [scanBatch, setScanBatch] = useState([]);
+  const [scanBatchDestination, setScanBatchDestination] = useState("vault");
+  const [scanBatchSaving, setScanBatchSaving] = useState(false);
+  const [recentScans, setRecentScans] = useState(() => readRecentScans());
+  // Picture memory: fingerprints of the user's own confirmed card scans (this device only).
+  const [cardPictures, setCardPictures] = useState(() => readCardPictures());
+  const [scanPictureHash, setScanPictureHash] = useState("");
+  const scanPicturePreferRef = useRef("");
+  const scanBarcodeCacheRef = useRef(new Map());
+  const receiptReadRequestRef = useRef(0);
   const [scanDestination, setScanDestination] = useState("none");
   const [scanSearchState, setScanSearchState] = useState("idle");
   const scanLookupRequestRef = useRef(0);
@@ -6554,6 +6578,8 @@ export default function App() {
   const [tradeCompassDraft, setTradeCompassDraft] = useState(BLANK_TRADE_COMPASS_DRAFT);
   const [tradeCompassMessage, setTradeCompassMessage] = useState("");
   const [tradeCompassSaving, setTradeCompassSaving] = useState(false);
+  // Trade mode (Nov 19 2026): scanned or searched lines for each side of a Trade Compass check.
+  const [tradeScanLines, setTradeScanLines] = useState({ your: [], their: [] });
   const [quickFindForm, setQuickFindForm] = useState(BLANK_QUICK_FIND_FORM);
   const [multiDestinationForm, setMultiDestinationForm] = useState(BLANK_MULTI_DESTINATION_FORM);
   const [multiDestinationStep, setMultiDestinationStep] = useState("item");
@@ -6663,6 +6689,13 @@ export default function App() {
   const roleAdminUser = [APP_ROLES.OWNER, APP_ROLES.ADMIN].includes(actualAppRole);
   const roleModeratorUser = actualAppRole === APP_ROLES.MODERATOR;
   const adminUser = isAdminUser(planProfile) || roleAdminUser;
+  // AI scan (Nov 20 2026): paid plans and staff; the server checks again and enforces the daily limit.
+  const aiScanAllowed = Boolean(user?.id) && (["collector", "family", "seller", "shop", "admin"].includes(currentTier) || adminUser);
+  const scannerAi = user?.id && isSupabaseConfigured && (!BETA_LOCAL_MODE || import.meta.env.DEV) ? {
+    allowed: aiScanAllowed,
+    onIdentify: identifyWithAi,
+    onUpgrade: () => { closeInventoryScanner(); setActiveTab("membership"); },
+  } : null;
   const explicitAdminRole = String(
     actualAppRole ||
     currentUserProfile?.role ||
@@ -6971,7 +7004,9 @@ export default function App() {
   });
   const switcherWorkspaces = presentedProductWorkspaces.map((workspace) => ({
     id: workspace.id,
-    label: workspace.id === WORKSPACE_IDS.SELL ? experiencePresentation.copy.sellingLabel : workspace.id === WORKSPACE_IDS.BUSINESS && experiencePresentation.isStore ? "Store" : workspace.label,
+    // Workspace names are always Collect, Find and Sell (AGENTS.md, Nov 14, 2026);
+    // persona wording such as "Selling tools" stays on the screens themselves.
+    label: workspace.id === WORKSPACE_IDS.BUSINESS && experiencePresentation.isStore ? "Store" : workspace.label,
     icon: workspace.iconKey,
     shortPurpose: workspace.description,
     ownerOnly: workspace.requiredAuthority === AUTHORITY_REQUIREMENTS.VERIFIED_OWNER,
@@ -6982,7 +7017,11 @@ export default function App() {
   const workspaceNavItems = getWorkspaceNavigation(presentationWorkspaceId, {
     ownerAuthorized: ownerToolsVisible,
     featureControls: ownerFeatureControls,
-  }).map((item) => ({
+  })
+    // Deals and Auctions are resale tools; collectors do not get them as tabs
+    // (owner, Nov 17: "They don't make sense"). Sellers, stores and admins do.
+    .filter((item) => !(["find-deals", "find-auctions"].includes(item.key) && experiencePresentation.isCollector && !adminViewingAsAdmin))
+    .map((item) => ({
     ...item,
     icon: item.iconKey,
     action: () => navigateProductPath(item.path),
@@ -7206,8 +7245,10 @@ export default function App() {
     const toast = {
       id,
       createdAt: Date.now(),
-      durationMs: payload.durationMs || TOAST_AUTO_DISMISS_MS[payload.type] || TOAST_AUTO_DISMISS_MS.info,
       ...payload,
+      // After the spread: normalizeToastPayload always sets durationMs (often undefined),
+      // which used to overwrite the per-type duration so errors closed after 4.6s, not 7.8s.
+      durationMs: payload.durationMs || TOAST_AUTO_DISMISS_MS[payload.type] || TOAST_AUTO_DISMISS_MS.info,
     };
     setAppToasts((current) => [toast, ...current.filter((entry) => entry.title !== toast.title || entry.message !== toast.message)].slice(0, 3));
     return id;
@@ -10994,6 +11035,23 @@ export default function App() {
     markNotificationRead(entry.id);
     setNotificationCenterOpen(false);
     const route = String(entry.route || entry.actionUrl || entry.ctaDestination || "").trim();
+    if (route.startsWith("/find/restocks") || route.startsWith("/restocks")) {
+      setActiveTab("scout");
+      setScoutView("reports");
+      setScoutSubTabTarget({ tab: "reports", id: Date.now() });
+      return;
+    }
+    if (route.startsWith("/market")) {
+      let query = "";
+      try { query = new URL(route, "https://code3tcg.app").searchParams.get("q") || ""; } catch { query = ""; }
+      setActiveTab("market");
+      setTideTradrSubTab("catalog");
+      if (query) {
+        updateCatalogSearchInput(query);
+        window.setTimeout(() => submitCatalogSearch(query), 0);
+      }
+      return;
+    }
     if (route.startsWith("/scout/calendar")) {
       setActiveTab("scout");
       setScoutView("alerts");
@@ -13647,7 +13705,7 @@ export default function App() {
           originalText: file.name,
           itemName: "Image reference upload",
           referenceOnly: true,
-          notes: "Image/OCR import is coming later. Type the visible text into the paste box for beta matching.",
+          notes: "Image kept as a reference. Type the visible text into the paste box to find matches.",
         }, "photo_reference", 0),
       ]);
       setImportBatchMessage("Image uploaded as a reference only. Type visible text into the paste box, then review matches before saving.");
@@ -15699,7 +15757,10 @@ export default function App() {
       return undefined;
     }
 
-    checkUser();
+    // Inline (was checkUser) so the effect lists everything it uses.
+    supabase.auth.getUser().then(({ data, error }) => {
+      if (!error) receiveAuthUser(data.user);
+    });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user?.id) setAccountDeletionCompletedForId((previous) => previous === session.user.id ? previous : "");
       receiveAuthUser(session?.user || null);
@@ -16599,12 +16660,6 @@ export default function App() {
     }
   }
 
-  async function checkUser() {
-    if (!isSupabaseConfigured || !supabase) return;
-    const { data, error } = await supabase.auth.getUser();
-    if (!error) receiveAuthUser(data.user);
-  }
-
   async function handleAuth(event) {
     event.preventDefault();
     if (!isSupabaseConfigured || !supabase) {
@@ -17444,7 +17499,7 @@ export default function App() {
     return {
       scanId: makeId("scan"),
       rawValue,
-      scanType: scanMode === "upc" ? "upc" : scanMode === "card" ? "card" : scanMode === "manual" ? "manual" : "barcode",
+      scanType: scanMode === "upc" ? "upc" : (scanMode === "card" || scanMode === "slab") ? "card" : scanMode === "listing" ? "screenshot" : scanMode === "manual" ? "manual" : "barcode",
       matchedCatalogItemId: product?.id || "",
       itemName: product?.name || product?.productName || product?.cardName || rawValue || "Unknown item",
       catalogType: product?.catalogType || "unknown",
@@ -17468,7 +17523,12 @@ export default function App() {
   function beginScanProduct(defaultDestination = "none") {
     scanLookupRequestRef.current += 1;
     setEditingItemId(null);
+    setScanSlabDetails(null);
+    setScanListingDetails(null);
     setScanMode("upc");
+    setScanPriceCheck(false);
+    setScanRapid(false);
+    setScanPictureHash("");
     setScanMatches([]);
     setScanReview(null);
     setScanSearchState("idle");
@@ -17508,7 +17568,7 @@ export default function App() {
     if (!file) return;
     const supported = file.type.startsWith("image/") || file.type === "application/pdf";
     if (!supported) {
-      setReceiptScanMessage("Upload an image. PDF support is staged for later.");
+      setReceiptScanMessage("Choose a photo or a PDF of the receipt.");
       return;
     }
     setReceiptScanStatus("uploading");
@@ -17523,7 +17583,24 @@ export default function App() {
         source,
       };
     });
-    setReceiptScanMessage(file.type === "application/pdf" ? "PDF received. OCR support will process PDFs later; paste visible text for this beta review." : "Receipt image ready. Paste visible text or use the beta extractor.");
+    // Nov 17 2026: read the receipt on this device and fill the lines for review.
+    // Nov 19 2026: PDFs too: their text is read directly; scanned pages are read like photos.
+    const isPdf = file.type === "application/pdf";
+    setReceiptScanMessage(isPdf ? "Reading the PDF on this device…" : "Reading the receipt on this device…");
+    const request = (receiptReadRequestRef.current += 1);
+    const reading = isPdf
+      ? Promise.all([import("./utils/receiptPdf.mjs"), import("./utils/cardPhotoReader.mjs")])
+        .then(([pdf, photo]) => pdf.readReceiptPdf(file, { readPhoto: photo.readReceiptPhoto }))
+      : import("./utils/cardPhotoReader.mjs").then((module) => module.readReceiptPhoto(file));
+    reading
+      .then((read) => {
+        if (request !== receiptReadRequestRef.current) return;
+        if (read?.text) setReceiptScanForm((current) => (current.rawText?.trim() ? current : { ...current, rawText: read.text }));
+        setReceiptScanMessage(read?.message || "Type the receipt lines below.");
+      })
+      .catch(() => {
+        if (request === receiptReadRequestRef.current) setReceiptScanMessage("The receipt could not be read automatically. Type the lines below.");
+      });
   }
 
   function prefillQaReceiptScanDraft() {
@@ -18615,7 +18692,7 @@ export default function App() {
     });
   }
 
-  async function handleCatalogScanMatch(value) {
+  async function handleCatalogScanMatch(value, { preferId = "" } = {}) {
     const requestId = ++scanLookupRequestRef.current;
     const lookupValue = String(value || "").trim();
     if (!lookupValue) {
@@ -18684,6 +18761,11 @@ export default function App() {
     if (!matches.length) {
       matches = getBestCatalogMatches(lookupValue, searchPool);
     }
+    // A picture-memory pick: put the remembered card first when the search found it.
+    if (preferId) {
+      const preferred = matches.find((match) => String(match.item?.id) === String(preferId));
+      if (preferred) matches = [preferred, ...matches.filter((match) => match !== preferred)];
+    }
     const requiresPackageChoice = matches.length > 1 && (exactIdentifier || localBarcodeProducts.length > 0);
     const aiSummary = buildAiCatalogMatchSummary({ query: lookupValue, matches });
     void logAiAssistEvent(AI_FEATURE_AREAS.CATALOG_MATCH, {
@@ -18693,7 +18775,9 @@ export default function App() {
     if (requestId !== scanLookupRequestRef.current) return;
     setScanMatches(matches);
     if (matches.length) {
-      setScanReview(requiresPackageChoice ? null : { ...buildScanReview(lookupValue, matches, scanDestination), aiSummary: aiSummary.outputSummary });
+      const nextReview = requiresPackageChoice ? null : { ...buildScanReview(lookupValue, matches, scanDestination), aiSummary: aiSummary.outputSummary };
+      setScanReview(nextReview);
+      rememberScan(nextReview);
       setScanSearchState("results");
       setScanMessage(requiresPackageChoice ? "This barcode is shared by more than one package. Choose the matching artwork, edition and pack count before saving." : `${aiSummary.outputSummary} Review every match before saving.`);
     } else {
@@ -18706,8 +18790,180 @@ export default function App() {
   function confirmScanMatch(productId) {
     const match = scanMatches.find((candidate) => String(candidate.item.id) === String(productId));
     if (!match?.item) return;
-    setScanReview(buildScanReview(scanReview?.rawValue || scanInput || match.item.name, [match, ...scanMatches.filter((candidate) => String(candidate.item.id) !== String(productId))], scanDestination));
+    const nextReview = buildScanReview(scanReview?.rawValue || scanInput || match.item.name, [match, ...scanMatches.filter((candidate) => String(candidate.item.id) !== String(productId))], scanDestination);
+    setScanReview(nextReview);
+    rememberScan(nextReview);
     setScanSearchState("results");
+  }
+
+  // Nov 19 2026: the last 20 scans on this device, to reopen or remove.
+  function rememberScan(review) {
+    if (!review?.itemName) return;
+    setRecentScans((current) => {
+      const next = addRecentScan(current, {
+        rawValue: review.rawValue || review.itemName,
+        itemName: review.itemName,
+        catalogItemId: review.matchedCatalogItemId || "",
+        marketValue: review.marketValue || "",
+        setName: review.setName || "",
+      });
+      writeRecentScans(next);
+      return next;
+    });
+  }
+
+  function forgetRecentScan(scan) {
+    setRecentScans((current) => {
+      const next = scan ? current.filter((entry) => entry !== scan) : [];
+      writeRecentScans(next);
+      return next;
+    });
+  }
+
+  function reopenRecentScan(scan) {
+    if (!scan) return;
+    setScanRapid(false);
+    void handleCatalogScanMatch(scan.rawValue || scan.itemName);
+  }
+
+  function resetScanForNext() {
+    scanLookupRequestRef.current += 1;
+    setScanReview(null);
+    setScanMatches([]);
+    setScanSearchState("idle");
+    setScanMessage("");
+    setScanInput("");
+    setScanListingDetails(null);
+    setScanSlabDetails(null);
+    setScanPictureHash("");
+  }
+
+  // Remembers the fingerprint of a card photo once the user picks its catalog card.
+  function rememberScanPicture(product) {
+    if (scanMode !== "card" || !scanPictureHash || !product?.id || scanSlabDetails) return;
+    setCardPictures((current) => {
+      const next = rememberCardPicture(current, {
+        hash: scanPictureHash,
+        catalogItemId: product.id,
+        name: catalogTitle(product),
+        setName: product.setName || product.set_name || "",
+        cardNumber: product.cardNumber || product.card_number || "",
+      });
+      writeCardPictures(next);
+      return next;
+    });
+  }
+
+  function forgetCardPictures() {
+    setCardPictures([]);
+    writeCardPictures([]);
+  }
+
+  // Rapid barcode batch: look each new code up quietly and keep a running count.
+  async function lookupBarcodeProduct(code) {
+    const cache = scanBarcodeCacheRef.current;
+    if (cache.has(code)) return cache.get(code);
+    let product = null;
+    try {
+      const seedProducts = await loadLocalCatalogSeed("barcode batch");
+      product = findCatalogProductsByBarcode(mergeCatalogProductLists(catalogProducts, seedProducts), code)[0] || null;
+      if (!product && isSupabaseConfigured && supabase) {
+        const normalized = normalizeBarcodeValue(code) || code;
+        const result = await searchPokemonCatalogOnDemand({ supabase, query: normalized, barcode: normalized, mode: "barcode", page: 1, pageSize: 4, force: true });
+        product = (result.rows || []).map(mapCatalog).find((item) => catalogIdentifiersForProduct(item).includes(normalized)) || null;
+      }
+    } catch {
+      product = null;
+    }
+    cache.set(code, product);
+    return product;
+  }
+
+  async function handleRapidBarcode(code) {
+    const clean = String(code || "").trim();
+    if (!clean) return;
+    setScanBatch((current) => tallyBarcode(current, { code: clean }));
+    const known = scanBatch.find((row) => row.code === clean && row.status);
+    if (known) return;
+    const product = await lookupBarcodeProduct(clean);
+    setScanBatch((current) => current.map((row) => {
+      if (row.code !== clean) return row;
+      if (!product) return { ...row, status: "missing" };
+      const marketInfo = getTideTradrMarketInfo(product);
+      return { ...row, status: "found", product, catalogItemId: product.id, itemName: catalogTitle(product), marketValue: marketInfo.currentMarketValue || product.marketPrice || "" };
+    }));
+    if (product) rememberScan({ rawValue: clean, itemName: catalogTitle(product), matchedCatalogItemId: product.id, marketValue: getTideTradrMarketInfo(product).currentMarketValue || product.marketPrice || "", setName: product.setName || "" });
+  }
+
+  async function saveScanBatch() {
+    if (scanBatchSaving || blockGuestSave()) return;
+    const ready = scanBatch.filter((row) => row.status === "found" && row.product);
+    if (!ready.length) {
+      setScanMessage("None of these barcodes matched a product yet. Look them up by hand.");
+      return;
+    }
+    const destination = scanBatchDestination === "forge" && activeForgeWorkspace ? "forge" : "vault";
+    const workspace = destination === "forge"
+      ? activeForgeWorkspace
+      : workspaces.find((candidate) => String(candidate.id) === String(defaultWorkspaceIdForDestination("vault"))) || activeWorkspace;
+    if (!workspace?.id || !canEditWorkspaceId(workspace.id)) {
+      setScanMessage("You do not have permission to add to this workspace.");
+      return;
+    }
+    setScanBatchSaving(true);
+    setScanMessage("Saving the batch…");
+    const now = new Date().toISOString();
+    const records = ready.map((row) => {
+      const product = row.product;
+      const known = buildCatalogAutofillDetails(product);
+      const quantity = Math.max(1, Number(row.count) || 1);
+      const shared = {
+        name: catalogTitle(product),
+        category: "Pokemon",
+        sku: known.sku || "",
+        productType: normalizedInventoryProductType(product),
+        barcode: row.code,
+        catalogProductId: product.id || "",
+        catalogProductName: product.name || "",
+        externalProductId: known.externalProductId || "",
+        tcgplayerProductId: known.tcgplayerProductId || known.externalProductId || "",
+        itemImage: known.itemImage || "",
+        itemImageSource: product.imageSource || getDefaultImageSource(product),
+        itemImageStatus: product.imageStatus || getDefaultImageStatus(product),
+        marketPrice: blankToNull(row.marketValue || product.marketPrice || product.midPrice),
+        msrpPrice: blankToNull(product.msrpPrice),
+        setCode: known.setCode || "",
+        setName: known.setName || product.setName || "",
+        expansion: known.setName || product.setName || "",
+        productLine: known.productLine || "",
+        packCount: known.packCount || "",
+        notes: "Added from a barcode batch scan.",
+        sourceType: "TideTradr",
+        conditionName: "Near Mint",
+        language: "English",
+        createdAt: now,
+      };
+      return destination === "forge"
+        ? applyWorkspaceToRecord({ id: makeId("item"), ...shared, destinationScope: ["forge"], recordType: "forge_inventory", businessInventory: true, ownedItemPurpose: OWNED_ITEM_PURPOSES.FOR_RESALE, quantity, forgeQuantity: quantity, ownedQuantity: 0, unitCost: 0, salePrice: 0, physicalLocation: DEFAULT_FORGE_PHYSICAL_LOCATION, status: "In Stock" }, workspace)
+        : applyWorkspaceToRecord({ id: makeId("vault"), ...shared, destinationScope: ["vault"], recordType: "vault_item", businessInventory: false, ownedItemPurpose: OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION, isWishlist: false, quantity, ownedQuantity: quantity, forgeQuantity: 0, unitCost: 0, status: vaultStatusLabel("sealed"), vaultStatus: "sealed", storageLocation: vaultStatusLabel("sealed") }, workspace);
+    });
+    try {
+      const result = await saveInventoryRecords(records);
+      const saved = result.saved || [];
+      if (saved.length) {
+        setItems((current) => [...saved, ...current]);
+        const savedCodes = new Set(saved.map((record) => String(record.barcode || "")));
+        setScanBatch((current) => current.filter((row) => !savedCodes.has(row.code)));
+      }
+      const count = saved.reduce((total, record) => total + (Number(record.quantity) || 1), 0);
+      setScanMessage(result.failures?.length
+        ? `Saved ${count}. ${result.failures.length} could not be saved: ${result.failures[0].error || "try again"}.`
+        : `Saved ${count} item${count === 1 ? "" : "s"} to ${destination === "forge" ? "Business inventory" : "your collection"}.`);
+    } catch (error) {
+      setScanMessage(error?.message ? `The batch could not be saved: ${error.message}` : "The batch could not be saved. Try again.");
+    } finally {
+      setScanBatchSaving(false);
+    }
   }
 
   async function persistScannerIntake(destinationOverride = "", status = "saved") {
@@ -18845,6 +19101,25 @@ export default function App() {
       : "Similar catalog suggestion is already under review.");
   }
 
+  // Listing screenshot → price paid (price + shipping), want-list target, a note and any grade.
+  function listingScreenshotSeed(listing) {
+    if (!listing) return {};
+    const price = Number.parseFloat(String(listing.price || "").replace(/[$,]/g, ""));
+    const shipping = Number.parseFloat(String(listing.shipping || "").replace(/[$,]/g, "")) || 0;
+    if (!Number.isFinite(price) && !listing.graded) return {};
+    const total = Number.isFinite(price) ? Math.round((price + shipping) * 100) / 100 : "";
+    const site = String(listing.site || "").trim() || "a listing";
+    return {
+      ...(Number.isFinite(price) ? {
+        vault: { unitCost: String(total) },
+        forge: { unitCost: String(total) },
+        wishlist: { targetPrice: String(price) },
+        notes: `${listing.sold ? "Sold on" : "Seen on"} ${site} for ${price.toFixed(2)}${shipping ? ` + ${shipping.toFixed(2)} shipping` : ""}.`,
+      } : {}),
+      ...(listing.graded ? { graded: true, gradingCompany: listing.gradingCompany || "", grade: listing.grade || "" } : {}),
+    };
+  }
+
   async function confirmScannerDestination(destinationOverride = "") {
     const explicitDestination = typeof destinationOverride === "string" ? destinationOverride : "";
     const destination = normalizeAddDestinationValue(explicitDestination || scanDestination || scanReview?.destination || "none", "none", { allowIgnore: true });
@@ -18867,6 +19142,7 @@ export default function App() {
       if (!guestPreviewActive) {
         if (!await persistScannerIntake(destination, "confirmed")) return;
       }
+      rememberScanPicture(product);
       closeInventoryScanner();
       return openProductAddFlow({
         product,
@@ -18874,6 +19150,13 @@ export default function App() {
         destinations: destinationDefaults({ [destination]: true }),
         seed: {
           catalogSearchQuery: scanReview?.rawValue || scanInput || catalogTitle(product),
+          ...(scanSlabDetails ? {
+            graded: true,
+            gradingCompany: scanSlabDetails.gradingCompany || "",
+            grade: scanSlabDetails.grade || "",
+            certificationNumber: scanSlabDetails.certificationNumber || "",
+          } : {}),
+          ...listingScreenshotSeed(scanSlabDetails ? null : scanListingDetails),
         },
       });
     }
@@ -19422,6 +19705,17 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
 
   function updateQuickAddWizard(patch = {}) {
     setQuickAddWizard((current) => ({ ...current, ...patch }));
+  }
+
+  // Multi-card scanning (Nov 17): cards read by the camera or from a binder page
+  // are added as rows, safely, even when several reads finish close together.
+  function appendQuickAddCardScanRows(newRows = []) {
+    if (!newRows.length) return;
+    setQuickAddWizard((current) => {
+      const existing = Array.isArray(current.cardScanRows) ? current.cardScanRows : [];
+      const kept = existing.filter((row) => row.cardName || row.cardNumber || row.setName || row.variant || row.condition);
+      return { ...current, cardScanRows: [...kept, ...newRows.map((row) => createQuickAddCardScanRow(row))], message: "" };
+    });
   }
 
   function setQuickAddPath(path, patch = {}) {
@@ -21911,6 +22205,13 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       productLine: selectedCatalogKnown.productLine || "",
       packCount: selectedCatalogKnown.packCount || "",
       variant: multiDestinationForm.variant || "",
+      // Graded slab (Nov 17 2026): from the slab scanner or typed on the save screen.
+      ...(multiDestinationForm.graded ? {
+        graded: true,
+        gradingCompany: String(multiDestinationForm.gradingCompany || "").trim(),
+        grade: String(multiDestinationForm.grade || "").trim(),
+        certificationNumber: String(multiDestinationForm.certificationNumber || "").trim(),
+      } : {}),
       receiptId: multiDestinationForm.receiptId || "",
       receiptImage: multiDestinationForm.receiptImage || "",
       notes: appendUniqueText(
@@ -23530,7 +23831,8 @@ function mapCatalog(row) {
         vaultStatus: itemForm.vaultStatus || items.find((item) => item.id === editingItemId)?.vaultStatus || "",
         listingPlatform: itemForm.listingPlatform,
         listingUrl: itemForm.listingUrl,
-        listedPrice: Number(itemForm.listedPrice || 0),        storageLocation: itemForm.storageLocation || "",
+        listedPrice: Number(itemForm.listedPrice || 0),
+        storageLocation: itemForm.storageLocation || "",
         physicalLocation: itemForm.physicalLocation || currentEditingItem?.physicalLocation || "",
         physicalLocationNotes: itemForm.physicalLocation === "Other" ? itemForm.physicalLocationNotes || "" : "",
         condition: itemForm.condition || "",
@@ -23595,7 +23897,8 @@ function mapCatalog(row) {
       status: itemForm.status,
       listing_platform: itemForm.listingPlatform,
       listing_url: itemForm.listingUrl,
-      listed_price: Number(itemForm.listedPrice || 0),      vault_status: itemForm.vaultStatus || null,
+      listed_price: Number(itemForm.listedPrice || 0),
+      vault_status: itemForm.vaultStatus || null,
       physical_location: itemForm.physicalLocation || currentEditingItem?.physicalLocation || "",
       physical_location_notes: itemForm.physicalLocation === "Other" ? itemForm.physicalLocationNotes || "" : "",
       condition_name: itemForm.conditionName || itemForm.condition || "Near Mint",
@@ -24003,10 +24306,54 @@ function mapCatalog(row) {
       ...options.seed,
     });
     setTradeCompassDraft(draft);
+    setTradeScanLines({ your: [], their: [] });
     setTradeCompassMessage("");
     setTradeCompassSaving(false);
     flowModalBaselineRef.current.tradeCompass = draft;
     openFlowModal("tradeCompass", { size: "medium", source: options.source || "forge-trade-compass" });
+  }
+
+  // Trade mode: a side's scanned lines set that side's description and value.
+  function setTradeSideLines(sideKey, lines) {
+    setTradeScanLines((current) => ({ ...current, [sideKey]: lines }));
+    const summary = tradeSideSummary(lines);
+    const nameField = sideKey === "your" ? "yourSide" : "theirSide";
+    const valueField = sideKey === "your" ? "yourValue" : "theirValue";
+    setTradeCompassDraft((current) => normalizeTradeCompassDraft({
+      ...current,
+      [nameField]: lines.length ? summary.names : "",
+      [valueField]: lines.length && summary.total > 0 ? summary.total : "",
+      ...(sideKey === "your" && lines.length ? { sourceItemId: "" } : {}),
+    }));
+  }
+
+  // Catalog search for trade lines: barcode first, then the online catalog, then local names.
+  async function searchCatalogForTrade(value) {
+    const lookupValue = String(value || "").trim();
+    if (!lookupValue) return [];
+    const seedProducts = await loadLocalCatalogSeed("trade search");
+    const searchPool = mergeCatalogProductLists(catalogProducts, seedProducts);
+    let products = findCatalogProductsByBarcode(searchPool, lookupValue);
+    if (!products.length && isSupabaseConfigured && supabase) {
+      try {
+        const exactIdentifier = isLikelyBarcodeValue(lookupValue);
+        const normalized = normalizeBarcodeValue(lookupValue) || lookupValue;
+        const result = await searchPokemonCatalogOnDemand({ supabase, query: exactIdentifier ? normalized : lookupValue, barcode: exactIdentifier ? normalized : "", mode: exactIdentifier ? "barcode" : detectCatalogSearchMode(lookupValue), page: 1, pageSize: 6, force: true });
+        products = (result.rows || []).map(mapCatalog);
+      } catch {
+        products = [];
+      }
+    }
+    if (!products.length) products = getBestCatalogMatches(lookupValue, searchPool).map((match) => match.item);
+    return products.slice(0, 6).map((product) => {
+      const marketInfo = getTideTradrMarketInfo(product);
+      return {
+        id: product.id,
+        name: catalogTitle(product),
+        detail: [product.setName || product.expansion, product.cardNumber || product.card_number].filter(Boolean).join(" · "),
+        value: marketInfo.currentMarketValue || product.marketPrice || product.midPrice || "",
+      };
+    });
   }
 
   function updateTradeDraftField(field, value) {
@@ -24392,6 +24739,11 @@ function mapCatalog(row) {
       difference: reading.hasYourValue && reading.hasTheirValue ? reading.difference : "",
       tradeCompass: true,
       tradeCompassReading: reading.label,
+      // Trade mode lines (Nov 19 2026), when the sides were scanned.
+      ...(tradeScanLines.your.length || tradeScanLines.their.length ? {
+        yourItems: tradeScanLines.your.map(({ name, quantity, value, catalogItemId }) => ({ name, quantity, value, catalogItemId: catalogItemId || "" })),
+        theirItems: tradeScanLines.their.map(({ name, quantity, value, catalogItemId }) => ({ name, quantity, value, catalogItemId: catalogItemId || "" })),
+      } : {}),
       conditionNotes: draft.conditionNotes,
       demandNotes: draft.demandNotes,
       personalImportanceNotes: draft.personalImportanceNotes,
@@ -25280,6 +25632,12 @@ function addProductToTideTradrWatchlist(productId, pinned = false, workspaceId =
   const product = catalogProducts.find((p) => String(p.id) === String(productId));
   if (!product) return;
   const workspace = workspaces.find((entry) => String(entry.id) === String(workspaceId)) || activeWorkspace;
+  // Competitive review, Nov 17: a Want is also an alert. Saving the product name as
+  // a saved search makes the existing restock and price-drop alerts cover it.
+  try {
+    const savedSearches = readSavedSearches();
+    if (product.name && !isSavedSearch(savedSearches, product.name)) writeSavedSearches(addSavedSearch(savedSearches, product.name, { label: "From your wants" }));
+  } catch { /* alerts are a bonus; the Want itself still saves */ }
   setTideTradrWatchlist((current) => {
     if (current.some((item) => String(item.productId) === String(productId) && recordBelongsToWorkspace(item, workspace?.id))) {
       return current.map((item) => String(item.productId) === String(productId) && recordBelongsToWorkspace(item, workspace?.id) ? { ...item, pinned: item.pinned || pinned } : item);
@@ -25919,7 +26277,11 @@ function renderDealFinderContent() {
         <div>
           <h2>Deal Finder</h2>
           <p>Start with product, quantity, and asking price. Optional values stay tucked away.</p>
-          <p className="compact-subtitle">What it does: you enter a price someone is asking and Deal Finder compares it with the catalog's market value, MSRP and your cost to say whether it is a good buy. It does not search stores or the web for deals yet; your saved checks stay on this device.</p>
+          {/* Folded so the form and Calculate stay above the sticky footer on small phones. */}
+          <details className="compact-subtitle deal-finder-explainer">
+            <summary>What Deal Finder does</summary>
+            <p>You enter a price someone is asking and Deal Finder compares it with the catalog's market value, MSRP and your cost to say whether it is a good buy. It does not search stores or the web for deals yet; your saved checks stay on this device.</p>
+          </details>
         </div>
         <span className="status-badge">{dealRecommendation}</span>
       </div>
@@ -27367,12 +27729,12 @@ function renderForgeHeader() {
         brand="Business"
         mark={BRAND_ASSETS.mark}
         title="Business Decision Desk"
-        detail="Trade, listing, inventory, receipt, mileage, and sales records stay private, exact-copy aware, and separate from Vault."
+        detail="Trade, listing, inventory, receipt, mileage, and sales records stay private, exact-copy aware, and separate from your Collection."
         points={{ value: forgeTotalProductQuantity || 0, label: "Sellable items" }}
         pills={[
           { label: "Private Business", tone: "collector" },
           { label: "No checkout", tone: "gold" },
-          { label: "Separate from Vault", tone: "beta" },
+          { label: "Separate from Collection", tone: "beta" },
         ]}
         todayAction={{
           label: "Decision first",
@@ -31083,6 +31445,45 @@ function renderForgeBusinessLedgerPanel() {
       active = false;
     };
   }, [localDataLoaded, guestPreviewActive, signedInWithSupabase, user?.id, currentUserProfile?.id, currentUserProfile?.userId, currentUserProfile?.appAccess, currentUserProfile?.app_access, currentUserProfile?.betaStatus, currentUserProfile?.beta_status, currentUserProfile?.betaAccessStatus, currentUserProfile?.beta_access_status, shorelineState.betaRequest?.status, dataAccessForEffects]);
+
+  // SHOULD 17: alerts that arrive. The server queues in-app notifications
+  // (watched-store restock reports, saved-search matches, price drops); the app
+  // re-reads them when it comes back to the foreground and every few minutes
+  // while open, so a badge appears without a restart. Push stays off until a
+  // provider is wired (device_push_tokens is empty by design).
+  useEffect(() => {
+    if (!localDataLoaded || guestPreviewActive || !signedInWithSupabase || !dataAccessForEffects) return undefined;
+    let active = true;
+    const refresh = () => {
+      if (!active || document.visibilityState !== "visible") return;
+      onNotificationSessionReady().then((rows) => { if (active && Array.isArray(rows)) setBackendNotifications(rows); }).catch(() => {});
+    };
+    const onVisible = () => { if (document.visibilityState === "visible") refresh(); };
+    document.addEventListener("visibilitychange", onVisible);
+    const interval = window.setInterval(refresh, 3 * 60 * 1000);
+    return () => {
+      active = false;
+      document.removeEventListener("visibilitychange", onVisible);
+      window.clearInterval(interval);
+    };
+  }, [localDataLoaded, guestPreviewActive, signedInWithSupabase, user?.id, dataAccessForEffects]);
+
+  // Saved Market searches double as the alert subscription list, so they live
+  // on the account as well as the device: merge on sign-in, push on change.
+  useEffect(() => {
+    if (!localDataLoaded || guestPreviewActive || !signedInWithSupabase || !dataAccessForEffects || !supabase || !user?.id) return undefined;
+    let active = true;
+    let timer = 0;
+    const run = (mode) => { if (active) void syncSavedSearches(supabase, user.id, undefined, { mode }); };
+    run("merge");
+    const onChanged = () => { window.clearTimeout(timer); timer = window.setTimeout(() => run("push"), 800); };
+    window.addEventListener(SAVED_SEARCHES_CHANGED_EVENT, onChanged);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+      window.removeEventListener(SAVED_SEARCHES_CHANGED_EVENT, onChanged);
+    };
+  }, [localDataLoaded, guestPreviewActive, signedInWithSupabase, user?.id, dataAccessForEffects]);
 
   useEffect(() => {
     if (!adminEditModeAvailable && adminEditMode) {
@@ -39136,7 +39537,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <p className="section-kicker">Public Profile preview</p>
               <h2>{publicCommunity.publicUsernameLabel}</h2>
               <p>{publicCommunity.contributionLine}</p>
-              <p>@{handleSource} · {isKidProfile ? "Kid collector" : "Collector"}</p>
+              <p>@{handleSource} · {isKidProfile ? "Teen collector" : "Collector"}</p>
             </div>
           </div>
           <div className="profile-privacy-note">
@@ -41704,15 +42105,19 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (!match) return null;
     const info = getTideTradrMarketInfo(match);
     const value = Number(info?.marketValue || info?.currentMarketValue || match.marketValue || match.marketPrice || match.currentMarketValue || match.midPrice || 0);
-    if (!(value > 0)) return null;
-    return { value, source: `Catalog estimate (${catalogTitle(match)})`, product: match };
+    const msrp = Number(match.msrpPrice || match.msrp_price || match.msrp || 0);
+    if (value > 0) return { value, source: `Catalog estimate (${catalogTitle(match)})`, product: match, msrp: msrp > 0 ? msrp : null };
+    // Build-11 fix: sealed product with no market value but a shelf price still
+    // gets a one-tap floor instead of a hint.
+    if (msrp > 0) return { value: msrp, source: `Shelf price / MSRP (${catalogTitle(match)})`, product: match, msrp };
+    return null;
   }
 
   function renderTradeValueFlowContent() {
     const sourceItem = selectedTradeSourceItem();
     const validation = validateTradeDraft(tradeDraft, sourceItem);
     const receivedEstimate = tradeDraft.receivedValue === "" || tradeDraft.receivedValue === undefined ? tradeReceivedCatalogEstimate(tradeDraft) : null;
-    const comparison = buildTradeComparison(tradeDraft, sourceItem || {}, { moneyFormatter: money, receivedEstimate });
+    const comparison = buildTradeComparison(tradeDraft, sourceItem || {}, { moneyFormatter: money, receivedEstimate, receivedMsrp: receivedEstimate?.msrp || null });
     const selectedOption = tradeSourceOptions.find((option) => String(option.id) === String(tradeDraft.sourceItemId));
     const recentTrades = workspaceTradeRecords.slice(0, 3);
     const sourceMasterCard = sourceItem ? buildMasterCardsFromItems(inventoryGroupEntries(sourceItem))[0] || null : null;
@@ -42128,6 +42533,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
               <strong>{reading.yourLabel}</strong>
             </div>
+            <Suspense fallback={<p role="status">Loading the trade scanner…</p>}>
+              <TradeSideScanner label="Your side" lines={tradeScanLines.your} onLines={(lines) => setTradeSideLines("your", lines)} searchCatalog={searchCatalogForTrade} money={money} />
+            </Suspense>
             <Field label="Choose a Vault item" help="Optional. Pick one of your Vault items to prefill Your Side with saved item context.">
               <select
                 value={tradeCompassDraft.sourceItemId}
@@ -42181,6 +42589,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
               <strong>{reading.theirLabel}</strong>
             </div>
+            <Suspense fallback={<p role="status">Loading the trade scanner…</p>}>
+              <TradeSideScanner label="Their side" lines={tradeScanLines.their} onLines={(lines) => setTradeSideLines("their", lines)} searchCatalog={searchCatalogForTrade} money={money} />
+            </Suspense>
             <Field label="Their Side">
               <input
                 value={tradeCompassDraft.theirSide}
@@ -43415,12 +43826,31 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         closeFlowModal,
         collectorVisualTypeLabel,
         createQuickAddCardScanRow,
+        appendQuickAddCardScanRows,
         createQuickAddWizardState,
         detectCollectorItemVisualType,
         getCatalogIdentifiers,
         findCatalogProductsByBarcode,
         onOpenBarcodeScanner: () => { const destination = quickAddWizard.destination; closeFlowModal(); beginScanProduct(destination); },
         onOpenItemPhoto: () => { const destination = quickAddWizard.destination; closeFlowModal(); openPictureLookupFlow(destination); },
+        // Card reader (Nov 17): straight to the card photo screen, which reads the name and number.
+        onOpenCardPhoto: () => { const destination = quickAddWizard.destination; closeFlowModal(); beginScanProduct(destination); setScanMode("card"); },
+        // Opens the scanner straight in one mode: "card", "slab", "listing" or "receipt".
+        // Nov 19 2026: set progress for the cards on the several-cards screen.
+        cardScanSetProgress: quickAddWizard.screen === "cardPageReview"
+          ? scanSetProgress(quickAddWizard.cardScanRows || [], (row) => findSetRowByName(vaultSetLibraryRows, row.setName) || findSetSummaryForItem({ setName: row.setName, cardNumber: row.cardNumber, name: row.cardName }, vaultSetCompletionRows))
+          : [],
+        onOpenScannerMode: (mode) => {
+          const destination = quickAddWizard.destination;
+          // Nov 19 2026: "trade" opens Trade Compass with a scanner on each side.
+          if (mode === "trade") { closeFlowModal(); openTradeCompassFlow({ source: "add-scan-trade" }); return; }
+          closeFlowModal();
+          beginScanProduct(destination);
+          // "price" opens the barcode scanner with price check on; "batch" with scan-several on.
+          if (mode === "price") { setScanMode("upc"); setScanPriceCheck(true); return; }
+          if (mode === "batch") { setScanMode("upc"); setScanRapid(true); return; }
+          setScanMode(mode);
+        },
         getCatalogPickerResults,
         getTideTradrMarketInfo,
         handleQuickAddPhotoFile,
@@ -44371,7 +44801,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <span>Find a catalog item and prefill the add flow.</span>
           </button>
           <button type="button" className="forge-quick-add-option" onClick={() => openVaultCatalogSearchFlow({ source: "vault-upc" })}>
-            <strong>Enter UPC/SKU</strong>
+            <strong>Type a barcode number</strong>
             <span>Type an identifier into catalog search.</span>
           </button>
           <button type="button" className="forge-quick-add-option" onClick={() => {
@@ -44447,7 +44877,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <span>Match from a photo without requiring a UPC.</span>
           </button>
           <button type="button" className="forge-quick-add-option" onClick={() => runQuickFindSearch(null, "barcode")}>
-            <strong>Enter UPC/SKU</strong>
+            <strong>Type a barcode number</strong>
             <span>Lookup by identifier when you have one.</span>
           </button>
           <button type="button" className="forge-quick-add-option" onClick={() => runQuickFindSearch(null, "general")}>
@@ -47107,6 +47537,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   const hearthPageProps = {
     kidSafeView,
     marketSearchesRun: catalogSearchHasRun ? 1 : 0,
+    // Store persona checklist: "finish your public profile" is done once a public username exists.
+    publicProfileReady: Boolean(currentUserProfile?.publicUsername || currentUserProfile?.public_username),
     onOpenFeedback: openQuickFeedback,
     experiencePresentation,
     onOpenSellTrade: () => { prepareRouteNavigation(); setActiveTab("exchange"); },
@@ -49724,16 +50156,26 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <section className={`scanner-review-modal scan-product-modal scan-product-modal--${scanMode === "upc" ? "barcode" : scanMode}`} role="dialog" aria-modal="true" aria-labelledby="scanner-review-title" onClick={(event) => event.stopPropagation()}>
             <div className="modal-title-row modal-sticky-header scanner-modal-header">
               <div>
-                <h2 id="scanner-review-title">Scan Product/Card</h2>
-                <p>Find a card, sealed product, receipt, or add it manually.</p>
-                <p>Nothing is saved until you review it.</p>
+                <h2 id="scanner-review-title">Scan</h2>
+                <p>Barcode, card, several cards, graded slab, listing screenshot, photo or receipt.</p>
+                <p>{scanPriceCheck ? "Price check is on: you'll see prices, and nothing is saved." : "Nothing is saved until you review it."}</p>
               </div>
               <button type="button" className="modal-close-button" aria-label="Close scanner" onClick={closeInventoryScanner}>X</button>
             </div>
+            <ScannerModeToggles
+              priceCheck={scanPriceCheck}
+              onPriceCheck={(value) => { setScanPriceCheck(value); if (value) setScanRapid(false); }}
+              rapid={scanRapid}
+              onRapid={(value) => { setScanRapid(value); if (value) { setScanPriceCheck(false); resetScanForNext(); } }}
+              showRapid={scanMode === "upc"}
+            />
             <div className="scan-product-mode-rail" role="tablist" aria-label="Scan Product/Card modes">
               {[
                 ["upc", "Barcode", "barcode", "▥"],
                 ["card", "Card", "card", "▣"],
+                ["several", "Several cards", "card", "▣"],
+                ["slab", "Graded slab", "card", "▣"],
+                ["listing", "Screenshot", "photo", "□"],
                 ["picture", "Photo", "photo", "□"],
                 ["receipt", "Receipt", "receipt", "▤"],
                 ["manual", "Manual", "manual", "✎"],
@@ -49745,7 +50187,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   aria-selected={scanMode === key}
                   className={`scan-product-mode-button scan-product-mode-button--${tone} ${scanMode === key ? "is-selected" : ""}`}
                   onClick={() => {
+                    // Several cards opens the binder-page / keep-scanning screen in Add.
+                    if (key === "several") {
+                      closeInventoryScanner();
+                      openQuickAddPathFlow("cardPageReview", {}, "scanner-several-cards");
+                      return;
+                    }
                     scanLookupRequestRef.current += 1;
+                    setScanSlabDetails(null);
+                    setScanListingDetails(null);
                     setScanReview(null);
                     setScanMatches([]);
                     setScanSearchState("idle");
@@ -49761,7 +50211,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
             {scanMode === "picture" ? (
               <div className="scan-product-mode-panel scan-product-mode-panel--photo">
-                <ProductPhotoLookup key="item" kind="item" initialQuery={scanInput} disabled={scanSearchState === "loading"} onDraftChange={() => { scanLookupRequestRef.current += 1; setScanReview(null); setScanMatches([]); setScanSearchState("idle"); setScanMessage(""); }} onQuery={async query => {
+                <ProductPhotoLookup key="item" ai={scannerAi} kind="item" initialQuery={scanInput} disabled={scanSearchState === "loading"} onDraftChange={() => { scanLookupRequestRef.current += 1; setScanReview(null); setScanMatches([]); setScanSearchState("idle"); setScanMessage(""); }} onQuery={async query => {
                   setPictureLookup(current => ({ ...current, text: query }));
                   await handleCatalogScanMatch(query);
                 }} />
@@ -49794,7 +50244,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 ) : null}
                 <div className="scan-product-helper-card scan-product-helper-card--receipt">
                   <strong>How this works right now:</strong>
-                  <p className="compact-subtitle">There is no automatic receipt reading yet. Attach the photo for your records, then type or paste the receipt lines and we sort them into:</p>
+                  <p className="compact-subtitle">Take a photo and the receipt is read on this device. Check the lines, fix anything misread, and we sort them into:</p>
                   <ul>
                     <li>Store</li>
                     <li>Date</li>
@@ -49808,12 +50258,28 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </button>
                 {receiptScanMessage ? <p className="compact-subtitle scan-product-message">{receiptScanMessage}</p> : null}
               </div>
-            ) : scanMode === "card" ? (
-              <div className="scan-product-mode-panel scan-product-mode-panel--card">
-                <ProductPhotoLookup key="card" kind="card" initialQuery={scanInput} disabled={scanSearchState === "loading"} onDraftChange={() => { scanLookupRequestRef.current += 1; setScanReview(null); setScanMatches([]); setScanSearchState("idle"); setScanMessage(""); }} onQuery={async query => {
+            ) : scanMode === "listing" ? (
+              <div className="scan-product-mode-panel scan-product-mode-panel--photo">
+                <ProductPhotoLookup key="listing" ai={scannerAi} kind="listing" onListingDetails={setScanListingDetails} initialQuery={scanInput} disabled={scanSearchState === "loading"} onDraftChange={() => { scanLookupRequestRef.current += 1; setScanReview(null); setScanMatches([]); setScanSearchState("idle"); setScanMessage(""); }} onQuery={async query => {
                   setPictureLookup(current => ({ ...current, text: query }));
                   await handleCatalogScanMatch(query);
                 }} />
+              </div>
+            ) : scanMode === "slab" ? (
+              <div className="scan-product-mode-panel scan-product-mode-panel--card">
+                <ProductPhotoLookup key="slab" ai={scannerAi} kind="card" initialSlab onSlabDetails={setScanSlabDetails} initialQuery={scanInput} disabled={scanSearchState === "loading"} onDraftChange={() => { scanLookupRequestRef.current += 1; setScanReview(null); setScanMatches([]); setScanSearchState("idle"); setScanMessage(""); }} onQuery={async query => {
+                  setPictureLookup(current => ({ ...current, text: query }));
+                  await handleCatalogScanMatch(query);
+                }} />
+              </div>
+            ) : scanMode === "card" ? (
+              <div className="scan-product-mode-panel scan-product-mode-panel--card">
+                <ProductPhotoLookup key="card" ai={scannerAi} kind="card" onPicture={setScanPictureHash} onSlabDetails={setScanSlabDetails} initialQuery={scanInput} disabled={scanSearchState === "loading"} onDraftChange={() => { scanLookupRequestRef.current += 1; setScanReview(null); setScanMatches([]); setScanSearchState("idle"); setScanMessage(""); }} onQuery={async query => {
+                  setPictureLookup(current => ({ ...current, text: query }));
+                  const preferId = scanPicturePreferRef.current;
+                  scanPicturePreferRef.current = "";
+                  await handleCatalogScanMatch(query, { preferId });
+                }} pictureMemory={{ hash: scanPictureHash, matches: matchCardPicture(scanPictureHash, cardPictures), rememberedCount: cardPictures.length, onForget: forgetCardPictures, onPick: (match) => { scanPicturePreferRef.current = match.catalogItemId; return [match.name, match.cardNumber].filter(Boolean).join(" "); } }} />
               </div>
             ) : scanMode === "manual" ? (
               <div className="scan-product-mode-panel scan-product-mode-panel--manual">
@@ -49902,6 +50368,32 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </button>
                 {scanMessage ? <p className="compact-subtitle scan-product-message">{scanMessage}</p> : null}
               </div>
+            ) : scanMode === "upc" && scanRapid ? (
+              <div className="scan-product-barcode-layout scan-product-barcode-layout--batch">
+                <BarcodeScanner
+                  continuous
+                  title="Scan several in a row"
+                  readyLabel="Camera on. Scan one barcode after another."
+                  helper="Hold each barcode flat and centered. The same box again adds one to its count."
+                  manualLabel="Stop scanning several"
+                  onScan={handleRapidBarcode}
+                  onClose={() => setScanRapid(false)}
+                />
+                <RapidBarcodeBatch
+                  batch={scanBatch}
+                  money={money}
+                  destination={scanBatchDestination}
+                  onDestination={setScanBatchDestination}
+                  canUseBusiness={Boolean(activeForgeWorkspace)}
+                  onAdjust={(code, count) => setScanBatch((current) => current.map((row) => (row.code === code ? { ...row, count } : row)))}
+                  onRemove={(code) => setScanBatch((current) => current.filter((row) => row.code !== code))}
+                  onClear={() => setScanBatch([])}
+                  onSave={saveScanBatch}
+                  saving={scanBatchSaving}
+                  onReview={(code) => { setScanRapid(false); void handleCatalogScanMatch(code); }}
+                />
+                {scanMessage ? <p className="compact-subtitle scan-product-message" role="status">{scanMessage}</p> : null}
+              </div>
             ) : scanMode === "upc" ? (
               <div className="scan-product-barcode-layout">
                 <BarcodeScanner
@@ -49966,7 +50458,18 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
             ) : null}
 
-            {scanReview ? (
+            {scanReview && scanPriceCheck ? (
+              <ScanPriceCheck
+                review={scanReview}
+                product={scanMatches.find((match) => String(match.item?.id) === String(scanReview.matchedCatalogItemId))?.item || null}
+                listing={scanMode === "listing" ? scanListingDetails : null}
+                money={money}
+                onAdd={() => setScanPriceCheck(false)}
+                onScanAnother={resetScanForNext}
+              />
+            ) : null}
+
+            {scanReview && !scanPriceCheck ? (
               <div className="scanner-review-card">
                 <div className="scanner-review-steps" aria-label="Scanner add flow">
                   <span className="is-complete">1. Match</span>
@@ -49998,6 +50501,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <DetailItem label="MSRP" value={scanReview.msrp ? money(scanReview.msrp) : "Unknown" } />
                   <DetailItem label="Source" value={scanReview.sourceType || "unknown"} />
                 </div>
+                {scanMode === "listing" && scanListingDetails ? (
+                  <DealCheck verdict={listingVerdict(scanListingDetails, scanReview.marketValue)} site={scanListingDetails.site || ""} />
+                ) : null}
                 <div className="scanner-correction-panel">
                   <strong>Need to correct the match?</strong>
                   <p className="compact-subtitle">Corrections become admin-reviewed suggestions. Universal catalog data is not changed directly.</p>
@@ -50100,6 +50606,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 ))}
               </div>
             ) : null}
+
+            <RecentScans scans={recentScans} money={money} onOpen={reopenRecentScan} onRemove={forgetRecentScan} onClear={() => forgetRecentScan(null)} />
           </section>
         </div>
       ) : null}
@@ -51005,7 +51513,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
         {activeTab === "flipScout" && (
           <LazyToolBoundary label="Loading Deal Finder...">
-            <FlipScoutPage experiencePresentation={experiencePresentation} initialScreen={flipScoutView} onViewChange={(view) => { prepareRouteNavigation(); setFlipScoutView(view); }} featureControls={ownerFeatureControls} onExit={() => { prepareRouteNavigation(); setActiveTab("dashboard"); }} onReportRestock={() => openScoutSubmitFlow({ source: "restocks-page" })} onOpenRestocks={() => { prepareRouteNavigation(); setScoutView("reports"); setScoutSubTabTarget({ tab: "reports", id: Date.now() }); setActiveTab("scout"); }} />
+            <FlipScoutPage restockMap={flipScoutView === "restocks" ? { stores: getScoutQuickStores(), reports: scoutSnapshot.reports || [], isFollowed: isWatchedEmberStore, onOpenStore: (store) => openCommunityRestockReports({ storeId: store.id }), onReportAtStore: (store) => openScoutSubmitFlow({ source: "restock-map", store }), onFollowStore: (store) => favoriteSearchStore(store) } : null} experiencePresentation={experiencePresentation} initialScreen={flipScoutView} onViewChange={(view) => { prepareRouteNavigation(); setFlipScoutView(view); }} featureControls={ownerFeatureControls} onExit={() => { prepareRouteNavigation(); setActiveTab("dashboard"); }} onReportRestock={() => openScoutSubmitFlow({ source: "restocks-page" })} onOpenRestocks={() => { prepareRouteNavigation(); setScoutView("reports"); setScoutSubTabTarget({ tab: "reports", id: Date.now() }); setActiveTab("scout"); }} />
           </LazyToolBoundary>
         )}
 

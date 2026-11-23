@@ -1,6 +1,6 @@
+import PrintingPicker from "../../components/PrintingPicker.jsx";
 import "./multi-destination.css";
 import { useId, useRef, useState } from "react";
-import { cardVersionLabel } from "../../utils/cardVersions.mjs";
 import { PrivateStorageImage } from "../../components/PrivateReceipt.jsx";
 import { knownStorageLocations } from "../../utils/storageLocations.mjs";
 // App owns state, authority and handlers; only this existing renderer is deferred.
@@ -109,7 +109,6 @@ export default function MultiDestinationContent({ scope }) {
       ...(Array.isArray(selectedCatalog?.versions) ? selectedCatalog.versions : []),
       ...(Array.isArray(selectedCatalog?.variants) ? selectedCatalog.variants : []),
     ].map(version => version.variant || version.variantName || version.finish || version.label).filter(Boolean))];
-    const finishChoices = catalogFinishChoices.length ? catalogFinishChoices : selectedCatalog ? [selectedCatalog.variant || selectedCatalog.finish || selectedCatalog.priceSubtype].filter(Boolean) : ["Normal", "Holofoil", "Reverse Holofoil"];
     const marketAddFlowActive = isMarketAddFlowSource(activeFlowModal?.source);
     const itemTypeText = [
       multiDestinationForm.productType,
@@ -479,7 +478,7 @@ export default function MultiDestinationContent({ scope }) {
                   <div className="catalog-selector-actions add-item-primary-tools">
                     <button type="button" className="secondary-button" onClick={() => { closeFlowModal({ force: true, reset: false }); openVaultScanFlow(); }}>Scan product/card</button>
                     <button type="button" className="secondary-button" onClick={() => { const destination = multiDestinationForm.destinations.forge ? "forge" : multiDestinationForm.destinations.wishlist ? "wishlist" : multiDestinationForm.destinations.vault ? "vault" : "none"; closeFlowModal({ force: true, reset: false }); openPictureLookupFlow(destination); }}>Photo lookup</button>
-                    <button type="button" className="secondary-button" aria-expanded={barcodeOpen} aria-controls={barcodeId} onClick={() => { setBarcodeOpen(true); requestAnimationFrame(() => barcodeRef.current?.focus()); }}>Enter UPC/SKU</button>
+                    <button type="button" className="secondary-button" aria-expanded={barcodeOpen} aria-controls={barcodeId} onClick={() => { setBarcodeOpen(true); requestAnimationFrame(() => barcodeRef.current?.focus()); }}>Type a barcode number</button>
                   </div>
                   {barcodeOpen ? <div className="add-item-barcode-entry" id={barcodeId}><label>UPC, SKU or barcode<input ref={barcodeRef} value={barcodeInput} onChange={event => setBarcodeInput(event.target.value)} placeholder="Enter the number printed below the barcode" autoComplete="off" enterKeyHint="search" onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); if (barcodeInput.trim()) runMultiDestinationCatalogSearch(barcodeInput.trim(), { mode: "barcode", barcode: barcodeInput.trim() }); } }} /></label><button type="button" className="primary-button" disabled={!barcodeInput.trim()} onClick={() => runMultiDestinationCatalogSearch(barcodeInput.trim(), { mode: "barcode", barcode: barcodeInput.trim() })}>Look up barcode</button></div> : null}
                   {!itemSearchQuery ? (
@@ -620,16 +619,32 @@ export default function MultiDestinationContent({ scope }) {
               />
             </Field>
             {addFlowIsCard ? (
-              <Field label="Variant / finish">
-                <input
-                  list={`${barcodeId}-variants`}
-                  value={multiDestinationForm.variant}
-                  onChange={(event) => updateMultiDestinationField("variant", event.target.value)}
-                  placeholder="Normal, Holofoil, Reverse Holofoil, promo..."
-                />
-                <datalist id={`${barcodeId}-variants`}>{finishChoices.map(value => <option key={value} value={value}>{cardVersionLabel(value)}</option>)}</datalist>
-                <small>{selectedCatalog ? "Choose a recorded catalog finish, or enter the finish printed on your copy." : "Common finishes are suggested. Confirm your card's actual finish; custom entries are welcome."}</small>
-              </Field>
+              <PrintingPicker value={multiDestinationForm.variant} catalogNames={catalogFinishChoices} onChange={(value) => updateMultiDestinationField("variant", value)} />
+            ) : null}
+            {addFlowIsCard ? (
+              <fieldset className="graded-slab-fields">
+                <legend>Graded slab</legend>
+                <label className="graded-slab-fields__toggle">
+                  <input type="checkbox" checked={Boolean(multiDestinationForm.graded)} onChange={(event) => updateMultiDestinationField("graded", event.target.checked)} />
+                  This card is in a graded slab
+                </label>
+                {multiDestinationForm.graded ? (
+                  <div className="graded-slab-fields__grid">
+                    <Field label="Grading company">
+                      <input list="graded-slab-companies" value={multiDestinationForm.gradingCompany || ""} onChange={(event) => updateMultiDestinationField("gradingCompany", event.target.value)} placeholder="PSA, CGC, Beckett (BGS)…" />
+                      <datalist id="graded-slab-companies">
+                        {["PSA", "CGC", "Beckett (BGS)", "SGC", "TAG", "ACE", "AGS", "GMA"].map((name) => <option key={name} value={name} />)}
+                      </datalist>
+                    </Field>
+                    <Field label="Grade">
+                      <input value={multiDestinationForm.grade || ""} onChange={(event) => updateMultiDestinationField("grade", event.target.value)} placeholder="10, 9.5, 10 Pristine…" />
+                    </Field>
+                    <Field label="Cert number">
+                      <input inputMode="text" autoComplete="off" value={multiDestinationForm.certificationNumber || ""} onChange={(event) => updateMultiDestinationField("certificationNumber", event.target.value)} placeholder="From the slab label" />
+                    </Field>
+                  </div>
+                ) : null}
+              </fieldset>
             ) : null}
             <Field label="UPC / SKU if known">
               <input

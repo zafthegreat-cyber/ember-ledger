@@ -26,9 +26,15 @@ test("manual fallback creates neither a catalog match nor a fabricated price", (
 });
 
 test("price context uses supplied source, timestamp, currency and copy attributes", () => {
-  assert.deepEqual(getMarketQuoteContext({ marketCurrency: "usd", condition: "LP", variant: "Reverse holo" }, { sourceName: "Cached catalog", marketDataUpdatedAt: "2026-10-20T12:00:00Z" }), {
-    source: "Cached catalog", asOf: "2026-10-20T12:00:00.000Z", currency: "USD", condition: "LP", printing: "Reverse holo",
+  const asOf = new Date(Date.now() - 5 * 86400000);
+  asOf.setUTCMilliseconds(0);
+  assert.deepEqual(getMarketQuoteContext({ marketCurrency: "usd", condition: "LP", variant: "Reverse holo" }, { sourceName: "Cached catalog", marketDataUpdatedAt: asOf.toISOString() }), {
+    source: "Cached catalog", asOf: asOf.toISOString(), currency: "USD", condition: "LP", printing: "Reverse holo", ageDays: 5, stale: false,
   });
+  // A98: prices older than 30 days say so.
+  const old = getMarketQuoteContext({}, { sourceName: "Cached catalog", marketDataUpdatedAt: new Date(Date.now() - 45 * 86400000).toISOString() });
+  assert.equal(old.ageDays, 45);
+  assert.equal(old.stale, true);
 });
 
 test("unknown price metadata stays unknown without inventing today's date or a currency", () => {

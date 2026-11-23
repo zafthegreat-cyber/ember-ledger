@@ -1,5 +1,7 @@
 # Code 3 TCG — Google Play Data safety form answers (draft, Nov 7, 2026)
 
+> **Updated 2026-11-21 (AI scans, push):** On paid plans, tapping **Identify with AI** sends that one photo to Anthropic, which identifies the card and does not keep or train on it. Anthropic acts as our service provider, so Google does not count this as "sharing"; keep Shared = No and add the AI scan to the Photos purpose (already in the table below). Push notification tokens are collected once phone alerts are on (Device or other IDs row).
+>
 > **Updated 2026-11-14 (audit):** the app now ships Sentry crash reporting (`@sentry/react`). In Play Console → App content → Data safety, change **Crash logs** to Yes (optional) and re-submit. The package.json note below about "no crash SDKs" is out of date.
 
 Built from the live Supabase schema (public tables + storage buckets), the Android manifest (INTERNET, CAMERA, COARSE/FINE LOCATION) and package.json (no analytics, ads or crash SDKs; Stripe is sandbox only). Package `app.code3tcg.mobile`. Only the Supabase backend receives data; Vercel and Supabase are service providers, not third parties.
@@ -28,14 +30,14 @@ Built from the live Supabase schema (public tables + storage buckets), the Andro
 | Location | Approximate location | Yes | Optional | App functionality — city/state/ZIP the user enters for listings, seller profile, local restock reports |
 | Location | Precise location | **CONFIRM** — manifest requests FINE_LOCATION; if device GPS is only used on-device to sort nearby stores and is never sent to the server, answer No; if coordinates are uploaded (e.g. attached to a store report), answer Yes / Optional / App functionality | | |
 | Messages | Other in-app messages | Yes | Optional | App functionality — marketplace listing messages between members |
-| Photos and videos | Photos | Yes | Optional | App functionality — receipt images, listing photos, item photos, feedback screenshots (camera or gallery) |
+| Photos and videos | Photos | Yes | Optional | App functionality — receipt images, listing photos, item photos, feedback screenshots (camera or gallery); on paid plans, one photo per tap of Identify with AI, processed by Anthropic as our service provider and not stored |
 | Files and docs | — | No | | (receipt images are declared under Photos) |
 | App activity | App interactions | Yes | Optional | Analytics, App functionality — `app_activity_events`, AI-assist accept/decline |
 | App activity | Other user-generated content | Yes | Optional | App functionality — collection items, listings, restock reports, notes, reviews, catalog suggestions |
 | App activity | Other actions | Yes | Optional | App functionality — saved listings, watchlists, preferences |
 | App info and performance | Crash logs | **Yes** (updated 2026-11-14) | Optional (Settings → Privacy) | App functionality, Analytics — Sentry error reports, scrubbed of emails, card/phone digits, tokens, query strings and typed text; never sent for kid-safe profiles. Sentry is a service provider, so Shared = No |
 | App info and performance | Diagnostics | Yes | Optional | Analytics, App functionality — `app_error_logs` (error message, page, user agent) |
-| Device or other IDs | Device or other IDs | Yes | Optional | Analytics, Fraud prevention/security — campaign `anonymous_id`, user agent, audit-log IP address |
+| Device or other IDs | Device or other IDs | Yes | Optional | Analytics, Fraud prevention/security, App functionality — campaign `anonymous_id`, user agent, audit-log IP address, and the phone's push notification token once phone alerts are on |
 | Web browsing, Contacts, Calendar, Health, Audio, Videos, Installed apps | — | No | | |
 
 ## Notes for the reviewer fields

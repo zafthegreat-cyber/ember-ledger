@@ -11,6 +11,19 @@ const output = fs.existsSync(path.join(requestedOutput, "results.json"))
 const draftKey = "code3.buy-offer-draft.v1";
 const results = [];
 
+// Start-up saves (catalog seed, workspace labels) land shortly after load; wait
+// until storage has been unchanged for a moment before taking a baseline.
+async function settledLocalStorageSnapshot(page) {
+  let previous = JSON.stringify(await localStorageSnapshot(page));
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    await page.waitForTimeout(500);
+    const next = JSON.stringify(await localStorageSnapshot(page));
+    if (next === previous) return JSON.parse(next);
+    previous = next;
+  }
+  return JSON.parse(previous);
+}
+
 async function localStorageSnapshot(page) {
   return page.evaluate(() => Object.fromEntries(Object.keys(localStorage).sort().map(key => [key, localStorage.getItem(key)])));
 }
@@ -64,7 +77,7 @@ async function safeVisualCheck(page, screen, theme) {
       try {
         await page.goto(new URL("/find/buy-offer?betaLocalMode=true", base).href);
         let screen = await ready(page);
-        const storedBefore = await localStorageSnapshot(page);
+        const storedBefore = await settledLocalStorageSnapshot(page);
         const blockedBefore = blockedRequests.length;
         await page.evaluate(() => {
           window.buyOfferFocusProof = [];
@@ -167,7 +180,10 @@ async function safeVisualCheck(page, screen, theme) {
         screen = await ready(page);
         await expect(screen.getByRole("textbox", { name: "Market value (USD)", exact: true })).toHaveValue("100");
         await page.goto(new URL("/find/home?betaLocalMode=true", base).href);
-        await page.getByRole("button", { name: "Buy Offer", exact: true }).click(); screen = await ready(page);
+        // A collector with no saved listings sees collector actions on Find Home; resale tools stay in Find More.
+        await page.getByRole("button", { name: "Browse restocks", exact: true }).waitFor();
+        assert.equal(await page.getByRole("button", { name: "Buy Offer", exact: true }).count(), 0, "Find Home keeps resale tools out of a collector-only start");
+        await page.goto(new URL("/find/buy-offer?betaLocalMode=true", base).href); screen = await ready(page);
         await expect(screen.getByRole("textbox", { name: "Market value (USD)", exact: true })).toHaveValue("100");
         checks.push("Reload, Back/Forward, Find More and Find Home preserve calculator inputs");
 

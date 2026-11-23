@@ -156,6 +156,7 @@ export function buildTradeComparison(draft = {}, sourceItem = {}, options = {}) 
   }
   if (!hasReceivedValue) {
     if (receivedEstimate) fallbackSuggestions.push({ side: "received", label: `Use the ${receivedEstimate.source.toLowerCase()} (${moneyFormatter(receivedEstimate.value * normalized.receivedQuantity)})`, value: receivedEstimate.value * normalized.receivedQuantity, source: receivedEstimate.source });
+    else if (normalized.receivedType === "Sealed" && Number(options.receivedMsrp) > 0) fallbackSuggestions.push({ side: "received", label: `Use the shelf price as a floor (${moneyFormatter(Number(options.receivedMsrp) * normalized.receivedQuantity)})`, value: Number(options.receivedMsrp) * normalized.receivedQuantity, source: "MSRP" });
     else if (normalized.receivedType === "Sealed") fallbackSuggestions.push({ side: "received", label: "Use the shelf price (MSRP) as a floor", value: null, source: "MSRP" });
     else fallbackSuggestions.push({ side: "received", label: "Ask what they'd sell it for and use that", value: null, source: "Asking price" });
   }

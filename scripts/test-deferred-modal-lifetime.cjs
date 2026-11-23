@@ -23,7 +23,7 @@ const output = path.resolve("artifacts/qa/private-beta-candidate/performance/mod
       page.on("pageerror", (error) => errors.push(error.message));
       try {
         await page.goto(new URL("/?betaLocalMode=true", base).href);
-        await expect(page.getByRole("heading", { name: "Welcome back.", exact: true })).toBeVisible({ timeout: 30000 });
+        await expect(page.getByRole("heading", { name: /^Welcome( back| to Code 3 TCG).$/ })).toBeVisible({ timeout: 30000 });
         const add = page.getByRole("button", { name: "Open global Add menu", exact: true }).first();
         await add.click();
         const modal = page.locator(".flow-modal");
@@ -35,7 +35,7 @@ const output = path.resolve("artifacts/qa/private-beta-candidate/performance/mod
         } else {
           const close = modal.locator(".modal-close-button");
           await close.focus(); release();
-          await expect(modal.getByRole("button", { name: /Add Collection Item with/ })).toBeVisible();
+          await expect(modal.getByRole("button", { name: /Add to my collection with/ })).toBeVisible();
           await expect(close).toBeFocused();
           await page.keyboard.press("Escape"); await expect(add).toBeFocused();
         }

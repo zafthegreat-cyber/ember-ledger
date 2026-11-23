@@ -45,6 +45,18 @@ function bounded(request, stage, abort) {
   }).finally(() => clearTimeout(timer));
 }
 
+// A check that timed out or never reached the server says nothing about the
+// account. Phones hit this after resuming from the background or on a weak
+// signal, so those are retried quietly instead of closing the app.
+const NETWORK_FAILURE = /failed to fetch|network|load failed|fetch failed|timed? ?out/i;
+function isTransientVerifyError(error) {
+  if (!error) return false;
+  if (String(error.code || "").endsWith("_TIMEOUT") || error.code === "VERIFY_NETWORK") return true;
+  return error.name === "AuthRetryableFetchError" || error.name === "TypeError" || NETWORK_FAILURE.test(String(error.message || ""));
+}
+const networkError = (stage) => Object.assign(new Error("Code 3 TCG could not reach the server to check your sign-in. Your saved records are unchanged. Check your connection, then retry."), { stage, code: "VERIFY_NETWORK" });
+const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 function WorkspaceLease({ children, onError }) {
   const [ready, setReady] = useState(false);
   useEffect(() => {
@@ -95,15 +107,33 @@ function ProtectedCloudWorkspaceBoundary({ children, client = supabase, configur
   }, []);
   const fail = useCallback((error) => setScreen((value) => ({ ...value, phase: "error", stage: error.stage, code: typeof error.code === "string" ? error.code : error.name || "", message: error.message || "Your records could not be opened safely. They have been preserved." })), []);
 
-  const verify = useCallback(async (expectedId) => {
+  const verifyOnce = useCallback(async (expectedId) => {
     const result = await bounded(client.auth.getUser(), "VERIFY_ACCOUNT");
+    if (result.error && isTransientVerifyError(result.error)) throw networkError("VERIFY_ACCOUNT");
     if (result.error || !result.data?.user || result.data.user.is_anonymous || (expectedId && result.data.user.id !== expectedId)) throw Object.assign(new Error("Sign in to the same account to open these records."), { stage: "VERIFY_ACCOUNT" });
     const abort = new AbortController();
     const request = client.rpc("code3_current_session_valid");
     const checked = await bounded(typeof request.abortSignal === "function" ? request.abortSignal(abort.signal) : request, "VERIFY_SESSION", abort);
+    if (checked.error && isTransientVerifyError(checked.error)) throw networkError("VERIFY_SESSION");
     if (checked.error || checked.data !== true) throw Object.assign(new Error("Your account session could not be verified. Sign in again, or retry safely."), { stage: "VERIFY_SESSION" });
     return result.data.user;
   }, [client]);
+  // A request that could not connect at all is tried up to three times, a few
+  // seconds apart, before it is shown. A check that timed out (already 15 s) is
+  // tried once more: phones often stall only on the first call after waking.
+  const verify = useCallback(async (expectedId, { attempts = 3 } = {}) => {
+    let timeoutRetried = false;
+    for (let attempt = 1; ; attempt += 1) {
+      try { return await verifyOnce(expectedId); }
+      catch (error) {
+        const timedOut = String(error?.code || "").endsWith("_TIMEOUT");
+        const retry = attempt < attempts && (error?.code === "VERIFY_NETWORK" || (timedOut && !timeoutRetried));
+        if (!retry) throw error;
+        if (timedOut) timeoutRetried = true;
+        await pause(timedOut ? 250 : 1500 * attempt);
+      }
+    }
+  }, [verifyOnce]);
 
   const open = useCallback(async (user, ticket) => {
     const assertCurrent = () => {
@@ -211,16 +241,29 @@ function ProtectedCloudWorkspaceBoundary({ children, client = supabase, configur
     let pending = false;
     const ticket = generation.current;
     const check = async () => {
-      if (pending || !navigator.onLine) return;
+      if (pending || !navigator.onLine || document.visibilityState === "hidden") return;
       pending = true;
-      try { await verify(screen.user.id); }
-      catch (error) { if (active && ticket === generation.current) { stop(); fail(error); } }
+      // Background re-check: only a definite answer (signed out, other account,
+      // session revoked) closes the app. Slow or unreachable checks wait for the next one.
+      try { await verify(screen.user.id, { attempts: 1 }); }
+      catch (error) { if (active && ticket === generation.current && !isTransientVerifyError(error)) { stop(); fail(error); } }
       finally { pending = false; }
     };
     const timer = setInterval(check, 30000);
     window.addEventListener("focus", check);
     return () => { active = false; clearInterval(timer); window.removeEventListener("focus", check); };
   }, [screen.phase, screen.user, verify, stop, fail]);
+
+  // A connection problem clears itself: try again as soon as the phone is back
+  // online or the app returns to the screen, without the person tapping Retry.
+  useEffect(() => {
+    if (screen.phase !== "error" || !isTransientVerifyError({ code: screen.code })) return undefined;
+    const retry = () => { if (document.visibilityState !== "hidden" && navigator.onLine !== false) window.location.reload(); };
+    const onVisible = () => { if (document.visibilityState === "visible") retry(); };
+    window.addEventListener("online", retry);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { window.removeEventListener("online", retry); document.removeEventListener("visibilitychange", onVisible); };
+  }, [screen.phase, screen.code]);
 
   useEffect(() => {
     if (!operation || screen.phase !== "operation") return undefined;

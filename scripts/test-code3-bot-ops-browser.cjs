@@ -204,7 +204,7 @@ async function assertProviderHonesty(page) {
   for (const provider of ["HAYHA", "STELLAR", "SHIKARI", "VALOR", "REFRACT", "POLAR", "SNIPED", "SWOOPER"]) {
     await select.selectOption(provider);
     const guidance = setup.getByTestId("bot-provider-guidance");
-    match(await guidance.innerText(), /Not connected/i, `${provider} must remain visibly not connected`);
+    match(await guidance.innerText(), /Tracking only[\s\S]*no connection to/i, `${provider} must remain visibly not connected`);
     const details = guidance.locator("details");
     if (!await details.evaluate(node => node.open)) await details.locator("summary").click();
     match(await guidance.innerText(), /Provider network\s*Disabled/i, `${provider} network remains disabled`);
@@ -311,7 +311,7 @@ async function inspectScenario(browser, scenario) {
 
     if (!scenario.fixture) {
       const body = await root.innerText();
-      match(body, /Live integrations are not connected/i, "normal Bot runtime should use the honest disconnected state");
+      match(body, /Code 3 does not start, stop or configure bots/i, "normal Bot runtime should use the honest disconnected state");
       match(body, /Your installations\s*0[\s\S]*Open plans\s*0[\s\S]*Tasks needing attention\s*0[\s\S]*Evidence to review\s*0/i, "normal Bot runtime must not invent saved installations, plans, attention, or evidence");
       match(body, /Live connections and task controls are not available yet/i, "normal Bot runtime should disclose the live-integration boundary");
     } else if (scenario.expect) {

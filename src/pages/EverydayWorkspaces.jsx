@@ -341,7 +341,7 @@ function blankForm(type, seed = {}) {
 }
 
 const FORM_CONFIG = {
-  collection: { title: "Add Collection Item", description: "Identify the item, preserve acquisition context, and choose its purpose.", steps: ["Item", "Acquisition", "Purpose"], collection: "inventory", submit: "Save item" },
+  collection: { title: "Add to my collection", description: "Identify the item, preserve acquisition context, and choose its purpose.", steps: ["Item", "Acquisition", "Purpose"], collection: "inventory", submit: "Save item" },
   purchase: { title: "Record Purchase", description: "Capture the purchase first; lots and inventory remain related records.", steps: ["Purchase", "Costs"], collection: "purchases", submit: "Save Purchase" },
   lot: { title: "Process Purchase Lot", description: "Connect a lot to its purchase and choose how item cost will be allocated.", steps: ["Lot", "Allocation"], collection: "lots", submit: "Save Lot" },
   inventory: { title: "Add Resale Inventory", description: "Identify the item, retain its cost basis, and set the resale plan.", steps: ["Item", "Costs", "Plan"], collection: "inventory", submit: "Save inventory" },

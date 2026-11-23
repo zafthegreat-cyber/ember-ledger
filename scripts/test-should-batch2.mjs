@@ -190,7 +190,7 @@ test("quick report: store choices dedupe and put the remembered store first; opt
   const storage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) };
   quick.rememberQuickReportChoice({ storeId: "s1", storeName: "Target Harbour View", status: "stock_on_shelf" }, storage);
   quick.rememberQuickReportChoice({ category: "ETBs" }, storage);
-  assert.deepEqual(quick.readQuickReportMemory(storage), { lastStoreId: "s1", lastStoreName: "Target Harbour View", lastCategory: "ETBs", lastStatus: "stock_on_shelf" });
+  assert.deepEqual(quick.readQuickReportMemory(storage), { lastStoreId: "s1", lastStoreName: "Target Harbour View", lastCategory: "ETBs", lastStatus: "stock_on_shelf", categoryByStore: { s1: "ETBs" } });
   const broken = { getItem() { throw new Error("no"); }, setItem() { throw new Error("no"); } };
   assert.doesNotThrow(() => quick.rememberQuickReportChoice({ storeId: "a" }, broken));
   assert.equal(quick.readQuickReportMemory(broken).lastStoreId, "");
@@ -452,4 +452,169 @@ test("plans: Rule A gates and the open-beta unlock", async () => {
   assert.equal(gates.TIER_PRICING.collector.cta, "On for everyone");
   assert.doesNotMatch(gates.TIER_PRICING.free.features.join(" "), /Not included: total collection value/);
   assert.ok(src("docs/PLANS_AND_SERVICES.md").includes("Free covers everything an ordinary collector needs"));
+});
+
+test("search ranking: a trailing bare number ranks the matching card first too", async () => {
+  const { searchCatalog } = await load("src/utils/catalogSearchUtils.js", "catalog-search-bare");
+  const catalog = [
+    { id: "pupitar", name: "Pupitar 109 165", setName: "Scarlet & Violet 151", cardNumber: "109/165" },
+    { id: "jolt", name: "Jolteon ex", setName: "Prismatic Evolutions", cardNumber: "109/131" },
+    { id: "jolt2", name: "Jolteon ex", setName: "Prismatic Evolutions", cardNumber: "153/131" },
+  ];
+  const results = searchCatalog("jolteon ex 109", catalog);
+  assert.equal(results[0]?.item.id, "jolt");
+  assert.equal(results[0]?.reason, "Card number match");
+  // Partial matches on the bare number may still appear, but never above the named card.
+  assert.ok(results.findIndex((r) => r.item.id === "pupitar") !== 0);
+  assert.ok(results.findIndex((r) => r.item.id === "jolt") < results.findIndex((r) => r.item.id === "jolt2"));
+});
+
+test("community safety: off-platform steering toward kids is blocked even without a phone number", async () => {
+  const { validateTidepoolPostDraft, containsUnsafeCommunityText } = await import("../src/utils/communitySafety.js");
+  assert.ok(validateTidepoolPostDraft({ title: "Trade", body: "Message me on Insta, I give my number there and we can meet up after school by the bus loop." }));
+  assert.ok(containsUnsafeCommunityText("add me on snap, don't tell your parents"));
+  assert.ok(containsUnsafeCommunityText("I can pick you up after school"));
+  // Ordinary collector talk still passes.
+  assert.ok(!containsUnsafeCommunityText("Found booster bundles at Target after work, shelf was full."));
+  assert.ok(!containsUnsafeCommunityText("Message me on Discord if you want to trade the Charizard, I'm in the Code 3 server."));
+  assert.ok(!containsUnsafeCommunityText("School starts next week so I'm selling some bulk."));
+});
+
+// ---------- Build-11 follow-ups ----------
+test("quick report: per-store category memory, Singles chip, suggested stores when nothing is followed", async () => {
+  const q = await import("../src/features/restocks/quickReport.js");
+  assert.deepEqual(q.QUICK_REPORT_CATEGORIES.map((c) => c.label), ["Sealed", "Singles", "Both"]);
+  const store = new Map();
+  const storage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) };
+  q.rememberQuickReportChoice({ storeId: "s1", storeName: "Target", status: "no_stock", category: "Pokémon TCG singles" }, storage);
+  q.rememberQuickReportChoice({ storeId: "s2", storeName: "Walmart", status: "no_stock", category: "Pokémon TCG sealed" }, storage);
+  const memory = q.readQuickReportMemory(storage);
+  assert.equal(q.categoryForStore({ id: "s1" }, memory), "Pokémon TCG singles", "this store's last category wins");
+  assert.equal(q.categoryForStore({ id: "s9" }, memory), "Pokémon TCG sealed", "unknown store falls back to the last used anywhere");
+  assert.equal(q.categoryForStore({ id: "s9" }, {}), q.DEFAULT_QUICK_CATEGORY);
+  assert.equal(q.buildQuickReportOptions({ store: { id: "s1" }, status: "low_stock", memory }).productCategory, "Pokémon TCG singles");
+  assert.equal(q.buildQuickReportOptions({ store: { id: "s1" }, status: "low_stock", category: "Pokémon TCG sealed and singles", memory }).productCategory, "Pokémon TCG sealed and singles", "explicit chip wins");
+  const choices = q.quickReportStoreChoices({ followed: [], nearby: [{ id: "d1", storeName: "GameStop" }, { id: "d2", storeName: "Costco" }], memory: {} });
+  assert.deepEqual(choices.map((c) => [c.id, c.reason]), [["d1", "Suggested"], ["d2", "Suggested"]]);
+  const React = (await import("react")).default;
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const { default: QuickRestockLauncher } = await load("src/features/restocks/QuickRestockLauncher.jsx", "quick-launcher-2");
+  globalThis.localStorage = { getItem: () => null, setItem: () => {} };
+  const html = renderToStaticMarkup(React.createElement(QuickRestockLauncher, { followedStores: [], nearbyStores: [{ id: "d1", storeName: "GameStop" }] }));
+  assert.match(html, /GameStop/);
+  assert.match(html, /Suggested/);
+  assert.equal((html.match(/quick-restock__category/g) || []).length, 3);
+  assert.match(html, /Follow a store in Restocks and it shows up here first/);
+  delete globalThis.localStorage;
+  assert.match(src("src/pages/OperationsHome.jsx"), /nearbyStores=\{[^}]*suggestedStores\}/);
+});
+
+test("trade analyzer: a known shelf price makes the sealed fallback a one-tap button", async () => {
+  const { buildTradeComparison } = await import("../src/utils/tradeValueUtils.js");
+  const money = (v) => `$${Number(v).toFixed(2)}`;
+  const withMsrp = buildTradeComparison({ outgoingQuantity: 1, receivedName: "ETB", receivedType: "Sealed", receivedQuantity: 2 }, { marketPrice: 120 }, { moneyFormatter: money, receivedMsrp: 49.99 });
+  const tap = withMsrp.fallbackSuggestions.find((f) => f.source === "MSRP");
+  assert.equal(tap.value, 99.98, "quantity-aware");
+  assert.match(tap.label, /\$99\.98/);
+  const without = buildTradeComparison({ outgoingQuantity: 1, receivedName: "ETB", receivedType: "Sealed" }, { marketPrice: 120 }, { moneyFormatter: money });
+  assert.equal(without.fallbackSuggestions.find((f) => f.source === "MSRP").value, null, "still a hint when the shelf price is unknown");
+  assert.match(src("src/App.jsx"), /receivedMsrp: receivedEstimate\?\.msrp \|\| null/);
+  assert.match(src("src/App.jsx"), /Shelf price \/ MSRP \(/);
+});
+
+test("purchase return: mark linked items returned once refunded, never sold ones", async () => {
+  const { createManualLifecycleService } = await load("src/features/manualLifecycles/service.js", "lifecycle-service");
+  let state = { inventory: [
+    { id: "i1", purchaseId: "p1", name: "ETB A", quantity: 1, currentStatus: "New" },
+    { id: "i2", purchaseId: "p1", name: "ETB B", quantity: 1, currentStatus: "Sold" },
+    { id: "i3", purchaseId: "p2", name: "Other", quantity: 1, currentStatus: "New" },
+  ], sales: [], purchases: [{ id: "p1", totalPurchaseCost: 100 }, { id: "p2" }], manualLifecycles: [
+    { id: "r1", type: "purchaseReturn", purchaseId: "p1", status: "Requested" },
+    { id: "r2", type: "purchaseReturn", purchaseId: "p1", status: "Refunded" },
+  ] };
+  const repository = { load: () => state, getLastError: () => "", runLocked: (fn) => Promise.resolve(fn()), save: (next) => { state = next; return { state: next }; } };
+  const service = createManualLifecycleService(repository, { now: () => "2026-11-15T00:00:00.000Z" });
+  await assert.rejects(() => service.markPurchaseReturned("r1"), /once the refund is recorded/);
+  await assert.rejects(() => service.markPurchaseReturned("nope"), /missing/);
+  const result = await service.markPurchaseReturned("r2");
+  assert.equal(result.changed, 1);
+  assert.equal(state.inventory[0].currentStatus, "Returned");
+  assert.equal(state.inventory[0].disposition, "Returned to seller");
+  assert.equal(state.inventory[0].returnRecordId, "r2");
+  assert.equal(state.inventory[1].currentStatus, "Sold", "sold items untouched");
+  assert.equal(state.inventory[2].currentStatus, "New", "other purchases untouched");
+  assert.equal((await service.markPurchaseReturned("r2")).changed, 0, "idempotent");
+  assert.match(src("src/features/manualLifecycles/ManualLifecycles.jsx"), /<PurchaseReturnItems record=\{record\}/);
+});
+
+// ---- SHOULD 17: alerts end to end (app side) ----
+test("saved searches: merge device + account lists, newest run first, one row per query", async () => {
+  const m = await import("../src/features/market/savedSearches.js");
+  const merged = m.mergeSavedSearches(
+    [{ query: "Charizard", lastRunAt: "2026-11-14T00:00:00Z" }, { query: "151", lastRunAt: "2026-11-13T00:00:00Z" }],
+    [{ query: "charizard", label: "Zard", lastRunAt: "2026-11-10T00:00:00Z" }, { query: "Prismatic", lastRunAt: "2026-11-12T00:00:00Z" }],
+  );
+  assert.deepEqual(merged.map((r) => r.query), ["charizard", "151", "Prismatic"]);
+  assert.equal(merged[0].label, "Zard"); assert.equal(merged[0].lastRunAt, "2026-11-14T00:00:00Z");
+  const row = m.savedSearchToRow({ query: "  Charizard  ex ", lastRunAt: "2026-11-14T00:00:00Z" }, "u1");
+  assert.equal(row.query, "Charizard ex"); assert.equal(row.query_key, "charizard ex"); assert.equal(row.user_id, "u1");
+  // writeSavedSearches announces changes (App syncs them); silent writes do not.
+  const events = []; const prevDispatch = globalThis.dispatchEvent; const prevCE = globalThis.CustomEvent;
+  globalThis.CustomEvent = class { constructor(type, init) { this.type = type; this.detail = init?.detail; } };
+  globalThis.dispatchEvent = (e) => { events.push(e.type); return true; };
+  const store = new Map(); const storage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) };
+  m.writeSavedSearches([{ query: "a" }], storage); m.writeSavedSearches([{ query: "b" }], storage, { silent: true });
+  globalThis.dispatchEvent = prevDispatch; globalThis.CustomEvent = prevCE;
+  assert.deepEqual(events, [m.SAVED_SEARCHES_CHANGED_EVENT]);
+  // sync: pushes local, pulls remote, deletes rows no longer kept
+  const calls = [];
+  const client = { from: () => ({
+    select: () => ({ eq: async () => ({ data: [{ query: "151", label: null, created_at: "2026-11-01T00:00:00Z", last_run_at: "2026-11-13T00:00:00Z" }, { query: "gone", created_at: "2026-11-01T00:00:00Z", last_run_at: "2026-11-01T00:00:00Z" }], error: null }) }),
+    upsert: async (rows, opts) => { calls.push(["upsert", rows.map((r) => r.query_key), opts.onConflict]); return { error: null }; },
+    delete: () => ({ eq: () => ({ in: async (col, keys) => { calls.push(["delete", keys]); return { error: null }; } }) }),
+  }) };
+  const result = await m.syncSavedSearches(client, "u1", [{ query: "Charizard", lastRunAt: "2026-11-14T00:00:00Z" }]);
+  assert.deepEqual(result.map((r) => r.query), ["Charizard", "151", "gone"].slice(0, 2).concat("gone"));
+  assert.equal(calls[0][0], "upsert"); assert.equal(calls[0][2], "user_id,query_key");
+  assert.equal(calls.some((c) => c[0] === "delete"), false, "merge is additive; nothing to delete");
+  calls.length = 0;
+  const pushed = await m.syncSavedSearches(client, "u1", [{ query: "Charizard", lastRunAt: "2026-11-14T00:00:00Z" }], { mode: "push" });
+  assert.deepEqual(pushed.map((r) => r.query), ["Charizard"], "push: the device list is authoritative");
+  assert.deepEqual(calls.find((c) => c[0] === "delete")[1].sort(), ["151", "gone"], "push removes unsubscribed searches from the account");
+  assert.match(src("src/App.jsx"), /syncSavedSearches\(supabase, user\.id, undefined, \{ mode \}\)/);
+  assert.match(src("src/App.jsx"), /route\.startsWith\("\/find\/restocks"\)/);
+  assert.match(src("src/App.jsx"), /route\.startsWith\("\/market"\)/);
+  assert.match(src("src/App.jsx"), /visibilitychange", onVisible\)/, "notifications refresh when the app returns to the foreground");
+});
+
+// ---- SHOULD 16: main store off localStorage (durable IndexedDB copy) ----
+test("durable store: IndexedDB copy wins when the quick copy is evicted or quota-refused; saves survive a full quota", async () => {
+  const m = await import("../src/features/persistence/legacyAppStorage.js");
+  const fx = JSON.stringify({ items: [{ id: "a", name: "A", quantity: 1 }], userType: "seller" });
+  const big = JSON.stringify({ items: [{ id: "a", name: "A", quantity: 9 }, { id: "b", name: "B", quantity: 2 }], userType: "seller" });
+  assert.equal(m.chooseStartupCopy(fx, null).source, "quick");
+  assert.equal(m.chooseStartupCopy(null, { serialized: big, quickCopy: true }).source, "durable");
+  assert.equal(m.chooseStartupCopy(fx, { serialized: big, quickCopy: false }).source, "durable");
+  assert.equal(m.chooseStartupCopy(fx, { serialized: big, quickCopy: true }).source, "quick");
+  m._resetDurablePreloadForTests({ serialized: big, quickCopy: false });
+  let bytes = fx, fail = false; const writes = []; const puts = [];
+  const storage = { getItem: () => bytes, setItem: (k, v) => { if (fail) throw new DOMException("q", "QuotaExceededError"); writes.push(v); bytes = v; } };
+  const prevIDB = globalThis.indexedDB;
+  globalThis.indexedDB = { open() { const req = {}; setTimeout(() => { req.result = { objectStoreNames: { contains: () => true }, transaction: () => ({ objectStore: () => ({ put: (v) => puts.push(v) }), set oncomplete(f) { setTimeout(f, 0); }, set onerror(_) {}, set onabort(_) {} }), close() {} }; req.onsuccess?.(); }, 0); return req; } };
+  try {
+    const guard = m.createLegacyAppStorageGuard();
+    const loaded = guard.load(storage);
+    assert.equal(loaded.source, "durable"); assert.equal(loaded.data.items.length, 2);
+    fail = true;
+    const r1 = guard.save(storage, { items: [{ id: "c", name: "C", quantity: 1 }] });
+    assert.equal(r1.ok, true); assert.equal(r1.durableOnly, true);
+    await new Promise((r) => setTimeout(r, 10));
+    assert.match(guard.getError(), /outgrown/); assert.equal(puts.at(-1).quickCopy, false);
+    fail = false;
+    assert.equal(guard.save(storage, { items: [{ id: "d", name: "D", quantity: 1 }] }).ok, true);
+    assert.equal(writes.length, 1); assert.equal(guard.getError(), "");
+    await new Promise((r) => setTimeout(r, 10));
+    assert.equal(puts.at(-1).quickCopy, true);
+  } finally { globalThis.indexedDB = prevIDB; m._resetDurablePreloadForTests(null); }
+  assert.match(src("src/main.jsx"), /preloadDurableAppData\(\)\.finally/);
 });

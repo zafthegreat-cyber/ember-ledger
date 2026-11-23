@@ -41,6 +41,14 @@ const fixture = new URL("/__qa/workspace-recovery", base).href;
     results.push({ check: "native independent-tab shared lease refuses recovery", passed: true });
 
     await appTab.close();
+    // Chromium releases a closed tab's Web Locks asynchronously after close() resolves.
+    // Wait for the browser's own lock manager to report the peer's shared lease gone
+    // (the real precondition) instead of racing it.
+    await recoveryTab.waitForFunction(async () => {
+      const { WORKSPACE_STORAGE_LOCK } = window.recovery;
+      const state = await navigator.locks.query();
+      return !state.held.some((lock) => lock.name === WORKSPACE_STORAGE_LOCK) && !state.pending.some((lock) => lock.name === WORKSPACE_STORAGE_LOCK);
+    }, null, { timeout: 10000, polling: 50 });
     const recovered = await recoveryTab.evaluate(async () => {
       const { createVerifiedBackup } = await import("/src/features/backup/backupFormat.js");
       const { getBackupSource } = await import("/src/features/backup/backupSourceRegistry.js");

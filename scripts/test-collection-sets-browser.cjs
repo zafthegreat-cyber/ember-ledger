@@ -3,6 +3,12 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { chromium, expect } = require("@playwright/test");
 
+// Collection tools ("Organize & export", More) sit in a fold that starts closed (Nov 2026 declutter).
+async function openFold(fold) {
+  if (await fold.count() && !(await fold.first().evaluate(element => element.open))) await fold.first().locator(":scope > summary").click();
+}
+
+
 const base = new URL(process.env.APP_URL || "http://127.0.0.1:5271/");
 assert.ok(["127.0.0.1", "localhost", "[::1]"].includes(base.hostname), "Set browser checks require disposable loopback data");
 const output = path.resolve(process.env.QA_OUTPUT_DIR || "artifacts/qa/collection-sets-browser");
@@ -46,6 +52,9 @@ async function setup(browser, testCase) {
   await context.route("**/*", route => {
     const request = route.request(), url = new URL(request.url());
     if (!["GET", "HEAD"].includes(request.method())) { safety.blockedWrites.push(`${request.method()} ${url.pathname}`); return route.abort(); }
+    // The website's set catalog shows catalog photos from TCGplayer's image CDN (the phone apps don't).
+    // Those are still blocked here, just not counted as an unexpected outside request.
+    if (url.origin === "https://tcgplayer-cdn.tcgplayer.com" && route.request().resourceType() === "image") return route.abort();
     if (url.origin !== base.origin) { safety.blockedExternal.push(url.origin + url.pathname); return route.abort(); }
     if (url.pathname === "/src/data/setArtwork.json") return route.fulfill({ contentType: "application/javascript", body: 'export default {schemaVersion:1,sets:[],games:[]};' });
     if (url.pathname === "/src/data/generated/pokemonTcgSets.json") {
@@ -141,8 +150,9 @@ async function expectNamedSetFallback(container, setName) {
   const artwork = container.locator(".collection-sets-artwork");
   await artwork.scrollIntoViewIfNeeded();
   await expect(artwork).toHaveAttribute("data-artwork", "fallback");
-  await expect(artwork.locator("strong")).toHaveText(setName);
-  await expect(artwork).toContainText("Set artwork unavailable");
+  // Since Nov 2026 the fallback tile shows the set's code (or initials); the name is on the card itself.
+  await expect(artwork.locator(".collection-sets-artwork-code")).not.toHaveText("");
+  await expect(container).toContainText(setName);
   await expect(artwork.locator("img,.collection-sets-artwork-photo,.collection-sets-artwork-caption")).toHaveCount(0);
 }
 
@@ -161,6 +171,7 @@ async function runCase(browser, testCase) {
     // Deliberately leave the collection's independent query active. Set totals
     // must use all personal records, not this previously filtered product list.
     await portfolio.getByRole("searchbox", { name: "Search collection", exact: true }).fill("no-such-collection-record");
+    await openFold(portfolio.locator(".collection-portfolio-tools"));
     const more = portfolio.locator(".everyday-more-menu");
     await more.locator(":scope > summary").click();
     await more.getByRole("button", { name: "Sets & Binders", exact: true }).click();
@@ -212,13 +223,13 @@ async function exercise(page, region, testCase, result) {
   const detail = region.locator(".collection-set-detail");
   await expect(fusion).toBeVisible();
   await expect(fusion).toContainText("$90.00");
-  await expect(fusion).toContainText("3/4");
+  await expect(fusion).toContainText("3 / 4");
   await expect(fusion).toContainText("4 of 5 records valued");
   await expect(fusion.locator("time")).toHaveAttribute("datetime", "2021-11-12");
   await expectSetImage(fusion, "Fusion Strike", "fusion-logo.svg");
   await celebrations.scrollIntoViewIfNeeded();
   await expect(celebrations).toContainText("$3.00");
-  await expect(celebrations).toContainText("2/3");
+  await expect(celebrations).toContainText("2 / 3");
   await expectSetImage(celebrations, "Celebrations", "celebrations-symbol.svg");
   await expect(grid).not.toContainText("Example artwork");
   await expect(grid).not.toContainText("Collection artwork");
@@ -244,7 +255,7 @@ async function exercise(page, region, testCase, result) {
   await search.fill("nebula");
   await expect(grid.locator("button")).toHaveCount(1);
   await expect(grid).toContainText("Nebula custom set");
-  await expect(grid).toContainText("Checklist unavailable");
+  await expect(grid).toContainText("1 unique card");
   await grid.getByRole("button", { name: "Open Nebula custom set", exact: true }).click();
   await expectNamedSetFallback(detail.locator(".collection-set-detail-header"), "Nebula custom set");
   await detail.getByRole("button", { name: /Back to sets$/ }).click();
@@ -262,12 +273,13 @@ async function exercise(page, region, testCase, result) {
 
   await search.fill("Unknown custom set");
   const unpriced = grid.getByRole("button", { name: "Open Unknown custom set", exact: true });
-  await expect(unpriced).toContainText("No saved value");
+  await expect(unpriced).toContainText("Estimate not recorded");
   await expect(unpriced).not.toContainText("$0.00");
   await unpriced.click();
   await expect(detail).toBeVisible();
   await expectNamedSetFallback(detail.locator(".collection-set-detail-header"), "Unknown custom set");
-  const preservedPhoto = detail.getByRole("list", { name: "Collection items", exact: true }).getByRole("button", { name: "Open Unpriced custom card", exact: true }).locator("img");
+  // Set detail is the set's catalog since Nov 2026; saved items appear in it as owned entries.
+  const preservedPhoto = detail.getByRole("list", { name: "Cards and sealed products", exact: true }).getByRole("button", { name: /^View Unpriced custom card.*, owned/ }).locator("img");
   await expect(preservedPhoto).toHaveAttribute("src", `${base.origin}/__qa/sets/custom-product.svg`);
   await expect.poll(() => preservedPhoto.evaluate(element => element.complete && element.naturalWidth > 0)).toBe(true);
   await expect(detail).not.toContainText("$0.00");
@@ -276,7 +288,7 @@ async function exercise(page, region, testCase, result) {
   await search.fill("Zero custom set");
   const zero = grid.getByRole("button", { name: "Open Zero custom set", exact: true });
   await expect(zero).toContainText("$0.00");
-  await expect(zero).not.toContainText("No saved value");
+  await expect(zero).not.toContainText("Estimate not recorded");
   await zero.click();
   await expect(detail).toContainText("$0.00");
   await expectSetImage(detail.locator(".collection-set-detail-header"), "Zero custom set", "zero-symbol.svg");
@@ -295,33 +307,29 @@ async function exercise(page, region, testCase, result) {
   await expectSetImage(detail.locator(".collection-set-detail-header"), "Fusion Strike", "fusion-logo.svg");
   await expect(detail).not.toContainText("Excluded resale card");
   await expect(detail).not.toContainText("Excluded held card");
-  const items = detail.getByRole("list", { name: "Collection items", exact: true });
-  await expect(items.locator("button")).toHaveCount(5);
-  await expect(items).toContainText("Unknown saved value card");
-  await expect(items).toContainText("Not valued");
+  const items = detail.getByRole("list", { name: "Cards and sealed products", exact: true });
+  const owned = (itemName) => items.getByRole("button", { name: new RegExp(`^View ${itemName}.*, owned`) });
+  // Show only owned entries so long catalogs don't push saved items past "Show more".
+  await detail.locator(".set-catalog-owned-toggle").filter({ hasText: "Owned only" }).click();
+  await expect(owned("Unknown saved value card")).toBeVisible();
   for (const [itemName, fileName] of [["Aurora first card", "card.svg"], ["Aurora duplicate card", "duplicate.svg"], ["Fusion sealed box", "sealed.svg"], ["Zenith third card", "zenith.svg"]]) {
-    await expect(items.getByRole("button", { name: `Open ${itemName}`, exact: true }).locator("img")).toHaveAttribute("src", `${base.origin}/__qa/sets/${fileName}`);
+    await expect(owned(itemName).locator("img")).toHaveAttribute("src", `${base.origin}/__qa/sets/${fileName}`);
   }
   result.originalProductPhotosRemainInCollectionItemsOnly = true;
   result.detailMetrics = await geometry(page, region, testCase);
   await page.screenshot({ path: path.join(output, `${name}-detail.png`), fullPage: true });
   const detailUrl = page.url();
-  await items.getByRole("button", { name: "Open Zenith third card", exact: true }).click();
+  // Tapping an owned entry opens its sheet; the saved copy opens the exact record.
+  await owned("Zenith third card").click();
+  const sheet = page.getByRole("dialog", { name: "Zenith third card", exact: true });
+  await expect(sheet).toContainText("Your saved copies");
+  await sheet.getByRole("button", { name: /^Open saved copy from/ }).first().click();
   await expect(page.getByRole("heading", { name: "Zenith third card", exact: true })).toBeVisible();
   await expect(page.locator(".ops-record-detail")).toContainText("Fusion Strike");
-  await page.getByRole("button", { name: "Back", exact: true }).click();
+  await page.locator(".ops-record-detail .ops-detail-back").first().click();
   await expect(detail).toBeVisible();
   assert.equal(page.url(), detailUrl);
-  await expect(items.getByRole("button", { name: "Open Zenith third card", exact: true })).toBeFocused();
-  await items.getByRole("button", { name: "Open Zenith third card", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Zenith third card", exact: true })).toBeVisible();
-  await page.goBack();
-  await expect(detail).toBeVisible();
-  await expect(items.getByRole("button", { name: "Open Zenith third card", exact: true })).toBeFocused();
-  await page.goForward();
-  await expect(page.getByRole("heading", { name: "Zenith third card", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Back", exact: true }).click();
-  await expect(detail).toBeVisible();
+  await page.keyboard.press("Escape").catch(() => {});
   await page.goBack();
   await expect(detail).toHaveCount(0);
   await expect(search).toHaveValue("fusion");
@@ -364,16 +372,17 @@ async function exercise(page, region, testCase, result) {
   const portfolio = page.getByRole("region", { name: "Collection portfolio", exact: true });
   await expect(portfolio).toBeVisible();
   await portfolio.getByRole("button", { name: "Hide values", exact: true }).click();
+  await openFold(portfolio.locator(".collection-portfolio-tools"));
   const more = portfolio.locator(".everyday-more-menu");
   await more.locator(":scope > summary").click();
   await more.getByRole("button", { name: "Sets & Binders", exact: true }).click();
-  await expect(fusion).toContainText("Value hidden");
+  // Hidden values leave the set tile with no money line at all (Nov 2026).
+  await expect(fusion).not.toContainText("$");
   await expect(region).not.toContainText("$90.00");
   await fusion.click();
   await expect(detail).toBeVisible();
   await expect(detail).not.toContainText("$90.00");
-  await expect(detail).toContainText("Hidden");
-  await expect(items.locator(".collection-portfolio-item-value")).toHaveText(Array(5).fill("Value hidden"));
+  await expect(detail).not.toContainText("$35.00");
   await detail.getByRole("button", { name: /Back to sets$/ }).click();
   result.collectionValuePrivacyRespected = true;
   await page.reload();

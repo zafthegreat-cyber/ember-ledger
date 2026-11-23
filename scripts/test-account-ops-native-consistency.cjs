@@ -162,12 +162,14 @@ async function mountedUi(browser, theme, width) {
     await page.getByTestId("account-ops").waitFor();
     await peer.evaluate(async () => { const { createAccountOpsService } = await import("/src/features/accountOps/service.js"); window.accountOps = createAccountOpsService(); });
     const profile = await peer.evaluate(async () => (await window.accountOps.createProfile({ displayName: "Synthetic peer profile" })).record);
-    const card = page.locator(".account-ops-card").filter({ has: page.getByRole("heading", { name: "Synthetic peer profile", exact: true }) });
+    // Profiles are a record list; choosing a row shows its detail card with Open profile.
+    await page.locator(".ops-record-browser__row", { hasText: "Synthetic peer profile" }).click();
+    const card = page.locator(".account-ops-record-detail").filter({ has: page.getByRole("heading", { name: "Synthetic peer profile", exact: true }) });
     await expect(card).toBeVisible();
-    await card.getByRole("button", { name: "Open", exact: true }).click();
+    await card.getByRole("button", { name: "Open profile", exact: true }).click();
     await page.getByRole("dialog").getByLabel("Display name", { exact: true }).fill("Synthetic unsaved draft");
     await peer.evaluate(async profile => window.accountOps.updateProfile(profile.id, { displayName: "Synthetic peer updated" }, profile.recordVersion), profile);
-    await expect(page.locator(".account-ops-card h3")).toHaveText("Synthetic peer updated");
+    await expect(page.locator(".ops-record-browser__row")).toContainText(["Synthetic peer updated"]);
     await expect(page.getByRole("dialog").getByLabel("Display name", { exact: true })).toHaveValue("Synthetic unsaved draft");
     const beforeConflict = await read(peer);
     await page.getByRole("button", { name: "Save Profile", exact: true }).click();
@@ -176,20 +178,20 @@ async function mountedUi(browser, theme, width) {
     await expect(page.getByRole("dialog").getByLabel("Display name", { exact: true })).toHaveValue("Synthetic unsaved draft");
     await page.getByRole("button", { name: "Cancel", exact: true }).click();
     await peer.evaluate(profile => window.accountOps.archiveProfile(profile.id), profile);
-    await expect(page.locator(".account-ops-card h3")).toHaveCount(0);
+    await expect(page.locator(".ops-record-browser__row")).toHaveCount(0);
     await peer.evaluate(key => localStorage.removeItem(key), KEY);
     await expect(page.getByRole("heading", { name: "No profiles found", exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Create Profile", exact: true }).first().click();
     await page.getByRole("dialog").getByLabel("Display name", { exact: true }).fill("Synthetic after remove");
     await page.getByRole("button", { name: "Save Profile", exact: true }).click();
-    await expect(page.locator(".account-ops-card h3")).toHaveText("Synthetic after remove");
+    await expect(page.locator(".ops-record-browser__row")).toContainText(["Synthetic after remove"]);
     const recreated = JSON.parse(await read(page)); assert.equal(recreated.profiles.length, 1); assert.equal(recreated.activity.length, 1);
     await peer.evaluate(() => localStorage.clear());
-    await expect(page.locator(".account-ops-card h3")).toHaveCount(0);
+    await expect(page.locator(".ops-record-browser__row")).toHaveCount(0);
     await page.getByRole("button", { name: "Create Profile", exact: true }).first().click();
     await page.getByRole("dialog").getByLabel("Display name", { exact: true }).fill("Synthetic preserved on peer create");
     await peer.evaluate(() => window.accountOps.createProfile({ displayName: "Synthetic after clear" }));
-    await expect(page.locator(".account-ops-card h3")).toHaveText("Synthetic after clear");
+    await expect(page.locator(".ops-record-browser__row")).toContainText(["Synthetic after clear"]);
     await expect(page.getByRole("dialog").getByLabel("Display name", { exact: true })).toHaveValue("Synthetic preserved on peer create");
     await page.screenshot({ path: path.join(output, `live-refresh-${theme}-${width}.png`), fullPage: true });
     await page.evaluate(() => window.mountAccountOps("authorized", "b".repeat(64)));
@@ -209,7 +211,7 @@ async function mountedUi(browser, theme, width) {
     });
     assert.deepEqual(await page.evaluate(() => window.privateReads), [], "A latched recovery failure requires Reload before further private reads.");
     await page.getByRole("button", { name: "Reload Account Ops", exact: true }).click();
-    await expect(page.locator(".account-ops-card h3")).toHaveText("Synthetic after clear");
+    await expect(page.locator(".ops-record-browser__row")).toContainText(["Synthetic after clear"]);
     await page.evaluate(() => window.mountAccountOps("sign_in_required"));
     await expect(page.getByRole("heading", { name: "Sign In Required", exact: true })).toBeVisible();
     await page.evaluate(() => {

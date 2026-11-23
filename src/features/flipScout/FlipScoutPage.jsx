@@ -67,7 +67,7 @@ function createActivity(title, detail) {
   return { id: `activity-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, title, detail, createdAt: new Date().toISOString() };
 }
 
-export default function FlipScoutPage({ onOpenRestocks, onReportRestock, initialScreen = "deals", initialSubview = "", onViewChange, featureControls = EMPTY_FEATURE_CONTROLS, experiencePresentation }) {
+export default function FlipScoutPage({ onOpenRestocks, onReportRestock, initialScreen = "deals", initialSubview = "", onViewChange, featureControls = EMPTY_FEATURE_CONTROLS, experiencePresentation, restockMap = null }) {
   const presentation = experiencePresentation || resolveExperiencePresentation();
   const showOperationalTools = presentation.showBusinessTools || presentation.showAdminTools;
   const [repository] = useState(() => createFlipScoutRepository());
@@ -101,7 +101,10 @@ export default function FlipScoutPage({ onOpenRestocks, onReportRestock, initial
     return () => { disposed = true; window.clearInterval(timer); window.removeEventListener("focus", reconcile); window.removeEventListener("online", reconcile); };
   }, [repository]);
   const activeTitle = useMemo(() => activeScreen === "records" && !showOperationalTools ? "Saved records" : SCREEN_TITLES[activeScreen] || "Find", [activeScreen, showOperationalTools]);
-  const visiblePrimaryNavItems = PRIMARY_NAV_ITEMS.filter(([key]) => key !== "restocks" || featureControls.restocks !== false).filter(([key]) => key !== "auctions" || featureControls.auctions !== false);
+  // Deals and Auctions are resale tools (owner, Nov 17: "They don't make sense").
+  // Collectors only see them once they have saved a listing or auction, or are on one of those screens.
+  const resaleTools = presentation.isSeller || presentation.isStore || showOperationalTools || state.deals.length > 0 || state.auctions.length > 0 || !["restocks"].includes(activeScreen);
+  const visiblePrimaryNavItems = PRIMARY_NAV_ITEMS.filter(([key]) => key !== "restocks" || featureControls.restocks !== false).filter(([key]) => key !== "auctions" || featureControls.auctions !== false).filter(([key]) => resaleTools || !["deals", "auctions"].includes(key));
   const intelligenceAnalyses = useMemo(() => (state.appraisals || [])
     .filter((record) => record.recordType === INTELLIGENCE_ANALYSIS_RECORD_TYPE)
     .sort((left, right) => String(right.analyzedAt || "").localeCompare(String(left.analyzedAt || ""))), [state.appraisals]);
@@ -248,7 +251,7 @@ export default function FlipScoutPage({ onOpenRestocks, onReportRestock, initial
 
   const findNavigation = <div className="flip-find-navigation">
     <nav className="flip-main-nav ops-find-nav" aria-label="Find navigation" style={{ "--flip-primary-count": visiblePrimaryNavItems.length }}>{visiblePrimaryNavItems.map(([key, label]) => <button type="button" key={key} className={activeScreen === key ? "active" : ""} aria-current={activeScreen === key ? "page" : undefined} onClick={() => navigate(key)}><span>{label}</span></button>)}</nav>
-    <details ref={moreMenuRef} className="flip-more-menu">
+    {resaleTools ? <details ref={moreMenuRef} className="flip-more-menu">
       <summary>More</summary>
       <div>
         <button type="button" onClick={() => navigate("rules")}>Saved searches</button>
@@ -259,7 +262,7 @@ export default function FlipScoutPage({ onOpenRestocks, onReportRestock, initial
         {showOperationalTools ? <button type="button" onClick={() => navigate("sources")}>Sources</button> : null}
         {showOperationalTools ? <button type="button" onClick={() => navigate("rules")}>Search Rule Editor</button> : null}
       </div>
-    </details>
+    </details> : null}
   </div>;
 
   return (
@@ -276,7 +279,7 @@ export default function FlipScoutPage({ onOpenRestocks, onReportRestock, initial
         <Suspense fallback={<LoadingState title={`Loading ${activeTitle}`} description="Preparing this workspace." />}>
         {activeScreen === "dashboard" ? <DashboardScreen state={state} onNavigate={navigate} /> : null}
         {activeScreen === "deals" ? <DealsScreen deals={state.deals} initialMode={subview} navigation={findNavigation} experiencePresentation={presentation} onSave={saveRecord} onDelete={deleteRecord} onAnalyze={analyzeDeal} /> : null}
-        {activeScreen === "restocks" ? <RestocksScreen onOpenRestocks={onOpenRestocks} onReportRestock={onReportRestock} /> : null}
+        {activeScreen === "restocks" ? <RestocksScreen onOpenRestocks={onOpenRestocks} onReportRestock={onReportRestock} restockMap={restockMap} /> : null}
         {activeScreen === "appraise" ? <AppraiserScreen seed={appraisalSeed} onSave={saveRecord} repository={repository} analysisRecords={intelligenceAnalyses} onAnalysisStored={analysisStored} /> : null}
         {activeScreen === "buy-offer" ? <BuyOfferScreen /> : null}
         {activeScreen === "auctions" ? <AuctionsScreen auctions={state.auctions} initialMode={subview} onSave={saveRecord} onDelete={deleteRecord} /> : null}

@@ -1,0 +1,31 @@
+.card-camera-frame { display: grid; gap: 12px; }
+.card-camera-frame__view { position: relative; width: 100%; aspect-ratio: 3 / 4; max-height: 64vh; overflow: hidden; border-radius: 14px; background: #000; }
+.card-camera-frame__view video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.card-camera-frame__guide {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  height: 74%; aspect-ratio: 63 / 88; max-width: 80%; /* smaller so phones can focus; the camera looks past the edge */
+  border: 3px solid #F3D987; border-radius: 4.5% / 3.2%;
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 55%);
+  pointer-events: none;
+}
+.card-camera-frame__guide span { position: absolute; left: 0; right: 0; text-align: center; font: 700 12px/1.2 var(--font-ui, sans-serif); color: #F3D987; text-shadow: 0 1px 2px #000; }
+.card-camera-frame__name { top: 6%; }
+.card-camera-frame__number { bottom: 3%; }
+.card-camera-frame__status { position: absolute; left: 12px; right: 12px; top: 50%; transform: translateY(-50%); margin: 0; padding: 12px; border-radius: 10px; background: rgb(0 0 0 / 72%); color: #fff; text-align: center; font-size: 14px; }
+.card-camera-frame__hint { margin: 0; color: var(--text-secondary); font-size: 14px; line-height: 1.45; }
+.card-camera-frame__actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.app .card-camera-frame__shutter, .card-camera-frame__shutter { flex: 1 1 180px; min-height: 52px; border: 0; border-radius: 12px; background: var(--action-primary, #E8C86B); color: var(--on-primary, #1A0F12); font: 700 16px/1 var(--font-ui, inherit); cursor: pointer; }
+.app .card-camera-frame__shutter:disabled { opacity: .6; cursor: default; }
+.app .card-camera-frame__cancel, .card-camera-frame__cancel { flex: 0 1 auto; min-height: 52px; padding: 0 16px; border: 1px solid var(--border-strong, #888); border-radius: 12px; background: transparent; color: var(--text-primary); font: 600 15px/1 var(--font-ui, inherit); cursor: pointer; }
+
+/* Auto-scan (Nov 19 2026): the frame warms from gold to bright as the hold steadies. */
+.card-camera-frame__guide.is-steadying { border-color: color-mix(in srgb, #FFF4C8 calc(var(--steady, 0) * 100%), #F3D987); border-width: calc(3px + var(--steady, 0) * 3px); }
+.card-camera-frame__auto-status { margin: 0; font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.card-camera-frame__toggles { display: flex; gap: 8px; flex-wrap: wrap; }
+.app .card-camera-frame__toggle, .card-camera-frame__toggle { min-height: 44px; padding: 0 14px; border: 1px solid var(--border-strong, #888); border-radius: 999px; background: transparent; color: var(--text-primary); font: 600 14px/1 var(--font-ui, inherit); cursor: pointer; }
+.app .card-camera-frame__toggle[aria-pressed="true"], .card-camera-frame__toggle[aria-pressed="true"] { background: var(--action-primary, #E8C86B); color: var(--on-primary, #1A0F12); border-color: transparent; }
+.app .card-camera-frame__toggle:disabled { opacity: .6; }
+@media (prefers-reduced-motion: reduce) { .card-camera-frame__guide.is-steadying { transition: none; } }
+
+/* Graded slab: taller frame (about 3.1 x 5.3 in), label band at the top. */
+.card-camera-frame--slab .card-camera-frame__guide { aspect-ratio: 31 / 53; }

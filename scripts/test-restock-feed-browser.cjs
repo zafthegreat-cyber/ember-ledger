@@ -29,7 +29,7 @@ async function records(page) {
       await context.route("**/*", route => {
         const request = route.request(), url = new URL(request.url());
         if (!["GET", "HEAD"].includes(request.method())) { writes.push(`${request.method()} ${url.pathname}`); return route.abort(); }
-        if (url.origin !== base.origin) { external.push(url.origin); return route.abort(); }
+        if (url.origin !== base.origin) { external.push(`${request.method()} ${url.origin}${url.pathname}`); return route.abort(); }
         if (url.pathname.startsWith("/api/")) return route.fulfill({ contentType: "application/json", body: '{"configured":false}' });
         return route.continue();
       });
@@ -57,7 +57,7 @@ async function records(page) {
       try {
         await page.goto(new URL(`/scout/reports?betaLocalMode=true&themeInspect=${theme}`, base).href);
         const feed = page.locator(".scout-reports-landing"), cards = feed.locator(".scout-feed-report-card");
-        await expect(feed.getByRole("heading", { name: "Recent restock reports", exact: true })).toBeVisible({ timeout: 30000 });
+        await expect(feed.getByRole("heading", { name: "Restock reports", exact: true })).toBeVisible({ timeout: 30000 });
         await expect(page.locator(".app[data-theme]")).toHaveAttribute("data-theme", theme);
         await expect(cards).toHaveCount(20);
         // Finish the existing deferred seed hydration before comparing saved
@@ -71,10 +71,13 @@ async function records(page) {
         await expect(page.locator('.flow-modal[data-flow="addActionSheet"]')).toHaveCount(0);
         const original = await records(page);
         await expect(feed.getByRole("status")).toContainText("20 of 26 reports shown");
-        await feed.getByRole("button", { name: "Show more reports", exact: true }).click(); await expect(cards).toHaveCount(26);
+        await feed.getByRole("button", { name: "Show next 6 · 6 remaining", exact: true }).click(); await expect(cards).toHaveCount(26);
         await feed.getByRole("button", { name: "Show fewer reports", exact: true }).click(); await expect(cards).toHaveCount(20);
         await feed.getByRole("button", { name: /^Stock seen(?:,|$)/ }).click(); await expect(cards).toHaveCount(15);
         await expect(feed.getByRole("button", { name: /^Stock seen(?:,|$)/ })).toHaveAttribute("aria-pressed", "true");
+        // Date, game and location filters live in the "More filters" fold, closed at first.
+        const moreFilters = feed.locator("details.restock-browser-area");
+        if (!(await moreFilters.evaluate(element => element.open))) await moreFilters.locator(":scope > summary").click();
         await feed.getByLabel("Observed", { exact: true }).selectOption("24h"); await expect(cards).toHaveCount(8);
         await feed.getByRole("searchbox", { name: "Search reports", exact: true }).fill("NORFOLK aurora"); await expect(cards).toHaveCount(8);
         const first = cards.first(); await expect(first).toContainText("Aurora Pack 0"); await expect(first).toContainText("Photo attached");
@@ -86,7 +89,7 @@ async function records(page) {
         await expect(feed.getByRole("searchbox", { name: "Search reports", exact: true })).toHaveValue("NORFOLK aurora"); await expect(cards).toHaveCount(8);
         await feed.getByRole("button", { name: /^Low stock(?:,|$)/ }).click(); await expect(cards).toHaveCount(0);
         await expect(feed.getByRole("heading", { name: "Try a wider search", exact: true })).toBeVisible();
-        await feed.getByRole("button", { name: "Show all reports", exact: true }).click(); await expect(cards).toHaveCount(20);
+        await feed.getByRole("button", { name: "Clear product filters", exact: true }).click(); await expect(cards).toHaveCount(20);
         await expect(feed.getByRole("searchbox", { name: "Search reports", exact: true })).toBeFocused();
         await feed.getByRole("button", { name: /^Low stock(?:,|$)/ }).click(); await expect(cards).toHaveCount(5);
         await feed.getByRole("button", { name: /^Empty shelves(?:,|$)/ }).click(); await expect(cards).toHaveCount(5);
@@ -115,7 +118,9 @@ async function records(page) {
           await page.screenshot({ path: path.join(output, "320-dark-200percent.png") });
         }
         assert.equal(await records(page), original, "Browse/filter/details preserve every report, item and price");
-        assert.deepEqual(writes, []); assert.deepEqual(external, []); assert.deepEqual(errors, []);
+        assert.deepEqual(writes, []);
+        // The public community feed is read with GET; the route aborts it before it leaves, and nothing may write.
+        assert.ok(external.every(entry => /^(GET|HEAD) /.test(entry)), `Only blocked reads left the origin: ${external.join(", ")}`); assert.deepEqual(errors, []);
         results.push({ ...testCase, pagination: true, composedFilters: true, observationNotUploadTime: true, unknownFutureExcludedFromRecent: true, fullDetailsPreserved: true, sourceRecordsUnchanged: true, keyboardFocus: true, metrics, writes, external, errors });
       } catch (error) {
         await page.screenshot({ path: path.join(output, `${width}-${theme}-failure.png`), fullPage: true }).catch(() => {});

@@ -61,11 +61,15 @@ async function checkPresentation(modal, theme) {
     assert.ok(control.left >= -1 && control.right <= metrics.viewportWidth + 1, `${control.label} exceeds the viewport`);
   }
   assert.ok(metrics.surfaces.every((image) => image === "none"), "Dialog surfaces must not retain decorative gradients");
-  const surface = theme === "dark" ? "rgb(26, 34, 45)" : "rgb(255, 255, 255)";
-  assert.equal(metrics.footer.background, surface, "Sticky footer must be opaque");
-  assert.equal(metrics.footer.buttonBackground, surface, "Close remains a secondary action");
-  assert.equal(metrics.primary.background, theme === "dark" ? "rgb(103, 200, 187)" : "rgb(15, 118, 110)");
-  assert.equal(metrics.primary.color, theme === "dark" ? "rgb(16, 44, 39)" : "rgb(255, 255, 255)");
+  // Colors follow the brand tokens (no blue or teal since Nov 17, 2026), so check intent, not hex values.
+  const channels = (color) => (String(color).match(/[\d.]+/g) || []).map(Number);
+  const hue = ([r, g, b]) => { const max = Math.max(r, g, b), min = Math.min(r, g, b); if (max === min) return null; const d = max - min; const h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4; return (h * 60 + 360) % 360; };
+  const [, , , footerAlpha = 1] = channels(metrics.footer.background);
+  assert.equal(footerAlpha, 1, `Sticky footer must be opaque (${metrics.footer.background})`);
+  assert.ok([metrics.footer.background, "rgba(0, 0, 0, 0)", "transparent"].includes(metrics.footer.buttonBackground), "Close remains a secondary action");
+  assert.notEqual(metrics.primary.background, metrics.footer.background, "Primary action stands out from the footer");
+  const primaryHue = hue(channels(metrics.primary.background));
+  assert.ok(primaryHue === null || primaryHue < 150 || primaryHue > 290, `Primary action must not be blue or teal (${metrics.primary.background})`);
   metrics.primary.contrast = contrastRatio(metrics.primary.color, metrics.primary.background);
   assert.ok(metrics.primary.contrast >= 4.5, "Primary action label must maintain readable contrast");
   assert.ok(metrics.titlesAndActions.every((element) => element.overflowX <= 1 && element.overflowY <= 1), "Dialog title and Calculate action must render their full text");
@@ -135,6 +139,8 @@ async function assertFocusClear(locator, modal) {
 
         await modal.getByRole("button", { name: "Close Deal Finder", exact: true }).focus();
         await page.keyboard.press("Tab");
+        await expect(modal.locator(".deal-finder-explainer > summary")).toBeFocused();
+        await page.keyboard.press("Tab");
         await expect(modal.getByRole("combobox").first()).toBeFocused();
         const calculate = modal.getByRole("button", { name: "Calculate & Save Deal", exact: true });
         await calculate.focus();
@@ -146,7 +152,7 @@ async function assertFocusClear(locator, modal) {
         assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem("et-tcg-phase2-data")).dealFinderSessions.length), 0);
         await screenshot("validation");
 
-        const details = modal.locator("details");
+        const details = modal.locator("details:not(.deal-finder-explainer)");
         await details.locator("summary").focus();
         await page.keyboard.press("Enter");
         await expect(details).toHaveAttribute("open", "");
@@ -168,7 +174,7 @@ async function assertFocusClear(locator, modal) {
         await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("et-tcg-beta-data")).dealForm?.notes)).toBe("Synthetic draft only. No purchase or external save.");
         await page.keyboard.press("Escape");
         await expect(modal).toHaveCount(0);
-        await page.getByRole("button", { name: /^Check deal/i }).first().click();
+        await product.getByRole("button", { name: "Compare", exact: true }).click();
         await expect(modal.getByLabel("Asking Price", { exact: true })).toHaveValue("25");
         await expect(modal.getByLabel("Quantity", { exact: true })).toHaveValue("2");
         await details.locator("summary").click();
@@ -176,7 +182,7 @@ async function assertFocusClear(locator, modal) {
         await modal.getByRole("button", { name: "Close Deal Finder", exact: true }).click();
         await page.reload();
         await expect(product).toBeVisible({ timeout: 30000 });
-        await page.getByRole("button", { name: /^Check deal/i }).first().click();
+        await product.getByRole("button", { name: "Compare", exact: true }).click();
         await expect(modal.getByLabel("Deal Title", { exact: true })).toHaveValue("Synthetic comparison booster bundle");
         await expect(modal.getByLabel("Asking Price", { exact: true })).toHaveValue("25");
         await expect(modal.getByLabel("Quantity", { exact: true })).toHaveValue("2");

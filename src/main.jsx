@@ -10,6 +10,7 @@ import NativeBridge from "./native/NativeBridge.jsx";
 import SocialAuthBoundary from "./features/auth/SocialAuthBoundary.jsx";
 import "./native/native.css";
 import { initCrashReporting, reportHandledError } from "./features/monitoring/crashReporting.js";
+import { preloadDurableAppData } from "./features/persistence/legacyAppStorage.js";
 
 const App = lazy(() => import("./App.jsx"));
 
@@ -43,15 +44,18 @@ applyBrandDocumentMetadata();
 // known yet here; App.jsx calls setCrashReportingKidSafe() once it is, and kid-safe sessions send nothing.
 initCrashReporting().catch(() => {});
 
-createRoot(document.getElementById("root")).render(
-  <StrictMode>
-    <AppErrorBoundary>
-      <NativeBridge />
-      <Suspense fallback={<AppLoadFallback kind="loading" />}>
-        <SocialAuthBoundary><CloudWorkspaceBoundary><App /></CloudWorkspaceBoundary></SocialAuthBoundary>
-      </Suspense>
-    </AppErrorBoundary>
-  </StrictMode>
-);
-
-registerServiceWorker();
+// SHOULD 16: the durable on-device copy (IndexedDB) is read before the first
+// render so a collection that outgrew the 5 MB quick copy opens intact.
+preloadDurableAppData().finally(() => {
+  createRoot(document.getElementById("root")).render(
+    <StrictMode>
+      <AppErrorBoundary>
+        <NativeBridge />
+        <Suspense fallback={<AppLoadFallback kind="loading" />}>
+          <SocialAuthBoundary><CloudWorkspaceBoundary><App /></CloudWorkspaceBoundary></SocialAuthBoundary>
+        </Suspense>
+      </AppErrorBoundary>
+    </StrictMode>
+  );
+  registerServiceWorker();
+});

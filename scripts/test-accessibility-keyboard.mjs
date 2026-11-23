@@ -73,9 +73,11 @@ assert.match(menuNavigationMount, /\bisItemActive=\{isMenuItemActive\}/);
 assert.match(menuNavigationMount, /\bonSelect=\{openMenuItem\}/);
 assert.match(menuNavigationSource, /aria-label=\{`\$\{item\.label\}\. \$\{item\.helper \|\| "Open this workspace area\."\}`\}/);
 assert.match(appSource, /aria-label="Restocks screenshot or photo review\. Try text extraction, then review before saving a restock report\."/);
-assert.match(appSource, /aria-label="Scan page of cards\. Manual multi-card review\. Automatic card detection is not live yet\."/);
+assert.match(appSource, /aria-label="Scan several cards\. Keep scanning with the camera, or read a whole binder page\."/);
 assert.match(appSource, /aria-label="Manual entry\. Add a record now and correct details before saving\."/);
-assert.match(appSource, /aria-label=\{`\$\{mode\.title\}\. \$\{mode\.helper\} Coming later\.`\}/);
+// Card, slab, listing and receipt scanning are live (Nov 17 2026): named buttons, not disabled "Coming later" tiles.
+assert.match(appSource, /aria-label=\{`\$\{mode\.title\}\. \$\{mode\.helper\}`\}\s*onClick=\{\(\) => onOpenScannerMode\(mode\.key\)\}/);
+assert.doesNotMatch(appSource, /Coming later\.`\}/);
 assert.match(operationsSource, /aria-label="Primary navigation"/);
 assert.match(operationsSource, /aria-current=\{item\.key === activeKey && !item\.isAction \? "page"/);
 assert.match(ownerCenterSource, /role="tablist" aria-label=\{label\}/);
@@ -110,7 +112,9 @@ assert.match(appSource, /role="status" aria-live="polite" aria-label=\{`Grade As
 assert.match(appSource, /aria-label=\{`Grade Assist \$\{field\.label\}`\}/);
 assert.match(appSource, /aria-label="Grade Assist Notes"/);
 assert.match(appSource, /alt=\{`\$\{item\.name \|\| "Vault item"\} front reference for Grade Assist`\}/);
-assert.match(appSource, /No AI, camera, OCR, authentication, or grading-company guarantee/);
+// Nov 19 2026: Grade Assist now measures centering from a photo, so it no longer says "no camera".
+assert.match(appSource, /No AI, authentication, or grading-company guarantee/);
+assert.match(appSource, /Centering is measured from your photo on this device/);
 assert.match(appSource, /Checklist storage is local to this browser for now\. Cloud sync needs backend Grade Assist storage\./);
 
 const unsafeClaimPhrases = [

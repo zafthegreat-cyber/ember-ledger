@@ -39,7 +39,15 @@ const tiers = ["free", "collector", "family", "seller", "shop"];
       const controls = page.getByRole("region", { name: "Admin display controls", exact: true });
       await expect(controls).toBeVisible({ timeout: 45000 });
       const actualRole = await controls.locator(".admin-mode-role-pill").innerText();
-      const original = await snapshot();
+      // Start-up normalises and saves the seeded rows (workspace backfill, expense defaults, profile
+      // stamps) shortly after load; baseline only after storage is unchanged for ~500ms.
+      await page.waitForFunction(() => String(localStorage.getItem("et-tcg-beta-data") || "").includes("\"workspaceId\""), null, { timeout: 15000 }).catch(() => {});
+      let original = await snapshot();
+      for (let stableSince = Date.now(), deadline = Date.now() + 15000; Date.now() < deadline && Date.now() - stableSince < 1000;) {
+        await page.waitForTimeout(100);
+        const current = await snapshot();
+        if (current !== original) { original = current; stableSince = Date.now(); }
+      }
       const drawer = page.getByRole("dialog", { name: "Menu", exact: true });
       const openMenu = async () => {
         if (width > 520) await page.setViewportSize({ width: 390, height: 900 });

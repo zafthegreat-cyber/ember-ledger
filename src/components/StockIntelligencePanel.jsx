@@ -1,5 +1,5 @@
 import {useEffect,useMemo,useState} from "react";
-import {EVIDENCE_LABELS,RETAILER_NAMES,SIGNAL_KINDS,filterStockIntelligence,loadStockIntelligence} from "../services/stockIntelligence.mjs";
+import {EVIDENCE_LABELS,RETAILER_NAMES,SIGNAL_KINDS,filterStockIntelligence,loadStockIntelligence,sourceHealth,currentStockSignals} from "../services/stockIntelligence.mjs";
 import StockSignalReview from "./StockSignalReview.jsx";
 import WarehouseInboundPanel from "./WarehouseInboundPanel.jsx";
 import "./stock-intelligence-panel.css";
@@ -21,11 +21,7 @@ function timeAgo(value,now) {
   if (hours < 24) return hours + "h ago";
   return Math.floor(hours/24) + "d ago";
 }
-function statusText(source) {
-  if (!source.connected) return "Not connected";
-  if (!source.lastSuccessAt) return "Connected · no successful checks yet";
-  return "Last successful source check";
-}
+
 const SHORT_SIGNALS = Object.freeze({
   available_now: "Official/admin-checked",
   queue_detected: "Queue activity only",
@@ -37,7 +33,7 @@ export default function StockIntelligencePanel() {
   const [snapshot,setSnapshot] = useState(null);
   const [phase,setPhase] = useState("loading");
   const [revision,setRevision] = useState(0);
-  const [updated,setUpdated] = useState(0);
+  const [now,setNow] = useState(Date.now);
   const [active,setActive] = useState("products");
   const [retailer,setRetailer] = useState("All");
   const [query,setQuery] = useState("");
@@ -54,20 +50,27 @@ export default function StockIntelligencePanel() {
       try {
         const data = await loadStockIntelligence({signal:controller.signal});
         if (!controller.signal.aborted) {
-          setSnapshot(data);setPhase("ready");setUpdated(Date.now());
+          setSnapshot(data);setPhase("ready");setNow(Date.now());
         }
       } catch {
         if (!controller.signal.aborted) {setPhase("error");setSnapshot(null);}
       } finally {waiting=false;}
     }
+    const onFocus=()=>{setNow(Date.now());refresh(true);};
+    globalThis.addEventListener("focus",onFocus);
+    globalThis.document?.addEventListener("visibilitychange",onFocus);
     refresh();
     const timer = globalThis.setInterval(() => {
       if (globalThis.document?.visibilityState !== "hidden") refresh(true);
     }, 60000);
-    return () => {controller.abort();globalThis.clearInterval(timer);};
+    return () => {controller.abort();globalThis.clearInterval(timer);globalThis.removeEventListener("focus",onFocus);globalThis.document?.removeEventListener("visibilitychange",onFocus);};
   },[revision]);
-  const now = updated;
-  const selection=useMemo(()=>snapshot ? filterStockIntelligence(snapshot,{retailer,query}):{targets:[],signals:[]},[snapshot,retailer,query]);
+  useEffect(()=>{
+    const timer=globalThis.setInterval(()=>setNow(Date.now()),5000);
+    return ()=>globalThis.clearInterval(timer);
+  },[]);
+  const freshSnapshot=snapshot && now-Date.parse(snapshot.generatedAt)<=10*60_000 ? snapshot:null;
+  const selection=useMemo(()=>freshSnapshot ? filterStockIntelligence({...freshSnapshot,signals:currentStockSignals(freshSnapshot.signals,now,freshSnapshot.sources)},{retailer,query}):{targets:[],signals:[],discoveryWatches:[]},[freshSnapshot,retailer,query,now]);
   const products = useMemo(()=>{
     const next = onlyPins ? selection.targets.filter(p=>pins.includes(labelFor(p))) : selection.targets;
     return [...next].sort((a,b)=>{
@@ -76,8 +79,8 @@ export default function StockIntelligencePanel() {
     });
   },[selection.targets,pins,onlyPins]);
   const visibleProducts = showAll || query.trim() || onlyPins ? products : products.slice(0,4);
-  const connected = snapshot?.sources?.filter(s=>s.connected).length||0;
-  const signalCount = snapshot?.signals?.length||0;
+  const connected = snapshot?.sources?.filter(s=>sourceHealth(s,now).healthy).length||0;
+  const signalCount = currentStockSignals(snapshot?.signals||[],now,snapshot?.sources).length;
   function togglePin(p) {
     const id=labelFor(p);
     setPins(current=>{
@@ -97,16 +100,16 @@ export default function StockIntelligencePanel() {
         <button type="button" className="stock-intel__refresh" onClick={()=>setRevision(v=>v+1)} disabled={phase==="loading"}>Refresh feed</button>
       </header>
       {phase==="loading" && <div className="stock-intel__message" role="status">Loading verified watchlist and signal status…</div>}
-      {phase==="error" && <div className="stock-intel__message stock-intel__message--error" role="alert">
+      {(phase==="error" || (phase==="ready"&&!freshSnapshot)) && <div className="stock-intel__message stock-intel__message--error" role="alert">
         <strong>Stock data isn't available right now.</strong>
         <p>We won't show stale inventory as live stock. Try refreshing or check retailer links directly.</p>
         <button type="button" onClick={()=>setRevision(v=>v+1)}>Try again</button>
       </div>}
-      {phase==="ready" && snapshot && <>
+      {phase==="ready" && freshSnapshot && <>
         <div className="stock-intel__metrics" aria-label="Stock monitoring summary">
           <div><strong>{snapshot.targets.length}</strong><span>Individual products</span></div>
           <div><strong>{signalCount}</strong><span>Current signals</span></div>
-          <div><strong>{connected}/{snapshot.sources.length}</strong><span>Connected sources</span></div>
+          <div><strong>{connected}/{snapshot.sources.length}</strong><span>Sources checked recently</span></div>
         </div>
         <div className="stock-intel__notice" role="status">
           <span className="stock-intel__notice-dot" aria-hidden="true"/>
@@ -156,7 +159,7 @@ export default function StockIntelligencePanel() {
             <ul>{selection.discoveryWatches.map(watch=><li key={watch.retailer+"|"+watch.query} className="stock-intel__discovery-card">
               <span className="stock-intel__retailer">{watch.retailer}</span>
               <strong>{watch.query}</strong>
-              <small>{snapshot.sources.find(source=>source.retailer===watch.retailer)?.connected ? "Approved source connected" : "Not connected · manual watch only"}</small>
+              <small>{snapshot.sources.find(source=>source.retailer===watch.retailer) && sourceHealth(snapshot.sources.find(source=>source.retailer===watch.retailer),now).healthy ? "Source checked recently" : "No current automatic source check"}</small>
             </li>)}</ul>
           </div>}
           <p className="stock-intel__footnote">★ Pins are saved on this device only. Pinning a product does not turn on push notifications or a retailer connection.</p>
@@ -186,9 +189,9 @@ export default function StockIntelligencePanel() {
           <ul>{snapshot.sources.map(s=><li key={s.retailer}>
             <div><strong>{s.retailer}</strong>
               <small>{s.mode==="manual-watch"?"Manual/community watch":s.mode==="authorized-feed"?"Authorized partner feed":"Official API"}</small>
-              {snapshot.discoveryWatches.filter(w=>w.retailer===s.retailer).map(w=><small key={w.query}>Discovery: {w.query} · {s.connected?"source connected":"not live"}</small>)}
+              {snapshot.discoveryWatches.filter(w=>w.retailer===s.retailer).map(w=><small key={w.query}>Discovery: {w.query} · {sourceHealth(s,now).healthy?"checked recently":"not live"}</small>)}
             </div>
-            <span className={"stock-intel__status "+(s.connected?"is-available":"")}>{statusText(s)}</span>
+            <span className={"stock-intel__status "+(sourceHealth(s,now).healthy?"is-available":"")}>{sourceHealth(s,now).label}</span>
             {s.connected && s.lastSuccessAt && <small>Source checked {timeAgo(s.lastSuccessAt,now)}</small>}
           </li>)}</ul>
           <p className="stock-intel__footnote">A Pokémon Center queue is not proof of a product launch. No automatic checkout, queue bypass, or unauthorized Discord access is used.</p>

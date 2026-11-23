@@ -13,7 +13,7 @@ const proofPng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0
 
 async function openDetails(page, storeName) {
   const feed = page.locator('.scout-reports-landing');
-  await expect(feed.getByRole('heading', { name: 'Recent restock reports', exact: true })).toBeVisible({ timeout: 45000 });
+  await expect(feed.getByRole('heading', { name: 'Restock reports', exact: true })).toBeVisible({ timeout: 45000 });
   await feed.getByRole('searchbox', { name: 'Search reports', exact: true }).fill(storeName);
   const card = feed.locator('.scout-feed-report-card').filter({ hasText: storeName });
   await expect(card).toHaveCount(1);
@@ -51,7 +51,10 @@ async function createReviewedCategoryReport(page, { storeId = STORE_ID, storeNam
   await intake.getByText('Paste or correct post text', { exact: true }).click();
   await intake.getByLabel(/^Private screenshot text/).fill(`Discord stock post\n${RAW_MARKER}\nPokemon TCG in stock\n${storeName}`);
   await intake.getByRole('button', { name: 'Find report details', exact: true }).click();
-  await intake.getByLabel(/^Products mentioned/).fill('');
+  // "Products mentioned" is one field per product now (Product 1, Product 2, ...); clear every row.
+  const productRows = intake.locator('.stock-screenshot-product-rows').getByLabel(/^Product \d+$/);
+  await expect(productRows.first()).toBeVisible();
+  for (const row of await productRows.all()) await row.fill('');
   await intake.getByLabel(/^Product category/).selectOption('Pokemon TCG');
   await intake.getByLabel(/^Stock status in the post/).selectOption('stock_on_shelf');
   const observed = await page.evaluate(() => { const value = new Date(Date.now() - 120000); value.setMinutes(value.getMinutes() - value.getTimezoneOffset()); return value.toISOString().slice(0, 16); });
@@ -122,7 +125,7 @@ async function runLocal() {
       await context.route('**/*', route => {
         const request = route.request(), url = new URL(request.url());
         if (!['GET', 'HEAD'].includes(request.method())) { result.writes.push(`${request.method()} ${url.pathname}`); return route.abort(); }
-        if (url.origin !== base.origin) { result.external.push(url.origin); return route.abort(); }
+        if (url.origin !== base.origin) { result.external.push(`${request.method()} ${url.origin}${url.pathname}`); return route.abort(); }
         if (url.pathname.startsWith('/api/')) return route.fulfill({ contentType: 'application/json', body: '{"configured":false}' });
         if (url.pathname === PROOF_PATH) return route.fulfill({ contentType: 'image/png', body: proofPng });
         return route.continue();
@@ -146,7 +149,12 @@ async function runLocal() {
         // comparing the entire core record object across report operations.
         await page.reload();
         await expect(page.locator('.home-restock-hero')).toBeVisible({ timeout: 45000 });
-        const original = await sources(page);
+        let original = await sources(page);
+        for (let stableSince = Date.now(), deadline = Date.now() + 15000; Date.now() < deadline && Date.now() - stableSince < 1000;) {
+          await page.waitForTimeout(100);
+          const current = await sources(page);
+          if (JSON.stringify(current) !== JSON.stringify(original)) { original = current; stableSince = Date.now(); }
+        }
         const created = await createReviewedCategoryReport(page);
         assert.match(created.savedText, /Saved locally/);
         const afterSave = await sources(page);
@@ -191,7 +199,8 @@ async function runLocal() {
         assert.deepEqual(final.scout.items, original.scout.items);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true);
         assert.deepEqual(result.writes, []);
-        assert.deepEqual(result.external, []);
+        // The public community feed is read with GET; the route aborts it before it leaves, and nothing may write.
+        assert.ok(result.external.every(entry => /^(GET|HEAD) /.test(entry)), `Only blocked reads left the origin: ${result.external.join(', ')}`);
         assert.deepEqual(result.errors, []);
         await page.screenshot({ path: path.join(output, `${width}-${theme}-edited-proof.png`) });
         Object.assign(result, { passed: true, reportId: identity.id, sameIdAfterTwoReloads: true, savedCategoryAndStockFilter: true, provenanceRetained: true, photo: 'Synthetic same-origin public image; no private authorization claim', originalRecordsAndPricesRetained: true });

@@ -202,7 +202,9 @@ function buildCatalogQueryMeta(query) {
     // "name 4/102" query remembers its card number so ranking can put the
     // exact-number card first.
     gtin,
-    collectorNumber: collector ? collector.collectorNumber.split("/")[0] : "",
+    // "jolteon ex 109" (no slash) is how most people type it: a trailing bare
+    // number counts as the card number for ranking (never for filtering).
+    collectorNumber: collector ? collector.collectorNumber.split("/")[0] : ((normalized.match(/(?:^|\s)0*(\d{1,4}[a-z]?)$/) || [])[1] || ""),
   };
 }
 
@@ -268,7 +270,16 @@ function scoreIndexedCatalogItem(queryMeta, indexed) {
   const cardNumberBoost = queryMeta.collectorNumber && indexed.cardNumberFirst === queryMeta.collectorNumber
     ? (indexed.cardNumber.includes("/") ? 460 : 420)
     : 0;
-  if (indexed.setCode && tokens.includes(indexed.setCode)) {
+  // "jolteon ex 28": number matches AND the other words match → it wins over
+  // every substring/alias hit (only an exact identifier beats it).
+  if (cardNumberBoost) {
+    const nameTokens = tokens.filter((token) => !/^\d{1,4}[a-z]?$/.test(token) && !token.includes("/"));
+    if (nameTokens.length && nameTokens.every((token) => catalogTokenMatches(indexed, token))) {
+      return { item, score: 920 + (indexed.cardNumber.includes("/") ? 10 : 0), reason: "Card number match" };
+    }
+  }
+  // A purely numeric set code must not masquerade as a card-number hit.
+  if (indexed.setCode && tokens.includes(indexed.setCode) && !(queryMeta.collectorNumber && /^\d+$/.test(indexed.setCode))) {
     return { item, score: 760, reason: "Set code match" };
   }
 

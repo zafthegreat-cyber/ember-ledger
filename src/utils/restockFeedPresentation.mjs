@@ -1,6 +1,6 @@
 import { getStoreDirectoryState, normalizeStoreStateCode } from "../data/storeStates.js";
 import { COLLECTIBLE_GAMES, getRecordGame, normalizeCollectibleGame } from "./collectibleGames.mjs";
-import { distanceMiles, locationScopeMatch } from './nationwideLocation.mjs';
+import { areaKey, distanceMiles, locationScopeMatch } from './nationwideLocation.mjs';
 
 const STOCK_SEEN_STATUSES = new Set(["in_stock", "stock_on_shelf", "stock_seen", "leftover_stock", "behind_counter", "vendor_stocking", "restock_happening_now"]);
 
@@ -144,7 +144,12 @@ export function filterRestockFeed(entries = [], { search = "", stock = "all", pe
 export function restockEntryDistance(entry, area) {
   const record = entry.locationRecord || entry.report || {};
   const lat = record.latitude ?? record.lat, lng = record.longitude ?? record.lng ?? record.lon;
-  if (lat === '' || lat == null || lng === '' || lng == null) return null;
+  if (lat === '' || lat == null || lng === '' || lng == null) {
+    // No coordinates: a store in the chosen city itself still counts (distance 0),
+    // so picking "Austin, TX" shows Austin reports. Other cities stay unknown.
+    const city = areaKey(record.city), state = areaKey(record.stateCode || record.state_code || record.state);
+    return area && city && city === areaKey(area.city) && (state === areaKey(area.state) || state === areaKey(area.stateName)) ? 0 : null;
+  }
   return distanceMiles(area, { lat: Number(lat), lng: Number(lng) });
 }
 

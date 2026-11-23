@@ -80,15 +80,21 @@ async function contrastReport(chooser) {
       const prefix = `${width}-${theme}${textScale === 2 ? "-text200" : ""}`;
       lastStep = `${prefix}: load home and open Add`;
       await page.goto(`${base}/?betaLocalMode=true`);
-      await expect(page.getByRole("heading", { name: "Welcome back.", exact: true })).toBeVisible({ timeout: 30000 });
-      const dataSnapshot = () => page.evaluate(() => { const data = JSON.parse(localStorage.getItem("et-tcg-beta-data")); return JSON.stringify([data.items, data.sales, data.expenses]); });
+      await expect(page.getByRole("heading", { name: /^Welcome( back| to Code 3 TCG).$/ })).toBeVisible({ timeout: 30000 });
+      // The app's one-time workspace labelling can stamp workspace fields onto seeded rows at any point
+      // during start-up; those labels are not user changes, so they are left out of the comparison.
+      const dataSnapshot = () => page.evaluate(() => {
+        const data = JSON.parse(localStorage.getItem("et-tcg-beta-data"));
+        const strip = rows => (rows || []).map(row => Object.fromEntries(Object.entries(row).filter(([key]) => !/^workspace/.test(key))));
+        return JSON.stringify([strip(data.items), strip(data.sales), strip(data.expenses)]);
+      });
       const before = await dataSnapshot();
       const opener = page.getByRole("button", { name: "Open global Add menu", exact: true }).filter({ visible: true }).first();
       await opener.click();
       const modal = page.locator('.flow-modal[data-flow="addActionSheet"]');
       await expect(modal).toBeVisible();
       await expect(modal.locator(".add-anything-entry")).toBeVisible();
-      await modal.getByRole("button", { name: /^Scan (Listing|or review)\./ }).click();
+      await modal.getByRole("button", { name: /^Scan (Listing|or review|with camera)\./ }).click();
       const chooser = modal.locator(".add-anything-scan-foundation");
       await expect(chooser).toBeVisible();
       const body = modal.locator(".flow-modal-body");
@@ -111,16 +117,13 @@ async function contrastReport(chooser) {
       }
       lastStep = `${prefix}: scan chooser geometry and contrast`;
       verifyRows(initialRows, width);
-      assert.equal(initialRows.length, 6, "Coming later modes start collapsed");
+      // Nov 17 2026: card, slab, listing and receipt scanning are built, so there is no "Coming later" section.
+      const titles = initialRows.map(row => row.title);
+      for (const title of ["Scan barcode", "Scan several cards", "Scan a card", "Graded slab", "Listing screenshot", "Scan a receipt", "Search by name", "Manual entry"]) assert.ok(titles.includes(title), `${title} is offered: ${titles.join(", ")}`);
+      assert.ok(initialRows.every(row => !row.disabled), "Every scan choice works");
+      await expect(chooser.locator("details.scan-anything-unavailable")).toHaveCount(0);
       const colors = await contrastReport(chooser);
       assert.ok(colors.every(color => color.ratio >= 4.5), `Available choice text meets 4.5:1 contrast: ${JSON.stringify(colors.filter(color => color.ratio < 4.5))}`);
-      const future = chooser.locator("details.scan-anything-unavailable");
-      await expect(future).not.toHaveAttribute("open", "");
-      await future.locator("summary").click();
-      await expect(future).toHaveAttribute("open", "");
-      await expect(future.locator("button:disabled")).toHaveCount(4);
-      assert.deepEqual(await future.locator("strong").allTextContents(), ["Scan Card", "Scan Binder", "Scan Slab", "Scan Receipt"]);
-      const expandedRows = await rowGeometry(chooser); verifyRows(expandedRows, width);
       await body.evaluate(element => { element.scrollTop = element.scrollHeight; });
       await expect(close).toBeInViewport({ ratio: 1 });
       const closeBox = await close.boundingBox(); assert.ok(closeBox.width >= 44 && closeBox.height >= 44, "Close has a 44px touch target");
@@ -140,14 +143,21 @@ async function contrastReport(chooser) {
         lastStep = `${prefix}: working choices preserve callbacks without saving`;
         const paths = [
           { name: /^Search by name\./, selector: ".add-anything-search", title: "Search item" },
-          { name: /^Enter UPC or SKU\./, selector: ".add-anything-upc", title: "Enter UPC/SKU" },
+          { name: /^Type a barcode number/, selector: ".add-anything-upc", title: "Type a barcode number" },
           { name: /^Manual entry\./, selector: ".add-anything-manual", title: "Manual entry" },
-          { name: /^Scan page of cards\./, selector: ".add-anything-card-page-review", title: "Scan page of cards" },
-          { name: /^Scout screenshot or photo review\./, selector: ".add-anything-scout-scan-review", title: "Review Scout Scan" },
+          { name: /^Scan several cards/, selector: ".add-anything-card-page-review", title: "Scan several cards" },
         ];
+        // The restocks screenshot choice now opens the full "Report a restock" flow on its screenshot step.
+        await opener.click(); await expect(modal.locator(".add-anything-entry")).toBeVisible();
+        await modal.getByRole("button", { name: /^Scan (Listing|or review|with camera)\./ }).click();
+        await chooser.getByRole("button", { name: /^Restocks screenshot or photo review\./ }).click();
+        await expect(page.getByRole("heading", { name: "Report a restock", exact: true })).toBeVisible();
+        await expect(page.getByText("Add from a screenshot", { exact: true })).toBeVisible();
+        await page.keyboard.press("Escape");
+        await expect(page.getByRole("heading", { name: "Report a restock", exact: true })).toHaveCount(0);
         for (const target of paths) {
           await opener.click(); await expect(modal.locator(".add-anything-entry")).toBeVisible();
-          await modal.getByRole("button", { name: /^Scan (Listing|or review)\./ }).click();
+          await modal.getByRole("button", { name: /^Scan (Listing|or review|with camera)\./ }).click();
           await chooser.getByRole("button", { name: target.name }).click();
           const screen = modal.locator(target.selector); await expect(screen).toBeVisible();
           await expect(screen.locator(".add-anything-path-header strong")).toHaveText(target.title);
@@ -161,8 +171,8 @@ async function contrastReport(chooser) {
       assert.equal(await dataSnapshot(), before, "All seeded inventory, sales, and expenses remain unchanged");
       assert.deepEqual(blockedWrites, [], "No mutation request was attempted");
       assert.deepEqual(errors, [], "No browser runtime error");
-      results.push({ width, height, theme, textScale, availablePaths: 6, unavailableModes: 4, correctlyAlignedRows: expandedRows, textContrast: colors, pinnedClose: true, closeTouchTarget: closeBox, keyboardTrapAndReturn: true, backToEntry: true, callbacksVerified: textScale === 1, recordsUnchanged: true, blockedWrites, blockedExternal, errors });
-      console.log(`PASS scan chooser ${width}x${height} ${theme} text ${textScale * 100}%: full-width copy, distinct disabled badges, fixed close, keyboard, callbacks and unchanged records.`);
+      results.push({ width, height, theme, textScale, availablePaths: initialRows.length, unavailableModes: 0, correctlyAlignedRows: initialRows, textContrast: colors, pinnedClose: true, closeTouchTarget: closeBox, keyboardTrapAndReturn: true, backToEntry: true, callbacksVerified: textScale === 1, recordsUnchanged: true, blockedWrites, blockedExternal, errors });
+      console.log(`PASS scan chooser ${width}x${height} ${theme} text ${textScale * 100}%: full-width copy, every scan mode live, fixed close, keyboard, callbacks and unchanged records.`);
       await context.close();
     }
     if (!baseline) fs.writeFileSync(path.join(output, requestedWidths ? `results-${requestedWidths.join("-")}.json` : "results.json"), JSON.stringify({ createdAt: new Date().toISOString(), realApp: true, syntheticOnly: true, results }, null, 2));

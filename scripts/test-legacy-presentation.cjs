@@ -7,11 +7,13 @@ const artifactDir = path.join(process.cwd(), "artifacts", "qa", "legacy-presenta
 const routes = [
   { name: "scout", path: "/scout", selector: ".scout-command-board-v5" },
   { name: "market", path: "/exchange/market", selector: ".market-command-board" },
-  { name: "exchange", path: "/exchange", selector: ".exchange-command-board" },
+  // Exchange/Forge command boards are the seller/store layout; collectors get the simpler
+  // "Sell or trade" page (src/pages/Forge.jsx CollectorSellTrade), so these routes seed a seller.
+  { name: "exchange", path: "/exchange", selector: ".exchange-command-board", seller: true },
   { name: "spark", path: "/kids-program", selector: ".spark-command-board" },
   { name: "vault", path: "/vault", selector: ".vault-v4-dashboard", inspectAllBodyControls: true, inspectNestedCaptions: true },
   { name: "vault-cards", path: "/vault/cards", selector: ".vault-v4-detail-board", inspectAllBodyControls: true, inspectNestedCaptions: true },
-  { name: "forge", path: "/exchange/forge", selector: ".exchange-command-board", inspectAllBodyControls: true, inspectNestedCaptions: true },
+  { name: "forge", path: "/exchange/forge", selector: ".exchange-command-board", inspectAllBodyControls: true, inspectNestedCaptions: true, seller: true },
 ];
 const viewports = [
   { name: "mobile", width: 360, height: 800 },
@@ -52,6 +54,12 @@ async function readPresentation(page, route) {
       .map(node => `${node.tagName.toLowerCase()}${node.classList.length ? `.${[...node.classList].join(".")}` : ""}`).join(" in ");
     const visible = e => {
       if (!e.getClientRects().length || !e.textContent?.trim() && !e.matches("button, a, input, select, textarea")) return false;
+      // Quiet boards fold the status/route strip into a closed "More on this page" <details>
+      // (CommandBoardV4.jsx). Its content is not rendered, though Chrome still reports boxes for it.
+      for (let parent = e; parent; parent = parent.parentElement) {
+        const folded = parent.parentElement;
+        if (folded?.tagName === "DETAILS" && !folded.open && parent.tagName !== "SUMMARY") return false;
+      }
       for (let parent = e; parent; parent = parent.parentElement) {
         const style = getComputedStyle(parent);
         if (style.display === "none" || style.visibility === "hidden" || style.visibility === "collapse" || Number(style.opacity) === 0) return false;
@@ -84,14 +92,29 @@ async function readPresentation(page, route) {
     const canvasColor = resolveColor("--app-background");
     const neutralColors = [canvasColor, ...["--surface-primary", "--surface-secondary", "--surface-inset", "--surface-elevated"].map(resolveColor), "rgba(0, 0, 0, 0)"];
     colorProbe.remove();
+    // The holo-tech look (src/styles/app/19-holo-tech.css, owner Nov 17) deliberately paints a faint
+    // grid on the app canvas and a near-flat panel gradient on the board frame. Those are allowed;
+    // a canvas gradient still fails when any stop is a visible, non-neutral colour (e.g. the holo line).
+    const channels = value => {
+      const srgb = value.match(/color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+))?\)/);
+      if (srgb) return [srgb[1] * 255, srgb[2] * 255, srgb[3] * 255, srgb[4] === undefined ? 1 : Number(srgb[4])];
+      const rgb = value.match(/rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,\s/]+([\d.]+))?\s*\)/);
+      return rgb ? [Number(rgb[1]), Number(rgb[2]), Number(rgb[3]), rgb[4] === undefined ? 1 : Number(rgb[4])] : null;
+    };
+    const neutralChannels = neutralColors.map(channels).filter(color => color && color[3] > 0);
+    const subtleGradient = image => {
+      const stops = image.match(/color\(srgb[^)]*\)|rgba?\([^)]*\)/g) || [];
+      if (!stops.length || /url\(/i.test(image)) return false;
+      return stops.map(channels).every(stop => stop && (stop[3] <= 0.05 || neutralChannels.some(n => Math.max(...[0, 1, 2].map(i => Math.abs(n[i] - stop[i]))) <= 20)));
+    };
     const surfaces = [app, main, board, board.querySelector(".command-board-v4-frame"), board.querySelector(".command-board-v4-stage")].filter(Boolean).map(e => {
       const style = getComputedStyle(e);
       if (!neutralColors.includes(style.backgroundColor)) note("nonsemantic-canvas", `${location(e)} uses ${style.backgroundColor}`);
       if (e === app && style.backgroundColor !== canvasColor) note("app-canvas-color", `${style.backgroundColor}, expected ${canvasColor}`);
-      if (/gradient/i.test(style.backgroundImage)) note("canvas-gradient", location(e));
+      if (/gradient/i.test(style.backgroundImage) && !subtleGradient(style.backgroundImage)) note("canvas-gradient", `${location(e)}: ${style.backgroundImage.slice(0, 160)}`);
       for (const pseudo of ["::before", "::after"]) {
         const ps = getComputedStyle(e, pseudo);
-        if (ps.content !== "none" && ps.content !== "normal" && ps.display !== "none" && /gradient/i.test(ps.backgroundImage)) note("canvas-gradient", `${location(e)}${pseudo}`);
+        if (ps.content !== "none" && ps.content !== "normal" && ps.display !== "none" && /gradient/i.test(ps.backgroundImage) && !subtleGradient(ps.backgroundImage)) note("canvas-gradient", `${location(e)}${pseudo}`);
       }
       return { selector: location(e), color: style.backgroundColor, image: style.backgroundImage };
     });
@@ -200,6 +223,10 @@ async function checkKeyboardTarget(locator) {
 
 async function runScenario(browser, route, viewport, theme) {
   const context = await browser.newContext({ viewport });
+  if (route.seller) await context.addInitScript(() => {
+    if (localStorage.getItem("et-tcg-beta-data")) return;
+    localStorage.setItem("et-tcg-beta-data", JSON.stringify({ userType: "seller", dashboardPreset: "seller", forgeModeSettings: { personalForgeEnabled: true, lockToEmberTide: false } }));
+  });
   const page = await context.newPage();
   const errors = [];
   page.on("pageerror", error => errors.push(error.message));
@@ -213,8 +240,10 @@ async function runScenario(browser, route, viewport, theme) {
     result.failures.push(...result.presentation.failures);
     if (viewport.name === "desktop") {
       const nav = result.presentation.navigation;
-      if (nav.length !== expectedNavigation.length) result.failures.push({ code: "navigation-count", detail: `Expected six anchors, got ${nav.length}` });
-      for (const [index, [name, pathname]] of expectedNavigation.entries()) {
+      // The rail hides Business for plain collectors (CommandBoardV4.jsx visibleNav); sellers keep it.
+      const expected = route.seller ? expectedNavigation : expectedNavigation.filter(([name]) => name !== "Business");
+      if (nav.length !== expected.length) result.failures.push({ code: "navigation-count", detail: `Expected ${expected.length} anchors, got ${nav.length}` });
+      for (const [index, [name, pathname]] of expected.entries()) {
         const actual = nav[index];
         if (!actual) continue;
         const url = new URL(actual.href, result.url);

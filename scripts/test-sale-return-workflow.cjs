@@ -79,7 +79,8 @@ async function main() {
       await page.keyboard.press("Shift+Tab");
       await page.keyboard.press("Tab");
       await expect(confirmation).toBeFocused();
-      assert.ok(await confirmation.evaluate((node) => getComputedStyle(node).outlineStyle !== "none"), "Visible keyboard focus");
+      // Holo-tech theme may draw focus as a glow (box-shadow) instead of an outline.
+      assert.ok(await confirmation.evaluate((node) => { const css = getComputedStyle(node); return css.outlineStyle !== "none" || css.boxShadow !== "none"; }), "Visible keyboard focus");
       await page.keyboard.press("Space"); await expect(confirmation).toBeChecked();
       await apply().click();
       await expect(page.getByText("Return applied on this device.", { exact: false })).toBeVisible();
@@ -162,25 +163,39 @@ async function main() {
       const csv = fs.readFileSync(await download.path(), "utf8");
       assert.match(csv, corrections ? /"50\.00","20\.00","30\.00","10\.00"/ : /"50\.00","10\.00","40\.00","10\.00"/);
       await capture("adjusted-report");
-      await go("/business/inventory"); await page.getByRole("button", { name: "Open Synthetic Aurora pair", exact: true }).click();
+      // Inventory cards are grouped by product (f1a5d3f): the product card opens a sheet of its
+      // original purchase records, and the record button opens the record detail.
+      // The inventory list defaults to the "Available" stock filter, so sold-out stock needs its filter.
+      const openInventoryItem = async (stockFilter) => {
+        if (stockFilter) {
+          const filterButton = page.getByRole("group", { name: "Inventory stock filters", exact: true }).getByRole("button", { name: new RegExp("^" + stockFilter) });
+          await filterButton.click(); await expect(filterButton).toHaveAttribute("aria-pressed", "true");
+        }
+        await page.getByRole("button", { name: /^Open Synthetic Aurora pair(,|$)/ }).click();
+        const lots = page.locator(".inventory-lots > button");
+        await expect(lots).toHaveCount(1);
+        await lots.first().click();
+      };
+      await go("/business/inventory"); await openInventoryItem();
       await expect(page.locator(".ops-record-detail")).toContainText("Quantity available");
-      await go("/business/sales"); await page.getByRole("button", { name: "Record Sale", exact: true }).click();
+      await go("/business/sales"); await page.getByRole("button", { name: "Record sale", exact: true }).click();
       await page.getByLabel(/^Inventory item/).selectOption("return-stock");
       await page.getByLabel("Quantity sold", { exact: true }).fill("2");
-      await page.getByLabel("Gross sale price", { exact: true }).fill("60");
+      // Renamed "Sale price — transaction total" in f1a5d3f (still the grossSalePrice field).
+      await page.getByLabel(/^Sale price — transaction total/).fill("60");
       await page.getByLabel("Sales channel", { exact: true }).fill("Synthetic booth");
       await page.getByRole("button", { name: "Continue", exact: true }).click();
       await page.getByRole("button", { name: "Continue", exact: true }).click();
       await capture("resale-preview");
-      await page.getByRole("button", { name: "Save Sale", exact: true }).click();
-      await expect(page.getByRole("button", { name: "Record Sale", exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "Save sale", exact: true }).click();
+      await expect(page.getByRole("button", { name: "Record sale", exact: true })).toBeVisible();
       const resold = await saved(); assert.equal(resold.sales.length, 2);
       const newSale = resold.sales.find((row) => row.id !== "return-sale");
       assert.equal(newSale.quantitySold, "2");
       assert.equal(Number(newSale.allocatedCostOfGoodsSold), 20);
       assert.equal(newSale.realizedProfit, 40);
       assert.equal(resold.sales.find((row) => row.id === "return-sale").returnApplications.length, 1);
-      await go("/business/inventory"); await page.getByRole("button", { name: "Open Synthetic Aurora pair", exact: true }).click();
+      await go("/business/inventory"); await openInventoryItem("Sold out");
       await expect(page.locator(".ops-detail-hero")).toContainText("$0.00");
       if (corrections) {
         await openSale(); await panel().locator(".manual-lifecycle-card").first().click();

@@ -55,9 +55,9 @@ test("confirmation help has a named email control and prevents concurrent reques
   await act(()=>{click(button("Resend confirmation email"));click(document.querySelector("button"));});assert.equal(calls,1);assert.equal(document.querySelector("button").disabled,true);
   await act(async()=>{finish({ok:true,message:"If this email has an unconfirmed account, a fresh link will arrive."});await Promise.resolve();});assert.match(document.querySelector('[role="status"]').textContent,/If this email/);
 });
-test("members with collection items see a compact completion notice and can still reopen the introduction",async()=>{
+test("members with collection items see only a small reopen link and can still reopen the introduction",async()=>{
   environment();await act(()=>root.render(React.createElement(Guide,{userId:first,hasCollectionItems:true})));
-  assert.ok(button("Reopen getting started"));assert.equal(document.querySelector("select"),null);assert.match(document.body.textContent,/collection is started/);
+  assert.ok(button("Reopen getting started"));assert.equal(document.querySelector("select"),null);assert.equal(document.querySelector("section.member-start"),null,"no full card once a collection exists");
   await act(()=>click(button("Reopen getting started")));assert.ok(document.querySelector("select"));
 });
 test("signup privacy and navigation glossary name public fields and real functions",async()=>{
@@ -73,7 +73,7 @@ test("community links explain purpose and notification consent without subscribi
 });
 test("restock landing opens the existing signup callback without creating an account",async()=>{
   environment();let calls=0;await act(()=>root.render(React.createElement(RestockWelcome,{onCreateAccount:()=>calls++})));
-  assert.equal(document.querySelectorAll("ol li").length,3);assert.match(document.body.textContent,/observation time/);assert.match(document.body.textContent,/availability can change/);
+  assert.equal(document.querySelectorAll("ol li").length,3);assert.match(document.body.textContent,/Track your collection\. Get free restock alerts\./);assert.match(document.body.textContent,/Built for collectors, not scalpers\./);assert.match(document.body.textContent,/availability can change/);
   await act(()=>click(button("Create a free account")));assert.equal(calls,1);
 });
 test("a blocked share and clipboard leave a labelled selectable public link",async()=>{

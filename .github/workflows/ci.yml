@@ -17,14 +17,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts
       - name: Lint
         run: npm run lint:src
+      - name: Connected sign-in regression checks
+        run: npm run test:social-sign-in
       - name: Beta suites (node --test)
         run: >
           node --no-warnings --test
@@ -41,6 +43,20 @@ jobs:
           scripts/test-should-batch2.mjs
           scripts/test-debounced-save.mjs
           scripts/test-age-confirmation.mjs
+          scripts/test-restock-map.mjs
+          scripts/test-card-photo-text.mjs
+          scripts/test-card-printings.mjs
+          scripts/test-slab-label.mjs
+          scripts/test-listing-screenshot.mjs
+          scripts/test-receipt-pdf.mjs
+          scripts/test-scanner-extras.mjs
+          scripts/test-card-centering.mjs
+          scripts/test-card-image-hash.mjs
+          scripts/test-card-picture-memory.mjs
+          scripts/test-scanner-ai-identify.mjs
+          scripts/test-card-camera-assist.mjs
+          scripts/test-market-history.mjs
+          scripts/test-market-history-points.mjs
       - name: Domain suites (plain node)
         run: |
           node --no-warnings scripts/test-empty-states.mjs
@@ -62,6 +78,10 @@ jobs:
           node --no-warnings scripts/test-community-server.mjs
           node --no-warnings scripts/test-restock-alerts.mjs
           node --no-warnings --test scripts/test-stock-intelligence.mjs
+          node --no-warnings scripts/test-easy-nationwide-ui.mjs
+          node --no-warnings scripts/test-catalog-barcode-evidence.mjs
+          node --no-warnings scripts/test-market-search-presentation.mjs
+          node --no-warnings scripts/test-sealed-inspection-safety.mjs
           node --no-warnings scripts/test-play-upload.mjs
           node --no-warnings scripts/test-tier-foundation.mjs
           npm run test:native
@@ -72,7 +92,7 @@ jobs:
         run: npm run build
       - name: Chunk size report
         run: node scripts/report-chunk-sizes.mjs dist --budget-kb 2304 --json chunk-report.json --ignore ocr/,usLocationIndex
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: chunk-report
@@ -85,13 +105,23 @@ jobs:
     # Pinned: ubuntu-latest became Ubuntu 26 (Oct 2026), which Playwright 1.59 can't install browsers on.
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    # 90 tests take well over one job's limit, so they run as five parallel shards.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ['1/5', '2/5', '3/5', '4/5', '5/5']
+    name: browser (${{ matrix.shard }})
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts
+      # `npm run dev` does this in predev; starting vite directly skips it, and the stock
+      # screenshot test needs the local OCR files (copied from node_modules, gitignored).
+      - name: Prepare local OCR files
+        run: npm run prepare:scout-ocr
       - name: Install Chromium for Playwright
         run: npx playwright install --with-deps chromium
       - name: Start the app
@@ -102,6 +132,7 @@ jobs:
       - name: Browser tests
         env:
           APP_URL: http://127.0.0.1:5217
+          SHARD: ${{ matrix.shard }}
         run: node scripts/run-browser-suite.mjs
       - name: App server log
         if: failure()

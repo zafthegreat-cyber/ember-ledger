@@ -32,6 +32,8 @@ export const supabase={auth:{
   sessionStorage.removeItem('__qa_signed_out');emit('SIGNED_IN',session);return {data:{user,session},error:null};
  },
 },rpc(name,args={}){let signal;let request;const run=()=>request||(request=fetch('/__qa/quota-rpc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,args}),signal}).then(result=>result.json()));return {then(resolve,reject){return run().then(resolve,reject);},abortSignal(value){signal=value;return this;},setHeader(){return this;}};}};
+export const createSocialOAuthClient=()=>null;
+export async function clearSocialOAuthStorage(){}
 export const createIsolatedAuthClient=()=>{throw new Error('Password provider is not used in quota verification');};
 `;
 const entry = `

@@ -37,7 +37,7 @@ async function checkGuard() {
   const { createLegacyAppStorageGuard } = await import(pathToFileURL(path.join(root, "src/features/persistence/legacyAppStorage.js")));
   await check("missing key alone is a writable fresh start", () => {
     const h = memoryStorage(null), guard = createLegacyAppStorageGuard();
-    assert.deepEqual(guard.load(h.storage), { data: {}, error: "" });
+    assert.deepEqual(guard.load(h.storage), { data: {}, error: "", source: "quick" });
     assert.equal(h.writes.length, 0);
     assert.deepEqual(guard.save(h.storage, fixture), { ok: true, changed: true });
     assert.deepEqual(JSON.parse(h.bytes()), fixture); assert.equal(h.writes.length, 1);
@@ -98,7 +98,7 @@ async function checkGuard() {
   await check("supported legacy aliases, purchaser rows and scalar IDs remain valid", () => {
     const data = { ...fixture, purchasers: [{ id: "Exact-Purchaser", name: "Family collector" }], userSearchAliases: [{ alias: "binder", canonicalName: "Archive Binder" }], marketplaceSavedIds: ["Listing-A", 42], dashboardLayout: { sections: [{ key: "collection", enabled: true }] }, homeStatsEnabled: { collection: true, futureMetric: false }, locationSettings: { savedLocations: ["Norfolk, Virginia"] }, customUnknownField: { records: [null, 4, "future schema"] } };
     const h = memoryStorage(JSON.stringify(data)), guard = createLegacyAppStorageGuard();
-    assert.deepEqual(guard.load(h.storage), { data, error: "" });
+    assert.deepEqual(guard.load(h.storage), { data, error: "", source: "quick" });
     assert.equal(guard.save(h.storage, { userType: "collector" }).ok, true);
     for (const field of ["purchasers", "userSearchAliases", "marketplaceSavedIds", "homeStatsEnabled", "customUnknownField"]) assert.deepEqual(JSON.parse(h.bytes())[field], data[field]);
   });
@@ -227,7 +227,7 @@ async function checkBrowser() {
         if (mode === "valid") await expect(warning).toHaveCount(0);
         else {
           await expect(warning).toBeVisible();
-          await expect(warning).toContainText(mode === "quota" ? "could not be saved" : "Automatic saving is paused");
+          await expect(warning).toContainText(mode === "quota" ? /outgrown|could not be saved/ : "Automatic saving is paused");
         }
         const boot = await page.evaluate(() => ({ bytes: window.__readCoreOriginal(), writes: window.__coreWrites }));
         if (mode === "valid") {

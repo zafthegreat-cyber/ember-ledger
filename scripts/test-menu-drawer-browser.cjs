@@ -34,7 +34,8 @@ async function verifyRestrictedNavigation(browser) {
       window.qaRenderExperience=input=>{const experience=resolveExperiencePresentation(input);root.render(<MenuNavigation sections={sections} NavIcon={Icon} isItemActive={()=>false} onSelect={item=>window.qaSelections.push(item.key)} onAdd={()=>window.qaSelections.push('quick-add')} modeLabel={experience.personaLabel} experiencePresentation={experience} workspaces={workspaces} currentWorkspaceId="COLLECT" onSelectWorkspace={workspace=>window.qaSelections.push(workspace.id)} />);};
       window.qaRenderExperience({});
     `, resolveDir: process.cwd(), loader: "jsx" },
-    bundle: true, jsx: "automatic", format: "esm", write: false,
+    // MenuNavigation now imports menu-preferences.css; this unstyled behaviour fixture ignores CSS.
+    bundle: true, jsx: "automatic", format: "esm", write: false, loader: { ".css": "empty" },
   });
   const context = await browser.newContext({ viewport: { width: 390, height: 900 } });
   const unexpectedRequests = [];
@@ -161,7 +162,7 @@ async function verifyGuestReportingIsHidden(browser) {
       lastStep = `${width} ${theme}: load home and check menu presentation`;
       page.on("pageerror", error => errors.push(error.message));
       await page.goto(`${base}/?betaLocalMode=true`);
-      await expect(page.getByRole("heading", { name: "Welcome back.", exact: true })).toBeVisible({ timeout: 30000 });
+      await expect(page.getByRole("heading", { name: /^Welcome( back| to Code 3 TCG).$/ })).toBeVisible({ timeout: 30000 });
       const existingWorkspaceLabels = await page.getByTestId("workspace-switcher").locator(".code3-workspace-switcher__menu button strong").allTextContents();
       const snapshot = () => page.evaluate(() => { const data = JSON.parse(localStorage.getItem("et-tcg-beta-data")); return JSON.stringify([data.items, data.sales, data.expenses]); });
       const before = await snapshot();
@@ -297,7 +298,7 @@ async function verifyGuestReportingIsHidden(browser) {
       await workspaceToggle.click();
       assert.deepEqual(await destinationKeys(), originalKeys);
       await page.screenshot({ path: path.join(output, `${width}-${theme}-menu-active.png`) });
-      await page.keyboard.press("Escape"); await page.goBack(); await expect(page.getByRole("heading", { name: "Welcome back.", exact: true })).toBeVisible();
+      await page.keyboard.press("Escape"); await page.goBack(); await expect(page.getByRole("heading", { name: /^Welcome( back| to Code 3 TCG).$/ })).toBeVisible();
 
       lastStep = `${width} ${theme}: Find workspace navigation and Back`;
       const previousWorkspacePath = new URL(page.url()).pathname;

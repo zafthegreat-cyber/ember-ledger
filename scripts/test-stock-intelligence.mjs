@@ -5,8 +5,121 @@ import {createStockIntelHandler} from "../supabase/functions/code3-stock-intel-f
 import {createReviewHandler} from "../supabase/functions/code3-stock-intel-review/core.mjs";
 import {createInboundHandler} from "../supabase/functions/code3-stock-inbound/core.mjs";
 import {INBOUND_STAGES,parseInboundEvents} from "../src/services/warehouseInbound.mjs";
+import {sourceHealth,currentStockSignals} from "../src/services/stockIntelligence.mjs";
+import {stockStaffAuthorizer,stockAllowedOrigins} from "../supabase/functions/_shared/stockStaff.mjs";
+import {createApprovedStockAdapter} from "../supabase/functions/_shared/stockAdapter.mjs";
+import {createDependencies} from "../supabase/functions/code3-stock-intel-review/core.mjs";
+import {createInboundDependencies} from "../supabase/functions/code3-stock-inbound/core.mjs";
 
 const NOW = Date.parse("2026-11-15T20:00:00Z");
+test("Source health distinguishes disconnected, untested, stale and recent checks",()=>{
+  const source={connected:true,mode:"official-api",lastSuccessAt:new Date(NOW).toISOString()};
+  assert.equal(sourceHealth({...source,connected:false},NOW).key,"disconnected");
+  assert.equal(sourceHealth({...source,lastSuccessAt:null},NOW).healthy,false);
+  assert.equal(sourceHealth({...source,lastSuccessAt:new Date(NOW-16*60_000).toISOString()},NOW).key,"stale");
+  assert.equal(sourceHealth({...source,lastSuccessAt:new Date(NOW+120_000).toISOString()},NOW).healthy,false);
+  assert.equal(sourceHealth(source,NOW).healthy,true);
+});
+
+test("Private Discord links and forged official attribution fail closed",()=>{
+  assert.throws(()=>parseStockIntelligence(feed([signal({sourceUrl:"https://discord.com/channels/1558588508204179611/1563700460802670662/1563700485582749717"})]),NOW),/Invalid retailer stock signal/);
+  assert.throws(()=>parseStockIntelligence(feed([signal({evidenceLevel:"official",sourceType:"official_api"})]),NOW),/not verified as current/);
+  assert.throws(()=>parseStockIntelligence(feed([signal({evidenceLevel:"admin_checked",sourceType:"admin_review",signalType:"available_now",expiresAt:new Date(NOW+16*60_000).toISOString()})]),NOW),/expires too late/);
+});
+
+test("Expired signals are removed while a page remains open",()=>{
+  assert.equal(currentStockSignals([signal()],NOW).length,1);
+  assert.equal(currentStockSignals([signal()],NOW+60_001).length,0);
+  const official=signal({evidenceLevel:"official",sourceType:"official_api"});
+  assert.equal(currentStockSignals([official],NOW,[{retailer:"Target",connected:true,mode:"official-api",lastSuccessAt:new Date(NOW-16*60_000).toISOString()}]).length,0);
+});
+
+test("Public Edge response strips every unapproved upstream field",async()=>{
+  const payload=feed([signal({created_by:staffId,rawPayload:{quantity:200},shipmentId:"private"})]);
+  payload.privateWarehouse={facility:"private"};payload.sources[0].token="private";
+  payload.targets[0].cost=100;
+  const handler=createStockIntelHandler({load:async()=>payload,clock:()=>NOW});
+  const response=await handler(new Request("https://app.test/code3-stock-intel-feed"));
+  assert.equal(response.status,200);
+  assert.doesNotMatch(await response.text(),/private|quantity|created_by|cost|rawPayload/);
+});
+
+test("Malformed public payloads never become successful feeds",async()=>{
+  const payload=feed([signal({sourceUrl:"https://attacker.test"})]);
+  const handler=createStockIntelHandler({load:async()=>payload,clock:()=>NOW});
+  assert.equal((await handler(new Request("https://app.test/code3-stock-intel-feed"))).status,503);
+});
+
+test("Both staff dependencies check current database authorization with the caller token",async()=>{
+  for(const factory of [createDependencies,createInboundDependencies]) {
+    const calls=[];
+    const deps=factory({project:"https://gxsfququorfczvhrkudl.supabase.co",key:"service-test",anon:"public-test",fetchImpl:async(url,options)=>{
+      calls.push({url,options});
+      return Response.json(url.endsWith("/user")?{id:staffId,user_metadata:{role:"admin"}}:true);
+    }});
+    assert.deepEqual(await deps.authorize("caller-test"),{id:staffId,admin:true});
+    assert.equal(calls.length,2);
+    assert.ok(calls[1].url.endsWith("/rpc/is_admin"));
+    assert.ok(calls.every(c=>c.options.headers.Authorization==="Bearer caller-test"));
+    assert.ok(calls.every(c=>c.options.headers.apikey==="public-test"));
+  }
+});
+
+test("Revoked sessions, anonymous sign-ins and user-controlled admin metadata are denied",async()=>{
+  for(const user of [{id:staffId,is_anonymous:true},{id:staffId,user_metadata:{is_admin:true}}]) {
+    const auth=stockStaffAuthorizer({project:"https://app.test",anon:"public-test",fetchImpl:async url=>Response.json(url.endsWith("/user")?user:false)});
+    const result=await auth("revoked-test");
+    assert.ok(result===null||result.admin===false);
+  }
+});
+
+test("Preview CORS requires exact configured origins, never unrelated Vercel projects",async()=>{
+  const preview="https://code3-preview-zafthegreat-cybers-projects.vercel.app";
+  const origins=stockAllowedOrigins([preview]);
+  assert.throws(()=>stockAllowedOrigins(["https://evil.vercel.app"]),/Invalid stock preview/);
+  for(const create of [createReviewHandler,createInboundHandler]) {
+    const handler=create({origins,authorize:async()=>null});
+    const url=create===createReviewHandler?"https://app.test/code3-stock-intel-review":INBOUND_URL;
+    const allowed=await handler(new Request(url,{method:"OPTIONS",headers:{origin:preview}}));
+    assert.equal(allowed.status,204);assert.equal(allowed.headers.get("Access-Control-Allow-Origin"),preview);
+    assert.equal((await handler(new Request(url,{method:"OPTIONS",headers:{origin:"https://evil.vercel.app"}}))).status,403);
+  }
+});
+
+test("Reported availability and Discord leads cannot be published as stock claims",async()=>{
+  let writes=0;
+  const handler=createReviewHandler({authorize:async()=>({id:staffId,admin:true}),findProduct:async()=>({id:staffId}),write:async()=>{writes++;return{id:staffId};}});
+  assert.equal((await handler(createStaffRequest({...review,signalType:"available_now"}))).status,400);
+  assert.equal((await handler(createStaffRequest({...review,sourceUrl:"https://discord.com/channels/1558588508204179611/1563700460802670662/1563700485582749717"}))).status,400);
+  assert.equal(writes,0);
+});
+
+test("Checked availability must cite the selected product page, not a retailer homepage",async()=>{
+  let writes=0;
+  const handler=createReviewHandler({authorize:async()=>({id:staffId,admin:true}),findProduct:async()=>({id:staffId,url:TARGET_URL}),write:async()=>{writes++;return{id:staffId};}});
+  const checked={...review,signalType:"available_now",evidence:"admin_checked"};
+  assert.equal((await handler(createStaffRequest({...checked,sourceUrl:"https://www.target.com/"}))).status,400);
+  assert.equal((await handler(createStaffRequest(checked))).status,201);
+  assert.equal(writes,1);
+});
+
+test("Approved adapter requires authorization and fresh observed evidence",async()=>{
+  const config={id:"target-feed",retailer:"Target",mode:"official-api",approved:true,agreementRef:"agreement-test"};
+  assert.throws(()=>createApprovedStockAdapter({...config,approved:false}),/registration required/);
+  const normalize=createApprovedStockAdapter(config);
+  const event={eventId:"event-001",sku:"1012850572",signalType:"available_now",observedAt:new Date(NOW-1000).toISOString(),productUrl:TARGET_URL,quantity:200,headline:"Invented availability",created_by:staffId};
+  const options={now:NOW,lastSuccessAt:new Date(NOW).toISOString()};
+  const first=await normalize(event,options),replay=await normalize({...event,quantity:999},options);
+  assert.equal(first.eventKey,replay.eventKey);
+  assert.equal(first.evidenceLevel,"official");assert.equal(first.signalType,"available_now");
+  assert.doesNotMatch(JSON.stringify(first),/quantity|Invented|created_by/);
+  await assert.rejects(normalize(event,{now:NOW}),/validation required/);
+  await assert.rejects(normalize({...event,observedAt:new Date(NOW-3600_000).toISOString()},options),/Fresh source/);
+  await assert.rejects(normalize({...event,productUrl:"https://discord.com/channels/private"},options),/Invalid retailer/);
+  const partner=createApprovedStockAdapter({...config,mode:"authorized-feed"});
+  assert.equal((await partner(event,options)).signalType,"reported_stock");
+  assert.equal((await partner(event,options)).evidenceLevel,"reported");
+});
 const TARGET_URL = "https://www.target.com/p/hoc2/A-1012850572";
 function feed(signals=[]) {
   return {
@@ -94,7 +207,7 @@ test("Client feed reads only a validated JSON response without cookies",async()=
   assert.match(request.url,/functions\/v1\/code3-stock-intel-feed$/);
 });
 test("Edge handler exposes only GET and HEAD and refuses unsafe requests",async()=>{
-  const handler=createStockIntelHandler({load:async()=>feed()});
+  const handler=createStockIntelHandler({load:async()=>feed(),clock:()=>NOW});
   const url="https://gxsfququorfczvhrkudl.supabase.co/functions/v1/code3-stock-intel-feed";
   const result=await handler(new Request(url));
   assert.equal(result.status,200);

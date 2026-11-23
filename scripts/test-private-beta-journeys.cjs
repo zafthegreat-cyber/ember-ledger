@@ -72,9 +72,18 @@ async function journey(browser, theme, width) {
     await expect(page.locator("vite-error-overlay")).toHaveCount(0);
     await page.screenshot({ path: path.join(output, `${name}-${theme}-${width}.png`), fullPage: true });
   };
+  // Collection and Inventory now list grouped product cards ("Open <name>, quantity ..." /
+  // "Open <name>, N available, ..."); Inventory opens a purchase-record sheet before the detail.
+  const productCard = (name, collector) => collector
+    ? page.locator(".collection-portfolio-grid").getByRole("button", { name: `Open ${name}, quantity` })
+    : page.locator(".inventory-browser-products").getByRole("button", { name: `Open ${name}, ` });
+  const openRecord = async (name, collector) => {
+    await productCard(name, collector).click();
+    if (!collector) await page.locator(".inventory-lots > button").first().click();
+  };
   const addItem = async ({ collector, name, quantity, cost }) => {
     await go(collector ? "/collection" : "/business/inventory");
-    await page.getByRole("button", { name: collector ? "Add Item" : "Add Resale Inventory", exact: true }).first().click();
+    await page.getByRole("button", { name: collector ? "Add item" : "Add inventory", exact: true }).first().click();
     await page.getByLabel(/^Item name/).fill(name);
     await page.getByLabel("Quantity", { exact: true }).fill(String(quantity));
     await page.getByLabel("Set", { exact: true }).fill("Synthetic acceptance set");
@@ -84,12 +93,12 @@ async function journey(browser, theme, width) {
     await page.getByLabel("Allocated item cost", { exact: true }).fill(String(cost));
     await next();
     await page.getByLabel("Storage location", { exact: true }).fill(collector ? "SYN-BINDER" : "SYN-BIN");
-    await page.getByRole("button", { name: collector ? "Save Item" : "Save Inventory", exact: true }).click();
+    await page.getByRole("button", { name: collector ? "Save item" : "Save inventory", exact: true }).click();
     if (collector) {
       await expect(page.locator(".ops-record-detail")).toContainText(name);
-      await page.getByRole("button", { name: "Back", exact: true }).click();
+      await page.getByRole("button", { name: "Back to Collection", exact: true }).click();
     }
-    await page.getByRole("button", { name: `Open ${name}`, exact: true }).waitFor();
+    await productCard(name, collector).waitFor();
     const state = await saved();
     const record = state.inventory.find((row) => row.name === name);
     assert.ok(record?.id, "Actual form save assigned an identity");
@@ -101,31 +110,22 @@ async function journey(browser, theme, width) {
   await go("/collection");
   assert.equal((await saved())?.inventory?.length || 0, 0, "Start with no pre-seeded owned records");
   const collector = await addItem({ collector: true, name: "Synthetic Aurora acceptance", quantity: 1, cost: 12 });
-  await page.reload(); await page.getByRole("button", { name: `Open ${collector.name}`, exact: true }).waitFor();
+  await page.reload(); await productCard(collector.name, true).waitFor();
   await page.getByLabel("Search collection", { exact: true }).fill("Aurora acceptance");
-  await page.getByRole("button", { name: `Open ${collector.name}`, exact: true }).click();
-  await expect(page.locator(".ops-record-detail")).toContainText("SYN-BINDER");
-  await page.getByRole("button", { name: "Back", exact: true }).click();
+  await productCard(collector.name, true).click();
+  // The card opens the grouped product page; the Copies tab shows each saved record's storage.
+  await expect(page.locator(".collection-product-detail")).toContainText(collector.name);
+  await page.locator(".collection-product-detail").getByRole("tab", { name: "Copies", exact: true }).click();
+  await expect(page.locator(".collection-product-copies")).toContainText("SYN-BINDER");
+  await page.getByRole("button", { name: "Back to collection", exact: true }).click();
   await expect(page.getByLabel("Search collection", { exact: true })).toHaveValue("Aurora acceptance");
   await capture("collector-saved");
 
   currentStep = `${theme}/${width}: binder and wishlist`;
-  await go("/collection/sets");
-  await manual().getByRole("button", { name: "Add Binder", exact: true }).click();
-  await form().getByLabel("Title", { exact: true }).fill("Synthetic acceptance binder");
-  await form().getByLabel("Pages", { exact: true }).fill("2"); await saveManual();
-  await review().getByRole("button", { name: "Back to Binder records", exact: true }).click();
-  await manual().getByRole("button", { name: "Slot assignment", exact: true }).click();
-  await manual().getByRole("button", { name: "Add Slot assignment", exact: true }).click();
-  await form().getByLabel("Owned item", { exact: true }).selectOption(collector.id);
-  await form().getByLabel("Binder", { exact: true }).selectOption({ label: "Synthetic acceptance binder" });
-  await form().getByLabel("Slot", { exact: true }).fill("3"); await saveManual();
-  await go("/collection/sets");
-  await manual().locator(".manual-lifecycle-card").filter({ hasText: "Synthetic acceptance binder" }).click();
-  await expect(review().locator(".manual-binder-preview")).toContainText(collector.name);
-  await capture("collector-organized");
+  // Binder/slot records were removed from Collection > Sets in 6b7c16a ("Browse set cards and sealed
+  // products"); no route renders the binder/assignment lifecycle any more, so only Wants is exercised.
   await go("/collection/wishlist");
-  await manual().getByRole("button", { name: "Add Wishlist target", exact: true }).click();
+  await manual().getByRole("button", { name: "Add Wants target", exact: true }).click();
   await form().getByLabel("Title", { exact: true }).fill("Synthetic acceptance wanted card");
   await form().getByLabel("Set name", { exact: true }).fill("Synthetic acceptance set");
   await form().getByLabel("Collector number", { exact: true }).fill("001"); await saveManual();
@@ -145,17 +145,17 @@ async function journey(browser, theme, width) {
 
   currentStep = `${theme}/${width}: seller intake and sale`;
   const stock = await addItem({ collector: false, name: "Synthetic resale acceptance pair", quantity: 2, cost: 20 });
-  await page.getByRole("button", { name: `Open ${stock.name}`, exact: true }).click();
+  await openRecord(stock.name, false);
   await manual().getByRole("button", { name: "Add Processing & storage", exact: true }).click();
   await form().getByLabel("Status", { exact: true }).selectOption("Stored");
   await form().getByLabel("Storage location", { exact: true }).fill("SYN-BIN-VERIFIED"); await saveManual();
   await go("/business/sales");
-  await page.getByRole("button", { name: "Record Sale", exact: true }).first().click();
+  await page.getByRole("button", { name: "Record sale", exact: true }).first().click();
   await page.getByLabel(/^Inventory item/).selectOption(stock.id);
   await page.getByLabel("Quantity sold", { exact: true }).fill("1");
-  await page.getByLabel("Gross sale price", { exact: true }).fill("50");
+  await page.getByLabel("Sale price — transaction total", { exact: true }).fill("50");
   await page.getByLabel("Sales channel", { exact: true }).fill("Synthetic acceptance booth");
-  await next(); await next(); await page.getByRole("button", { name: "Save Sale", exact: true }).click();
+  await next(); await next(); await page.getByRole("button", { name: "Save sale", exact: true }).click();
   await expect(page.locator(".everyday-record-card")).toHaveCount(1);
   const originalSale = (await saved()).sales[0];
   assert.equal(originalSale.netProceeds, 50); assert.equal(originalSale.allocatedCostOfGoodsSold, 10);
@@ -189,7 +189,9 @@ async function journey(browser, theme, width) {
   await settlement.getByRole("button", { name: "Review stock & refund", exact: true }).click();
   const confirmation = settlement.getByRole("checkbox");
   await confirmation.focus(); await page.keyboard.press("Shift+Tab"); await page.keyboard.press("Tab"); await expect(confirmation).toBeFocused();
-  assert.notEqual(await confirmation.evaluate((node) => getComputedStyle(node).outlineStyle), "none");
+  // Holo-tech CSS may replace the focus outline with a glow; either one counts as a visible focus ring.
+  const focusRing = await confirmation.evaluate((node) => { const style = getComputedStyle(node); return { outline: style.outlineStyle, boxShadow: style.boxShadow }; });
+  assert.ok(focusRing.outline !== "none" || focusRing.boxShadow !== "none", `Keyboard focus is visible on the confirmation checkbox: ${JSON.stringify(focusRing)}`);
   await page.keyboard.press("Space");
   await settlement.getByRole("button", { name: "Apply return & close record", exact: true }).click();
   await expect(page.getByText("Return applied on this device.", { exact: false })).toBeVisible();
@@ -219,7 +221,7 @@ async function journey(browser, theme, width) {
   assert.deepEqual(await saved(), applied, "Reload and reporting perform no extra writes");
   assert.deepEqual(errors, [], "No unhandled application errors");
   await denial(context, `unauthenticated-denial-${theme}-${width}`);
-  results.push({ theme, width, passed: true, source: "empty local storage plus actual UI saves", collectorId: collector.id, inventoryId: stock.id, saleId: sale.id, savedStateSha256: sha(raw), blockedRequests: blocked, checks: ["create collector record", "reload and search with Back", "binder exact unit assignment", "wishlist exact match without duplicate stock", "private record stable URL and Back", "manual resale intake and storage", "complete sale with exact cost", "manual shipment", "receipt and inspection", "zero-write cancelled review", "keyboard-confirmed manual refund and restock", "original acquisition/sale preserved", "report CSV", "independent fresh reader", "unauthenticated private-search denial"] });
+  results.push({ theme, width, passed: true, source: "empty local storage plus actual UI saves", collectorId: collector.id, inventoryId: stock.id, saleId: sale.id, savedStateSha256: sha(raw), blockedRequests: blocked, checks: ["create collector record", "reload and search with Back", "wishlist exact match without duplicate stock", "private record stable URL and Back", "manual resale intake and storage", "complete sale with exact cost", "manual shipment", "receipt and inspection", "zero-write cancelled review", "keyboard-confirmed manual refund and restock", "original acquisition/sale preserved", "report CSV", "independent fresh reader", "unauthenticated private-search denial"] });
   await context.close();
 }
 

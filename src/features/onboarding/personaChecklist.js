@@ -43,7 +43,7 @@ const CHECKLISTS = {
   },
   kid: {
     title: "Three things to try",
-    intro: "Ask a grown-up if you get stuck.",
+    intro: "Each one takes about a minute.",
     steps: [
       { key: "vault", label: "Add a favorite card", detail: "Find it and tap Add to Vault.", target: "collectionWorkspace", isDone: (c) => n(c.vaultItems) > 0 },
       { key: "set", label: "Look at a set you're collecting", detail: "See which cards you have and which you still want.", target: "collectionWorkspace:sets", isDone: (c) => n(c.vaultItems) >= 3 },

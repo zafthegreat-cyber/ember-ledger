@@ -6,6 +6,7 @@ import { transformSync } from "esbuild";
 import { JSDOM } from "jsdom";
 import React, { act, useEffect } from "react";
 import { createRoot } from "react-dom/client";
+import { withConnectionUpdates } from "../src/features/auth/connectionUpdates.mjs";
 import { SOCIAL_PROVIDERS } from "../src/features/auth/socialAuth.mjs";
 
 const hooks = registerHooks({ load(url, context, next) {
@@ -87,3 +88,61 @@ test("unexpected callback parameters never call the exchange service", async () 
   assert.equal(exchanges, 0); assert.ok(document.querySelector('[role="alert"]')); assert.equal(location.search, "");
 });
 process.on("exit", () => hooks.deregister());
+
+
+test("a successful native return refreshes the mounted connection panel without changing account ID", async () => {
+  environment(); const id = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"; let linked = false;
+  const service = withConnectionUpdates({
+    verifiedUser: async () => ({ id, identities: linked ? [{ provider: "facebook" }] : [] }),
+    start: async () => {}, finish: async () => { linked = true; return { userId: id, path: "/settings" }; },
+  });
+  await act(async () => root.render(React.createElement(ConnectedSignIns, { user: { id }, loadProviders: async () => SOCIAL_PROVIDERS, linkingEnabled: true, service })));
+  await act(async () => click(buttons().find(button => button.textContent === "Connect Facebook")));
+  assert.ok(!document.body.textContent.includes("Facebook · Connected"), "opening OAuth is not proof of a connection");
+  await act(async () => service.finish({ code: "fixture" }));
+  assert.match(document.body.textContent, /Facebook · Connected/);
+  assert.ok(!buttons().some(button => button.textContent === "Connect Facebook"));
+});
+
+test("foreground refresh failure is retryable and never labels an unverified connection", async () => {
+  environment(); const id = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"; let fail = false;
+  const service = { verifiedUser: async () => { if (fail) throw Error("private-token"); return { id, identities: [{ provider: "facebook" }] }; } };
+  await act(async () => root.render(React.createElement(ConnectedSignIns, { user: { id }, loadProviders: async () => SOCIAL_PROVIDERS, linkingEnabled: true, service })));
+  assert.match(document.body.textContent, /Facebook · Connected/);
+  fail = true;
+  await act(async () => window.dispatchEvent(new dom.window.Event("focus")));
+  assert.ok(!document.body.textContent.includes("Facebook · Connected"));
+  assert.ok(!document.body.textContent.includes("private-token"));
+  assert.ok(buttons().filter(button => button.textContent.startsWith("Connect ")).every(button => button.disabled));
+  fail = false;
+  await act(async () => click(buttons().find(button => button.textContent === "Retry connection status")));
+  assert.match(document.body.textContent, /Facebook · Connected/);
+});
+
+test("a late response from the previous account cannot mark the next account connected", async () => {
+  environment(); let resolveOld;
+  const service = { verifiedUser: id => id === "old" ? new Promise(resolve => { resolveOld = resolve; }) : Promise.resolve({ id, identities: [] }) };
+  const loadProviders = async () => SOCIAL_PROVIDERS;
+  const render = id => root.render(React.createElement(ConnectedSignIns, { user: { id }, loadProviders, linkingEnabled: true, service }));
+  await act(async () => render("old"));
+  await act(async () => render("new"));
+  await act(async () => resolveOld({ id: "old", identities: [{ provider: "facebook" }] }));
+  assert.ok(!document.body.textContent.includes("Facebook · Connected"));
+});
+
+test("verified existing connections remain visible when new provider discovery fails", async () => {
+  environment(); const id = "fixture";
+  await act(async () => root.render(React.createElement(ConnectedSignIns, { user: { id }, loadProviders: async () => { throw Error("offline"); }, linkingEnabled: true, service: { verifiedUser: async () => ({ id, identities: [{ provider: "facebook" }] }) } })));
+  assert.match(document.body.textContent, /Facebook · Connected/);
+  assert.ok(!buttons().some(button => button.textContent === "Connect Facebook"));
+});
+
+test("failed callback emits no connection success and unsubscribed observers stay silent", async () => {
+  let updates = 0, fail = true;
+  const service = withConnectionUpdates({ finish: async () => { if (fail) throw Error("verification failed"); return { userId: "fixture" }; } });
+  const unsubscribe = service.subscribeConnections(() => { updates++; });
+  await assert.rejects(service.finish({}), /verification failed/);
+  assert.equal(updates, 0);
+  fail = false; await service.finish({}); assert.equal(updates, 1);
+  unsubscribe(); await service.finish({}); assert.equal(updates, 1);
+});

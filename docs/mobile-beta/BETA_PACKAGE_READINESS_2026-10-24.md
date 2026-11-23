@@ -16,6 +16,8 @@ The existing `Native beta build checks` workflow supports manual dispatch of `io
 
 All action references retain the existing v4 major and are pinned to immutable commits. The official repositories' `refs/tags/v4` were read directly through GitHub on October 24, 2026; no hash was inferred. Workflow permissions remain `contents: read`.
 
+> Update, November 23, 2026: GitHub is retiring Node 20 for actions, so every workflow now pins the Node 24 releases, read the same way from each repository's release tag: checkout v7.0.1 (`3d3c42e5aac5ba805825da76410c181273ba90b1`), setup-node v7.1.0 (`949feb2413d6458794dcd2491c4babbbce0c15c1`), setup-java v6.3.0 (`d1374f8ac74474200d16ef8ecee22c7ae7a51880`), upload-artifact v7.0.2 (`cf430e030ddbb5b0abf93d22962f4752f3646cd9`) and cache v6.1.0 (`55cc8345863c7cc4c66a329aec7e433d2d1c52a9`). `scripts/test-native-build-readiness.mjs` checks them. The table below is the October record.
+
 | Official v4 reference checked | Pinned commit |
 | --- | --- |
 | [actions/checkout](https://api.github.com/repos/actions/checkout/git/ref/tags/v4) | [`11d5960a326750d5838078e36cf38b85af677262`](https://github.com/actions/checkout/commit/11d5960a326750d5838078e36cf38b85af677262) |

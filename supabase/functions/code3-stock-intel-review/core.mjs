@@ -1,3 +1,4 @@
+import {stockStaffAuthorizer,stockAllowedOrigins} from "../_shared/stockStaff.mjs";
 const retailers = {
   Target: "target.com",
   Walmart: "walmart.com",
@@ -10,15 +11,10 @@ const ttl = {
   reported_stock: 90, available_now: 15, out_of_stock: 30, possible_drop: 120,
   queue_detected: 20, queue_ended: 20, raffle_open: 360, new_listing: 1440,
 };
-const allowedOrigins = new Set([
-  "https://code3tcg.app",
-  "https://code3.anchorandwingllc.com",
-  "https://code3tcg.anchorandwingllc.com",
-  "http://localhost:5173",
-]);
-function corsFor(req) {
+const allowedOrigins=stockAllowedOrigins();
+function corsFor(req,origins) {
   const origin = req.headers.get("origin");
-  return origin && allowedOrigins.has(origin) ? origin : null;
+  return origin && origins.has(origin) ? origin : null;
 }
 const json = (status,body,origin) => new Response(JSON.stringify(body), {
   status,headers:{
@@ -40,9 +36,8 @@ function validUrl(raw,retailer) {
     if (u.protocol!=="https:"||u.username||u.password) return null;
     const host=u.hostname.toLowerCase(), retailerDomain=retailers[retailer];
     const official=host===retailerDomain||host.endsWith("."+retailerDomain);
-    const discord=host==="discord.com"||host==="www.discord.com";
-    if (!official&&!discord) return null;
-    if (discord&&!/^\/channels\/\d{17,20}\/\d{17,20}\/\d{17,20}$/u.test(u.pathname)) return null;
+    // Approved-channel intake is a separate, private integration.
+    if (!official) return null;
     return {url:u.href,official};
   } catch {return null;}
 }
@@ -50,9 +45,9 @@ async function digest(value) {
   const result=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(value));
   return [...new Uint8Array(result)].map(b=>b.toString(16).padStart(2,"0")).join("");
 }
-export function createReviewHandler({authorize,findProduct,write,clock=()=>new Date()}) {
+export function createReviewHandler({authorize,findProduct,write,clock=()=>new Date(),origins=allowedOrigins}) {
   return async (req) => {
-    const origin=corsFor(req);
+    const origin=corsFor(req,origins);
     if (req.headers.has("origin")&&!origin) return json(403,{error:"Origin not allowed"},null);
     if (req.method==="OPTIONS") return new Response(null,{status:204,headers:{
       "Access-Control-Allow-Origin":origin||"null",
@@ -60,6 +55,8 @@ export function createReviewHandler({authorize,findProduct,write,clock=()=>new D
       "Access-Control-Allow-Methods":"POST, OPTIONS","Access-Control-Max-Age":"600","Vary":"Origin",
     }});
     if (req.method!=="POST") return json(405,{error:"Use POST"},origin);
+    const requestUrl=new URL(req.url);
+    if(requestUrl.search||!/^\/(?:functions\/v1\/)?code3-stock-intel-review$/.test(requestUrl.pathname)) return json(400,{error:"Unsupported request"},origin);
     const header=req.headers.get("authorization")||"";
     const match=/^Bearer ([A-Za-z0-9._-]{50,4096})$/.exec(header);
     if (!match) return json(401,{error:"Sign in required"},origin);
@@ -83,9 +80,14 @@ export function createReviewHandler({authorize,findProduct,write,clock=()=>new D
       return json(400,{error:"Check product, signal, and source fields"},origin);
     }
     const source=validUrl(sourceUrl,retailer);
-    if (!source||(evidence==="admin_checked"&&!source.official)) return json(400,{error:"Use the matching retailer URL for a checked claim"},origin);
+    if (!source||!source.official||(signalType==="available_now"&&evidence!=="admin_checked")||(evidence==="admin_checked"&&!source.official)) return json(400,{error:"Use the matching retailer URL for a checked claim"},origin);
     const product=sku?await findProduct(retailer,sku).catch(()=>null):null;
     if (sku&&!product?.id) return json(422,{error:"Add this SKU to the approved watchlist first"},origin);
+    if(signalType==="available_now") {
+      const tracked=validUrl(product?.url,retailer);
+      if(!tracked || new URL(tracked.url).pathname!==new URL(source.url).pathname)
+        return json(400,{error:"Check availability on this watched product's retailer page"},origin);
+    }
     const now=clock(),eventKey=await digest([retailer,sku,signalType,evidence,source.url,Math.floor(now.getTime()/1_800_000)].join("|"));
     const item={
       retailer,product_id:product?.id||null,
@@ -105,22 +107,9 @@ export function createDependencies({project,key,anon,fetchImpl=fetch}) {
   if (project!==origin||!key||!anon) throw new Error("Service configuration unavailable");
   const serviceHeaders={"apikey":key,"Authorization":"Bearer "+key};
   return {
-    authorize:async token=>{
-      const user=await fetchImpl(origin+"/auth/v1/user",{
-        method:"GET",redirect:"error",signal:AbortSignal.timeout(8000),
-        headers:{"apikey":anon,"Authorization":"Bearer "+token},
-      });
-      if (!user.ok) return null;
-      const identity=await user.json();
-      if (!/^[0-9a-f-]{36}$/i.test(identity.id||"")||identity.is_anonymous) return null;
-      const url=origin+"/rest/v1/profiles?select=app_role,user_role&id=eq."+encodeURIComponent(identity.id)+"&limit=1";
-      const roles=await fetchImpl(url,{method:"GET",redirect:"error",signal:AbortSignal.timeout(8000),headers:serviceHeaders});
-      if (!roles.ok) return null;
-      const rows=await roles.json();
-      return {id:identity.id,admin:rows.length===1&&rows[0].app_role==="admin"&&rows[0].user_role==="admin"};
-    },
+    authorize:stockStaffAuthorizer({project,anon,fetchImpl}),
     findProduct:async (retailer,sku)=>{
-      const url=origin+"/rest/v1/retailer_products?select=id&retailer=eq."+encodeURIComponent(retailer)+"&external_id=eq."+encodeURIComponent(sku)+"&limit=1";
+      const url=origin+"/rest/v1/retailer_products?select=id,url&retailer=eq."+encodeURIComponent(retailer)+"&external_id=eq."+encodeURIComponent(sku)+"&limit=1";
       const res=await fetchImpl(url,{method:"GET",redirect:"error",signal:AbortSignal.timeout(8000),headers:serviceHeaders});
       if (!res.ok) throw new Error("Product read failed");
       const rows=await res.json();

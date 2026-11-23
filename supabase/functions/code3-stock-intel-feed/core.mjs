@@ -1,3 +1,4 @@
+import {parseStockIntelligence} from "../_shared/stockContract.mjs";
 const projectOrigin = 'https://gxsfququorfczvhrkudl.supabase.co';
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -13,7 +14,7 @@ const headers = {
 };
 const response = (status, body, method = 'GET') =>
   new Response(method === 'HEAD' || status === 204 ? null : JSON.stringify(body), { status, headers });
-export function createStockIntelHandler({ load }) {
+export function createStockIntelHandler({ load,clock=()=>Date.now() }) {
   if (typeof load !== 'function') throw new TypeError('load required');
   return async (req) => {
     if (req.method === 'OPTIONS') return new Response(null, {status: 204, headers: cors});
@@ -26,7 +27,8 @@ export function createStockIntelHandler({ load }) {
           payload.sources.length > 6 || payload.targets.length > 80 || payload.signals.length > 40 ||
           !Array.isArray(payload.discoveryWatches) || payload.discoveryWatches.length > 20)
         throw new Error('Invalid feed');
-      return response(200, payload, req.method);
+      // Rebuild the public allowlist here; raw upstream fields never reach browsers.
+      return response(200, {version:1,...parseStockIntelligence(payload,clock())}, req.method);
     } catch {
       return response(503, {error: 'Stock intelligence temporarily unavailable'}, req.method);
     }

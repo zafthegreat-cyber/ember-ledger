@@ -52,24 +52,9 @@ async function main() {
         assert.equal(await page.locator(".app").getAttribute("data-theme"), theme);
         await page.screenshot({ path: path.join(output, `${name}-${theme}-${width}.png`), fullPage: true });
       };
-      await go("/collection/sets"); await panel().getByRole("button", { name: "Add Binder", exact: true }).click();
-      await form().getByLabel("Title", { exact: true }).fill("Synthetic album");
-      await form().getByLabel("Pages", { exact: true }).fill("2");
-      await capture("binder-form");
-      await form().getByRole("button", { name: "Save record", exact: true }).click(); await review().waitFor();
-      await review().getByRole("button", { name: "Back to Binder records" }).click();
-      await panel().getByRole("button", { name: "Slot assignment", exact: true }).click();
-      await panel().getByRole("button", { name: "Add Slot assignment", exact: true }).click();
-      await form().getByLabel("Owned item", { exact: true }).selectOption("native-card");
-      await form().getByLabel("Binder", { exact: true }).selectOption({ label: "Synthetic album" });
-      await form().getByLabel("Slot", { exact: true }).fill("3");
-      await form().getByRole("button", { name: "Save record", exact: true }).click(); await review().waitFor();
-      await page.reload(); await panel().waitFor();
-      await panel().locator(".manual-lifecycle-card").filter({ hasText: "Synthetic album" }).click();
-      assert.match(await review().locator(".manual-binder-preview").innerText(), /Synthetic Aurora card/);
-      await capture("binder-preview");
-      const beforePreview = await bytes(); await review().getByLabel("Preview page").selectOption("2"); await review().getByLabel("Preview page").selectOption("1"); assert.equal(await bytes(), beforePreview, "Preview must not write");
-      await go("/collection/wishlist"); await panel().getByRole("button", { name: "Add Wishlist target", exact: true }).click();
+      // Binder/slot records were removed from Collection > Sets in 6b7c16a ("Browse set cards and sealed
+      // products"); no route renders ManualLifecycles types binder/assignment any more, so that scenario is dropped.
+      await go("/collection/wishlist"); await panel().getByRole("button", { name: "Add Wants target", exact: true }).click();
       for (const [label, value] of [["Title", "Wanted Aurora"], ["Set name", "Synthetic set"], ["Collector number", "001"]]) await form().getByLabel(label, { exact: true }).fill(value);
       await form().getByRole("button", { name: "Save record", exact: true }).click(); await review().waitFor(); assert.match(await review().innerText(), /Matching owned records[\s\S]*Synthetic Aurora card/); await capture("wishlist-match");
       await go("/collection/grading"); await panel().getByRole("button", { name: "Add Grading submission", exact: true }).click(); await form().getByLabel("Owned item").selectOption("native-card"); await form().getByLabel("Grading company").fill("Synthetic grader"); await form().getByLabel("Submission reference").fill("SYN-NATIVE"); await form().getByRole("button", { name: "Save record", exact: true }).click(); await review().waitFor(); await capture("grading-record");
@@ -79,13 +64,13 @@ async function main() {
       const beforeCalendar = await bytes(); const [file] = await Promise.all([page.waitForEvent("download"), review().getByRole("button", { name: "Download calendar entry" }).click()]); assert.ok(file.suggestedFilename().endsWith(".ics")); assert.equal(await bytes(), beforeCalendar); await capture("event-calendar");
       await review().getByRole("button", { name: "Back to Auction event records" }).click(); await panel().getByRole("button", { name: "Sourcing visit", exact: true }).click(); await panel().getByRole("button", { name: "Add Sourcing visit", exact: true }).click();
       await form().getByLabel("Title", { exact: true }).fill("Synthetic pickup visit"); await form().getByLabel("Exact store or source reference").fill("exact-store-001"); await form().getByLabel("Recorded mileage trip").selectOption("native-trip"); await form().getByLabel("Recorded purchase").selectOption("native-purchase"); await form().getByLabel("Outcome").selectOption("Purchased"); await form().getByRole("button", { name: "Save record", exact: true }).click(); await review().waitFor(); await capture("visit-links");
-      await go("/business/inventory"); await page.getByRole("button", { name: "Open Synthetic resale card", exact: true }).click(); await panel().getByRole("button", { name: "Add Processing & storage", exact: true }).click(); await form().getByLabel("Status").selectOption("Stored"); await form().getByLabel("Storage location").fill("Synthetic BIN-A"); await form().getByRole("button", { name: "Save record", exact: true }).click(); await review().waitFor();
+      await go("/business/inventory"); await page.locator(".inventory-browser-products").getByRole("button", { name: "Open Synthetic resale card, " }).click(); await page.locator(".inventory-lots > button").first().click(); /* Inventory groups products; the purchase-record sheet opens first (InventoryBrowser.jsx) */ await panel().getByRole("button", { name: "Add Processing & storage", exact: true }).click(); await form().getByLabel("Status").selectOption("Stored"); await form().getByLabel("Storage location").fill("Synthetic BIN-A"); await form().getByRole("button", { name: "Save record", exact: true }).click(); await review().waitFor();
       const beforeLabel = await bytes(); const [label] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Download label for printing" }).click()]); assert.ok(label.suggestedFilename().endsWith(".svg")); assert.equal(await bytes(), beforeLabel); await capture("storage-label");
       await go("/business/sales"); await page.locator(".everyday-record-card").first().click(); await panel().getByRole("button", { name: "Add Manual shipment", exact: true }).click(); await form().getByRole("button", { name: "Save record", exact: true }).click(); await review().waitFor(); await capture("shipment");
       await go("/business/money/reports"); await panel().getByLabel("Channel / booth").selectOption("Synthetic booth"); const beforeReport = await bytes(); const [csv] = await Promise.all([page.waitForEvent("download"), panel().getByRole("button", { name: "Download statement CSV" }).click()]); assert.ok(csv.suggestedFilename().endsWith(".csv")); assert.equal(await bytes(), beforeReport); await capture("booth-statement");
       assert.deepEqual(JSON.parse(await bytes()).inventory, seed.inventory, "All operations preserve the same physical Inventory records and quantities");
       assert.deepEqual(errors, [], "No runtime errors");
-      results.push({ theme, width, passed: true, scenarios: ["binder form/save/reload/slot preview", "wishlist exact match", "grading draft", "event/calendar download", "visit/mileage/purchase links", "processing/storage/label download", "shipment draft", "channel statement"], physicalInventoryPreserved: true });
+      results.push({ theme, width, passed: true, scenarios: ["wishlist exact match", "grading draft", "event/calendar download", "visit/mileage/purchase links", "processing/storage/label download", "shipment draft", "channel statement"], physicalInventoryPreserved: true });
       await context.close();
     }
   } catch (error) { if (lastPage && !lastPage.isClosed()) { await lastPage.screenshot({ path: path.join(output, "failure.png"), fullPage: true }); fs.writeFileSync(path.join(output, "failure.html"), await lastPage.content()); fs.writeFileSync(path.join(output, "failure.txt"), await lastPage.locator("body").innerText()); } throw error; } finally { await browser.close(); }

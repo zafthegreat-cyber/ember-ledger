@@ -121,10 +121,10 @@ async function main() {
     await page.getByRole("button", { name: "Open Store", exact: true }).click();
     await page.waitForTimeout(250);
     const storeDetailText = await page.locator("body").innerText();
-    if (!/Scout > Stores >/i.test(storeDetailText)) {
+    if (!/Restocks > Stores >/i.test(storeDetailText)) {
       await page.screenshot({ path: path.join(artifactDir, "desktop-store-open-failure.png"), fullPage: true });
     }
-    assert(/Scout > Stores >/i.test(storeDetailText), `Open Store did not navigate to a store detail surface. Visible route text: ${storeDetailText.slice(-500)}`);
+    assert(/Restocks > Stores >/i.test(storeDetailText), `Open Store did not navigate to a store detail surface. Visible route text: ${storeDetailText.slice(-500)}`);
     await page.screenshot({ path: path.join(artifactDir, "desktop-store-detail.png"), fullPage: false });
     const desktopLayout = await page.evaluate(() => ({ width: window.innerWidth, scrollWidth: document.documentElement.scrollWidth }));
     assert(desktopLayout.scrollWidth <= desktopLayout.width + 2, "Scout store detail overflows horizontally on desktop.");
@@ -153,7 +153,7 @@ async function main() {
     await mobileReset.click();
     await mobilePage.getByRole("button", { name: "Open Store", exact: true }).click();
     await mobilePage.waitForTimeout(250);
-    assert(/Scout > Stores >/i.test(await mobilePage.locator("body").innerText()), "Open Store did not reach mobile store detail.");
+    assert(/Restocks > Stores >/i.test(await mobilePage.locator("body").innerText()), "Open Store did not reach mobile store detail.");
     const mobileLayout = await mobilePage.evaluate(() => ({ width: window.innerWidth, scrollWidth: document.documentElement.scrollWidth }));
     assert(mobileLayout.scrollWidth <= mobileLayout.width + 2, "Scout store detail overflows horizontally on mobile.");
     await mobilePage.screenshot({ path: path.join(artifactDir, "mobile-store-detail.png"), fullPage: false });

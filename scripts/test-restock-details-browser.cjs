@@ -100,7 +100,7 @@ async function focusTrap(page, dialog, result) {
       try {
         await page.goto(new URL(`/scout/reports?betaLocalMode=true&themeInspect=${theme}`, base).href);
         const feed = page.locator(".scout-reports-landing");
-        await expect(feed.getByRole("heading", { name: "Recent restock reports", exact: true })).toBeVisible({ timeout: 30000 });
+        await expect(feed.getByRole("heading", { name: "Restock reports", exact: true })).toBeVisible({ timeout: 30000 });
         await expect(page.locator(".app[data-theme]")).toHaveAttribute("data-theme", theme);
         // Warm the existing deferred local catalog through a real UI entry before
         // taking the preservation baseline. Read-only report inspection must not
@@ -131,7 +131,9 @@ async function focusTrap(page, dialog, result) {
         const firstItem = dialog.locator(".scout-report-details__item").first();
         await expect(firstItem.locator("dd")).toHaveText(["0", "0"]);
         await expect(dialog.locator(".scout-report-details__item").nth(1)).toContainText("Ask staff");
-        await expect(dialog.getByRole("button", { name: "Add details", exact: true })).toBeVisible();
+        // Owner actions belong to the signed-in reporter only (87745e2); this local viewer is not the reporter.
+        await expect(dialog.getByRole("button", { name: "Add details", exact: true })).toHaveCount(0);
+        await expect(dialog.getByRole("button", { name: "Report a new visit", exact: true })).toBeVisible();
         await expect(dialog.getByRole("button", { name: "Delete", exact: true })).toHaveCount(0);
         await presentation(page, dialog, "details", result);
         await page.screenshot({ path: path.join(output, `${width}-${theme}-details.png`) });
@@ -201,7 +203,7 @@ async function focusTrap(page, dialog, result) {
         assert.deepEqual(await snapshot(page), original, "Store history More/View/Escape does not mutate report data");
         result.moreViewFocusReturn = true;
         await page.goto(new URL(`/scout/reports?betaLocalMode=true&themeInspect=${theme}`, base).href);
-        await expect(feed.getByRole("heading", { name: "Recent restock reports", exact: true })).toBeVisible({ timeout: 30000 });
+        await expect(feed.getByRole("heading", { name: "Restock reports", exact: true })).toBeVisible({ timeout: 30000 });
 
         phase = "new-visit";
         await launch.click(); await expect(dialog).toBeVisible();

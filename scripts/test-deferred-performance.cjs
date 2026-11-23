@@ -34,7 +34,7 @@ const results = [];
       const recordBytes = () => page.evaluate(() => { const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}"); return JSON.stringify(Object.fromEntries(["items", "sales", "expenses", "mileageTrips", "tradeRecords"].map((key) => [key, data[key] || []]))); });
       const record = (name) => results.push({ theme, width, name, passed: true });
       await go("/");
-      await expect(page.getByRole("heading", { name: "Welcome back.", exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { name: /^Welcome( back| to Code 3 TCG).$/ })).toBeVisible();
       assert.ok(!requested.some((url) => newChunks.some((chunk) => url.endsWith(`/${chunk}.jsx`))), "Home must not request inactive renderer chunks.");
       const before = await recordBytes(); record("Home does not fetch nine inactive renderers");
 
@@ -42,17 +42,17 @@ const results = [];
       await add.click();
       const modal = page.locator(".flow-modal");
       await expect(modal.locator("[data-deferred-modal-loading]")).toBeFocused();
-      await expect(modal.getByRole("button", { name: /Add Collection Item with/ })).toBeVisible();
+      await expect(modal.getByRole("button", { name: /Add to my collection with/ })).toBeVisible();
       assert.equal(await modal.locator(".flow-modal-body").evaluate((node) => node.contains(document.activeElement)), true, "Late-loaded action sheet receives keyboard focus.");
       await page.keyboard.press("Escape"); await expect(modal).toHaveCount(0); await expect(add).toBeFocused();
       record("Cold action sheet transfers focus and Escape restores opener");
       await add.click();
-      await modal.getByRole("button", { name: /Add Collection Item with/ }).click();
+      await modal.getByRole("button", { name: /Add to my collection with/ }).click();
       const intake = page.locator('.flow-modal[data-flow="multiDestinationAdd"]');
       await expect(intake.locator("[data-deferred-modal-loading]")).toBeFocused();
       await expect(intake.locator("[data-deferred-modal-loading]")).toHaveCount(0);
       assert.equal(await intake.locator(".flow-modal-body").evaluate((node) => node.contains(document.activeElement)), true, "Late-loaded intake receives keyboard focus.");
-      const itemName = intake.getByLabel("Item Name", { exact: true });
+      const itemName = intake.getByLabel("Item name", { exact: true });
       await itemName.fill("Synthetic retained deferred draft");
       page.once("dialog", (dialog) => dialog.dismiss()); await page.keyboard.press("Escape");
       await expect(itemName).toHaveValue("Synthetic retained deferred draft");
@@ -68,7 +68,7 @@ const results = [];
       await expect(scout.locator("[data-deferred-modal-loading]")).toBeFocused();
       await expect(scout.locator("[data-deferred-modal-loading]")).toHaveCount(0);
       assert.equal(await scout.locator(".flow-modal-body").evaluate((node) => node.contains(document.activeElement)), true);
-      await scout.getByRole("button", { name: "Next", exact: true }).click();
+      await scout.getByRole("button", { name: "Continue", exact: true }).click();
       await scout.getByRole("button", { name: "Back", exact: true }).click();
       await expect(scout).toContainText("Synthetic Performance Store");
       page.once("dialog", (dialog) => dialog.accept()); await page.keyboard.press("Escape");
@@ -76,14 +76,14 @@ const results = [];
       record("Cold Scout report transfers focus, retains step state and restores opener");
 
       for (const [pathname, chunk] of [["/settings/workspaces", "CollectionsContent"], ["/today", "DailyOverviewContent"], ["/vault/cards", "VaultWorkspaceContent"]]) {
-        await go("/"); await expect(page.getByRole("heading", { name: "Welcome back.", exact: true })).toBeVisible();
+        await go("/"); await expect(page.getByRole("heading", { name: /^Welcome( back| to Code 3 TCG).$/ })).toBeVisible();
         await go(pathname); await expect.poll(() => requested.some((url) => url.endsWith(`/${chunk}.jsx`))).toBe(true);
         await expect(page.locator("main .route-loading-card")).toHaveCount(0);
         assert.equal(await recordBytes(), before);
         await expect(page.locator(".app[data-theme]")).toHaveAttribute("data-theme", theme);
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
         await page.screenshot({ path: path.join(output, `${chunk}-${theme}-${width}.png`) });
-        await page.goBack(); await expect(page.getByRole("heading", { name: "Welcome back.", exact: true })).toBeVisible();
+        await page.goBack(); await expect(page.getByRole("heading", { name: /^Welcome( back| to Code 3 TCG).$/ })).toBeVisible();
         record(`${chunk} direct load, Back, theme and record preservation`);
       }
       if (width === 360) {

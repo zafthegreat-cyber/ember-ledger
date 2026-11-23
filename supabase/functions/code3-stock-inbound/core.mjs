@@ -1,3 +1,4 @@
+import {stockStaffAuthorizer,stockAllowedOrigins} from "../_shared/stockStaff.mjs";
 const PROJECT='https://gxsfququorfczvhrkudl.supabase.co';
 const RETAILERS=Object.freeze(["Target","Walmart","Pokémon Center","Best Buy","Sam's Club","Costco"]);
 export const INBOUND_STAGES=Object.freeze({
@@ -17,10 +18,7 @@ const TTL_MINUTES=Object.freeze({
   warehouse_processing:2880,allocated:2880,distribution_en_route:1440,
   retail_available:15,delayed:4320,unknown:720,
 });
-const allowedOrigins=new Set([
-  "https://code3tcg.app","https://code3.anchorandwingllc.com",
-  "https://code3tcg.anchorandwingllc.com","http://localhost:5173"
-]);
+const allowedOrigins=stockAllowedOrigins();
 const headersFor=origin=>({
   "Content-Type":"application/json; charset=utf-8",
   "Cache-Control":"no-store",
@@ -37,10 +35,10 @@ async function sha(value){
   const bytes=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(value));
   return [...new Uint8Array(bytes)].map(n=>n.toString(16).padStart(2,"0")).join("");
 }
-export function createInboundHandler({authorize,list,findProduct,save,clock=()=>new Date()}) {
+export function createInboundHandler({authorize,list,findProduct,save,clock=()=>new Date(),origins=allowedOrigins}) {
   return async req=>{
     const requestOrigin=req.headers.get("origin");
-    const origin=requestOrigin&&allowedOrigins.has(requestOrigin)?requestOrigin:null;
+    const origin=requestOrigin&&origins.has(requestOrigin)?requestOrigin:null;
     if(requestOrigin&&!origin)return reply(403,{error:"Origin not allowed"});
     if(req.method==="OPTIONS")return new Response(null,{status:204,headers:{
       ...headersFor(origin),"Access-Control-Max-Age":"600"
@@ -109,16 +107,7 @@ export function createInboundDependencies({project,key,anon,fetchImpl=fetch}){
     return res;
   };
   return {
-    authorize:async token=>{
-      const userResp=await doFetch(PROJECT+"/auth/v1/user",{method:"GET",headers:{apikey:anon,Authorization:"Bearer "+token}});
-      if(!userResp.ok)return null;
-      const user=await userResp.json();
-      if(!/^[a-f0-9-]{36}$/i.test(user.id||"")||user.is_anonymous)return null;
-      const roleResp=await doFetch(PROJECT+"/rest/v1/profiles?select=app_role,user_role&id=eq."+encodeURIComponent(user.id)+"&limit=1",{method:"GET",headers:serviceHeaders});
-      if(!roleResp.ok)return null;
-      const roles=await roleResp.json();
-      return {id:user.id,admin:roles.length===1&&roles[0].app_role==="admin"&&roles[0].user_role==="admin"};
-    },
+    authorize:stockStaffAuthorizer({project,anon,fetchImpl}),
     findProduct:async(retailer,sku)=>{
       const url=PROJECT+"/rest/v1/retailer_products?select=id&retailer=eq."+encodeURIComponent(retailer)+"&external_id=eq."+encodeURIComponent(sku)+"&limit=1";
       const response=await doFetch(url,{method:"GET",headers:serviceHeaders});

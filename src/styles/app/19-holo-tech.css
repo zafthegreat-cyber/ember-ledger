@@ -1,0 +1,302 @@
+/* "Holo-tech" look (owner, Nov 17 2026: "I think I want it to look more
+   futuristic"). Loaded last, on top of 18-collector-binder.css. Delete this
+   file and its @import to go back to the softer binder look.
+
+   Futuristic, in this brand's own colours (no blue or teal, owner rule):
+   - Type: the brand's tech face, Chakra Petch, for headings, numbers and
+     labels; small labels are spaced capitals like a HUD read-out.
+   - Dark: near-black violet with a faint grid and a glow at the top; panels are
+     dark glass with thin lit edges instead of filled cards.
+   - Light: cool cream "daylight" version with the same shapes and type.
+   - Accent: a magenta-to-gold energy line (the holo foil, brighter) and a soft
+     glow on the one main action.
+   - Shape: tighter 14 px panels and 12 px controls with a clipped-corner
+     featured card, instead of pills. */
+
+html:root body .app:is(.app-command-shell, .app-signed-out)[data-theme] {
+  --c3-font-heading: "Chakra Petch", "DM Sans", "Segoe UI", system-ui, sans-serif;
+  --lounge-display: var(--c3-font-heading);
+  --holo-line: linear-gradient(90deg, #FF4FA3 0%, #C04BFF 38%, #F3D987 72%, #FFB23F 100%);
+  --holo-glow: 0 0 0 1px rgb(243 217 135 / 22%), 0 0 22px rgb(232 200 107 / 28%);
+  --binder-foil: var(--holo-line);
+  --binder-card-radius: 14px;
+  --binder-pill: 12px;
+  --ui-control-radius: 12px;
+  --c3-radius-lg: 14px;
+}
+
+html:root body .app:is(.app-command-shell, .app-signed-out)[data-theme="dark"] {
+  --c3-page: #0D0812;
+  --c3-surface: #17101F;
+  --c3-surface-secondary: #1F1629;
+  --c3-surface-inset: #120B19;
+  --c3-surface-elevated: #221830;
+  --c3-border: #35263F;
+  --c3-control-border: #7A6788;
+  --lounge-ink: #F7EEFF;
+  --lounge-muted: #B9A9C6;
+  --lounge-gold: #F3D987;
+  --c3-action: #F3D987;
+  --c3-action-hover: #FFE9A6;
+  --c3-on-action: #1A0F12;
+  --app-brand-rail: #17101F;
+  --app-brand-header: #0D0812;
+  --app-brand-chrome-line: #35263F;
+  --app-brand-chrome-muted: #B9A9C6;
+  --app-brand-selected: #2A1B38;
+  --app-brand-selected-ink: #F3D987;
+  --binder-card-shadow: inset 0 1px 0 rgb(255 255 255 / 5%), 0 10px 28px rgb(0 0 0 / 38%);
+  --binder-hero: linear-gradient(140deg, #2A0F2B 0%, #1B1030 55%, #120B19 100%);
+  --binder-hero-ink: #FFF6E6;
+  --binder-hero-muted: #D5C3DD;
+  --holo-panel: linear-gradient(180deg, rgb(255 255 255 / 5%), rgb(255 255 255 / 1.5%));
+  --holo-edge: rgb(243 217 135 / 20%);
+}
+html:root body .app:is(.app-command-shell, .app-signed-out)[data-theme="light"] {
+  --c3-page: #F6F1EA;
+  --c3-surface: #FFFFFF;
+  --c3-surface-secondary: #F0E9E0;
+  --c3-border: #DFD3C6;
+  --holo-panel: linear-gradient(180deg, #FFFFFF, #FBF7F1);
+  --holo-edge: rgb(122 15 30 / 16%);
+  --holo-glow: 0 0 0 1px rgb(122 15 30 / 18%), 0 6px 18px rgb(122 15 30 / 22%);
+}
+
+html:root:has(.app:is(.app-command-shell, .app-signed-out)[data-theme="dark"]),
+html:root body:has(.app:is(.app-command-shell, .app-signed-out)[data-theme="dark"]) { --app-background: #0D0812; background: #0D0812; }
+html:root:has(.app:is(.app-command-shell, .app-signed-out)[data-theme="light"]),
+html:root body:has(.app:is(.app-command-shell, .app-signed-out)[data-theme="light"]) { --app-background: #F6F1EA; background: #F6F1EA; }
+
+/* Page backdrop: a faint grid and a glow behind the top of the page. */
+html:root body .app:is(.app-command-shell, .app-signed-out)[data-theme="dark"] {
+  background:
+    radial-gradient(120% 55% at 50% -8%, rgb(192 75 255 / 20%) 0%, rgb(255 79 163 / 8%) 38%, transparent 70%),
+    linear-gradient(rgb(255 255 255 / 2.2%) 1px, transparent 1px) 0 0 / 100% 28px,
+    linear-gradient(90deg, rgb(255 255 255 / 2.2%) 1px, transparent 1px) 0 0 / 28px 100%,
+    #0D0812 !important;
+  background-attachment: fixed !important;
+}
+html:root body .app:is(.app-command-shell, .app-signed-out)[data-theme="light"] {
+  background:
+    radial-gradient(120% 50% at 50% -8%, rgb(192 75 255 / 9%) 0%, transparent 65%),
+    linear-gradient(rgb(42 20 24 / 2.5%) 1px, transparent 1px) 0 0 / 100% 28px,
+    linear-gradient(90deg, rgb(42 20 24 / 2.5%) 1px, transparent 1px) 0 0 / 28px 100%,
+    #F6F1EA !important;
+  background-attachment: fixed !important;
+}
+html:root body .app.app-command-shell[data-theme] :is(.main, main.everyday-workspace, .ops-home-page) { background: transparent !important; }
+
+/* ---------- Type ---------- */
+html:root body .app:is(.app-command-shell, .app-signed-out)[data-theme] :is(h1, h2, h3) {
+  font-family: var(--c3-font-heading) !important;
+  font-weight: 600 !important;
+  letter-spacing: -.01em !important;
+}
+html:root body .app.app-command-shell[data-theme] .ops-page-header h1 {
+  font: 600 clamp(30px, 8.4vw, 42px)/1.05 var(--c3-font-heading) !important;
+  letter-spacing: -.015em !important;
+  text-transform: none;
+}
+html:root body .app.app-command-shell[data-theme] .ops-page-header h1::after { width: 72px; height: 3px; box-shadow: 0 0 12px rgb(255 79 163 / 55%); }
+html:root body .app.app-command-shell[data-theme] .ops-section-header h2,
+html:root body .app.app-command-shell[data-theme] .home-layout--lounge .ops-section-header h2 {
+  font: 600 20px/1.25 var(--c3-font-heading) !important;
+}
+/* HUD-style small labels. */
+html:root body .app.app-command-shell[data-theme] :is(.ops-eyebrow, .persona-checklist__head > div > span:first-child, .restock-start__eyebrow, .home-glance__stats span) {
+  font-family: var(--c3-font-heading) !important;
+  text-transform: uppercase !important;
+  letter-spacing: .08em !important;
+}
+html:root body .app.app-command-shell[data-theme] .ops-mobile-nav button span { font-size: 12px !important; letter-spacing: .04em !important; }
+@media (max-width: 340px) { html:root body .app.app-command-shell[data-theme] .ops-mobile-nav button span { letter-spacing: 0 !important; } }
+html:root body .app.app-command-shell[data-theme] .home-glance__stats strong { font: 600 30px/1 var(--c3-font-heading); letter-spacing: 0; font-variant-numeric: tabular-nums; }
+html:root body .app.app-command-shell[data-theme="dark"] .home-glance__stats strong { color: #F3D987 !important; text-shadow: 0 0 14px rgb(243 217 135 / 35%); }
+
+/* ---------- Panels: dark glass with a lit edge ---------- */
+html:root body .app.app-command-shell[data-theme] :is(
+  .home-layout.home-layout--lounge .persona-checklist,
+  .home-layout.home-layout--lounge .home-workspaces,
+  .panel, .ops-record-card, .collection-portfolio-card, .ops-attention-panel,
+  .restock-map-card, .restock-start, .restock-start__report
+),
+html:root body .app.app-signed-out[data-theme] :is(.panel, .auth-panel, .signed-out-auth-card) {
+  border-radius: 14px !important;
+  border: 1px solid var(--holo-edge) !important;
+  background: var(--holo-panel), var(--c3-surface) !important;
+  box-shadow: var(--binder-card-shadow) !important;
+  backdrop-filter: blur(10px);
+}
+html:root body .app.app-command-shell[data-theme] .home-glance :is(.home-glance__search, .home-glance__stat) {
+  border-radius: 12px !important;
+  border-color: var(--holo-edge) !important;
+  background: var(--holo-panel), var(--c3-surface) !important;
+}
+html:root body .app.app-command-shell[data-theme] .home-glance .home-glance__stat { position: relative; overflow: hidden; }
+html:root body .app.app-command-shell[data-theme] .home-glance .home-glance__stat::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: linear-gradient(180deg, #FF4FA3, #F3D987);
+}
+html:root body .app.app-command-shell[data-theme] .persona-checklist__steps button {
+  border-radius: 12px !important;
+  border: 1px solid var(--c3-border) !important;
+  background: var(--c3-surface-inset) !important;
+}
+
+/* Featured card: clipped corner, energy line, scan lines. */
+html:root body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .home-restock-hero {
+  border-radius: 14px !important;
+  clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 22px, 100% 100%, 0 100%);
+  background:
+    repeating-linear-gradient(0deg, rgb(255 255 255 / 2.5%) 0 1px, transparent 1px 4px),
+    radial-gradient(90% 120% at 100% 0%, rgb(255 79 163 / 28%) 0%, transparent 60%),
+    var(--binder-hero) !important;
+  box-shadow: inset 0 0 0 1px rgb(255 79 163 / 30%), 0 14px 34px rgb(0 0 0 / 40%) !important;
+}
+html:root body .app.app-command-shell[data-theme="light"] .home-layout.home-layout--lounge .home-restock-hero {
+  background:
+    repeating-linear-gradient(0deg, rgb(255 255 255 / 4%) 0 1px, transparent 1px 4px),
+    radial-gradient(90% 120% at 100% 0%, rgb(255 79 163 / 40%) 0%, transparent 60%),
+    linear-gradient(140deg, #5A0F2A 0%, #3A1250 60%, #24123A 100%) !important;
+}
+html:root body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .home-restock-hero::before { height: 3px; box-shadow: 0 0 14px rgb(255 79 163 / 70%); }
+html:root body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .home-restock-hero::after { display: none; }
+
+/* ---------- Buttons ---------- */
+html:root body .app:is(.app-command-shell, .app-signed-out)[data-theme] :is(.ops-button, .primary-button, .secondary-button, .ember-gradient-button, .social-sign-in-button, .restock-map-card__all) {
+  border-radius: 12px !important;
+  font-family: var(--c3-font-heading);
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+html:root body .app:is(.app-command-shell, .app-signed-out)[data-theme] :is(.ops-button--primary, .primary-button, .ember-gradient-button) {
+  box-shadow: var(--holo-glow) !important;
+}
+html:root body .app.app-command-shell[data-theme="dark"] :is(.ops-button--secondary, .secondary-button) {
+  border-color: rgb(243 217 135 / 38%) !important;
+  background: rgb(255 255 255 / 3%) !important;
+}
+
+/* ---------- Bottom bar: glass dock with a glowing Add ---------- */
+@media (max-width: 899px) {
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav {
+    border-radius: 18px !important;
+    border: 1px solid var(--holo-edge) !important;
+    background: color-mix(in srgb, var(--c3-surface) 78%, transparent) !important;
+    backdrop-filter: blur(18px) saturate(1.4);
+    box-shadow: 0 12px 34px rgb(0 0 0 / 40%), inset 0 1px 0 rgb(255 255 255 / 6%) !important;
+  }
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav button { border-radius: 12px !important; }
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav button.is-active { background: transparent !important; }
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav button.is-active::after { left: 22%; right: 22%; bottom: 2px; height: 2px; box-shadow: 0 0 10px rgb(255 79 163 / 80%); }
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav button.is-active svg { filter: drop-shadow(0 0 6px rgb(243 217 135 / 60%)); }
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav__action-icon {
+    border-radius: 14px !important;
+    transform: rotate(45deg);
+    background: linear-gradient(135deg, #FFE9A6, #F3D987 45%, #FFB23F) !important;
+    border: 2px solid var(--c3-page) !important;
+    box-shadow: 0 0 0 1px rgb(243 217 135 / 60%), 0 0 22px rgb(243 217 135 / 55%) !important;
+  }
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav__action-icon > * { transform: rotate(-45deg); }
+}
+
+/* Top bar: glass. */
+html:root body .app.app-command-shell[data-theme] .app-shell-header {
+  background: color-mix(in srgb, var(--c3-page) 72%, transparent) !important;
+  backdrop-filter: blur(16px) saturate(1.3);
+  border-bottom: 1px solid var(--holo-edge) !important;
+}
+
+/* Inputs: lit when focused. */
+html:root body .app:is(.app-command-shell, .app-signed-out)[data-theme] :is(input, select, textarea):focus-visible {
+  outline: none !important;
+  border-color: #F3D987 !important;
+  box-shadow: 0 0 0 3px rgb(243 217 135 / 22%) !important;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  html:root body .app[data-theme] :is(.ops-mobile-nav, .app-shell-header, .panel) { backdrop-filter: none !important; }
+}
+
+/* Bottom-bar labels stay normal case: capitals made "Collection" collide with its neighbours. */
+html:root body .app.app-command-shell[data-theme] .ops-mobile-nav button span { text-transform: none !important; letter-spacing: 0 !important; }
+html:root body .app.app-command-shell[data-theme] .ops-mobile-nav button.is-active { border-color: transparent !important; box-shadow: none !important; }
+
+/* Map zoom buttons: dark glass, not the default gold fill. */
+html:root body .app .restock-map-card .restock-map-card__map .scout-tile-map-controls { background: transparent !important; border: 0 !important; box-shadow: none !important; }
+html:root body .app .restock-map-card .restock-map-card__map .scout-tile-map-controls button { background: var(--c3-surface-elevated) !important; color: var(--text-primary) !important; border: 1px solid var(--holo-edge) !important; }
+/* Headings focused by the app after a page change (for screen readers) do not need a visible box. */
+html:root body .app[data-theme] :is(h1, h2)[tabindex="-1"]:focus, html:root body .app[data-theme] :is(h1, h2)[tabindex="-1"]:focus-visible { outline: none !important; box-shadow: none !important; }
+
+/* ---------- Not neon (owner, Nov 17: "Not neon probably") ----------
+   Same tech shapes and type, but quiet: no glows, no magenta or purple light.
+   One fine champagne-gold line is the only accent. */
+html:root body .app:is(.app-command-shell, .app-signed-out)[data-theme] {
+  --holo-line: linear-gradient(90deg, #F3D987 0%, #C9A85A 60%, rgb(201 168 90 / 0%) 100%);
+  --binder-foil: var(--holo-line);
+  --holo-glow: none;
+}
+html:root body .app:is(.app-command-shell, .app-signed-out)[data-theme="light"] {
+  --holo-line: linear-gradient(90deg, #7A0F1E 0%, #A8822A 60%, rgb(168 130 42 / 0%) 100%);
+}
+html:root body .app:is(.app-command-shell, .app-signed-out)[data-theme="dark"] {
+  --c3-page: #0E0C10;
+  --c3-surface: #17141A;
+  --c3-surface-secondary: #1E1A22;
+  --c3-surface-inset: #121014;
+  --c3-surface-elevated: #221E26;
+  --c3-border: #2F2A33;
+  --lounge-ink: #F4EFE6;
+  --lounge-muted: #A8A0A6;
+  --app-brand-rail: #17141A;
+  --app-brand-header: #0E0C10;
+  --app-brand-chrome-line: #2F2A33;
+  --app-brand-chrome-muted: #A8A0A6;
+  --app-brand-selected: #221E26;
+  --holo-edge: rgb(255 255 255 / 9%);
+  --binder-hero: linear-gradient(160deg, #1F1A22 0%, #17141A 100%);
+  --binder-hero-muted: #B8B0B4;
+  background:
+    linear-gradient(rgb(255 255 255 / 1.6%) 1px, transparent 1px) 0 0 / 100% 32px,
+    linear-gradient(90deg, rgb(255 255 255 / 1.6%) 1px, transparent 1px) 0 0 / 32px 100%,
+    #0E0C10 !important;
+}
+html:root body .app:is(.app-command-shell, .app-signed-out)[data-theme="light"] {
+  --holo-edge: rgb(42 20 24 / 10%);
+  background:
+    linear-gradient(rgb(42 20 24 / 2%) 1px, transparent 1px) 0 0 / 100% 32px,
+    linear-gradient(90deg, rgb(42 20 24 / 2%) 1px, transparent 1px) 0 0 / 32px 100%,
+    #F6F1EA !important;
+}
+html:root:has(.app:is(.app-command-shell, .app-signed-out)[data-theme="dark"]),
+html:root body:has(.app:is(.app-command-shell, .app-signed-out)[data-theme="dark"]) { --app-background: #0E0C10; background: #0E0C10; }
+
+html:root body .app.app-command-shell[data-theme] .ops-page-header h1::after { height: 2px; box-shadow: none; }
+html:root body .app.app-command-shell[data-theme="dark"] .home-glance__stats strong { color: var(--text-primary) !important; text-shadow: none; }
+html:root body .app.app-command-shell[data-theme] .home-glance .home-glance__stat::before { width: 2px; background: #C9A85A; }
+html:root body .app.app-command-shell[data-theme="light"] .home-glance .home-glance__stat::before { background: #7A0F1E; }
+
+/* Featured card: flat dark panel, fine gold top line, clipped corner; no scan lines or colour wash. */
+html:root body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .home-restock-hero {
+  background: var(--binder-hero) !important;
+  box-shadow: inset 0 0 0 1px var(--holo-edge), 0 10px 26px rgb(0 0 0 / 30%) !important;
+}
+html:root body .app.app-command-shell[data-theme="light"] .home-layout.home-layout--lounge .home-restock-hero {
+  background: linear-gradient(160deg, #2A2126 0%, #1C171B 100%) !important;
+}
+html:root body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .home-restock-hero::before { height: 2px; box-shadow: none; }
+html:root body .app.app-command-shell[data-theme="dark"] .home-layout.home-layout--lounge .home-restock-hero .ops-button--secondary { background: transparent !important; border-color: rgb(255 255 255 / 28%) !important; }
+
+/* Buttons and dock: solid, no halo. */
+html:root body .app:is(.app-command-shell, .app-signed-out)[data-theme] :is(.ops-button--primary, .primary-button, .ember-gradient-button) { box-shadow: none !important; }
+html:root body .app.app-command-shell[data-theme="dark"] :is(.ops-button--secondary, .secondary-button) { border-color: rgb(255 255 255 / 22%) !important; background: transparent !important; }
+@media (max-width: 899px) {
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav { box-shadow: 0 8px 24px rgb(0 0 0 / 32%) !important; }
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav button.is-active::after { box-shadow: none; background: #C9A85A; }
+  html:root body .app.app-command-shell[data-theme="light"] .ops-mobile-nav button.is-active::after { background: #7A0F1E; }
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav button.is-active svg { filter: none; }
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav__action-icon {
+    background: #E8C86B !important;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 35%) !important;
+  }
+}
+html:root body .app:is(.app-command-shell, .app-signed-out)[data-theme] :is(input, select, textarea):focus-visible { box-shadow: 0 0 0 2px rgb(201 168 90 / 35%) !important; }

@@ -51,7 +51,14 @@ async function save(modal, { visibility = '', expectedVisibility = 'private_from
       try {
         await page.goto(new URL('/?betaLocalMode=true', base).href);
         await expect(page.locator('.home-restock-hero')).toBeVisible({ timeout: 60000 });
-        const original = await sources(page);
+        // Start-up fills in record defaults and saves shortly after load; take the baseline once
+        // storage has been unchanged for a second.
+        let original = await sources(page);
+        for (let stableSince = Date.now(), deadline = Date.now() + 15000; Date.now() < deadline && Date.now() - stableSince < 1000;) {
+          await page.waitForTimeout(100);
+          const current = await sources(page);
+          if (JSON.stringify(current) !== JSON.stringify(original)) { original = current; stableSince = Date.now(); }
+        }
         await page.locator('.home-restock-hero').getByRole('button', { name: 'Report a restock', exact: true }).click();
         const modal = page.locator('.flow-modal[data-flow="scoutSubmit"]');
         const recent = modal.getByRole('region', { name: 'Your recent report stores', exact: true });
@@ -99,7 +106,9 @@ async function save(modal, { visibility = '', expectedVisibility = 'private_from
         await selectFacts(modal); await save(modal);
         const final = await sources(page);
         assert.equal(final.scout.reports.length, original.scout.reports.length + 2);
-        for (const field of ['items', 'sales', 'expenses']) assert.deepEqual(final.core[field], original.core[field]);
+        // Workspace labels the app stamps on start-up are not user changes, so they are left out.
+        const unlabelled = rows => (rows || []).map(row => Object.fromEntries(Object.entries(row).filter(([key]) => !/^workspace/.test(key))));
+        for (const field of ['items', 'sales', 'expenses']) assert.deepEqual(unlabelled(final.core[field]), unlabelled(original.core[field]));
         for (const report of original.scout.reports) assert.deepEqual(final.scout.reports.find(row => row.id === report.id), report);
         await modal.getByRole('button', { name: 'Check cloud saving', exact: true }).click();
         await expect(modal).toHaveCount(0); await expect(page.getByRole('heading', { name: 'Settings', exact: true }).first()).toBeVisible({ timeout: 30000 });

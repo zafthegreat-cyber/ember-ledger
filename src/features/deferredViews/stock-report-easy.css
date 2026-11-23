@@ -35,6 +35,15 @@
   line-height: 1.5;
 }
 
+/* Long hints such as "Optional, but it helps others trust the report" wrap on
+   320px phones instead of pushing the report form sideways. */
+.flow-modal[data-flow="scoutSubmit"] .stock-report-easy .scout-report-disclosure > summary > span {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
 .flow-modal[data-flow="scoutSubmit"] .stock-report-easy .scout-report-disclosure[open] {
   padding-bottom: 2px;
 }

@@ -277,7 +277,7 @@ async function checkBrowser(output) {
           fs.writeFileSync(path.join(output, "corrupt-boot-diagnostics.json"), JSON.stringify({ unchanged: startup.bytes === "{broken-at-startup", byteLength: startup.bytes?.length, preview: startup.bytes?.slice(0, 120), writes: startup.writes }, null, 2));
           await page.screenshot({ path: path.join(output, "corrupt-boot-observed.png"), fullPage: true });
           assert.ok(startup.bytes === "{broken-at-startup", "A corrupt native Scout value must remain byte-for-byte unchanged");
-          await expect(page.getByText(/Saved Scout data could not be loaded or updated/)).toBeVisible();
+          await expect(page.getByText(/Saved restock data could not be loaded or updated/)).toBeVisible();
           assert.equal(await page.evaluate((storageKey) => localStorage.getItem(storageKey), key), "{broken-at-startup");
           await page.screenshot({ path: path.join(output, "corrupt-boot-preserved.png"), fullPage: true });
         } else {

@@ -1,6 +1,7 @@
 import HomeShortcutEditor from "../components/HomeShortcutEditor.jsx";
 import { dateGroup, relativeUiTime } from "../utils/uiTime.mjs";
 import { groupCollectionCopies } from "../utils/collectionCopyGroups.mjs";
+import { summarizePortfolio } from "../utils/collectionPortfolio.mjs";
 import { PrivateStorageImage } from "../components/PrivateReceipt.jsx";
 import { useMemo, useState } from "react";
 import { OfflineState, PageHeader, PrimaryButton, SectionHeader, SecondaryButton } from "../components/operations/OperationsUI.jsx";
@@ -43,12 +44,14 @@ export default function OperationsHome({
   onOpenSellTrade, onOpenExperienceSettings, activeVaultItems = [], workspaceWatchlist = [],
   scoutSnapshot = {}, isWatchedEmberStore = () => false,
   onOpenCollectionItem, onOpenInventoryItem, onOpenReport, onOpenStoreReports, onOpenFollowedReports, onSaveHomeShortcuts,
-  kidSafeView = false, marketSearchesRun = 0, startAppTour, onOpenFeedback,
+  kidSafeView = false, marketSearchesRun = 0, startAppTour, onOpenFeedback, publicProfileReady = false,
 }) {
   const [allAttention, setAllAttention] = useState(false);
   const [customizing, setCustomizing] = useState(false);
   const collectionGroups = useMemo(() => groupCollectionCopies(activeVaultItems), [activeVaultItems]);
   const collectionQuantity = collectionGroups.reduce((sum, group) => sum + group.quantity, 0);
+  // Competitive review, Nov 17: trackers open on what the collection is worth.
+  const collectionWorth = useMemo(() => summarizePortfolio(activeVaultItems), [activeVaultItems]);
   const openCollectionItem = item => onOpenCollectionItem ? onOpenCollectionItem(item) : setActiveTab("collectionWorkspace");
   const repository = useMemo(() => createFlipScoutRepository(), []);
   const state = useMemo(() => repository.load(), [repository]);
@@ -97,6 +100,15 @@ export default function OperationsHome({
   const homePreference = personalizationPreferences.pagePreferences?.hearth;
   const isVisible = (key) => !homePreference?.visibleKeys || homePreference.visibleKeys.includes(key);
   const followedStores = (scoutSnapshot.stores || []).filter(isWatchedEmberStore);
+  // Build-11 fix: people who follow nothing yet still get the quick-report chips —
+  // two directory stores they have reported at before, else the first two listed.
+  const suggestedStores = useMemo(() => {
+    if (followedStores.length) return [];
+    const directory = (scoutSnapshot.stores || []).filter((store) => !isWatchedEmberStore(store));
+    const reportedIds = new Set((adaptiveActivity.reports || []).map((report) => String(report.storeId || report.store_id || "")));
+    const reported = directory.filter((store) => reportedIds.has(String(store.id || store.storeId || "")));
+    return [...reported, ...directory.filter((store) => !reported.includes(store))].slice(0, 2);
+  }, [followedStores.length, scoutSnapshot.stores, adaptiveActivity.reports, isWatchedEmberStore]);
   // SHOULD 15: three-step checklist driven by what the person has actually done.
   const checklistCounts = useMemo(() => ({
     vaultItems: activeVaultItems.length,
@@ -107,9 +119,9 @@ export default function OperationsHome({
     receipts: state.expenses.filter((row) => row.receiptReference).length + (adaptiveActivity.expenses || []).length,
     sales: state.sales.length + (adaptiveActivity.sales || []).length,
     reports: (adaptiveActivity.reports || []).length,
-    publicProfile: Boolean(presentation.publicProfileReady),
+    publicProfile: Boolean(presentation.publicProfileReady ?? publicProfileReady),
     tourSeen: appTourSeen(),
-  }), [activeVaultItems.length, followedStores.length, marketSearchesRun, workspaceWatchlist.length, state, adaptiveActivity, presentation.publicProfileReady]);
+  }), [activeVaultItems.length, followedStores.length, marketSearchesRun, workspaceWatchlist.length, state, adaptiveActivity, presentation.publicProfileReady, publicProfileReady]);
   const openChecklistTarget = (target) => {
     if (target === "collectionWorkspace" || target === "collectionWorkspace:sets") return setActiveTab("collectionWorkspace");
     if (target === "restocks") return onOpenRestockReports?.();
@@ -137,14 +149,28 @@ export default function OperationsHome({
   });
 
   return <div className="ops-home-page home-layout home-layout--refined home-layout--lounge">
-    <PageHeader eyebrow={<><span className="home-desktop-context">Home</span><span className="home-mobile-identity"><BrandIdentity /></span></>} title="Welcome back." description={activeVaultItems.length || recent.length || workspaceWatchlist.length ? "Your collection, local reports, and saved finds." : "Start with your first item or explore restock reports near you."} />
+    <PageHeader eyebrow={<><span className="home-desktop-context">Home</span><span className="home-mobile-identity"><BrandIdentity /></span></>} title={activeVaultItems.length || recent.length || workspaceWatchlist.length || followedStores.length ? "Welcome back." : "Welcome to Code 3 TCG."} description={activeVaultItems.length || recent.length || workspaceWatchlist.length ? "" : "Track your cards and get free restock alerts."} />
     {isOffline ? <OfflineState action={<SecondaryButton onClick={() => window.location.reload()}>Try again</SecondaryButton>} /> : null}
+    {/* Competitor review, Nov 17: open on a search bar and the person's own numbers. */}
+    <div className="home-glance">
+      <button type="button" className="home-glance__search" onClick={() => setActiveTab("market")} aria-label="Search cards and products"><AppNavIcon kind="search" /><span>Search cards &amp; products</span></button>
+      {!kidSafeView && collectionWorth.knownCount > 0 && collectionWorth.total != null ? <button type="button" className="home-glance__value" onClick={() => setActiveTab("collectionWorkspace")} aria-label={`Collection value ${formatCurrency(collectionWorth.total)}. Open collection.`}>
+        <span>Collection value</span>
+        <strong>{formatCurrency(collectionWorth.total)}</strong>
+        <small>{collectionWorth.knownCount === activeVaultItems.length ? "Every item has a saved value" : `${collectionWorth.knownCount} of ${activeVaultItems.length} items have a saved value`}</small>
+      </button> : null}
+      <div className="home-glance__stats" aria-label="Your numbers">
+        <button type="button" className="home-glance__stat" onClick={() => setActiveTab("collectionWorkspace")} aria-label={`${collectionQuantity} in your collection. Open collection.`}><strong>{collectionQuantity}</strong><span>{collectionQuantity === 1 ? "Card" : "Cards"}</span></button>
+        <button type="button" className="home-glance__stat" onClick={() => setActiveTab("market")} aria-label={`${workspaceWatchlist.length} on your wants list. Search to add more.`}><strong>{workspaceWatchlist.length}</strong><span>{workspaceWatchlist.length === 1 ? "Want" : "Wants"}</span></button>
+        <button type="button" className="home-glance__stat" onClick={() => (followedStores.length ? onOpenFollowedReports || onOpenRestockReports : onOpenRestockReports)?.()} aria-label={`${followedStores.length} stores followed. Open restocks.`}><strong>{followedStores.length}</strong><span>{followedStores.length === 1 ? "Store" : "Stores"}</span></button>
+      </div>
+    </div>
     <section className="ops-home-section home-restock-hero" aria-labelledby="home-restock-title">
       <div className="home-restock-copy">
         <h2 id="home-restock-title">Restock reports</h2>
-        <p>Share stocked or empty shelves in your area.</p>
+        <p>See what collectors found. Share what you saw.</p>
         <div className="home-restock-actions"><PrimaryButton onClick={() => onReportRestock()}>Report a restock</PrimaryButton><SecondaryButton onClick={onOpenRestockReports}>Browse all restocks</SecondaryButton></div>
-        <QuickRestockLauncher followedStores={followedStores} nearbyStores={(scoutSnapshot.nearbyStores || []).slice(0, 3)} kidSafe={kidSafeView} onLaunch={(options) => onReportRestock(options)} />
+        <QuickRestockLauncher followedStores={followedStores} nearbyStores={(scoutSnapshot.nearbyStores || []).slice(0, 3).length ? (scoutSnapshot.nearbyStores || []).slice(0, 3) : suggestedStores} kidSafe={kidSafeView} onLaunch={(options) => onReportRestock(options)} />
       </div>
     </section>
     <PersonaChecklist persona={presentation.persona} kidSafe={kidSafeView} counts={checklistCounts} onOpen={openChecklistTarget} />

@@ -47,10 +47,22 @@ test("warm palette polish is loaded last and defines the teal accent", () => {
   const appCss = src("src/App.css");
   // 16-should-polish (SHOULD 12-14) now loads after it; 15 must still come after everything else.
   const imports = appCss.split(/\r?\n/).filter((line) => line.startsWith("@import"));
-  assert.equal(imports.at(-2), '@import "./styles/app/15-warm-palette-polish.css";');
-  assert.equal(imports.at(-1), '@import "./styles/app/16-should-polish.css";');
+  assert.equal(imports.at(-6), '@import "./styles/app/15-warm-palette-polish.css";');
+  assert.equal(imports.at(-5), '@import "./styles/app/16-should-polish.css";');
+  // 17-touch-feedback (owner, Nov 17): no blue tap flash; loads last.
+  assert.equal(imports.at(-4), '@import "./styles/app/17-touch-feedback.css";');
+  // 18-collector-binder (owner, Nov 17): the look for TCG fans; loads last.
+  assert.equal(imports.at(-3), '@import "./styles/app/18-collector-binder.css";');
+  // 19-holo-tech (owner, Nov 17: "more futuristic"); loads last.
+  assert.equal(imports.at(-2), '@import "./styles/app/19-holo-tech.css";');
+  // 20-panel-fixes (simulated survey, Nov 17): readable labels, clearer active tab, dark set tiles; loads last.
+  assert.equal(imports.at(-1), '@import "./styles/app/20-panel-fixes.css";');
+  assert.doesNotMatch(src("src/styles/app/19-holo-tech.css"), /#(3b82f6|2563eb|60a5fa|5CC3BA|1F7A74)/i, "no blue or teal in the futuristic look");
+  assert.doesNotMatch(src("src/styles/app/18-collector-binder.css"), /#(3b82f6|2563eb|60a5fa|5CC3BA|1F7A74)/i, "no blue or teal in the refresh");
+  assert.match(src("src/styles/app/17-touch-feedback.css"), /-webkit-tap-highlight-color: transparent/);
   const polish = src("src/styles/app/15-warm-palette-polish.css");
   assert.match(polish, /--c3-teal:/);
+  assert.doesNotMatch(polish, /#5CC3BA|#1F7A74/, "the second accent is warm copper, not teal");
   assert.match(polish, /--c3-page: #1A1518/);
   assert.match(polish, /text-transform: none !important/);
 });
@@ -69,7 +81,7 @@ test("MUST-11: quiet command boards and admin-only clutter on the five main page
     ["src/pages/Scout.jsx", /Recent reports near you\./],
     ["src/features/deferredViews/CommunityContent.jsx", /\{adminToolsVisible \? \(<EtMockupRightRail/],
     ["src/features/deferredViews/CommunityContent.jsx", /\{adminToolsVisible \? \(<div className="tidepool-preview-feed"/],
-    ["src/pages/OperationsHome.jsx", /title="Welcome back\."\s*\/?>?/],
+    ["src/pages/OperationsHome.jsx", /"Welcome back\." : "Welcome to Code 3 TCG\."/],
   ]) assert.match(src(file), marker, `${file} ${marker}`);
   assert.doesNotMatch(src("src/pages/OperationsHome.jsx"), /Stock changes quickly\. Check when a report was observed\./);
   assert.doesNotMatch(src("src/features/deferredViews/CommunityContent.jsx"), /Community posting opens after beta access is approved/);

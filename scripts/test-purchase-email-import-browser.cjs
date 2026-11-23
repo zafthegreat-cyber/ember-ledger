@@ -143,7 +143,7 @@ async function assertPreserved(page, initialState) {
   assert.equal(await page.evaluate(() => localStorage.getItem("code3.bot-ops.v1")), '{"existing":"synthetic bot data"}');
   const saved = await page.evaluate(() => JSON.stringify({ ...localStorage, ...sessionStorage }));
   assert.ok(!saved.includes(syntheticPassword) && !saved.includes(mailboxAddress), "No credentials or mailbox address stored");
-  assert.deepEqual(await page.evaluate(() => [...new Set(window.__qaStorageWrites)].filter(k => k !== "code3.purchase-receiving.v1")), [], "No collateral storage writes");
+  assert.deepEqual(await page.evaluate(() => [...new Set(window.__qaStorageWrites)].filter(k => k !== "code3.purchase-receiving.v1" && !k.startsWith("lswt-"))), [], "No collateral storage writes");
 }
 async function capture(page, id) { await page.screenshot({ path: path.join(output, `${id}.png`), fullPage: true }); }
 async function failure(page, id, error) { await capture(page, `${id}-failure`).catch(() => {}); fs.writeFileSync(path.join(output, `${id}-failure.txt`), `${step}\n${error.stack}\n${await page.locator("body").innerText().catch(() => "")}`); }
@@ -252,6 +252,16 @@ async function failureCases(browser, initialState) {
   } catch (error) { await failure(page, "safety", error); throw error; } finally { await context.close(); }
 }
 
+async function settledAppData(page) {
+  let previous = null; let stableSince = Date.now(); const deadline = Date.now() + 15000;
+  for (;;) {
+    const current = await page.evaluate(() => localStorage.getItem("et-tcg-beta-data"));
+    if (current !== previous) { previous = current; stableSince = Date.now(); }
+    else if (Date.now() - stableSince >= 600 || Date.now() > deadline) return current;
+    await page.waitForTimeout(100);
+  }
+}
+
 async function actualAppCase(browser, initialState) {
   const testCase = { width: 320, height: 720, theme: "dark" };
   const { context, page, errors, external, apiRequests } = await contextFor(browser, testCase, initialState);
@@ -262,7 +272,8 @@ async function actualAppCase(browser, initialState) {
     const controls = page.getByRole("region", { name: "Admin display controls", exact: true });
     await expect(controls).toBeVisible({ timeout: 45000 }); await controls.getByRole("button", { name: "Admin", exact: true }).click();
     await expect(page.getByTestId("purchase-receiving-page")).toBeVisible();
-    const appBaseline = JSON.parse(await page.evaluate(() => localStorage.getItem("et-tcg-beta-data")));
+    // Start-up writes (workspace backfill, beta-data save) land shortly after load; baseline once storage settles.
+    const appBaseline = JSON.parse(await settledAppData(page));
     for (const field of ["items", "sales"]) for (const record of appData[field]) for (const [property, value] of Object.entries(record)) assert.deepEqual(appBaseline[field].find(row => row.id === record.id)[property], value);
     await openImport(page); await assertLayout(page);
     await enterAndPull(page); await reviewed(page); await assertLayout(page);
@@ -275,7 +286,7 @@ async function actualAppCase(browser, initialState) {
     await importer(page).getByRole("button", { name: "Open purchase draft", exact: true }).click(); await expect(importer(page)).toHaveCount(0);
     await page.reload(); await expect(page.getByTestId("purchase-receiving-page")).toBeVisible();
     await expect(page.getByRole("region", { name: "Purchase Drafts", exact: true })).toContainText(candidates[0].orderId);
-    const stored = JSON.parse(await page.evaluate(() => localStorage.getItem("et-tcg-beta-data")));
+    const stored = JSON.parse(await settledAppData(page));
     for (const field of ["items", "sales"]) assert.deepEqual(stored[field], appBaseline[field]);
     assert.equal(await page.evaluate(() => localStorage.getItem("code3.bot-ops.v1")), '{"existing":"synthetic bot data"}');
     assert.ok(!(await page.evaluate(() => JSON.stringify({ ...localStorage, ...sessionStorage }))).includes(syntheticPassword));

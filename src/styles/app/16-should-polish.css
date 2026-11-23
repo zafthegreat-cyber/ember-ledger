@@ -103,6 +103,9 @@ html body .app.app-command-shell[data-theme] :is(
   letter-spacing: 0.02em !important;
   text-transform: none !important;
 }
+/* Store record metric labels ("Restock likelihood", "Store ID") are read, not
+   skimmed: keep the 13px minimum from 04-route-pages.css. */
+html body .app[data-theme] .scout-route-shell .scout-store-record .scout-store-facts .scout-metric-card > .scout-metric-label.scout-metric-label { font-size: 13px !important; }
 /* Badges may stay small-caps but not gold-on-dark. */
 html body .app.app-command-shell[data-theme] .command-board-v4-body :where(.trust-badge, .status-badge) { letter-spacing: 0.04em; font-weight: 600; }
 

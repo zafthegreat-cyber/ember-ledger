@@ -27,7 +27,7 @@ assert.doesNotMatch(source, /status:\s*"(completed|inProgress)"/, "never starts 
 assert.doesNotMatch(source, /console\.(log|error)\([^)]*private_key/, "never prints the key");
 
 const workflow = readFileSync(new URL("../.github/workflows/android-release.yml", import.meta.url), "utf8").replace(/\r\n/g, "\n");
-assert.match(workflow, /play_track:\n\s+description:[^\n]*\n\s+type: choice\n\s+options: \[alpha, internal, none\]/);
+assert.match(workflow, /play_track:\n\s+description:[^\n]*\n\s+type: choice\n\s+options: \[beta, alpha, internal, none\]\n\s+default: beta/, "open testing (beta) is the default track (owner, Nov 17 2026)");
 assert.match(workflow, /if: inputs\.play_track != 'none'/);
 assert.match(workflow, /PLAY_SERVICE_ACCOUNT_JSON: \$\{\{ secrets\.PLAY_SERVICE_ACCOUNT_JSON \}\}/);
 assert.match(workflow, /RELEASE_NOTES: \$\{\{ inputs\.release_notes \}\}/, "notes reach the script through env, not the shell line");

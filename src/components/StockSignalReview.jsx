@@ -1,11 +1,16 @@
-import {useEffect,useState} from "react";
+import {useState} from "react";
 import {supabase} from "../supabaseClient.js";
 import {RETAILER_NAMES,SIGNAL_KINDS,submitStockReview} from "../services/stockIntelligence.mjs";
 import "./stock-signal-review.css";
+import useStockStaff from "../services/useStockStaff.js";
 
 export default function StockSignalReview({targets=[],onPublished}) {
-  const [admin,setAdmin]=useState(false);
-  const [actor,setActor]=useState("");
+  const actor=useStockStaff();
+  if (!actor) return null;
+  return <StaffReviewForm key={actor} actor={actor} targets={targets} onPublished={onPublished}/>;
+}
+
+function StaffReviewForm({actor,targets,onPublished}) {
   const [retailer,setRetailer]=useState("Target");
   const [sku,setSku]=useState("");
   const [signalType,setSignalType]=useState("reported_stock");
@@ -14,23 +19,7 @@ export default function StockSignalReview({targets=[],onPublished}) {
   const [sourceUrl,setSourceUrl]=useState("");
   const [state,setState]=useState("idle");
   const [message,setMessage]=useState("");
-  useEffect(()=>{
-    if (!supabase) return undefined;
-    let mounted=true;
-    async function check() {
-      try {
-        const {data:{user}={},error:userError}=await supabase.auth.getUser();
-        if (userError || !user?.id || user.is_anonymous) return;
-        const {data,error}=await supabase.from("profiles").select("app_role,user_role").eq("id",user.id).maybeSingle();
-        if (mounted && !error && data?.app_role==="admin" && data?.user_role==="admin") {
-          setActor(user.id);setAdmin(true);
-        }
-      } catch {/* No staff tools without verified authorization. */}
-    }
-    check();
-    return ()=>{mounted=false;};
-  },[]);
-  if (!admin) return null;
+
   const choices=targets.filter(p=>p.retailer===retailer);
   function selectProduct(value) {
     setSku(value);
@@ -54,7 +43,7 @@ export default function StockSignalReview({targets=[],onPublished}) {
   }
   return <details className="stock-review">
     <summary>Staff tools · Review a stock lead</summary>
-    <p>Publish one time-limited, attributed signal into Find → Restocks. Use <strong>Admin-checked</strong> only after checking the matching retailer page yourself. Do not repost private Discord content without permission.</p>
+    <p>Publish one time-limited, attributed signal into Find → Restocks. Use <strong>Admin-checked</strong> only after checking the matching retailer page yourself. Discord intake requires approved channels and separate permission before it can be connected.</p>
     <form onSubmit={publish}>
       <div className="stock-review__fields">
         <label>Retailer<select value={retailer} onChange={event=>{setRetailer(event.target.value);setSku("");setSourceUrl("");}}>
@@ -74,7 +63,7 @@ export default function StockSignalReview({targets=[],onPublished}) {
         <label className="stock-review__wide">Short factual headline
           <input required minLength={8} maxLength={180} value={headline} onChange={event=>setHeadline(event.target.value)} placeholder="Example: Queue appeared at Pokémon Center"/>
         </label>
-        <label className="stock-review__wide">Original retailer or permitted Discord message link
+        <label className="stock-review__wide">Original retailer page link
           <input required type="url" value={sourceUrl} onChange={event=>setSourceUrl(event.target.value)} placeholder="https://..." />
         </label>
       </div>

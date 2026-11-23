@@ -61,7 +61,11 @@ async function main() {
       check(await editor.getByLabel("Shipping address", { exact: true }).isVisible(), `${label}: full address editor preserved`);
       await page.keyboard.press("Escape");
       await page.getByRole("button", { name: "Back to list", exact: true }).click();
-      check(await row.evaluate((el) => document.activeElement === el), `${label}: Back returns focus to selected row`);
+      // OperationsRecordBrowser restores row focus in a requestAnimationFrame after Back
+      // (src/components/operations/OperationsWorkspace.jsx), so wait for that frame
+      // rather than reading activeElement synchronously (raced on slower CI runners).
+      const backFocused = await page.waitForFunction(() => document.activeElement === document.querySelector(".ops-record-browser__row"), null, { timeout: 5000 }).then(() => true, () => false);
+      check(backFocused && await row.evaluate((el) => document.activeElement === el), `${label}: Back returns focus to selected row`);
       await page.goto(url("accounts", theme));
       await page.getByRole("heading", { name: "Store Accounts", exact: true }).waitFor();
       await page.getByRole("checkbox", { name: "Select all filtered accounts", exact: true }).check();

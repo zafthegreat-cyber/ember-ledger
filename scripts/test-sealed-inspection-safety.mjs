@@ -33,8 +33,9 @@ test('all catalog lookups preserve record content and never give a code card or 
   if(artwork)assert.equal(artwork.name,row.name,row.id);
   if(/\bcode card\b/i.test(row.name))assert.equal(artwork,null,row.name);
  }
- assert.equal(sealedCatalog.length,4739);
- assert.equal(catalog.length,33123);
+ assert.ok(sealedCatalog.length>=4739,String(sealedCatalog.length));
+ // The daily price refresh adds new products, so the catalog only grows; every row above is checked.
+ assert.ok(catalog.length>=33123,String(catalog.length));
 });
 test('non-ETB nested identity metadata rejects a contradictory UPC or physical model',()=>{
  const product=catalog.find(row=>row.tcgplayerProductId==='502005'),artwork=registry['tcgplayer:502005'];

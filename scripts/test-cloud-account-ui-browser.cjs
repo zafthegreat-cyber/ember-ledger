@@ -45,6 +45,8 @@ export const supabase={auth:{async getUser(){return {data:{user:user()},error:nu
  };
  let query;const get=()=>query||(query=run());return {then(resolve,reject){return get().then(resolve,reject);},abortSignal(){return this;},setHeader(){return this;}};
 }};
+export const createSocialOAuthClient=()=>null;
+export async function clearSocialOAuthStorage(){}
 export const createIsolatedAuthClient=()=>({auth:{getSession:supabase.auth.getSession,async signInWithPassword({password}){if(password!=='synthetic-password')return {data:null,error:{message:'Synthetic password rejected'}};return {data:{user:user(),session:{access_token:'isolated-synthetic-token'}},error:null};},async signOut(){return {error:null};}},rpc:supabase.rpc});
 `;
 const entry = `
@@ -111,7 +113,7 @@ async function openCloudPanel(page){
       const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1);assert.equal(overflow,false);checks++;
       await page.getByText('Saved cloud versions',{exact:true}).click();
       await page.getByRole('button',{name:'Load version history'}).click();
-      const downloadEvent=page.waitForEvent('download');
+      await page.locator('summary',{hasText:/Cloud version 1$/}).first().click();const downloadEvent=page.waitForEvent('download');
       await page.getByRole('button',{name:'Download version 1',exact:true}).click();
       const saved=JSON.parse(fs.readFileSync(await (await downloadEvent).path(),'utf8'));
       const verification=await page.evaluate(value=>window.qa.verifyBackup(value),saved);
@@ -119,7 +121,7 @@ async function openCloudPanel(page){
       await page.evaluate(()=>window.qa.preserve());
       await page.getByText('Preserved device versions',{exact:true}).click();
       await page.getByRole('button',{name:'Load device recovery copies'}).click();
-      const copyEvent=page.waitForEvent('download');await page.getByRole('button',{name:'Download preserved copy',exact:true}).click();
+      await page.locator('summary',{hasText:/Preserved device copy/}).first().click();const copyEvent=page.waitForEvent('download');await page.getByRole('button',{name:'Download preserved copy',exact:true}).click();
       const copy=JSON.parse(fs.readFileSync(await (await copyEvent).path(),'utf8'));
       assert.equal((await page.evaluate(value=>window.qa.verifyBackup(value),copy)).valid,true);checks++;
       let lateDownloads=0;page.on('download',()=>lateDownloads++);

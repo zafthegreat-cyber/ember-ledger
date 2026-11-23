@@ -3,6 +3,26 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { chromium, expect } = require("@playwright/test");
 
+// The palette moved to warm cream/maroon/gold tokens (no blue or teal, Nov 2026), so expected colours are
+// resolved from the live design tokens instead of hard-coded legacy hex values.
+const tokenNames = ["--surface-primary", "--action-primary", "--on-primary", "--text-primary", "--app-brand-selected", "--app-brand-selected-border"];
+function resolveTokens(root, names) {
+  return Object.fromEntries(names.map((name) => {
+    const probe = document.createElement("div");
+    probe.style.cssText = `position:absolute;visibility:hidden;background-color:var(${name});color:var(${name})`;
+    root.appendChild(probe);
+    const value = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return [name, value];
+  }));
+}
+const transparent = (color) => color === "transparent" || /rgba\([^)]*,\s*0\)$/.test(color);
+function assertSecondaryAction(action, tokens, label) {
+  // Secondary actions sit on the opaque surface: either painted with it or transparent over it.
+  assert.ok(action.background === tokens["--surface-primary"] || transparent(action.background), `${label}: secondary action must use the neutral surface (${action.background})`);
+  assert.notEqual(action.background, tokens["--action-primary"], `${label}: secondary and primary actions must be visually distinct`);
+}
+
 async function openDisclosure(disclosure) {
   if (!(await disclosure.evaluate(element => element.open))) await disclosure.locator(":scope > summary").click();
   await expect(disclosure).toHaveAttribute("open", "");
@@ -13,7 +33,8 @@ async function checkWizardPresentation(page, modal, state, output, theme, width)
   await expect(section).toBeVisible();
   await expect(modal.getByRole("button", { name: "Continue", exact: true })).toHaveCount(1);
   await openDisclosure(modal.locator(".stock-report-time-disclosure"));
-  const metrics = await modal.evaluate((dialog, selectionState) => {
+  const metrics = await modal.evaluate((dialog, { selectionState, tokenNames, resolveTokensSource }) => {
+    const resolveTokens = new Function(`return (${resolveTokensSource})`)();
     const visible = element => {
       if (!element.getClientRects().length || getComputedStyle(element).visibility === "hidden" || getComputedStyle(element).display === "none") return false;
       for (let ancestor = element.parentElement; ancestor && ancestor !== dialog; ancestor = ancestor.parentElement) {
@@ -32,6 +53,7 @@ async function checkWizardPresentation(page, modal, state, output, theme, width)
     const controls = [...where.querySelectorAll("button, input, summary"), ...foot.querySelectorAll("button")].filter(visible);
     const note = where.querySelector(".scout-location-trust-note");
     return {
+      tokens: resolveTokens(dialog, tokenNames),
       state: selectionState,
       minHelperSize: Math.min(...helpers.map((element) => parseFloat(getComputedStyle(element).fontSize))),
       controls: controls.map((element) => ({ name: element.textContent.trim() || element.placeholder || element.type, ...rect(element) })),
@@ -53,18 +75,24 @@ async function checkWizardPresentation(page, modal, state, output, theme, width)
       },
       overflow: Math.max(dialog.scrollWidth - dialog.clientWidth, where.scrollWidth - where.clientWidth),
     };
-  }, state);
+  }, { selectionState: state, tokenNames, resolveTokensSource: resolveTokens.toString() });
   assert.ok(metrics.minHelperSize >= 13, `Wizard helpers must be readable: ${metrics.minHelperSize}px`);
   assert.ok(metrics.overflow <= 1, `Wizard must not overflow horizontally: ${metrics.overflow}px`);
   for (const control of metrics.controls) {
     assert.ok(control.height >= 44 && control.width >= 44, `${control.name} needs a 44px target (${control.width}x${control.height})`);
   }
-  const surface = theme === "dark" ? "rgb(26, 34, 45)" : "rgb(255, 255, 255)";
-  const accent = theme === "dark" ? "rgb(103, 200, 187)" : "rgb(15, 118, 110)";
+  const { tokens } = metrics;
+  const surface = tokens["--surface-primary"];
   for (const [index, card] of metrics.cards.entries()) {
     assert.equal(card.backgroundImage, "none", "Store cards must use neutral surfaces, not gradients");
-    assert.equal(card.background, surface);
-    if (state === "selected") assert.equal(card.border, accent, "Selected store needs a distinct accent edge");
+    if (state === "selected") {
+      // brand-refresh.css marks the chosen store with the shared selected wash and gold edge.
+      assert.equal(card.background, tokens["--app-brand-selected"], "Selected store uses the selected wash");
+      assert.equal(card.border, tokens["--app-brand-selected-border"], "Selected store needs a distinct accent edge");
+      assert.notEqual(card.border, metrics.footer.border, "Selected edge must differ from neutral borders");
+    } else {
+      assert.equal(card.background, surface, "Unselected store cards use the neutral surface");
+    }
     if (index) assert.ok(card.y - metrics.cards[index - 1].bottom >= 8, "Store results need visible separation");
     card.metadata.forEach((item, itemIndex) => {
       if (!itemIndex) return;
@@ -75,11 +103,14 @@ async function checkWizardPresentation(page, modal, state, output, theme, width)
   assert.equal(metrics.footer.background, surface, "Sticky action bar must be opaque");
   assert.equal(metrics.footer.backgroundImage, "none");
   for (const action of metrics.footer.actions) {
-    assert.equal(action.background, action.secondary ? surface : accent, "Secondary and primary actions must be visually distinct");
-    assert.equal(action.color, action.secondary
-      ? theme === "dark" ? "rgb(242, 245, 249)" : "rgb(32, 42, 53)"
-      : theme === "dark" ? "rgb(16, 44, 39)" : "rgb(255, 255, 255)");
-    if (action.secondary) assert.equal(action.border, theme === "dark" ? "rgb(127, 145, 166)" : "rgb(123, 135, 150)");
+    if (action.secondary) {
+      assertSecondaryAction(action, tokens, "Wizard footer");
+      assert.equal(action.color, tokens["--text-primary"]);
+      assert.ok(!transparent(action.border) && action.border !== metrics.footer.background, "Secondary action needs a visible outline");
+    } else {
+      assert.equal(action.background, tokens["--action-primary"], "Primary action uses the primary accent");
+      assert.equal(action.color, tokens["--on-primary"]);
+    }
   }
   if (metrics.trustNote) {
     assert.ok(metrics.trustNote.detail.y - metrics.trustNote.title.bottom >= 4, "Location guidance needs separate title and detail lines");
@@ -222,14 +253,19 @@ async function checkWizardPresentation(page, modal, state, output, theme, width)
         await expect(save).toBeEnabled();
         result.reviewPresentation = await modal.locator(".scout-report-review-grid").first().evaluate((grid) => ({
           overflow: grid.scrollWidth - grid.clientWidth,
-          pairs: [...grid.children].map((row) => {
+          // The "Shared with" visibility select (added Nov 2026) is a form control, not a label/value pair;
+          // it is checked for readable text separately.
+          pairs: [...grid.children].filter((row) => row.querySelector("strong")).map((row) => {
             const label = row.querySelector(".scout-review-group-heading") || row.querySelector("span");
             const value = row.querySelector("strong");
             return { labelSize: parseFloat(getComputedStyle(label).fontSize), gap: value.getBoundingClientRect().top - label.getBoundingClientRect().bottom };
           }),
+          sharingTextSizes: [...grid.querySelectorAll(".stock-report-review-sharing :is(label, select, small)")].map((node) => parseFloat(getComputedStyle(node).fontSize)),
         }));
         assert.ok(result.reviewPresentation.overflow <= 1);
         assert.ok(result.reviewPresentation.pairs.every((pair) => pair.labelSize >= 13 && pair.gap >= 4), "Review labels and values must remain separated and readable");
+        assert.ok(result.reviewPresentation.pairs.length >= 2, "Review shows store/time and shelf/product summaries");
+        assert.ok(result.reviewPresentation.sharingTextSizes.every((size) => size >= 13), `Sharing control text must be readable: ${result.reviewPresentation.sharingTextSizes}`);
         await modal.locator(".scout-report-step-card.active").evaluate((element) => {
           const dialog = element.closest(".flow-modal");
           dialog.scrollTop += element.getBoundingClientRect().top - dialog.getBoundingClientRect().top - 18;
@@ -244,10 +280,12 @@ async function checkWizardPresentation(page, modal, state, output, theme, width)
         await expect(close).toBeVisible();
         assert.ok((await close.boundingBox()).height >= 44, "Submitted Close must retain its full touch target");
         const confirmation = modal.locator(".scout-quick-report-sent");
-        result.submittedPresentation = await confirmation.evaluate((section) => {
+        result.submittedPresentation = await confirmation.evaluate((section, { tokenNames, resolveTokensSource }) => {
+          const resolveTokens = new Function(`return (${resolveTokensSource})`)();
           const helpers = [...section.querySelectorAll("p, small, .scout-submit-confirmation-grid > div > span")];
           const buttons = [...section.querySelectorAll("button")];
           return {
+            tokens: resolveTokens(section, tokenNames),
             overflow: section.scrollWidth - section.clientWidth,
             minHelperSize: Math.min(...helpers.map((element) => parseFloat(getComputedStyle(element).fontSize))),
             summaryGaps: [...section.querySelectorAll(".scout-submit-confirmation-grid > div")].map((row) => (
@@ -260,7 +298,7 @@ async function checkWizardPresentation(page, modal, state, output, theme, width)
             }),
             optionalGap: parseFloat(getComputedStyle(section.querySelector(".quick-actions")).gap),
           };
-        });
+        }, { tokenNames, resolveTokensSource: resolveTokens.toString() });
         assert.ok(result.submittedPresentation.overflow <= 1, "Submitted confirmation must not overflow horizontally");
         assert.ok(result.submittedPresentation.minHelperSize >= 13);
         assert.ok(result.submittedPresentation.summaryGaps.every((gap) => gap >= 4), "Saved labels and values must remain separated");
@@ -268,9 +306,8 @@ async function checkWizardPresentation(page, modal, state, output, theme, width)
         for (const action of result.submittedPresentation.actions) {
           assert.ok(action.width >= 44 && action.height >= 44, `${action.name} needs a 44px target`);
           assert.equal(action.image, "none");
-          assert.equal(action.background, action.secondary
-            ? theme === "dark" ? "rgb(26, 34, 45)" : "rgb(255, 255, 255)"
-            : theme === "dark" ? "rgb(103, 200, 187)" : "rgb(15, 118, 110)");
+          if (action.secondary) assertSecondaryAction(action, result.submittedPresentation.tokens, `Submitted ${action.name}`);
+          else assert.equal(action.background, result.submittedPresentation.tokens["--action-primary"], `Submitted ${action.name} uses the primary accent`);
         }
         await modal.evaluate((dialog) => { dialog.scrollTop = 0; });
         await page.screenshot({ path: path.join(output, `wizard-submitted-${theme}-${width}.png`) });

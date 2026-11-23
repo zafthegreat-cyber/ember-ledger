@@ -99,7 +99,7 @@ async function main() {
     const mobile = { width: 360, height: 800 };
     await capture(browser, mobile, "light", "/find/deal-analysis", "mobile-light-long-guided-form.png");
     await capture(browser, mobile, "dark", "/collection", "mobile-dark-bottom-sheet.png", (page) => clickUnique(page, "button", "Search & Filters"));
-    await capture(browser, mobile, "light", "/collection", "mobile-light-record-dialog.png", (page) => clickVisible(page, "button", "Add Collection Item", false));
+    await capture(browser, mobile, "light", "/collection", "mobile-light-record-dialog.png", (page) => clickVisible(page, "button", "Add to my collection", false));
     await capture(browser, mobile, "light", "/settings/help", "mobile-light-feedback-dialog-clean.png", (page) => clickVisible(page, "button", "Bug", false));
     await capture(browser, mobile, "dark", "/find/ebay", "mobile-dark-error-state.png", async (page) => {
       const refresh = page.getByRole("button", { name: "Check Connection", exact: false });

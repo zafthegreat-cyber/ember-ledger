@@ -1,6 +1,7 @@
 {
   "note": "Browser tests run by CI against the dev server (scripts/run-browser-suite.mjs). knownFailing were failing on Nov 15, 2026 (stale selectors/copy or need seeded data); fix one and move it to passing.",
   "passing": [
+    "test-stock-intelligence-browser.cjs",
     "test-account-deletion-browser.cjs",
     "test-account-ops-two-tab-stress.cjs",
     "test-app-effect-events.cjs",
@@ -30,248 +31,67 @@
     "test-search-state-lifecycle.cjs",
     "test-settings-experience-browser.cjs",
     "test-shared-feedback-presentation.cjs",
-    "test-store-observation-browser.cjs"
+    "test-store-observation-browser.cjs",
+    "test-login-presentation.cjs",
+    "test-restock-shortcuts-browser.cjs",
+    "test-add-scan-layout-browser.cjs",
+    "beta-smoke.cjs",
+    "test-multi-game-browser.cjs",
+    "test-collection-sets-browser.cjs",
+    "test-collection-portfolio-browser.cjs",
+    "test-global-search-presentation.cjs",
+    "test-adaptive-restock-home-browser.cjs",
+    "test-restock-details-browser.cjs",
+    "test-restock-phone-navigation-browser.cjs",
+    "test-restock-report-browser.cjs",
+    "test-restock-save-reload-browser.cjs",
+    "test-restock-feed-browser.cjs",
+    "test-workspace-storage-quota-browser.cjs",
+    "test-cloud-account-ui-browser.cjs",
+    "test-account-ops-recovery-guards.mjs",
+    "test-app-fallbacks-browser.cjs",
+    "test-buy-offer-browser.cjs",
+    "test-bot-provider-setup-browser.cjs",
+    "test-code3-accountant-review-browser.cjs",
+    "test-code3-inventory-correction-browser.cjs",
+    "test-code3-inventory-creation-browser.cjs",
+    "test-code3-inventory-reconciliation-browser.cjs",
+    "test-deferred-app-views.cjs",
+    "test-code3-bot-ops-browser.cjs",
+    "test-legacy-app-storage.cjs",
+    "test-code3-account-ops-foundation-browser.cjs",
+    "test-code3-workspace-browser.cjs",
+    "test-community-integration.mjs",
+    "test-deal-finder-persistence.cjs",
+    "test-deal-finder-presentation.cjs",
+    "test-app-render-regressions.cjs",
+    "test-purchase-email-import-browser.cjs",
+    "test-sales-presentation.cjs",
+    "test-scout-layout.cjs",
+    "test-scout-map-interactions.cjs",
+    "test-scout-store-handoff.cjs",
+    "test-scout-store-records.cjs",
+    "test-viewport-guard.cjs",
+    "test-workspace-keyboard.cjs",
+    "test-workspace-polish.cjs",
+    "test-device-transfer-browser.cjs",
+    "test-legacy-collection-presentation.cjs",
+    "test-sale-return-workflow.cjs",
+    "test-workspace-recovery-browser.cjs",
+    "test-account-ops-workspace-browser.cjs",
+    "test-account-ops-native-consistency.cjs",
+    "test-deferred-performance.cjs",
+    "test-exchange-layout.cjs",
+    "test-experience-controls-browser.cjs",
+    "test-experience-menu-app-browser.cjs",
+    "test-item-photos-app-browser.cjs",
+    "test-legacy-presentation.cjs",
+    "test-manual-lifecycles-browser.cjs",
+    "test-menu-drawer-browser.cjs",
+    "test-private-beta-journeys.cjs",
+    "test-scout-store-presentation.cjs",
+    "test-semantic-theme.cjs",
+    "test-stock-screenshot-import-browser.cjs"
   ],
-  "knownFailing": [
-    {
-      "file": "beta-smoke.cjs",
-      "firstError": "TimeoutError'"
-    },
-    {
-      "file": "test-account-ops-native-consistency.cjs",
-      "firstError": "Error: element(s) not found"
-    },
-    {
-      "file": "test-account-ops-recovery-guards.mjs",
-      "firstError": "Error: strict mode violation: getByRole('heading', { name: 'Profiles', exact: true }) resolved to 2 elements:\r"
-    },
-    {
-      "file": "test-adaptive-restock-home-browser.cjs",
-      "firstError": "TimeoutError'"
-    },
-    {
-      "file": "test-add-scan-layout-browser.cjs",
-      "firstError": "TimeoutError'"
-    },
-    {
-      "file": "test-app-fallbacks-browser.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:"
-    },
-    {
-      "file": "test-app-render-regressions.cjs",
-      "firstError": "Error: element(s) not found"
-    },
-    {
-      "file": "test-bot-provider-setup-browser.cjs",
-      "firstError": ""
-    },
-    {
-      "file": "test-buy-offer-browser.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: Calculator operations do not write business data or preferences"
-    },
-    {
-      "file": "test-cloud-account-ui-browser.cjs",
-      "firstError": "Error: Build failed with 2 errors:"
-    },
-    {
-      "file": "test-code3-account-ops-foundation-browser.cjs",
-      "firstError": "TimeoutError'"
-    },
-    {
-      "file": "test-code3-accountant-review-browser.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: query-role spoofing cannot bypass OWNER authorization"
-    },
-    {
-      "file": "test-code3-bot-ops-browser.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: normal Bot runtime should use the honest disconnected state"
-    },
-    {
-      "file": "test-code3-inventory-correction-browser.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: query authority spoofing remains denied"
-    },
-    {
-      "file": "test-code3-inventory-creation-browser.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: query role spoofing cannot establish OWNER authority"
-    },
-    {
-      "file": "test-code3-inventory-reconciliation-browser.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: query authority spoofing remains denied"
-    },
-    {
-      "file": "test-code3-workspace-browser.cjs",
-      "firstError": "TimeoutError'"
-    },
-    {
-      "file": "test-collection-portfolio-browser.cjs",
-      "firstError": "TimeoutError'\r"
-    },
-    {
-      "file": "test-collection-sets-browser.cjs",
-      "firstError": ""
-    },
-    {
-      "file": "test-community-integration.mjs",
-      "firstError": "Error: element(s) not found\r"
-    },
-    {
-      "file": "test-deal-finder-persistence.cjs",
-      "firstError": "TimeoutError'"
-    },
-    {
-      "file": "test-deal-finder-presentation.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: See deal-finder/results.json"
-    },
-    {
-      "file": "test-deferred-app-views.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: Home does not download the deferred account, community, marketplace, import, or admin views."
-    },
-    {
-      "file": "test-deferred-performance.cjs",
-      "firstError": "TimeoutError'"
-    },
-    {
-      "file": "test-exchange-layout.cjs",
-      "firstError": ""
-    },
-    {
-      "file": "test-experience-controls-browser.cjs",
-      "firstError": "TimeoutError'"
-    },
-    {
-      "file": "test-experience-menu-app-browser.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: Preview preserves original record arrays"
-    },
-    {
-      "file": "test-global-search-presentation.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: See global-search-presentation/results.json for failures"
-    },
-    {
-      "file": "test-item-photos-app-browser.cjs",
-      "firstError": ""
-    },
-    {
-      "file": "test-legacy-app-storage.cjs",
-      "firstError": ""
-    },
-    {
-      "file": "test-legacy-presentation.cjs",
-      "firstError": ""
-    },
-    {
-      "file": "test-login-presentation.cjs",
-      "firstError": "TimeoutError'"
-    },
-    {
-      "file": "test-manual-lifecycles-browser.cjs",
-      "firstError": "TimeoutError'"
-    },
-    {
-      "file": "test-menu-drawer-browser.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: Opening and cancelling reporting preserves existing records"
-    },
-    {
-      "file": "test-multi-game-browser.cjs",
-      "firstError": "TimeoutError'"
-    },
-    {
-      "file": "test-private-beta-journeys.cjs",
-      "firstError": "Error: element(s) not found"
-    },
-    {
-      "file": "test-purchase-email-import-browser.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: No collateral storage writes"
-    },
-    {
-      "file": "test-restock-details-browser.cjs",
-      "firstError": "Error: element(s) not found"
-    },
-    {
-      "file": "test-restock-phone-navigation-browser.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: Phone navigation checks failed; see C:\\Users\\dillo\\OneDrive\\Desktop\\Anchor&WingLLC\\Code 3\\Development\\App wo"
-    },
-    {
-      "file": "test-restock-report-browser.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: Restock browser checks failed; see C:\\Users\\dillo\\OneDrive\\Desktop\\Anchor&WingLLC\\Code 3\\Development\\App wor"
-    },
-    {
-      "file": "test-restock-save-reload-browser.cjs",
-      "firstError": ""
-    },
-    {
-      "file": "test-restock-shortcuts-browser.cjs",
-      "firstError": ""
-    },
-    {
-      "file": "test-sales-presentation.cjs",
-      "firstError": "Error: element(s) not found"
-    },
-    {
-      "file": "test-scout-layout.cjs",
-      "firstError": ""
-    },
-    {
-      "file": "test-scout-map-interactions.cjs",
-      "firstError": ""
-    },
-    {
-      "file": "test-scout-store-handoff.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: See scout-store-handoff/results.json"
-    },
-    {
-      "file": "test-scout-store-presentation.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: .scout-metric-label text is too small"
-    },
-    {
-      "file": "test-scout-store-records.cjs",
-      "firstError": "Error: element(s) not found"
-    },
-    {
-      "file": "test-semantic-theme.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: 15 semantic theme cases failed; inspect results.json"
-    },
-    {
-      "file": "test-stock-screenshot-import-browser.cjs",
-      "firstError": "AssertionError [ERR_ASSERTION]: Stock screenshot app checks failed: C:\\Users\\dillo\\OneDrive\\Desktop\\Anchor&WingLLC\\Code 3\\Development\\App wo"
-    },
-    {
-      "file": "test-viewport-guard.cjs",
-      "firstError": ""
-    },
-    {
-      "file": "test-workspace-keyboard.cjs",
-      "firstError": "Error: element(s) not found"
-    },
-    {
-      "file": "test-workspace-polish.cjs",
-      "firstError": "TimeoutError'"
-    },
-    {
-      "file": "test-workspace-storage-quota-browser.cjs",
-      "firstError": "Error: Build failed with 2 errors:"
-    },
-    {
-      "file": "test-workspace-recovery-browser.cjs",
-      "firstError": "Timing-sensitive: Web Lock from the closed tab is still held (fails on pre-merge code too, Nov 15, 2026)."
-    },
-    {
-      "file": "test-device-transfer-browser.cjs",
-      "firstError": "locator.setInputFiles timeout — started failing with UI improvements 101-200 (#49); fails on that commit too."
-    },
-    {
-      "file": "test-legacy-collection-presentation.cjs",
-      "firstError": "expect(locator).toBeFocused() failed — started failing with UI improvements 101-200 (#49); fails on that commit too."
-    },
-    {
-      "file": "test-restock-feed-browser.cjs",
-      "firstError": "expect(locator).toBeVisible() failed — started failing with UI improvements 101-200 (#49); fails on that commit too."
-    },
-    {
-      "file": "test-sale-return-workflow.cjs",
-      "firstError": "locator.click timeout — started failing with UI improvements 101-200 (#49); fails on that commit too."
-    },
-    {
-      "file": "test-account-ops-workspace-browser.cjs",
-      "firstError": "768-dark: Back returns focus to selected row — fails on the Linux CI runner only (passes on Windows), Nov 15, 2026."
-    }
-  ]
+  "knownFailing": []
 }

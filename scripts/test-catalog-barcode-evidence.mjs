@@ -140,11 +140,11 @@ function scannerHarness({local=[],remote=[],loadSeed=async()=>local,configured=f
  const scope={scanLookupRequestRef:{current:0},normalizeBarcodeValue,isLikelyBarcodeValue,findCatalogProductsByBarcode,catalogIdentifiersForProduct,getBestCatalogMatches:scanner.getBestCatalogMatches,
   detectCatalogSearchMode:value=>isLikelyBarcodeValue(value)?'barcode':'name',loadLocalCatalogSeed:loadSeed,catalogProducts:[],mergeCatalogProductLists:(a,b)=>[...a,...b],isSupabaseConfigured:configured,supabase:configured?{}:null,
   searchPokemonCatalogOnDemand:async()=>{state.remoteCalls++;return remoteSearch?remoteSearch():{rows:remote};},mapCatalog:row=>row,
-  setScanInput:value=>{state.input=value;},setScanReview:value=>{state.review=value;},setScanMatches:value=>{state.matches=value;},setScanSearchState:value=>{state.status=value;},setScanMessage:value=>{state.messages.push(value);},
-  buildAiCatalogMatchSummary:({matches})=>({outputSummary:matches.length+' matches'}),logAiAssistEvent:async()=>{},AI_FEATURE_AREAS:{CATALOG_MATCH:'test'},scanDestination:'vault',
+  setScanInput:value=>{state.input=value;},setScanReview:value=>{state.review=value;},setScanMatches:value=>{state.matches=value;},setScanSearchState:value=>{state.status=value;},setScanMessage:value=>{state.messages.push(value);},setScanSlabDetails:value=>{state.slab=value;},setScanListingDetails:value=>{state.listing=value;},closeInventoryScanner:()=>{state.closed=true;},openQuickAddPathFlow:path=>{state.path=path;},
+  buildAiCatalogMatchSummary:({matches})=>({outputSummary:matches.length+' matches'}),logAiAssistEvent:async()=>{},rememberScan:review=>{state.remembered=review;},AI_FEATURE_AREAS:{CATALOG_MATCH:'test'},scanDestination:'vault',
   buildScanReview:(raw,matches)=>{state.reviewBuilds++;return{rawValue:raw,selectedProduct:matches[0]?.item};}};
  const source=fs.readFileSync(new URL('../src/App.jsx',import.meta.url),'utf8');
- const start=source.indexOf('async function handleCatalogScanMatch(value)');
+ const start=source.indexOf('async function handleCatalogScanMatch(value');
  const end=source.indexOf('\n  function confirmScanMatch(',start);assert.ok(start>=0&&end>start,'Actual scanner function remains extractable');
  vm.runInNewContext(source.slice(start,end)+'\nglobalThis.run=handleCatalogScanMatch;',scope);
  return{state,run:scope.run,scope};
@@ -249,13 +249,13 @@ test('actual scanner mode change invalidates a pending result before it can repo
  const pending=run('196214108417');scope.key='picture';scope.setScanMode=value=>{state.mode=value;};
  const modeSource=appSlice('.map(([key, label, tone]) => (','<span className={`scan-product-mode-icon');
  const handler=modeSource.match(/onClick=\{\(\) => \{([\s\S]*?)\}\}/)?.[1];assert.ok(handler,'Actual scanner tab callback found');
- vm.runInNewContext(handler,scope);resolve([byId('610953')]);await pending;
+ vm.runInNewContext(`(function(){${handler}})()`,scope);resolve([byId('610953')]);await pending;
  assert.equal(state.mode,'picture');assert.equal(state.status,'idle');assert.equal(state.review,null);assert.equal(state.matches.length,0);assert.equal(state.reviewBuilds,0);
 });
 
-test('both actual photo entry points discard the prior review when their photo or query draft changes',()=>{
+test('every actual photo entry point discards the prior review when their photo or query draft changes',()=>{
  const handlers=[...appSource.matchAll(/<ProductPhotoLookup[^>]*?onDraftChange=\{\(\) => \{([^]*?)\}\} onQuery=/g)];
- assert.equal(handlers.length,2,'Photo and card-photo modes both expose invalidation');
+ assert.equal(handlers.length,4,'Photo, card, graded slab and listing screenshot modes all expose invalidation');
  for(const match of handlers){
   const {state,scope}=scannerHarness();state.matches=[byId('610953')];state.review={selectedProduct:byId('610953')};state.status='results';const old=scope.scanLookupRequestRef.current;
   vm.runInNewContext(match[1],scope);

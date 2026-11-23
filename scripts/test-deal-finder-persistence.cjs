@@ -203,7 +203,7 @@ async function checkBrowser() {
         assert.equal(saved.dealFinderItems[0].sessionId, saved.dealFinderSessions[0].id);
         assert.deepEqual(saved.receiptRecords, initial.receiptRecords); assert.deepEqual(saved.customData, initial.customData);
         await page.reload(); await expect(product).toBeVisible({ timeout: 30000 });
-        await page.getByRole("button", { name: /^Check deal/i }).first().click();
+        await product.getByRole("button", { name: "Compare", exact: true }).click();
         await expect(modal.locator(".home-list-row").filter({ hasText: "Synthetic persistence bundle" })).toBeVisible();
         const reloaded = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), storageKey);
         assert.deepEqual(reloaded.dealFinderSessions, saved.dealFinderSessions); assert.deepEqual(reloaded.dealFinderItems, saved.dealFinderItems);

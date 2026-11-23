@@ -1,0 +1,28 @@
+.scanner-picture-matches {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(214, 160, 82, 0.35);
+  background: rgba(214, 160, 82, 0.08);
+}
+.scanner-picture-matches ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.scanner-picture-matches li button {
+  width: 100%;
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  padding: 10px 12px;
+  min-height: 44px;
+  border-radius: 10px;
+  border: 1px solid rgba(214, 160, 82, 0.45);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.scanner-picture-matches li button small { opacity: 0.75; }
+.scanner-picture-matches p { margin: 0; }
+.scanner-picture-matches__note { font-size: 0.82rem; opacity: 0.8; }
+.scanner-picture-matches__note .ghost-button { padding: 0 4px; min-height: 0; font-size: inherit; text-decoration: underline; }

@@ -3,6 +3,7 @@ import {supabase} from "../supabaseClient.js";
 import {INBOUND_STAGES,loadPrivateInbound,submitPrivateInbound} from "../services/warehouseInbound.mjs";
 import {RETAILER_NAMES} from "../services/stockIntelligence.mjs";
 import "./warehouse-inbound-panel.css";
+import useStockStaff from "../services/useStockStaff.js";
 
 const MAIN_STAGES=INBOUND_STAGES.filter(item=>!["delayed","unknown"].includes(item.key));
 function timeLabel(value){
@@ -10,8 +11,12 @@ function timeLabel(value){
   return Number.isFinite(date.getTime()) ? date.toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}) : "Time unknown";
 }
 export default function WarehouseInboundPanel({targets=[]}){
-  const [isStaff,setIsStaff]=useState(false);
-  const [sessionUser,setSessionUser]=useState("");
+  const sessionUser=useStockStaff();
+  return <WarehouseView key={sessionUser||"public"} targets={targets} sessionUser={sessionUser}/>;
+}
+function WarehouseView({targets,sessionUser}) {
+  const isStaff=Boolean(sessionUser);
+  const [now,setNow]=useState(Date.now);
   const [events,setEvents]=useState([]);
   const [state,setState]=useState("idle");
   const [revision,setRevision]=useState(0);
@@ -22,26 +27,26 @@ export default function WarehouseInboundPanel({targets=[]}){
   const [saveState,setSaveState]=useState("idle");
   const [notice,setNotice]=useState("");
   useEffect(()=>{
-    if(!supabase)return undefined;
+    if(!supabase||!sessionUser)return undefined;
     const controller=new AbortController();
     async function check(){
       try{
-        const {data:{user}={},error:userError}=await supabase.auth.getUser();
-        if(userError||!user?.id||user.is_anonymous||controller.signal.aborted)return;
-        const {data,error}=await supabase.from("profiles").select("app_role,user_role").eq("id",user.id).maybeSingle();
-        if(error||controller.signal.aborted||data?.app_role!=="admin"||data?.user_role!=="admin")return;
-        setIsStaff(true);setSessionUser(user.id);setState("loading");
+        setEvents([]);setState("loading");
         const {data:{session}={}}=await supabase.auth.getSession();
-        if(!session?.access_token||session.user?.id!==user.id)throw new Error("Session expired");
+        if(!session?.access_token||session.user?.id!==sessionUser)throw new Error("Session expired");
         const result=await loadPrivateInbound({accessToken:session.access_token});
         if(!controller.signal.aborted){setEvents(result);setState("ready");}
       } catch {
-        if(!controller.signal.aborted)setState("error");
+        if(!controller.signal.aborted){setEvents([]);setState("error");}
       }
     }
     check();
     return ()=>controller.abort();
-  },[revision]);
+  },[revision,sessionUser]);
+  useEffect(()=>{
+    const timer=setInterval(()=>setNow(Date.now()),5000);
+    return ()=>clearInterval(timer);
+  },[]);
   async function submit(event){
     event.preventDefault();
     setSaveState("saving");setNotice("");
@@ -59,7 +64,7 @@ export default function WarehouseInboundPanel({targets=[]}){
       setNotice(error.message||"Could not save warehouse report.");
     }
   }
-  const active=events.filter(e=>e.active);
+  const active=events.filter(e=>Date.parse(e.expiresAt)>now);
   const products=targets.filter(item=>item.retailer===retailer);
   return <section className="warehouse-inbound" aria-label="Retailer warehouse shipment pipeline">
     <div className="warehouse-inbound__intro">

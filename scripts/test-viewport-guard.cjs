@@ -14,17 +14,17 @@ const viewports = [
 
 const routes = [
   { name: "login", path: "/", beta: false, expect: /welcome back|create your account|log in|private business hub/i, readySelector: ".auth-form" },
-  { name: "home", path: "/", beta: true, expect: /needs attention|best opportunity|recent activity/i, readySelector: ".ops-home-page" },
+  { name: "home", path: "/", beta: true, expect: /welcome to code 3|your collection|restock reports|needs attention|best opportunity|recent activity/i, readySelector: ".ops-home-page" },
   { name: "find", path: "/find", beta: true, expect: /find|deal feed|opportunity workspace/i, readySelector: ".flip-deal-workspace" },
   { name: "collection", path: "/collection", beta: true, expect: /collection|my collection|owned items/i, readySelector: '[data-testid="collection-workspace"]' },
   { name: "business", path: "/business", beta: true, expect: /business|purchases|business records/i, readySelector: '[data-testid="business-workspace"]' },
   { name: "owner-center", path: "/owner-center/overview", beta: true, expect: /owner center|owner only|scanner health/i, readySelector: '[data-testid="owner-center"] .owner-overview-compact' },
   { name: "owner-restocks", path: "/owner-center/restocks/live", beta: true, expect: /restock intelligence|likely windows|reports becoming stale/i, readySelector: '[data-testid="owner-center"] .code3-restock-intelligence' },
-  { name: "scout", path: "/scout", beta: true, expect: /scout|report|store/i, readySelector: '[aria-label="Scout Intelligence"]' },
+  { name: "scout", path: "/scout", beta: true, expect: /scout|report|store/i, readySelector: '[aria-label="Restocks Intelligence"]' },
   { name: "vault", path: "/vault", beta: true, expect: /vault|collection|card/i, readySelector: ".vault-v4-dashboard" },
   { name: "vault-collection", path: "/vault/cards", beta: true, expect: /vault|collection|card/i, readySelector: ".vault-v4-detail-surface" },
-  { name: "exchange", path: "/exchange", beta: true, expect: /exchange|market|harbor|forge/i, readySelector: ".exchange-command-board .exchange-v4-decision-panel" },
-  { name: "forge", path: "/exchange/forge", beta: true, expect: /forge|trade|ledger/i, readySelector: ".forge-page-command-route .exchange-v4-decision-panel" },
+  { name: "exchange", path: "/exchange", beta: true, expect: /exchange|market|harbor|forge/i, readySelector: ".exchange-command-board .exchange-v4-decision-panel, .collector-sell-trade" },
+  { name: "forge", path: "/exchange/forge", beta: true, expect: /forge|trade|ledger/i, readySelector: ".forge-page-command-route .exchange-v4-decision-panel, .collector-sell-trade" },
   { name: "market", path: "/exchange/market", beta: true, expect: /market|price|research/i, readySelector: ".market-command-board .market-v4-command-content" },
   { name: "spark", path: "/kids-program", beta: true, expect: /spark|kids|family/i, readySelector: ".spark-command-board .spark-v4-command-content" },
   { name: "menu", path: "/settings", beta: true, expect: /settings|menu|data safety|profile/i, readySelector: ".settings-layout" },
@@ -99,14 +99,24 @@ async function assertHealthyPage(page, route, viewport) {
     const hearthTail = await page.evaluate(() => {
       const surface = document.querySelector(".ops-home-page, .hearth-command-board .command-board-v4-stage, .hearth-final-phone");
       if (!surface) return null;
-      const visibleFlowChildren = [...surface.children].filter((element) => {
+      const isFlowContent = (element) => {
         const styles = getComputedStyle(element);
         const rect = element.getBoundingClientRect();
         return styles.display !== "none" && styles.position !== "fixed" && styles.position !== "absolute" && rect.height > 0;
-      });
-      const lastContentBottom = Math.max(0, ...visibleFlowChildren.map((element) => element.getBoundingClientRect().bottom + window.scrollY));
+      };
+      // Home content can continue after the home surface (e.g. the community welcome
+      // section rendered as a sibling inside .main), so measure the surface's children
+      // plus any later flow siblings of the surface.
+      const main = surface.closest(".main, main");
+      const laterSiblings = main ? [...main.children].filter((element) => element !== surface && (surface.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING)) : [];
+      const visibleFlowContent = [...surface.children, ...laterSiblings].filter(isFlowContent);
+      const lastContentBottom = Math.max(0, ...visibleFlowContent.map((element) => element.getBoundingClientRect().bottom + window.scrollY));
+      // .main deliberately reserves padding-bottom to clear the fixed mobile dock
+      // (src/styles/app/20-panel-fixes.css); that reserve is not blank tail.
+      const dockReserve = main ? parseFloat(getComputedStyle(main).paddingBottom) || 0 : 0;
       return {
-        blankTail: document.documentElement.scrollHeight - lastContentBottom,
+        blankTail: document.documentElement.scrollHeight - lastContentBottom - dockReserve,
+        dockReserve,
         scrollHeight: document.documentElement.scrollHeight,
       };
     });
@@ -133,8 +143,10 @@ async function assertMobileDockAndQuickAdd(page) {
     throw new Error("Global Add control is not visible at 360x800");
   }
   await quickAdd.click();
+  // The Add sheet is lazy; wait for it to render before reading its actions.
+  await page.getByRole("dialog").getByText(/add to my collection|scan with camera/i).first().waitFor({ state: "visible", timeout: 15000 }).catch(() => {});
   const bodyText = await page.locator("body").innerText({ timeout: 10000 });
-  if (!/scan listing|analyze deal|record purchase|add collection item|add resale inventory|record sale|add expense/i.test(bodyText)) {
+  if (!/add to my collection|scan with camera|type a barcode number|scan listing|analyze deal|record purchase|add collection item|add resale inventory|record sale|add expense/i.test(bodyText)) {
     throw new Error("Global Add did not open an actionable surface at 360x800");
   }
   await page.screenshot({ path: path.join(artifactDir, "mobile-quick-add-open.png"), fullPage: true });

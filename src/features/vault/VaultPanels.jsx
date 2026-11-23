@@ -13,6 +13,7 @@ import GradingFields from "../../components/GradingFields.jsx";
 import { MASTER_CARD_VARIANT_LABELS, MASTER_CARD_CONDITION_LABELS, INFO_TOOLTIP_COPY, PURCHASER_NAME_MAX_LENGTH, PERSON_TYPE_OPTIONS, normalizeCollectorShowcaseKind, COLLECTOR_SHOWCASE_KIND_LABELS, sealedProductFrameMeta, collectorShowcaseRarityLabel, collectorShowcaseRarityTone, collectorShowcaseInitials, COLLECTOR_SHOWCASE_RARITY_HELPER, inventoryGroupEntries, summarizeBreakdownRows, itemPurchaserName, hasValue, money, inventoryEntryLabel, shortDate, vaultItemDisplayImage, forgePhysicalLocationLabel, getCatalogImage, statusClass, gradeAssistRecordKey, loadGradeAssistDraft, isWishlistLikeVaultItem, vaultItemSetLabel, vaultItemTypeLabel, vaultItemLocationLabel, friendlyInventoryLabel, vaultCardNumberLabel, vaultVariantLabel, collectorVisualTypeLabel, detectCollectorItemVisualType, vaultStatusLabel, normalizeVaultStatus, vaultItemLastUpdatedLabel, gradeAssistValueComparison, saveGradeAssistDraft, isInventorySealedProduct, inferMasterCardVariantType, renderGenericProductImageFallback, getImageSourceLabel, VAULT_STATUS_OPTIONS, CATEGORIES, VAULT_CONDITIONS, VAULT_STORAGE_LOCATIONS, STATUSES, FORGE_PHYSICAL_LOCATION_OPTIONS, isCatalogCardProduct } from "./vaultItemHelpers.jsx";
 
 const MarketPriceHistoryPanel = lazy(() => import("../../components/MarketPriceHistoryPanel"));
+const CenteringCheck = lazy(() => import("../../components/CenteringCheck.jsx"));
 
 function PremiumCardImage({ image, title, subtitle, variantType = "normal", className = "" }) {
   const tone = MASTER_CARD_VARIANT_LABELS[variantType] ? variantType : "other";
@@ -906,7 +907,6 @@ function VaultGroupedCardDetail({ cardGroup, setSummary, onClose, onViewSet, onA
             <div><span>Owned variants</span><strong>{cardGroup.variantOwnedCount || 0}</strong></div>
             <div><span>Wishlist</span><strong>{cardGroup.variantWishlistCount || 0}</strong></div>
           </div>
-          <p className="vault-detail-action-note">Interactive card preview coming later.</p>
         </div>
       </div>
       <div className="vault-master-detail-note">
@@ -1733,7 +1733,8 @@ function VaultItemDetailContent({ item, marketItem, masterCard, setSummary, link
             <div className="grade-assist-safety-strip" aria-label="Grade Assist safety limits">
               <span>Manual checklist</span>
               <span>Saved on this device only</span>
-              <span>No AI, camera, OCR, authentication, or grading-company guarantee</span>
+              <span>No AI, authentication, or grading-company guarantee</span>
+              <span>Centering is measured from your photo on this device</span>
             </div>
             {gradeAssistEmpty ? (
               <div className="grade-assist-empty-guide" aria-label="Grade Assist starter guide">
@@ -1770,6 +1771,10 @@ function VaultItemDetailContent({ item, marketItem, masterCard, setSummary, link
                 </label>
               ))}
             </div>
+            {/* Nov 19 2026: measured centering from a photo; adds the result to the notes. */}
+            <Suspense fallback={null}>
+              <CenteringCheck onUseResult={(text) => updateGradeAssistNotes([gradeAssistDraft.notes, text].filter(Boolean).join("\n"))} />
+            </Suspense>
             <label className="grade-assist-notes">
               <span>Notes</span>
               <textarea

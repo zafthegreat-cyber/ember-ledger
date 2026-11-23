@@ -44,7 +44,9 @@ html body .app.app-command-shell[data-theme] .set-catalog-copies .set-catalog-co
 @media(min-width:1100px){.app.app-command-shell[data-theme] .set-catalog-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:359px){.app.app-command-shell[data-theme] .set-catalog-kinds button{padding-inline:8px}}
 
-.app.app-command-shell[data-theme] .set-catalog-toolbar{display:grid;gap:10px;padding-bottom:16px;border-bottom:1px solid var(--border-subtle);min-width:0}
+.app.app-command-shell[data-theme] .set-catalog-toolbar{display:grid;gap:10px;padding-bottom:16px;border-bottom:1px solid var(--border-subtle);min-width:0;grid-template-columns:minmax(0,1fr)}
+/* Large text on small phones (200% at 320px): let the type buttons wrap instead of pushing the toolbar wider than the screen. */
+.app.app-command-shell[data-theme] .set-catalog-kinds{flex-wrap:wrap;max-width:100%}
 .app.app-command-shell[data-theme] .set-catalog-toolbar>.ops-field{width:100%;min-width:0;margin:0}
 .app.app-command-shell[data-theme] .set-catalog-product-copy>.set-catalog-owned-badge{color:#550000;font-weight:650}
 .app.app-command-shell[data-theme] .set-catalog-disclosure{border-top:1px solid var(--border-subtle);min-width:0}

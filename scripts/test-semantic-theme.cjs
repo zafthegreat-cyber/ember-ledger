@@ -6,9 +6,11 @@ const { chromium } = require("@playwright/test");
 // New disposable loopback contexts only. No owner sign-in or provider writes.
 const base = new URL(process.env.APP_URL || "http://127.0.0.1:5381/");
 assert.ok(["127.0.0.1", "localhost", "[::1]"].includes(base.hostname), "Theme QA is restricted to loopback");
+// Holo-tech palette (src/styles/app/19-holo-tech.css + 20-panel-fixes.css, owner direction Nov 17 2026):
+// warm cream / near-black violet, maroon (light) and gold (dark) primary, no blue or teal.
 const colors = {
-  light: ["#FBF4E6", "#FFFCF7", "#222222", "#675852", "#7A0F1E", "#FFFFFF", "#DCD0C8"],
-  dark: ["#141619", "#202328", "#FBF4E6", "#C1BDC4", "#E8C86B", "#241B13", "#41454E"],
+  light: ["#F6F1EA", "#FFFFFF", "#2A1418", "#4F4340", "#7A0F1E", "#FFF8EC", "#DFD3C6"],
+  dark: ["#0E0C10", "#17141A", "#F4EFE6", "#CFC8CC", "#F3D987", "#1A0F12", "#2F2A33"],
 };
 const tokens = ["--app-background", "--surface-primary", "--text-primary", "--text-secondary", "--action-primary", "--on-primary", "--border-subtle"];
 const routes = [
@@ -30,6 +32,10 @@ const contrast = (foreground, background) => {
   return (values[0] + 0.05) / (values[1] + 0.05);
 };
 const hexToRgb = value => `rgb(${rgb(value).join(", ")})`;
+// Computed colours come back as "rgb(r, g, b)"; convert to hex so the contrast helper can use them.
+const cssToHex = value => "#" + value.slice(value.indexOf("(") + 1, value.indexOf(")")).split(",").slice(0, 3).map(part => Math.round(Number(part.trim())).toString(16).padStart(2, "0")).join("");
+// Warm gold: red >= green > blue and light. Guards the "no blue or teal" rule for the gold main action.
+const isWarmGold = value => { const [r, g, b] = rgb(cssToHex(value)); return r >= g && g > b && r >= 200 && r - b >= 60; };
 const output = path.resolve(process.env.QA_OUTPUT_DIR || "artifacts/qa/semantic-theme");
 const image = '<svg xmlns="http://www.w3.org/2000/svg" width="240" height="300"><rect width="240" height="300" rx="20" fill="#4B1B6B"/><rect x="20" y="20" width="200" height="260" rx="12" fill="#7A0F1E" stroke="#D4AF37" stroke-width="7"/><path d="M120 65 135 118 185 135 135 150 120 205 105 150 55 135 105 118Z" fill="#D4AF37"/><text x="120" y="255" fill="#FBF4E6" text-anchor="middle" font-family="sans-serif" font-size="19">QA collectible</text></svg>';
 
@@ -85,25 +91,32 @@ function installFixture({ theme }) {
             const canvas=await page.evaluate(()=>[document.documentElement,document.body].map(el=>getComputedStyle(el).backgroundColor));
             assert.ok(canvas.every(color=>color===hexToRgb(colors[theme][0])),"Outer page canvas follows saved theme: "+canvas.join(","));
             const buttons=await page.locator(".ops-button--primary:visible, .command-board-v4-primary-action:visible, .topbar-quick-add-button:visible, .mobile-quick-add-fab:visible").evaluateAll(nodes=>nodes.filter(el=>!el.disabled).map(el=>{const s=getComputedStyle(el);return {text:el.textContent,background:s.backgroundColor,color:s.color,height:el.getBoundingClientRect().height,gold:Boolean(el.matches(".topbar-quick-add-button")||el.closest(".home-layout,.everyday-workspace")),labels:[...el.querySelectorAll("b,strong,span")].map(label=>getComputedStyle(label).color)};}));
-            for(const button of buttons){assert.equal(button.background,hexToRgb(button.gold?"#D4AF37":colors[theme][4]),button.text);assert.equal(button.color,hexToRgb(button.gold?"#241B13":colors[theme][5]),button.text);assert.ok(button.height>=43.5,"44px action: "+button.text);assert.ok(button.labels.every(color=>color===button.color),"Nested primary label contrast: "+button.text);}
+            // Gold main actions (collector-lounge.css --lounge-metal on Home/workspaces and the topbar Add) use
+            // several warm gold shades since the Nov 2026 look; require a warm gold fill with readable dark ink
+            // instead of the retired #D4AF37/#241B13 pair. Other primaries still follow the theme tokens exactly.
+            for(const button of buttons){if(button.gold){assert.ok(isWarmGold(button.background),"Gold primary is warm gold: "+button.text+" "+button.background);assert.ok(contrast(cssToHex(button.color),cssToHex(button.background))>=4.5,"Gold primary label contrast: "+button.text);}else{assert.equal(button.background,hexToRgb(colors[theme][4]),button.text);assert.equal(button.color,hexToRgb(colors[theme][5]),button.text);}assert.ok(button.height>=43.5,"44px action: "+button.text);assert.ok(button.labels.every(color=>color===button.color),"Nested primary label contrast: "+button.text);}
             assert.equal(await page.evaluate(()=>localStorage.getItem("et-tcg-app-theme")),theme);
             assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),"No horizontal overflow");
             await page.keyboard.press("Tab");
             const focus = await page.evaluate(()=>{const el=document.activeElement,s=getComputedStyle(el);return {visible:el.matches(":focus-visible"),width:parseFloat(s.outlineWidth),style:s.outlineStyle,color:s.outlineColor};});
-            assert.ok(focus.visible&&focus.width>=3&&focus.style!=="none"&&focus.color!=="rgba(0, 0, 0, 0)","Keyboard focus remains clearly visible: "+JSON.stringify(focus));
+            // collector-lounge.css (Nov 13 2026) sets a 2px solid ring with a 3px offset app-wide (WCAG 2.4.13
+            // minimum); require at least 2px and 3:1 contrast against the page canvas instead of the old 3px width.
+            assert.ok(focus.visible&&focus.width>=2&&focus.style!=="none"&&focus.color!=="rgba(0, 0, 0, 0)"&&contrast(cssToHex(focus.color),colors[theme][0])>=3,"Keyboard focus remains clearly visible: "+JSON.stringify(focus));
             result.keyboardFocus=focus;
             const motion=await page.locator(".app[data-theme] button:visible").evaluateAll(nodes=>nodes.every(node=>{const s=getComputedStyle(node);return s.animationName==="none"&&s.transitionDuration.split(",").every(value=>parseFloat(value)===0);}));
             assert.equal(motion,true,"Reduced-motion controls have no transitions/animations");
             if(route.name==="collection"){
               assert.equal(await page.locator(".collection-portfolio-item").count(),2,"Synthetic personal collection records render");
-              await page.getByRole("button",{name:"Filter",exact:true}).click();const dialog=page.getByRole("dialog");await dialog.waitFor();await page.keyboard.press("Tab");assert.ok(await dialog.evaluate(el=>el.contains(document.activeElement)),"Dialog retains keyboard focus");await page.screenshot({path:path.join(output,`${theme}-${width}-filters.png`),fullPage:false});await page.keyboard.press("Escape");await dialog.waitFor({state:"hidden"});
+              await page.getByRole("button",{name:"Filters",exact:true}).click();const dialog=page.getByRole("dialog");await dialog.waitFor();await page.keyboard.press("Tab");assert.ok(await dialog.evaluate(el=>el.contains(document.activeElement)),"Dialog retains keyboard focus");await page.screenshot({path:path.join(output,`${theme}-${width}-filters.png`),fullPage:false});await page.keyboard.press("Escape");await dialog.waitFor({state:"hidden"});
             }
             if(route.name==="home"){
               const resalePreview=await page.locator('[data-home-card="forgeSummary"] .home-collection-peek figcaption').allTextContents();
               assert.deepEqual(resalePreview,["QA resale inventory 1","QA resale inventory 2"],"Selling records preview excludes personal collection items");
               await page.getByRole("button",{name:"Report a restock",exact:true}).click();const modal=page.locator('.flow-modal[data-flow="scoutSubmit"]');await modal.waitFor();await modal.locator(".scout-report-stepper").waitFor({state:"visible"});await page.screenshot({path:path.join(output,`${theme}-${width}-restock.png`),fullPage:false});await modal.getByRole("button",{name:"Cancel",exact:true}).click();await modal.waitFor({state:"hidden"});assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem("et-tcg-beta-scout")||"{}").reports?.length||0),0,"No restock saved during color QA");
             }
-            if(route.name==="inventory")assert.equal(await page.locator(".everyday-record-card").count(),2,"Synthetic resale inventory records render");
+            // InventoryBrowser (Nov 2026) opens on the "Available" stock filter; one fixture item is sold out, so
+            // switch to All inventory and check both resale records (and no personal collection items) render.
+            if(route.name==="inventory"){await page.locator(".inventory-browser").getByRole("button",{name:/^All inventory/}).click();await page.locator(".inventory-product").first().waitFor();assert.equal(await page.locator(".inventory-product").count(),2,"Synthetic resale inventory records render");assert.equal(await page.locator(".inventory-browser").getByText(/personal collection/).count(),0,"Personal collection items stay out of inventory");}
             if(route.name==="sales")assert.equal(await page.getByText("QA resale inventory 1 sale",{exact:true}).count(),1,"Synthetic sale renders");
             await page.evaluate(()=>scrollTo(0,0));
             await page.screenshot({path:path.join(output,`${theme}-${width}-${route.name}.png`),fullPage:false});

@@ -175,11 +175,11 @@
 
 /* A108: "hidden" and "not valued" look different. */
 .collection-portfolio-value > strong[data-state="hidden"] { letter-spacing: 0.08em; }
-.collection-portfolio-value > strong[data-state="unvalued"] { color: var(--ops-muted, #8a95a5); font-weight: 600; }
+.collection-portfolio-value > strong[data-state="unvalued"] { color: var(--ops-muted, var(--text-secondary, #c7b49f)); font-weight: 600; }
 .collection-portfolio-value > strong[data-state="unvalued"] > span:first-child { font-style: italic; }
-.collection-portfolio-value-note { display: block; margin-top: 2px; font-size: .8125rem; line-height: 1.5; font-weight: 500; letter-spacing: 0; color: var(--ops-muted, #8a95a5); }
+.collection-portfolio-value-note { display: block; margin-top: 2px; font-size: .8125rem; line-height: 1.5; font-weight: 500; letter-spacing: 0; color: var(--ops-muted, var(--text-secondary, #c7b49f)); }
 .collection-portfolio-value-hidden { letter-spacing: 0.06em; opacity: 0.8; }
-.collection-portfolio-value-unvalued { font-style: italic; color: var(--ops-muted, #8a95a5); }
+.collection-portfolio-value-unvalued { font-style: italic; color: var(--ops-muted, var(--text-secondary, #c7b49f)); }
 .collection-product-value-label { display: block; color: var(--text-secondary); font: 400 0.75rem/1.5 var(--font-ui); margin-bottom: 2px; }
 
 /* Keep browsing immediate; secondary tools and price context stay available. */

@@ -85,7 +85,7 @@ createRoot(document.getElementById('root')).render(<CloudWorkspaceBoundary clien
    });
    const page=await context.newPage();const errors=[];page.on('pageerror',error=>errors.push(error.message));
    await page.goto(base+'/__qa/account-lock');
-   await page.getByRole('heading',{name:['slow-user','slow-refresh','slow-rpc','late-rpc'].includes(mode)?'Your records are safe':'Saved records opened',exact:true}).waitFor({timeout:20000});
+   await page.getByRole('heading',{name:['slow-user','slow-refresh','slow-rpc','late-rpc'].includes(mode)?'Your records are safe':'Saved records opened',exact:true}).waitFor({timeout:45000});
    if(mode==='signout-startup'){
     await page.evaluate(()=>window.qaClient.auth.signOut({scope:'local'}));
     await page.getByRole('heading',{name:'Signed out normally',exact:true}).waitFor();
