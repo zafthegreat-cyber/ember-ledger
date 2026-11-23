@@ -185,3 +185,28 @@ test("the real Supabase SDK emits an S256 PKCE challenge with a separate storage
   assert.ok(memory.has("code3-oauth-fixture-code-verifier"));
   assert.equal(memory.has("sb-gxsfququorfczvhrkudl-auth-token"), false);
 });
+test("deletion re-confirm: the signed-in account signs in again with its provider and returns to deletion", async () => {
+  const f = fixture({ signedIn: true });
+  await f.service.start("google", { mode: "reauth", userId });
+  assert.equal(f.calls.filter(call => call[0] === "oauth").length, 1, "a normal provider sign-in, not identity linking");
+  const result = await f.service.finish({ code });
+  assert.deepEqual(result, { path: "/delete-account", userId, reload: true });
+  assert.equal(f.primary().access_token, "new_fixture_token", "the fresh provider session replaces the old one");
+  assert.equal(f.memory.has(SOCIAL_INTENT_KEY), false);
+});
+test("deletion re-confirm refuses a different provider account and keeps the current session", async () => {
+  const f = fixture({ signedIn: true, returnedId: otherId });
+  await f.service.start("google", { mode: "reauth", userId });
+  await assert.rejects(f.service.finish({ code }));
+  assert.equal(f.calls.filter(call => call[0] === "adopt").length, 0);
+  assert.equal(f.primary().access_token, "original_fixture_token");
+});
+test("deletion re-confirm needs a signed-in account id", async () => {
+  for (const options of [{ mode: "reauth" }, { mode: "reauth", userId: "local-beta" }]) {
+    const f = fixture({ signedIn: true });
+    await assert.rejects(f.service.start("google", options));
+    assert.equal(f.calls.filter(call => call[0] === "oauth").length, 0);
+  }
+  const signedOut = fixture();
+  await assert.rejects(signedOut.service.start("google", { mode: "reauth", userId }));
+});

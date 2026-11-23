@@ -51,13 +51,12 @@ Ephemeral processing = **No** everywhere except Photos (see that row).
 - Deletion at /delete-account removes the account, its records, its synced workspaces and its uploaded files immediately; Supabase's own backups expire within about 7 days.
 
 ## Decide before you submit
-1. **Social sign-in.** Google/Apple/Discord/Facebook buttons only show if `VITE_AUTH_VERIFIED_PROVIDERS` lists them in the build. If any are live in the Play build, deletion is a problem: it requires a fresh **password** sign-in, so a Google-only user cannot delete their account without first setting a password. Google requires deletion to work for every account. Either keep social sign-in off in the Play build, or I can make deletion work for social-only accounts.
+1. **Social sign-in: done (Nov 23, 2026).** Accounts with no password (Google, Apple, Discord or Facebook only) now delete themselves: the Delete account page asks them to confirm with their provider, and the server accepts the deletion only within 5 minutes of that fresh sign-in, for that same account. Password accounts still confirm with their password. The privacy policy says so.
 2. **Activity records.** `app_activity_events` are sent for every signed-in user with no way to turn them off, so this row must say Required. If you would rather it be Optional, I can add an off switch (or put it under the existing crash-report switch).
 3. **Crash logs on by default.** Play accepts an off switch as Optional. Also confirm in Sentry → Project settings → Security & privacy that **Prevent storing of IP addresses** is on (that is your setting, I can't change it).
 4. **Privacy policy gaps** (`src/config/privacyPolicy.js`). The form and the policy should agree. The policy:
    - doesn't say device location from **Use Device Location** is saved and synced;
    - only vaguely mentions activity records;
    - says website Community posts stay on the device, but signed-in posts are saved to the server for moderation;
-   - tells people to "confirm your password" to delete, with nothing for social-only accounts.
-   I can update the policy text once you decide 1 and 2.
+   I can update the policy text once you decide 2. (The deletion wording is already updated.)
 5. **Target audience.** Unchanged from the old draft: the app isn't directed at children (Android hides the kids program), so declare 13+ with parent-managed kid-safe profiles, or 18+.

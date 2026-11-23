@@ -10,7 +10,7 @@ export function privacyPublisherFromEnv(env = {}) {
 }
 
 export const PRIVACY_PUBLISHER = privacyPublisherFromEnv(import.meta.env || {});
-export const PRIVACY_POLICY_UPDATED = "November 20, 2026";
+export const PRIVACY_POLICY_UPDATED = "November 23, 2026";
 
 export function publicPrivacyRoute(pathname = "") {
   const path = pathname.replace(/\/$/, "") || "/";
@@ -99,7 +99,7 @@ export const PRIVACY_SECTIONS = Object.freeze([
   },
   {
     key: "rights", title: "Export, correction, and account deletion",
-    body: "You can edit supported records and download available device and cloud backups from Settings. The Delete account page lets you review the current deletion scope, confirm your password, and permanently delete your account when the service is available. Shared workspace or protected service ownership must be transferred before deletion so another person's records are not removed. A privacy request saved in the app is not confirmation of account deletion.",
+    body: "You can edit supported records and download available device and cloud backups from Settings. The Delete account page lets you review the current deletion scope, confirm it's you (with your password, or by signing in again with Google, Apple, Discord or Facebook if your account has no password), and permanently delete your account when the service is available. Shared workspace or protected service ownership must be transferred before deletion so another person's records are not removed. A privacy request saved in the app is not confirmation of account deletion.",
   },
   {
     key: "retention", title: "What remains after account deletion",

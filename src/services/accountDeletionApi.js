@@ -5,6 +5,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MESSAGES = Object.freeze({
   account_sign_in_required: "Sign in to your Code 3 TCG account to review or delete it.",
   account_reauthentication_failed: "Password confirmation failed. Check your account password and try again.",
+  account_social_reauthentication_required: "Confirm with Google or Apple again, then delete within 5 minutes.",
   account_shared_workspace: "Transfer shared workspace ownership before deleting this account. Other members' records must be preserved.",
   account_protected_owner: "Transfer protected service ownership before deleting this account. Contact support for help.",
   account_deletion_pending: "Deletion has started but has not finished. Some cloud files may already have been removed. Retry deletion to finish.",
@@ -117,14 +118,19 @@ export async function fetchAccountDeletionStatus(options = {}) {
     || typeof value.accountEmail !== "string" || value.accountEmail.length > 320
     || !list(value.deletionScope) || !list(value.retainedScope) || !Array.isArray(value.blockers) || value.blockers.length > 20
     || value.blockers.some((blocker) => !plain(blocker) || typeof blocker.code !== "string" || typeof blocker.message !== "string" || blocker.message.length > 1500)) throw accountDeletionError("invalid_response");
-  return { available: value.available, state: value.state, accountEmail: value.accountEmail,
+  // Older servers do not send confirmWith; they only accept a password.
+  const confirmWith = value.confirmWith === undefined ? "password" : value.confirmWith;
+  if (!["password", "social"].includes(confirmWith)) throw accountDeletionError("invalid_response");
+  return { available: value.available, state: value.state, accountEmail: value.accountEmail, confirmWith,
     deletionScope: value.deletionScope, retainedScope: value.retainedScope, blockers: value.blockers };
 }
 
+/** Pass { password, confirmation }, or { confirmation } alone for a social-only account just confirmed with its provider. */
 export async function deleteOwnAccount(input, options = {}) {
+  const social = plain(input) && !Object.hasOwn(input, "password");
   if (!plain(input) || Object.keys(input).some((key) => !["password", "confirmation"].includes(key))
-    || input.confirmation !== ACCOUNT_DELETION_CONFIRMATION || typeof input.password !== "string" || !input.password || input.password.length > 1024) throw accountDeletionError("invalid_confirmation");
-  const result = await request("delete", { password: input.password, confirmation: input.confirmation }, options);
+    || input.confirmation !== ACCOUNT_DELETION_CONFIRMATION || (!social && (typeof input.password !== "string" || !input.password || input.password.length > 1024))) throw accountDeletionError("invalid_confirmation");
+  const result = await request("delete", social ? { confirmation: input.confirmation } : { password: input.password, confirmation: input.confirmation }, options);
   if (result.state !== "deleted" || result.localCleanupRequired !== true) throw accountDeletionError("invalid_response");
   return { state: "deleted", localCleanupRequired: true };
 }

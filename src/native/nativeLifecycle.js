@@ -72,6 +72,9 @@ export async function startNativeLifecycle({ client, onAuthError = () => {}, onS
       if (disposed || exchanged.navigated) return;
       // Recovery UI is already handled by the existing reset-password route.
       const next = social ? exchanged.path : callback.flow === "recovery" ? "/reset-password" : "/";
+      // Re-confirming for account deletion returns to the standalone deletion page, which
+      // loads outside the app shell (same as the app's own Delete account buttons).
+      if (social && exchanged.reload) { exchanged.navigated = true; globalThis.location.assign(next); return; }
       history.replaceState({}, "", next);
       exchanged.navigated = true;
       window.dispatchEvent(new PopStateEvent("popstate"));
