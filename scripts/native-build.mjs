@@ -41,9 +41,8 @@ await build({
   plugins: [{ name: "code3-native-safe-viewport", transformIndexHtml: html => html.replace("viewport-fit=cover", "viewport-fit=contain") }],
   build: { outDir: "dist-native", rollupOptions: { input: "index.html" } },
 });
-// Product inspection photos stay on the website only: they are official product
-// photography and would push the Android bundle past Play's 200 MB limit. The
-// small SVG foil masks stay; the phone app's viewer never asks for the photos.
+// Keep the installed app small: reviewed inspection photos load from the
+// website only when the viewer opens. Small SVG foil masks remain bundled.
 const inspectionDir = resolve("dist-native/assets/inspection");
 if (existsSync(inspectionDir)) {
   for (const entry of readdirSync(inspectionDir, { recursive: true })) {

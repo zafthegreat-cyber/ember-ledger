@@ -31,7 +31,22 @@
         ]
       ],
       "checkedAt": "2026-11-14",
-      "notes": "Exact English regular gray printed-signature card, source gallery picture 2. Picture 1 is the distinct gold-stamped printing and is deliberately excluded. Display stand lies outside the card-edge projection. Effective photographed card detail about 450 by 630 pixels; this is a truthful missing-image fallback, not a high-resolution scan. Original photographic bytes preserved."
+      "notes": "Exact English regular gray printed-signature card, source gallery picture 2. Picture 1 is the distinct gold-stamped printing and is deliberately excluded. Display stand lies outside the card-edge projection. Effective photographed card detail about 450 by 630 pixels; this is a truthful missing-image fallback, not a high-resolution scan. Original photographic bytes preserved.",
+      "originalSha256": "62138506319fa6da1e0775779acb97e30b31cfb0429b9cb1bd35dcce36408d6c",
+      "originalDimensions": [
+        1200,
+        1600
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        1200,
+        1600
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
+      }
     },
     "worlds-front-485008": {
       "src": "/assets/inspection/pokemon-worlds-front-485008-20261114h.webp",
@@ -64,7 +79,22 @@
         ]
       ],
       "checkedAt": "2026-11-14",
-      "notes": "Exact040/189 Rikuto Ohashi gray signature. Paired blue2022 reverse independently verifies deck. White display tray outside card crop. Original bytes preserved; card-edge projection only. Reference photograph is a fallback after existing catalog/owner images fail, not the condition of an owned copy."
+      "notes": "Exact040/189 Rikuto Ohashi gray signature. Paired blue2022 reverse independently verifies deck. White display tray outside card crop. Original bytes preserved; card-edge projection only. Reference photograph is a fallback after existing catalog/owner images fail, not the condition of an owned copy.",
+      "originalSha256": "00aee1c8f9286c619870be8fde70fd58ff27504dd4983e832c9cb471c7a36284",
+      "originalDimensions": [
+        827,
+        1117
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        827,
+        1117
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
+      }
     },
     "worlds-front-542043": {
       "src": "/assets/inspection/pokemon-worlds-front-542043-20261114h.webp",
@@ -97,7 +127,22 @@
         ]
       ],
       "checkedAt": "2026-11-14",
-      "notes": "Exact086/198 Tord Reklev gray signature, paired yellow2023 reverse. Clear sleeve boundary excluded. Original bytes preserved; card-edge projection only. Reference photograph is a fallback after existing catalog/owner images fail, not the condition of an owned copy."
+      "notes": "Exact086/198 Tord Reklev gray signature, paired yellow2023 reverse. Clear sleeve boundary excluded. Original bytes preserved; card-edge projection only. Reference photograph is a fallback after existing catalog/owner images fail, not the condition of an owned copy.",
+      "originalSha256": "84ac739e7900ff95c52d4162f49927b8f043c78c1e07818ca9d656fff37dd1cf",
+      "originalDimensions": [
+        814,
+        1109
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        814,
+        1109
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
+      }
     },
     "worlds-front-541809": {
       "src": "/assets/inspection/pokemon-worlds-front-541809-20261114h.webp",
@@ -130,7 +175,22 @@
         ]
       ],
       "checkedAt": "2026-11-14",
-      "notes": "Exact114/264 Vance Kelley gray signature. Distinct from2022 Andre Chiasson printing. Original bytes preserved; card-edge projection only. Reference photograph is a fallback after existing catalog/owner images fail, not the condition of an owned copy."
+      "notes": "Exact114/264 Vance Kelley gray signature. Distinct from2022 Andre Chiasson printing. Original bytes preserved; card-edge projection only. Reference photograph is a fallback after existing catalog/owner images fail, not the condition of an owned copy.",
+      "originalSha256": "9c0ff017c752fe6bc7d3453518a974148688087692485ec359a2b7fad93137c4",
+      "originalDimensions": [
+        766,
+        1061
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        766,
+        1061
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
+      }
     },
     "worlds-front-541766": {
       "src": "/assets/inspection/pokemon-worlds-front-541766-20261114h.webp",
@@ -163,7 +223,22 @@
         ]
       ],
       "checkedAt": "2026-11-14",
-      "notes": "Exact139/195 Gabriel Fernandez Colorless Lugia card; paired graded slab cert110017906 verifies identity. Slab and label excluded. Original bytes preserved; card-edge projection only. Reference photograph is a fallback after existing catalog/owner images fail, not the condition of an owned copy."
+      "notes": "Exact139/195 Gabriel Fernandez Colorless Lugia card; paired graded slab cert110017906 verifies identity. Slab and label excluded. Original bytes preserved; card-edge projection only. Reference photograph is a fallback after existing catalog/owner images fail, not the condition of an owned copy.",
+      "originalSha256": "31887015625b0ebe702a336800caea4379aa1ce82dff4c04101f46ad6f5fdd74",
+      "originalDimensions": [
+        938,
+        1600
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        938,
+        1600
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
+      }
     },
     "worlds-front-637519": {
       "src": "/assets/inspection/pokemon-worlds-front-637519-20261114h.webp",
@@ -196,7 +271,22 @@
         ]
       ],
       "checkedAt": "2026-11-14",
-      "notes": "Exact Prime Catcher157/162 Evan Pavelski signature. Effective source detail about498x696; sleeve excluded. Original bytes preserved; card-edge projection only. Reference photograph is a fallback after existing catalog/owner images fail, not the condition of an owned copy."
+      "notes": "Exact Prime Catcher157/162 Evan Pavelski signature. Effective source detail about498x696; sleeve excluded. Original bytes preserved; card-edge projection only. Reference photograph is a fallback after existing catalog/owner images fail, not the condition of an owned copy.",
+      "originalSha256": "c0f504dddf9df660a18b1f3774e67cbd0ebb5eb6708500a5ecbe68f009918703",
+      "originalDimensions": [
+        601,
+        807
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        601,
+        807
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
+      }
     },
     "worlds-front-690480": {
       "src": "/assets/inspection/pokemon-worlds-front-690480-20261114h.webp",
@@ -229,7 +319,22 @@
         ]
       ],
       "checkedAt": "2026-11-14",
-      "notes": "Exact regular gray Jose Cruz signature, distinct from gold-stamped696842. Existing seller card-edge photograph; natural photographic texture retained. Original bytes preserved; card-edge projection only. Reference photograph is a fallback after existing catalog/owner images fail, not the condition of an owned copy."
+      "notes": "Exact regular gray Jose Cruz signature, distinct from gold-stamped696842. Existing seller card-edge photograph; natural photographic texture retained. Original bytes preserved; card-edge projection only. Reference photograph is a fallback after existing catalog/owner images fail, not the condition of an owned copy.",
+      "originalSha256": "0ec8342774da91a9376bef61a0195cb24328b2333aeb6446535a9c1d9dfd62ed",
+      "originalDimensions": [
+        746,
+        1029
+      ],
+      "optimizedAt": "2026-11-23",
+      "optimizedDimensions": [
+        746,
+        1029
+      ],
+      "optimization": {
+        "resolution": "original-pixel-density",
+        "quality": "original",
+        "psnr": 100
+      }
     }
   },
   "products": {

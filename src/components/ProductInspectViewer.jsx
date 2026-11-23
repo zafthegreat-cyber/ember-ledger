@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import FaceArtwork from "./ProductFaceArtwork.jsx";
 import WrapperArtwork from "./WrapperArtwork.jsx";
+import PackagingHeader from "./PackagingHeader.jsx";
 import PhoneMotionControl from "./PhoneMotionControl.jsx";
 import { subscribeCatalogTilt } from "../utils/catalogMotion.mjs";
 import faces from "../data/productInspectionFaces.json";
 
-import { INSPECTION_FACE_NAMES, inspectionDrag, inspectionFace, inspectionGeometry, inspectionPose, productInspectionProfile, resolveInspectionArtwork } from "../utils/productInspection.mjs";
+import { INSPECTION_FACE_NAMES, inspectionDrag, inspectionFace, inspectionGeometry, inspectionPose, productInspectionProfile, resolveInspectionArtwork, validInspectionQuad } from "../utils/productInspection.mjs";
 import { surfaceLighting } from "../utils/cardSurface.mjs";
 import { boxLighting, boxShadow } from "../utils/boxSurface.mjs";
 import { inspectionBoxViewport, inspectionDetailSize, inspectionGesture, inspectionLightFrame, inspectionTurn, inspectionTurnFrame } from "../utils/inspectionMotion.mjs";
@@ -25,24 +26,26 @@ function BoxMaterial({ face, enabled }) {
 
 
 export default function ProductInspectViewer({ product = {}, src = "", title = "Item" }) {
+  const [attempt, setAttempt] = useState(0);
   const artwork = resolveInspectionArtwork(product, faces);
   const profile = productInspectionProfile(product, artwork);
   const identity = product.tcgplayerProductId || product.catalogProductId || product.id || title;
-  return <Inspection key={`${identity}:${src}:${profile.shape}:${JSON.stringify(profile.faces)}`} profile={profile} src={src} title={title} imageProduct={product} />;
+  return <Inspection key={`${identity}:${src}:${profile.shape}:${JSON.stringify(profile.faces)}:${attempt}`} onRetry={() => setAttempt(value => value + 1)} profile={profile} src={src} title={title} imageProduct={product} />;
 }
 
 function ExpandedInspection({ profile, src, title, imageProduct, onClose }) {
   const dialog = useRef(null);
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     const node = dialog.current;
     if (node?.showModal) node.showModal();
     else node?.setAttribute("open", "");
     return () => { if (node?.open) node.close?.(); };
   }, []);
-  return <dialog ref={dialog} className="product-inspect__fullscreen" aria-label={`${title} full-screen inspection`} onKeyDown={event => { if(event.key === "Escape") { event.preventDefault(); event.stopPropagation(); onClose(); } }} onCancel={event => { event.preventDefault(); event.stopPropagation(); onClose(); }}><header><h2>{title}</h2><button type="button" onClick={onClose}>Close full screen</button></header><Inspection profile={profile} src={src} title={title} imageProduct={imageProduct} canExpand={false} /></dialog>;
+  return <dialog ref={dialog} className="product-inspect__fullscreen" aria-label={`${title} full-screen inspection`} onKeyDown={event => { if(event.key === "Escape") { event.preventDefault(); event.stopPropagation(); onClose(); } }} onCancel={event => { event.preventDefault(); event.stopPropagation(); onClose(); }}><header><h2>{title}</h2><button type="button" onClick={onClose}>Close full screen</button></header><Inspection key={attempt} profile={profile} src={src} title={title} imageProduct={imageProduct} onRetry={() => setAttempt(value => value + 1)} canExpand={false} /></dialog>;
 }
 
-function Inspection({ profile, src, title, imageProduct, canExpand = true }) {
+function Inspection({ profile, src, title, imageProduct, canExpand = true, onRetry }) {
   const id = useId();
   const stage = useRef(null);
   const object = useRef(null);
@@ -77,11 +80,15 @@ function Inspection({ profile, src, title, imageProduct, canExpand = true }) {
   const currentPhoto = geometry === "photo" ? (galleryFaces.includes(selectedPhoto) ? selectedPhoto : galleryFaces[0] || "front") : "front";
   const currentPhotoLabel = currentPhoto === "front" && !profile.faces.front ? "Main" : currentPhoto[0].toUpperCase() + currentPhoto.slice(1);
   const currentTexture = profile.faces[currentPhoto];
-  // Partial galleries show the original photograph, not an inferred box face
-  // stretched to another product's dimensions. Complete models use verified UVs.
-  const frontTexture = geometry === "photo" && currentTexture ? {...currentTexture,quad:undefined} : currentTexture;
+  // A reviewed panel may be shown alone only with its own recorded proportions.
+  // Other partial-gallery images keep the original photograph and framing.
+  const galleryAspect = geometry === "photo" && validInspectionQuad(currentTexture?.quad)
+    && Number.isFinite(currentTexture?.galleryAspect) && currentTexture.galleryAspect >= .1 && currentTexture.galleryAspect <= 10
+    ? currentTexture.galleryAspect : null;
+  const frontTexture = geometry === "photo" && currentTexture && !galleryAspect ? {...currentTexture,quad:undefined} : currentTexture;
   function faceReady(face, ready) {
-    if (!ready && !isCard && profile.faces[face]) setFailedFaces(previous => previous.includes(face) ? previous : [...previous,face]);
+    if (!ready) setFailedFaces(previous => previous.includes(face) ? previous : [...previous,face]);
+    else if (isCard) setFailedFaces(previous => previous.includes(face) ? previous.filter(value => value !== face) : previous);
   }
 
   useEffect(() => () => {
@@ -265,7 +272,7 @@ function Inspection({ profile, src, title, imageProduct, canExpand = true }) {
     <div className="product-inspect__topline"><span>{fullRotation ? "Swipe to turn" : "Drag to tilt"}</span><div className="product-inspect__tools">{canExpand ? <button type="button" onClick={() => setExpanded(true)}>Full screen</button> : null}<button type="button" aria-pressed={detail} onClick={()=>setDetail(value=>!value)}>{detail ? "Standard view" : "Closer view"}</button><button type="button" aria-pressed={!tiltEnabled} onClick={toggleInteraction}>{tiltEnabled ? "Still image" : "Enable tilt"}</button></div></div>
     <div ref={stage} className="product-inspect__stage" tabIndex={0} role="group" aria-label={`Rotate ${title}`} aria-describedby={`${id}-help`} data-interactive={tiltEnabled} data-detail={detail} data-shape={geometry} style={geometry === "box" ? {"--box-shadow-span":shadow.span,"--box-shadow-bottom":shadow.bottom} : undefined} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerLeave={pointerLeave} onPointerUp={stopDrag} onPointerCancel={stopDrag} onLostPointerCapture={stopDrag} onKeyDown={keyDown}>
       {geometry === "box" ? <span className="product-inspect__box-shadow" aria-hidden="true"/> : null}
-      <div ref={object} className="product-inspect__object" data-shape={geometry} style={{"--inspect-yaw":`${initialYaw}deg`,"--inspect-pitch":`${initialPitch}deg`,"--photo-aspect":photoAspect,...lightingStyle(initialYaw, initialPitch, { x: 42, y: 38 }, geometry),"--foil-mask":profile.surface.layout === "unknown" ? "none" : `url('/assets/inspection/${profile.surface.layout}-${finish === "reverse" ? "reverse" : "holo"}-mask.svg')`,"--ink-mask":profile.inkMask ? `url('${profile.inkMask}')` : "none",...(profile.dimensions ? {"--box-height":profile.dimensions.height/profile.dimensions.width,"--box-depth":profile.dimensions.depth/profile.dimensions.width,"--surface-color":profile.surfaceColor} : {})}} data-has-back={Boolean(profile.faces.back)} data-finish={isCard ? finish : "regular"} data-foil-area={fullArt ? "full" : "artwork"} data-foil-layout={profile.surface.layout} data-foil-pattern={profile.surface.pattern} data-art-ready={artReady} data-back-ready={backReady} data-moving="false">
+      <div ref={object} className="product-inspect__object" data-shape={geometry} style={{"--inspect-yaw":`${initialYaw}deg`,"--inspect-pitch":`${initialPitch}deg`,"--photo-aspect":galleryAspect || photoAspect,...lightingStyle(initialYaw, initialPitch, { x: 42, y: 38 }, geometry),"--foil-mask":profile.surface.layout === "unknown" ? "none" : `url('/assets/inspection/${profile.surface.layout}-${finish === "reverse" ? "reverse" : "holo"}-mask.svg')`,"--ink-mask":profile.inkMask ? `url('${profile.inkMask}')` : "none",...(profile.dimensions ? {"--box-height":profile.dimensions.height/profile.dimensions.width,"--box-depth":profile.dimensions.depth/profile.dimensions.width,"--surface-color":profile.surfaceColor} : {})}} data-has-back={Boolean(profile.faces.back)} data-finish={isCard ? finish : "regular"} data-foil-area={fullArt ? "full" : "artwork"} data-foil-layout={profile.surface.layout} data-foil-pattern={profile.surface.pattern} data-art-ready={artReady} data-back-ready={backReady} data-moving="false">
         {geometry === "pack" ? <WrapperArtwork faces={profile.faces} dimensions={profile.dimensions} title={title} onReady={(face,ready)=>{if(face === "front")setArtReady(ready);else setBackReady(ready);faceReady(face,ready);}} /> : <>
         <div className="product-inspect__face product-inspect__front"><FaceArtwork key={`${geometry}:${currentPhoto}`} texture={failedFaces.includes(currentPhoto) ? undefined : frontTexture} src={src} product={imageProduct} title={title} face={currentPhoto} onReady={(ready, size) => { setArtReady(ready); faceReady(currentPhoto, ready); if (geometry === "photo" && size?.width > 0 && size?.height > 0) setPhotoAspect(Math.max(.5, Math.min(2, size.height / size.width))); }} fit={isCard ? "card" : undefined} /><span className="product-inspect__foil-shade" aria-hidden="true"><span className="product-inspect__material"/></span><span className="product-inspect__foil" aria-hidden="true"><span className="product-inspect__material"><span className="product-inspect__diffraction"/><span className="product-inspect__metal"/><span className="product-inspect__grain"/></span></span><span className="product-inspect__glare" aria-hidden="true" /><BoxMaterial face="front" enabled={geometry === "box"}/></div>
         {geometry !== "photo" ? <>
@@ -275,8 +282,10 @@ function Inspection({ profile, src, title, imageProduct, canExpand = true }) {
           <div className="product-inspect__face product-inspect__top">{profile.faces.top ? <FaceArtwork texture={profile.faces.top} title={title} face="top" onReady={ready=>faceReady("top",ready)} /> : null}<BoxMaterial face="top" enabled={geometry === "box"}/></div><div className="product-inspect__face product-inspect__bottom">{profile.faces.bottom ? <FaceArtwork texture={profile.faces.bottom} title={title} face="bottom" onReady={ready=>faceReady("bottom",ready)} /> : null}<BoxMaterial face="bottom" enabled={geometry === "box"}/></div>
         </> : null}
         </>}
+        {geometry === "box" && profile.headerRequired ? <PackagingHeader header={profile.header} title={title} onReady={faceReady}/> : null}
       </div>
     </div>
+    {failedFaces.length > 0 && onRetry ? <div role="status" className="product-inspect__retry"><span>Some photos couldn’t load.</span><button type="button" onClick={onRetry}>Retry photos</button></div> : null}
     <p id={`${id}-help`} className="product-inspect__hint">{tiltEnabled ? geometry === "photo" ? "Swipe sideways to tilt this photo; swipe vertically to scroll. Use arrow keys to tilt and Home to reset the angle." : "Swipe sideways to turn; swipe vertically to scroll. Use arrow keys to tilt and Home to reset." : "Still view. Use the controls below to change the angle."}</p>
     <div className="product-inspect__rotation" role="group" aria-label="View controls">
       <button type="button" aria-label="Rotate left" onClick={() => rotate(-45, 0)}>↶</button>
