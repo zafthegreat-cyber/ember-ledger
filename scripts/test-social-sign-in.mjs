@@ -87,6 +87,8 @@ test("web redirects are fixed to Code 3 or an explicit local development origin"
 });
 test("callbacks reject foreign origins, tokens, duplicate fields and open redirects", () => {
   assert.deepEqual(parseSocialCallback(origin + "/auth/callback?code=" + code, origin), { code, error: false });
+  assert.deepEqual(parseSocialCallback(origin + "/auth/callback?code=" + code + "#_=_", origin), { code, error: false });
+  for (const fragment of ["#_=_x", "#_=_&access_token=secret", "#x"]) assert.throws(() => parseSocialCallback(origin + "/auth/callback?code=" + code + fragment, origin));
   for (const suffix of ["?code=" + code + "&next=//evil.test", "?code=" + code + "&code=other", "#access_token=secret", "?access_token=secret", "?code=short"]) assert.throws(() => parseSocialCallback(origin + "/auth/callback" + suffix, origin));
   assert.throws(() => parseSocialCallback("https://evil.test/auth/callback?code=" + code, origin));
 });

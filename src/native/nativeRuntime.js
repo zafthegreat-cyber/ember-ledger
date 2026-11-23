@@ -39,8 +39,9 @@ export function getNativeAuthRedirect(kind = "signin") {
 export function parseNativeAuthCallback(value) {
   let url;
   try { url = new URL(value); } catch { return null; }
+  // Facebook appends the literal "#_=_" to its redirect; nothing else may ride in the fragment.
   if (url.protocol !== "code3tcg:" || url.hostname !== "auth" || url.pathname !== "/callback"
-    || url.username || url.password || url.port || url.hash) return null;
+    || url.username || url.password || url.port || (url.hash && url.hash !== "#_=_")) return null;
   const keys = [...url.searchParams.keys()];
   if (new Set(keys).size !== keys.length || keys.some(key => !["code", "flow", "error", "error_code", "error_description"].includes(key))) return null;
   const flow = url.searchParams.get("flow") || "signin";

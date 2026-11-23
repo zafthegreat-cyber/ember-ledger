@@ -27,7 +27,8 @@ export function webSocialRedirect(origin, development = false) {
 export function parseSocialCallback(value, expectedOrigin) {
   let url;
   try { url = new URL(value); } catch { throw failure(); }
-  if (url.origin !== expectedOrigin || url.pathname !== "/auth/callback" || url.username || url.password || url.hash) throw failure();
+  // Facebook appends the literal "#_=_" to its redirect; browsers carry it to our callback.
+  if (url.origin !== expectedOrigin || url.pathname !== "/auth/callback" || url.username || url.password || (url.hash && url.hash !== "#_=_")) throw failure();
   const keys = [...url.searchParams.keys()];
   if (keys.length !== new Set(keys).size || keys.some(key => !["code", "error", "error_code", "error_description"].includes(key))) throw failure();
   if (url.searchParams.has("error")) return { error: true };
