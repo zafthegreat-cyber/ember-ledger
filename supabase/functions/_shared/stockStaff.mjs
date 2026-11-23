@@ -10,7 +10,14 @@ export function stockStaffAuthorizer({project,anon,fetchImpl=fetch}) {
       ...options,method:"POST",headers:{...options.headers,"Content-Type":"application/json"},body:"{}"
     });
     if(!roleResponse.ok)return null;
-    return {id:user.id,admin:(await roleResponse.json())===true};
+    if((await roleResponse.json())!==true)return {id:user.id,admin:false};
+    // is_admin can read token claims. Check the current profile as well so a
+    // demotion takes effect before an old token is refreshed or expires.
+    const profileResponse=await fetchImpl(project+"/rest/v1/profiles?select=app_role,user_role&id=eq."+encodeURIComponent(user.id)+"&limit=1",{...options,method:"GET"});
+    if(!profileResponse.ok)return null;
+    const profiles=await profileResponse.json();
+    const profile=Array.isArray(profiles)&&profiles.length===1?profiles[0]:null;
+    return {id:user.id,admin:Boolean(profile&&(["owner","admin"].includes(profile.app_role)||profile.user_role==="admin"))};
   };
 }
 

@@ -18,7 +18,7 @@ const mockAuth=`export const supabase={auth:{
 getUser:async()=>({data:{user:window.__stockStaff?{id:'${actor}'}:null}}),
 getSession:async()=>({data:{session:window.__stockStaff?{access_token:'synthetic-token'.repeat(8),user:{id:'${actor}'}}:null}}),
 onAuthStateChange:(cb)=>{const listener=()=>cb('SIGNED_OUT');window.addEventListener('stock-auth',listener);return {data:{subscription:{unsubscribe:()=>window.removeEventListener('stock-auth',listener)}}};}
-},rpc:async()=>({data:window.__stockStaff===true})};`;
+},rpc:async()=>({data:window.__stockStaff===true}),from:()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:window.__stockStaff?{app_role:'owner',user_role:'admin'}:{app_role:'user',user_role:'user'}})})})})};`;
 (async()=>{
   const browser=await chromium.launch({headless:true});
   const results=[];

@@ -55,14 +55,21 @@ test("Both staff dependencies check current database authorization with the call
     const calls=[];
     const deps=factory({project:"https://gxsfququorfczvhrkudl.supabase.co",key:"service-test",anon:"public-test",fetchImpl:async(url,options)=>{
       calls.push({url,options});
-      return Response.json(url.endsWith("/user")?{id:staffId,user_metadata:{role:"admin"}}:true);
+      return Response.json(url.endsWith("/user")?{id:staffId,user_metadata:{role:"admin"}}:url.endsWith("/rpc/is_admin")?true:[{app_role:"owner",user_role:"admin"}]);
     }});
     assert.deepEqual(await deps.authorize("caller-test"),{id:staffId,admin:true});
-    assert.equal(calls.length,2);
+    assert.equal(calls.length,3);
     assert.ok(calls[1].url.endsWith("/rpc/is_admin"));
     assert.ok(calls.every(c=>c.options.headers.Authorization==="Bearer caller-test"));
     assert.ok(calls.every(c=>c.options.headers.apikey==="public-test"));
   }
+});
+
+test("A demoted staff profile is denied even when the old token claims admin",async()=>{
+  const auth=stockStaffAuthorizer({project:"https://app.test",anon:"public-test",fetchImpl:async url=>Response.json(
+    url.endsWith("/user")?{id:staffId,app_metadata:{role:"admin"}}:url.endsWith("/rpc/is_admin")?true:[{app_role:"user",user_role:"user"}]
+  )});
+  assert.deepEqual(await auth("old-admin-token"),{id:staffId,admin:false});
 });
 
 test("Revoked sessions, anonymous sign-ins and user-controlled admin metadata are denied",async()=>{

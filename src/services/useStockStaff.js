@@ -14,7 +14,10 @@ export default function useStockStaff() {
         const {data:{user}={},error:userError}=await supabase.auth.getUser();
         if(userError||!user?.id||user.is_anonymous)return;
         const {data,error}=await supabase.rpc("is_admin");
-        if(!stopped&&current===sequence&&!error&&data===true)setActor(user.id);
+        if(error||data!==true)return;
+        const {data:profile,error:profileError}=await supabase.from("profiles").select("app_role,user_role").eq("id",user.id).maybeSingle();
+        const staff=profile&&(["owner","admin"].includes(profile.app_role)||profile.user_role==="admin");
+        if(!stopped&&current===sequence&&!profileError&&staff)setActor(user.id);
       }catch{/* Private tools stay hidden when authorization cannot be confirmed. */}
     }
     check();

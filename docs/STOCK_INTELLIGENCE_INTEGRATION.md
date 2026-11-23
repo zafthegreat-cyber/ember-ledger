@@ -20,7 +20,7 @@ The public response is rebuilt through a shared allowlist contract at the Edge b
 
 Admin-checked purchase availability must cite the watched product's page, not a retailer homepage. Compatible development dependency updates remove four existing audit advisories (glob/minimatch/rimraf and Zod); `npm audit` reports zero after the lockfile update.
 
-Staff authorization verifies the user with Auth and calls the existing `is_admin()` RPC with the caller's token. That RPC checks the current account session and supports the app's owner/admin roles. No user-editable metadata or service-role identity is used to decide staff access. Account changes unmount private records and discard drafts. Failed loads clear records. Reports expire while the page stays open.
+Staff authorization verifies the user with Auth, calls the existing `is_admin()` RPC with the caller's token, and requires a current owner/admin profile read with that same token. The RPC checks the current account session. The extra profile check denies demoted staff even if an old token retains admin claims; existing role changes do not force token refresh. No user-editable metadata or service-role identity is used to decide staff access. Account changes unmount private records and discard drafts. Failed loads clear records. Reports expire while the page stays open.
 
 Source status distinguishes disconnected, awaiting validation, overdue and recently checked. A successful check older than 15 minutes is overdue. Feed generation time is never called a retailer stock check. Purchase availability expires within 15 minutes of observation; reported/forwarded leads cannot become official availability. Warehouse reports remain private and reported, with no conversion into public stock claims.
 
