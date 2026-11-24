@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import "./card-camera-frame.css";
 import { frameToVideoRect } from "../utils/cardCameraFrame.mjs";
-import { createSteadyTracker, frameDifference } from "../utils/scannerExtras.mjs";
-import { assessCardView, captureRect, createSharpnessGate, edgeSharpness, padRect, toGray } from "../utils/cardCameraAssist.mjs";
+import { createSteadyTracker, frameDetail, frameDifference } from "../utils/scannerExtras.mjs";
+import { assessCardView, CAMERA_ASSIST, captureRect, createSharpnessGate, edgeSharpness, padRect, sameCardBox, toGray } from "../utils/cardCameraAssist.mjs";
 
 // Live camera with a card-shaped frame (Nov 17 2026). Lining the card up in the
 // frame gives the card reader an upright, full-size card, which is what makes
@@ -15,6 +15,11 @@ import { assessCardView, captureRect, createSharpnessGate, edgeSharpness, padRec
 // phones can focus, the camera looks at a margin around it and finds the card's
 // edges itself, the picture is cut to the card it found, live tips say what to
 // fix, and auto-scan waits for a found, sharp, glare-free card.
+// Nov 24 2026 (scanner review): the card must be found in the same place in two
+// looks in a row; a close, upright card held still ~3 s is taken even if glare or
+// focus never clears; the no-edges fallback needs something in the frame (not an
+// empty table); the camera restarts when the app comes back from the background;
+// and it asks for 4K so small print stays readable.
 
 const AUTO_KEY = "code3.scanner.autoCapture.v1";
 const SAMPLE = 32;
@@ -55,19 +60,34 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false }) {
   // On a phone the camera opens below the fold; bring it into view.
   useEffect(() => { try { sectionRef.current?.scrollIntoView?.({ block: "start", behavior: "smooth" }); } catch { /* Optional. */ } }, []);
 
+  // Bumped to reopen the camera: phones stop the stream when the app goes to the
+  // background, which left a black frame on return.
+  const [streamKey, setStreamKey] = useState(0);
   useEffect(() => {
     let stream;
     let active = true;
+    const reopen = () => {
+      if (!active || document.hidden) return;
+      const track = trackRef.current;
+      if (track && track.readyState !== "ended" && !videoRef.current?.paused) return;
+      active = false;
+      setReady(false);
+      setTorch(false);
+      setZoomed(false);
+      setStreamKey((key) => key + 1);
+    };
+    document.addEventListener("visibilitychange", reopen);
     (async () => {
       try {
         if (!navigator.mediaDevices?.getUserMedia) throw new Error("unsupported");
-        stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: "environment" }, width: { ideal: 2560 }, height: { ideal: 1440 } } });
+        stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: "environment" }, width: { ideal: 3840 }, height: { ideal: 2160 } } });
         if (!active) { stream.getTracks().forEach((track) => track.stop()); return; }
         const video = videoRef.current;
         video.srcObject = stream;
         await video.play().catch(() => {});
         const track = stream.getVideoTracks?.()[0];
         trackRef.current = track || null;
+        track?.addEventListener?.("ended", reopen);
         let capabilities = {};
         try { capabilities = track?.getCapabilities?.() || {}; } catch { capabilities = {}; }
         setTorchSupported(Boolean(capabilities.torch));
@@ -86,8 +106,13 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false }) {
           : "The camera could not start on this device. Take a photo or choose one instead.");
       }
     })();
-    return () => { active = false; trackRef.current = null; stream?.getTracks().forEach((track) => track.stop()); };
-  }, []);
+    return () => {
+      active = false;
+      document.removeEventListener("visibilitychange", reopen);
+      trackRef.current = null;
+      stream?.getTracks().forEach((track) => { track.removeEventListener?.("ended", reopen); track.stop(); });
+    };
+  }, [streamKey]);
 
   function frameArea() {
     const video = videoRef.current, box = boxRef.current, frameEl = frameRef.current;
@@ -145,6 +170,9 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false }) {
     let lastShot = null;
     let waitingForChange = false;
     let stillWithoutCard = 0;
+    let previousCard = null;
+    let usableStill = 0;
+    const usableHold = CAMERA_ASSIST.steadyLooks - 4; // looks after the tracker's own 4-look hold
     const timer = setInterval(() => {
       const video = videoRef.current;
       const frame = frameArea();
@@ -155,6 +183,9 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false }) {
       lookContext.drawImage(video, padded.x, padded.y, padded.width, padded.height, 0, 0, width, height);
       const gray = toGray(lookContext.getImageData(0, 0, width, height).data);
       const view = assessCardView(gray, width, height, { sharp: sharpness.push(edgeSharpness(gray, width, height)), slab });
+      // A box seen once can be a passing shadow or the art window; the same box twice is the card.
+      const stableCard = sameCardBox(view.card, previousCard);
+      previousCard = view.card;
       viewRef.current = { padded, card: view.card, ready: view.ready };
       // With the flashlight on, its own reflection is the usual glare.
       setTip(view.glare && torchRef.current ? "Glare from the flashlight. Turn it off or tilt the card a little." : view.tip);
@@ -162,22 +193,28 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false }) {
       smallContext.drawImage(video, frame.x, frame.y, frame.width, frame.height, 0, 0, SAMPLE, SAMPLE);
       const sample = toGray(smallContext.getImageData(0, 0, SAMPLE, SAMPLE).data);
       if (waitingForChange) {
-        if (frameDifference(lastShot, sample) > 18) { waitingForChange = false; tracker.reset(); stillWithoutCard = 0; }
+        if (frameDifference(lastShot, sample) > 18) { waitingForChange = false; tracker.reset(); stillWithoutCard = 0; usableStill = 0; }
         setSteady(0);
         return;
       }
       const still = tracker.push(sample);
-      stillWithoutCard = !view.card && tracker.progress >= 1 ? stillWithoutCard + 1 : 0;
-      const readyToShoot = view.ready && still;
+      // No edges found: only an image with something in it (not a bare table) is taken.
+      stillWithoutCard = !view.card && tracker.progress >= 1 && frameDetail(sample) >= CAMERA_ASSIST.minFrameDetail ? stillWithoutCard + 1 : 0;
+      usableStill = view.usable && !view.ready && stableCard && still ? usableStill + 1 : 0;
+      const readyToShoot = view.ready && stableCard && still;
+      const heldLongEnough = usableStill >= usableHold;
       const fallback = !view.card && stillWithoutCard >= FALLBACK_HOLD - 4;
-      setSteady(view.ready ? tracker.progress : view.card ? 0 : Math.min(1, stillWithoutCard / (FALLBACK_HOLD - 4)) * 0.9);
-      if (readyToShoot || fallback) {
+      setSteady(view.ready ? tracker.progress
+        : view.usable ? Math.min(1, usableStill / usableHold) * 0.9
+          : view.card ? 0 : Math.min(1, stillWithoutCard / (FALLBACK_HOLD - 4)) * 0.9);
+      if (readyToShoot || heldLongEnough || fallback) {
         lastShot = sample;
         waitingForChange = true;
         tracker.reset();
         stillWithoutCard = 0;
+        usableStill = 0;
         setSteady(0);
-        void captureRef.current?.({ useCard: readyToShoot });
+        void captureRef.current?.({ useCard: readyToShoot || heldLongEnough });
       }
     }, 250);
     return () => { clearInterval(timer); small.width = 0; look.width = 0; setSteady(0); setTip(""); viewRef.current = null; };

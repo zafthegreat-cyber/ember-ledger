@@ -15,6 +15,11 @@ export const CAMERA_ASSIST = Object.freeze({
   sharpShare: 0.72, // must be at least this share of the sharpest recent view
   minSharp: 3, // below this the view is a blur or blank
   sharpWindow: 12, // recent samples remembered for focus (about 3 seconds)
+  // Nov 24 2026 (scanner review):
+  cardSharpFloor: 3, // the card itself, not the table around it, must show at least this much detail
+  sameBoxTolerance: 0.04, // the found card may shift this much between looks and still count as the same card
+  steadyLooks: 12, // a found, close, upright card held still this many looks (about 3 s) is taken despite glare or soft focus
+  minFrameDetail: 24, // brightness spread the frame needs before a no-edges picture is taken (not an empty table)
 });
 
 const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
@@ -48,11 +53,13 @@ export function glareShare(gray, width, height, box = { x: 0, y: 0, w: 1, h: 1 }
   return total ? bright / total : 0;
 }
 
-/** Average local contrast; drops when the camera is out of focus or moving. */
-export function edgeSharpness(gray, width, height) {
+/** Average local contrast; drops when the camera is out of focus or moving. box (fractions) limits it to part of the view. */
+export function edgeSharpness(gray, width, height, box = null) {
   let sum = 0, count = 0;
-  for (let y = 1; y < height - 1; y += 1) {
-    for (let x = 1; x < width - 1; x += 1) {
+  const x0 = box ? Math.max(1, Math.floor(box.x * width)) : 1, x1 = box ? Math.min(width - 1, Math.ceil((box.x + box.w) * width)) : width - 1;
+  const y0 = box ? Math.max(1, Math.floor(box.y * height)) : 1, y1 = box ? Math.min(height - 1, Math.ceil((box.y + box.h) * height)) : height - 1;
+  for (let y = y0; y < y1; y += 1) {
+    for (let x = x0; x < x1; x += 1) {
       const i = y * width + x;
       sum += Math.abs(4 * gray[i] - gray[i - 1] - gray[i + 1] - gray[i - width] - gray[i + width]);
       count += 1;
@@ -78,15 +85,28 @@ export function createSharpnessGate({ window = CAMERA_ASSIST.sharpWindow, share 
  * Returns { card, tip, ready } where card is the found card box in fractions of
  * the padded view (or null) and tip is short plain text for the person.
  */
+// usable (Nov 24 2026): a card of the right shape, upright and close enough;
+// only glare or focus stands between it and ready, so holding it still for a
+// few seconds takes the picture anyway instead of waiting forever.
 export function assessCardView(gray, width, height, { sharp = true, slab = false } = {}) {
   const what = slab ? "slab" : "card";
-  const found = findCardBounds(gray, width, height);
-  if (!found) return { card: null, tip: `Line the ${what} up with the frame.`, ready: false };
-  if (found.sideways) return { card: found, tip: `Turn the ${what} upright, ${slab ? "label" : "name"} at the top.`, ready: false };
-  if (found.h < CAMERA_ASSIST.minFill) return { card: found, tip: "Move a little closer.", ready: false };
-  if (textGlare(gray, width, height, found, slab)) return { card: found, glare: true, tip: `Glare on the ${slab ? "label" : "name or number"}. Tilt the ${what} a little or move away from the light.`, ready: false };
-  if (!sharp) return { card: found, tip: "Hold steady while it focuses.", ready: false };
-  return { card: found, tip: "Hold still…", ready: true };
+  const found = findCardBounds(gray, width, height, { shape: slab ? "slab" : "card" });
+  if (!found) return { card: null, tip: `Line the ${what} up with the frame.`, ready: false, usable: false };
+  if (found.sideways) return { card: found, tip: `Turn the ${what} upright, ${slab ? "label" : "name"} at the top.`, ready: false, usable: false };
+  if (found.h < CAMERA_ASSIST.minFill) return { card: found, tip: "Move a little closer.", ready: false, usable: false };
+  if (textGlare(gray, width, height, found, slab)) return { card: found, glare: true, tip: `Glare on the ${slab ? "label" : "name or number"}. Tilt the ${what} a little or move away from the light.`, ready: false, usable: true };
+  // The relative gate alone passes a view that is blurry from the start; the card must also show real detail.
+  // Measured inside the outline, so the card's edge against the table does not count as detail.
+  const inside = { x: found.x + found.w * 0.1, y: found.y + found.h * 0.1, w: found.w * 0.8, h: found.h * 0.8 };
+  if (!sharp || edgeSharpness(gray, width, height, inside) < CAMERA_ASSIST.cardSharpFloor) return { card: found, tip: "Hold steady while it focuses.", ready: false, usable: true };
+  return { card: found, tip: "Hold still…", ready: true, usable: true };
+}
+
+/** True when two found card boxes (fractions) are the same card in the same place, give or take a little. */
+export function sameCardBox(a, b, tolerance = CAMERA_ASSIST.sameBoxTolerance) {
+  if (!a || !b) return false;
+  return Math.abs(a.x - b.x) <= tolerance && Math.abs(a.y - b.y) <= tolerance
+    && Math.abs(a.x + a.w - (b.x + b.w)) <= tolerance && Math.abs(a.y + a.h - (b.y + b.h)) <= tolerance;
 }
 
 /**

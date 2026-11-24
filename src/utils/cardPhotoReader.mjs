@@ -132,7 +132,18 @@ export function enhanceForText(pixels) {
  * the strongest vertical and horizontal edges near each side. Returns fractions
  * of the image, or null when the photo already looks like a tight card crop.
  */
-export function findCardBounds(grey, width, height) {
+// Width / height of the outline, upright and lying sideways. "any" is for
+// uploaded photos; the live camera knows whether it wants a card (63 x 88 mm,
+// 0.716) or a graded slab (about 0.585), so it accepts only that shape, give or
+// take a slight tilt (Nov 24 2026: the loose range let the art box or a slab
+// label pass as the card, and the picture was cut to it).
+const CARD_SHAPES = Object.freeze({
+  any: { upright: [0.55, 0.9], sideways: [1.15, 1.8] },
+  card: { upright: [0.63, 0.81], sideways: [1.23, 1.6] },
+  slab: { upright: [0.5, 0.68], sideways: [1.47, 2] },
+});
+
+export function findCardBounds(grey, width, height, { shape = "any" } = {}) {
   if (!grey || width < 20 || height < 20) return null;
   const colEdge = new Float64Array(width);
   const rowEdge = new Float64Array(height);
@@ -162,8 +173,9 @@ export function findCardBounds(grey, width, height) {
   const box = { x: left.index / width, y: top.index / height, w: (right.index - left.index) / width, h: (bottom.index - top.index) / height };
   const aspect = (box.w * width) / (box.h * height);
   // Trading cards are about 63 x 88 mm (0.716 upright, 1.40 lying sideways).
-  const upright = aspect >= 0.55 && aspect <= 0.9;
-  const sideways = aspect >= 1.15 && aspect <= 1.8;
+  const range = CARD_SHAPES[shape] || CARD_SHAPES.any;
+  const upright = aspect >= range.upright[0] && aspect <= range.upright[1];
+  const sideways = aspect >= range.sideways[0] && aspect <= range.sideways[1];
   if ((!upright && !sideways) || box.w < 0.2 || box.h < 0.2) return null;
   if (box.x < 0.03 && box.y < 0.03 && box.w > 0.94 && box.h > 0.94) return null;
   return { ...box, sideways };
