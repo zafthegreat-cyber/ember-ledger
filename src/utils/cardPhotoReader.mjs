@@ -12,6 +12,8 @@ import { parseSlabLabel } from "./slabLabelText.mjs";
 
 export const CARD_PHOTO_READER = Object.freeze({
   timeoutMs: 120_000,
+  // A single card should never take this long; a stuck read gives up sooner (Nov 24 2026).
+  cardTimeoutMs: 60_000,
   // Fractions of the card's height. Pokémon, Lorcana and Magic print the name at
   // the top and the number at the bottom; One Piece prints its code bottom right.
   nameBand: [0.025, 0.155],
@@ -223,7 +225,7 @@ function uprightCard(image, card, rotate, maxSide) {
  * Locate the card, then return the crops to read. Exported for the evaluation script.
  * framed: the photo came from the card-shaped camera frame, so the whole image is the card.
  */
-export async function prepareCardCrops(file, { framed = false } = {}) {
+export async function prepareCardCrops(file, { framed = false, staged = false } = {}) {
   const image = await decode(file);
   const width = image.width || image.naturalWidth;
   const height = image.height || image.naturalHeight;
@@ -245,19 +247,24 @@ export async function prepareCardCrops(file, { framed = false } = {}) {
   const [numTop, numBottom] = CARD_PHOTO_READER.numberBand;
   // A card lying sideways is read both ways up; the reads that agree win.
   const turns = found?.sideways ? [90, -90] : [0];
-  const images = [];
+  // Nov 24 2026: reads come in two stages. Stage 1 is the name strip and the two
+  // number corners, which usually give both the name and the number. The slower
+  // reads (wide name, whole number strip, whole card) are stage 2 and only run
+  // when stage 1 was not enough. A sideways card is read both ways in one stage.
+  const entries = [];
   const canvases = [];
   for (const [index, turn] of turns.entries()) {
     const upright = uprightCard(image, card, turn, 2400);
     const cw = upright.width, ch = upright.height;
+    const later = found?.sideways ? 1 : 2;
     const name = crop(upright, 0, ch * nameTop, cw, ch * (nameBottom - nameTop), CARD_PHOTO_READER.stripWidth, true);
     // A taller second look at the top of the card, for tilted cards and tall name bars.
     const nameWide = crop(upright, 0, 0, cw, ch * 0.24, CARD_PHOTO_READER.stripWidth, true);
     const number = crop(upright, 0, ch * numTop, cw, ch * (numBottom - numTop), CARD_PHOTO_READER.stripWidth, true);
-    images.push(
-      { key: `name${index}`, psm: "6", image: await toPng(name) },
-      { key: `nameWide${index}`, psm: "11", image: await toPng(nameWide) },
-      { key: `number${index}`, psm: "11", image: await toPng(number) },
+    entries.push(
+      { key: `name${index}`, psm: "6", canvas: name, stage: 1 },
+      { key: `nameWide${index}`, psm: "11", canvas: nameWide, stage: later },
+      { key: `number${index}`, psm: "11", canvas: number, stage: later },
     );
     if (index === 0) {
       // Nov 23 2026: the number is tiny and sits in a corner (bottom left on Scarlet &
@@ -266,33 +273,52 @@ export async function prepareCardCrops(file, { framed = false } = {}) {
       const cornerTop = ch * 0.875, cornerHeight = ch * 0.115;
       const numberLeft = crop(upright, 0, cornerTop, cw * 0.5, cornerHeight, 1200, true);
       const numberRight = crop(upright, cw * 0.5, cornerTop, cw * 0.5, cornerHeight, 1200, true);
-      images.push(
-        { key: "numberLeft0", psm: "7", whitelist: NUMBER_CHARACTERS, image: await toPng(numberLeft) },
-        { key: "numberRight0", psm: "7", whitelist: NUMBER_CHARACTERS, image: await toPng(numberRight) },
+      entries.push(
+        { key: "numberLeft0", psm: "7", whitelist: NUMBER_CHARACTERS, canvas: numberLeft, stage: 1 },
+        { key: "numberRight0", psm: "7", whitelist: NUMBER_CHARACTERS, canvas: numberRight, stage: 1 },
       );
-      canvases.push(numberLeft, numberRight);
       // No clear card edge: the card may be small in a wide shot, so read the whole photo larger.
       const fullSide = found || framed ? CARD_PHOTO_READER.fullMaxSide : 2400;
       const fullScale = Math.min(1, fullSide / Math.max(cw, ch));
       const full = crop(upright, 0, 0, cw, ch, Math.round(cw * fullScale), true);
-      images.push({ key: "full", psm: "11", image: await toPng(full) });
-      canvases.push(full);
+      entries.push({ key: "full", psm: "11", canvas: full, stage: later });
     }
-    canvases.push(upright, name, nameWide, number);
+    canvases.push(upright);
   }
   image.close?.();
   for (const canvas of canvases) { canvas.width = 0; canvas.height = 0; }
-  return { images, foundCard: Boolean(found) || framed, sideways: Boolean(found?.sideways) };
+  const encode = async (stage) => {
+    const images = [];
+    for (const entry of entries) {
+      if (entry.stage !== stage || !entry.canvas.width) continue;
+      images.push({ key: entry.key, psm: entry.psm, ...(entry.whitelist ? { whitelist: entry.whitelist } : {}), image: await toPng(entry.canvas) });
+    }
+    return images;
+  };
+  const release = () => { for (const entry of entries) { entry.canvas.width = 0; entry.canvas.height = 0; } };
+  const meta = { foundCard: Boolean(found) || framed, sideways: Boolean(found?.sideways) };
+  if (!staged) {
+    try { return { images: [...await encode(1), ...await encode(2)], ...meta }; } finally { release(); }
+  }
+  // Staged: stage-2 crops are only encoded if more() is called; release() frees them either way.
+  return { images: await encode(1), more: () => encode(2), release, ...meta };
 }
 
-export async function readCardPhoto(file, { signal, onProgress, timeoutMs = CARD_PHOTO_READER.timeoutMs, workerUrl, framed = false } = {}) {
+/** Stage 1 is enough when it found a number and a name that looks like a real word. */
+export function stageOneIsEnough(parsed) {
+  if (parsed?.certainty !== "name-and-number") return false;
+  const letters = String(parsed.name || "").replace(/[^A-Za-zÀ-ž]/g, "");
+  return letters.length >= 4 && /^[A-ZÀ-Ž]/.test(parsed.name) && !/^[A-Z]+$/.test(letters.slice(0, 5));
+}
+
+export async function readCardPhoto(file, { signal, onProgress, timeoutMs = CARD_PHOTO_READER.cardTimeoutMs, workerUrl, framed = false } = {}) {
   const invalid = validateProductPhotoFile(file);
   if (invalid) return result("invalid", "file_invalid", invalid);
   if (signal?.aborted) return result("cancelled", "cancelled", "Reading stopped. You can type the card name and number below.");
   if (typeof window === "undefined" || typeof Worker !== "function" || typeof document === "undefined" || typeof WebAssembly !== "object") {
     return result("unsupported", "unsupported", "This device cannot read cards automatically. Type the card name and number below.");
   }
-  let job, timer, stopped = false, rejectStop;
+  let job, timer, stopped = false, rejectStop, prepared = null;
   const interrupted = new Promise((_, reject) => { rejectStop = reject; });
   const stop = (code) => { stopped = true; job?.cancel(code); rejectStop(fail(code)); };
   const abort = () => stop("cancelled");
@@ -302,22 +328,37 @@ export async function readCardPhoto(file, { signal, onProgress, timeoutMs = CARD
   try {
     return await Promise.race([interrupted, (async () => {
       progress("Finding the card in your photo…");
-      const { images, foundCard } = await prepareCardCrops(file, { framed });
-      if (stopped) throw fail("cancelled");
+      prepared = await prepareCardCrops(file, { framed, staged: true });
+      const { foundCard } = prepared;
+      if (stopped) { prepared.release(); throw fail("cancelled"); }
       progress("Loading the private card reader…");
-      let readsDone = 0;
-      const count = images.length;
-      job = recognizeImages(images, {
-        workerUrl,
-        onProgress: (data) => {
-          if (stopped || data.status !== "recognizing text") return;
-          if (data.progress >= 1) readsDone += 1;
-          progress(`Reading the card (${Math.min(count, readsDone + 1)} of ${count})…`, (readsDone + Number(data.progress || 0)) / count);
-        },
-      });
-      const response = await job.promise;
-      const byKey = Object.fromEntries((response.texts || []).map((entry) => [entry.key, String(entry.text || "")]));
-      const parsed = parseCardPhotoText({ nameText: byKey.name0, extraNameTexts: [byKey.nameWide0, byKey.name1, byKey.nameWide1].filter(Boolean), numberText: [byKey.numberLeft0, byKey.numberRight0, byKey.number0, byKey.number1].filter(Boolean).join("\n"), fullText: byKey.full });
+      const byKey = {};
+      const read = async (images, label, start, span) => {
+        let readsDone = 0;
+        const count = images.length;
+        job = recognizeImages(images, {
+          workerUrl,
+          onProgress: (data) => {
+            if (stopped || data.status !== "recognizing text") return;
+            if (data.progress >= 1) readsDone += 1;
+            progress(`${label} (${Math.min(count, readsDone + 1)} of ${count})…`, start + span * ((readsDone + Number(data.progress || 0)) / count));
+          },
+        });
+        const response = await job.promise;
+        for (const entry of response.texts || []) byKey[entry.key] = String(entry.text || "");
+      };
+      const parse = () => parseCardPhotoText({ nameText: byKey.name0, extraNameTexts: [byKey.nameWide0, byKey.name1, byKey.nameWide1].filter(Boolean), numberText: [byKey.numberLeft0, byKey.numberRight0, byKey.number0, byKey.number1].filter(Boolean).join("\n"), fullText: byKey.full });
+      await read(prepared.images, "Reading the card", 0, 0.5);
+      let parsed = parse();
+      if (!stageOneIsEnough(parsed)) {
+        if (stopped) throw fail("cancelled");
+        const more = await prepared.more();
+        if (stopped) throw fail("cancelled");
+        if (more.length) {
+          await read(more, "Taking a closer look", 0.5, 0.5);
+          parsed = parse();
+        }
+      }
       const message = parsed.certainty === "name-and-number"
         ? "Found a name and card number. Check them, then review the matches."
         : parsed.certainty === "number-only"
@@ -336,6 +377,7 @@ export async function readCardPhoto(file, { signal, onProgress, timeoutMs = CARD
     if (code === "unsupported") return result("unsupported", code, "This device cannot read cards automatically. Type the card name and number below.");
     return result("failed", code, "The card could not be read automatically. Type the card name and number below.");
   } finally {
+    prepared?.release?.();
     stopped = true;
     clearTimeout(timer);
     signal?.removeEventListener("abort", abort);

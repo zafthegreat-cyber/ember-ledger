@@ -6110,6 +6110,8 @@ export default function App() {
   const [scanMode, setScanMode] = useState("upc");
   const [scanMatches, setScanMatches] = useState([]);
   const [scanReview, setScanReview] = useState(null);
+  // Nov 24 2026: a new match scrolls into view, above the photo panel's fold.
+  const scanReviewCardRef = useRef(null);
   // Grader, grade and cert number read from a slab label; carried to the save screen.
   const [scanSlabDetails, setScanSlabDetails] = useState(null);
   // Site, price and shipping read from a listing screenshot (eBay, Marketplace…).
@@ -6117,6 +6119,14 @@ export default function App() {
   // Nov 19 2026 scanner extras: price check (shows prices, saves nothing), rapid
   // barcode batch, and the last 20 scans on this device.
   const [scanPriceCheck, setScanPriceCheck] = useState(false);
+  const scanReviewId = scanReview?.scanId || "";
+  useEffect(() => {
+    if (!scanReviewId || scanPriceCheck) return;
+    const node = scanReviewCardRef.current;
+    if (!node?.scrollIntoView) return;
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    window.requestAnimationFrame(() => node.scrollIntoView({ block: "start", behavior: reduce ? "auto" : "smooth" }));
+  }, [scanReviewId, scanPriceCheck]);
   const [scanRapid, setScanRapid] = useState(false);
   const [scanBatch, setScanBatch] = useState([]);
   const [scanBatchDestination, setScanBatchDestination] = useState("vault");
@@ -11257,7 +11267,7 @@ export default function App() {
       return;
     }
     if (normalized === "scan_card") {
-      beginScanProduct("vault");
+      beginScanProduct("vault", "card");
       return;
     }
     if (normalized === "add_sealed_product") {
@@ -17520,6 +17530,7 @@ export default function App() {
       catalogType: product?.catalogType || "unknown",
       productType: normalizedInventoryProductType(product || {}),
       setName: product?.setName || product?.expansion || "",
+      cardNumber: product ? masterCardNumber(product) : "",
       upc: product ? reviewedProductBarcode(product, rawValue) : "",
       sku: product?.sku || "",
       imageUrl: product ? getCatalogImage(product) : "",
@@ -17550,6 +17561,22 @@ export default function App() {
   function rememberScanDestination(destination) {
     if (!["vault", "wishlist", "forge"].includes(destination)) return;
     try { window.localStorage.setItem("code3.scanner.lastDestination", destination); } catch { /* Optional convenience. */ }
+  }
+
+  // Nov 24 2026: general "Scan" buttons reopen the tab the person used last on this
+  // device (Card the first time); barcode-only buttons still pass "upc".
+  function readLastScanMode() {
+    try {
+      const saved = window.localStorage.getItem("code3.scanner.lastMode");
+      return ["card", "upc", "slab"].includes(saved) ? saved : "card";
+    } catch {
+      return "card";
+    }
+  }
+
+  function rememberScanMode(mode) {
+    if (!["card", "upc", "slab"].includes(mode)) return;
+    try { window.localStorage.setItem("code3.scanner.lastMode", mode); } catch { /* Optional convenience. */ }
   }
 
   // mode: the scanner tab to open on ("upc" barcode, "card", ...). Scan card actions open on Card.
@@ -19192,6 +19219,7 @@ export default function App() {
       }
       rememberScanPicture(product);
       rememberScanDestination(destination);
+      rememberScanMode(scanMode);
       closeInventoryScanner();
       return openProductAddFlow({
         product,
@@ -19684,7 +19712,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   function openVaultScanFlow() {
     setActiveTab("vault");
     closeFlowModal({ force: true, reset: false });
-    beginScanProduct("vault");
+    beginScanProduct("vault", readLastScanMode());
   }
 
   function openVaultImportCollectionFlow() {
@@ -22059,7 +22087,8 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       setActiveTab("adminReview");
       return;
     }
-    if (action === "scanProduct") return beginScanProduct("none");
+    if (action === "scanProduct") return beginScanProduct("none", readLastScanMode());
+    if (action === "scanCardReview") return beginScanProduct("none", "card");
     if (action === "pictureLookup") return openPictureLookupFlow("none");
     if (action === "scanVault") return openVaultScanFlow();
     if (action === "scanForge") {
@@ -32389,7 +32418,7 @@ function renderForgeBusinessLedgerPanel() {
     ].filter(Boolean);
     const emberAssistQuickActions = [
       { label: "Replay first-time guide", helper: "Open the setup guide again; progress stays local to this browser.", action: () => { setEmberAssistOpen(false); restartOnboarding(); } },
-      { label: "Scan a card", helper: "Open review-first card or product scan.", action: () => { setEmberAssistOpen(false); openQuickAddAction("scanProduct"); } },
+      { label: "Scan a card", helper: "Open review-first card or product scan.", action: () => { setEmberAssistOpen(false); openQuickAddAction("scanCardReview"); } },
       { label: "Scan restock screenshot", helper: "Review proof first; no upload or live AI promise.", action: () => { setEmberAssistOpen(false); openLiveScoutReportFlow("scanScreenshot"); } },
       { label: "Check trade fairness", helper: "Compare exact variants with parent-aware warnings.", action: () => { setEmberAssistOpen(false); setActiveTab("inventory"); openTradeCompassFlow({ source: "ember-assist-quick-action-trade-fairness" }); } },
       { label: "Help price listing", helper: "Use fair context; nothing posts or checks out.", action: () => { setEmberAssistOpen(false); setActiveTab("market"); } },
@@ -49182,7 +49211,18 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     <button type="button" className="secondary-button" disabled={!primaryMultiDestinationSavedItem()} onClick={() => openMultiDestinationSavedItem("view")}>
                       View
                     </button>
-                    <button type="button" onClick={() => {
+                    {activeFlowModal?.source === "scanner" ? (
+                      // Nov 24 2026: scanning many cards in a row. Saved from a scan: go
+                      // straight back to the camera on the same tab and destination.
+                      <button type="button" data-scan-next="true" onClick={() => {
+                        closeFlowModal({ force: true, reset: false });
+                        resetMultiDestinationForm();
+                        window.setTimeout(() => beginScanProduct("none", readLastScanMode()), 80);
+                      }}>
+                        Scan next
+                      </button>
+                    ) : null}
+                    <button type="button" className={activeFlowModal?.source === "scanner" ? "secondary-button" : undefined} onClick={() => {
                       const receipt = multiDestinationSuccess?.receiptId ? findReceiptRecord(multiDestinationSuccess.receiptId) : null;
                       if (receipt) {
                         closeFlowModal({ force: true, reset: false });
@@ -50253,6 +50293,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     setScanMatches([]);
                     setScanSearchState("idle");
                     setScanMode(key);
+                    rememberScanMode(key);
                     setScanMessage("");
                   }}
                 >
@@ -50523,51 +50564,43 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             ) : null}
 
             {scanReview && !scanPriceCheck ? (
-              <div className="scanner-review-card">
-                <div className="scanner-review-steps" aria-label="Scanner add flow">
-                  <span className="is-complete">1. Match</span>
-                  <span className="is-current">2. Review</span>
-                  <span>3. Destination</span>
-                  <span>4. Submit</span>
-                </div>
-                <div className="scanner-section-heading">
-                  <strong>Review Before Saving</strong>
-                  <span>Best match selected. Change it below if needed. Nothing is saved early.</span>
-                </div>
-                <div className="small-empty-state ai-helper-note scanner-match-confidence-note">
-                  <strong>{aiConfidenceLabel(scanReview.matchConfidence)}</strong>
-                  <span>{scanReview.aiSummary || "Suggested matches may be incomplete. Review every detail before saving."}</span>
-                </div>
-                <div className="compact-card-header scanner-review-product-summary">
-                  <div>
+              <div className="scanner-review-card" ref={scanReviewCardRef}>
+                {/* Nov 24 2026: result first. Picture, name, set and number, and the
+                    market price lead; nothing is saved until the person confirms. */}
+                <div className="scanner-review-hero">
+                  {scanReview.imageUrl ? <PrivateStorageImage className="scanner-review-image" src={scanReview.imageUrl} alt={scanReview.itemName} /> : null}
+                  <div className="scanner-review-hero-copy">
                     <h3>{scanReview.itemName}</h3>
-                    <p>{scanReview.setName || "No set"} | {scanReview.productType || scanReview.catalogType}</p>
+                    <p>{[scanReview.setName || "No set", scanReview.cardNumber ? `#${scanReview.cardNumber}` : ""].filter(Boolean).join(" · ")}</p>
+                    <p className="scanner-review-price">
+                      <strong>{scanReview.marketValue ? money(scanReview.marketValue) : "No price yet"}</strong>
+                      <span>Market price</span>
+                    </p>
+                    <span className={`scanner-confidence-badge is-${scannerConfidenceClass(scanReview.matchConfidence)}`}>
+                      {scannerConfidenceLabel(scanReview.matchConfidence)} | {scanReview.matchConfidence}%
+                    </span>
                   </div>
-                  <span className={`scanner-confidence-badge is-${scannerConfidenceClass(scanReview.matchConfidence)}`}>
-                    {scannerConfidenceLabel(scanReview.matchConfidence)} | {scanReview.matchConfidence}%
-                  </span>
                 </div>
-                {scanReview.imageUrl ? <PrivateStorageImage className="scanner-review-image" src={scanReview.imageUrl} alt={scanReview.itemName} /> : null}
-                <div className="catalog-detail-grid">
-                  <DetailItem label="UPC / SKU" value={[scanReview.upc, scanReview.sku].filter(Boolean).join(" / ") || "Unknown"} />
-                  <DetailItem label="Market Value" value={scanReview.marketValue ? money(scanReview.marketValue) : "Unknown" } />
-                  <DetailItem label="MSRP" value={scanReview.msrp ? money(scanReview.msrp) : "Unknown" } />
-                  <DetailItem label="Source" value={scanReview.sourceType || "unknown"} />
-                </div>
+                {scanMatches.length > 1 ? (
+                  <button type="button" className="ghost-button scanner-review-not-this" onClick={() => document.getElementById("scanner-other-matches")?.scrollIntoView({ block: "start", behavior: "smooth" })}>
+                    Not this card? See {scanMatches.length - 1} other {scanMatches.length - 1 === 1 ? "match" : "matches"}
+                  </button>
+                ) : null}
+                {scanReview.aiSummary ? (
+                  <div className="small-empty-state ai-helper-note scanner-match-confidence-note">
+                    <strong>{aiConfidenceLabel(scanReview.matchConfidence)}</strong>
+                    <span>{scanReview.aiSummary}</span>
+                  </div>
+                ) : null}
+                {scanReview.upc || scanReview.sku || scanReview.msrp ? (
+                  <div className="catalog-detail-grid">
+                    {scanReview.upc || scanReview.sku ? <DetailItem label="UPC / SKU" value={[scanReview.upc, scanReview.sku].filter(Boolean).join(" / ")} /> : null}
+                    {scanReview.msrp ? <DetailItem label="MSRP" value={money(scanReview.msrp)} /> : null}
+                  </div>
+                ) : null}
                 {scanMode === "listing" && scanListingDetails ? (
                   <DealCheck verdict={listingVerdict(scanListingDetails, scanReview.marketValue)} site={scanListingDetails.site || ""} />
                 ) : null}
-                <div className="scanner-correction-panel">
-                  <strong>Need to correct the match?</strong>
-                  <p className="compact-subtitle">Corrections become admin-reviewed suggestions. Universal catalog data is not changed directly.</p>
-                  <div className="scanner-correction-grid">
-                    {SCANNER_CORRECTION_REASONS.map((reason) => (
-                      <button key={reason} type="button" className="secondary-button" onClick={() => submitScannerCorrection(reason)}>
-                        {reason}
-                      </button>
-                    ))}
-                  </div>
-                </div>
                 <Field label="Destination">
                   <select value={scanDestination} onChange={(event) => setScanDestination(normalizeAddDestinationValue(event.target.value, "none", { allowIgnore: true }))}>
                     {SCAN_DESTINATIONS
@@ -50624,11 +50657,22 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <button type="button" className="secondary-button" onClick={() => { setActiveTab("market"); closeInventoryScanner(); }}>Search Market Watch</button>
                   <button type="button" className="ghost-button" onClick={closeInventoryScanner}>Cancel</button>
                 </div>
+                <details className="scanner-correction-panel">
+                  <summary>Report a catalog problem</summary>
+                  <p className="compact-subtitle">Tell us when the catalog itself is wrong. Reports are reviewed before the catalog changes. To pick a different card, use the other matches instead.</p>
+                  <div className="scanner-correction-grid">
+                    {SCANNER_CORRECTION_REASONS.map((reason) => (
+                      <button key={reason} type="button" className="secondary-button" onClick={() => submitScannerCorrection(reason)}>
+                        {reason}
+                      </button>
+                    ))}
+                  </div>
+                </details>
               </div>
             ) : null}
 
             {scanMatches.length > 1 ? (
-              <div className="inventory-list compact-inventory-list">
+              <div className="inventory-list compact-inventory-list" id="scanner-other-matches">
                 <h3>{scanReview ? "Other matches" : "Choose your package"}</h3>
                 {!scanReview && <p role="status">{scanMessage}</p>}
                 {scanMatches.map((match) => (
@@ -50652,8 +50696,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     </div>
                     <span className="catalog-picker-copy">
                       <strong>{match.item.name || match.item.productName || match.item.cardName}</strong>
-                      <small>{match.item.setName || match.item.expansion || "No set"} | {match.item.productType || match.item.catalogType || "Product"}</small>
-                      <small>{match.confidencePercent}% | {match.explanation || "Possible match"}</small>
+                      <small>{[match.item.setName || match.item.expansion || "No set", masterCardNumber(match.item) ? `#${masterCardNumber(match.item)}` : "", match.item.productType || match.item.catalogType || "Product"].filter(Boolean).join(" · ")}</small>
+                      <small>
+                        {(() => { const price = getTideTradrMarketInfo(match.item).currentMarketValue || match.item.marketPrice; return price ? <strong className="scanner-match-price">{money(price)} </strong> : null; })()}
+                        {match.confidencePercent}% | {match.explanation || "Possible match"}
+                      </small>
                     </span>
                   </button>
                 ))}

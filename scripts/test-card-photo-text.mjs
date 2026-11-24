@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { findCardNumbers, findCardName, parseCardPhotoText } from "../src/utils/cardPhotoText.mjs";
-import { enhanceForText, findCardBounds } from "../src/utils/cardPhotoReader.mjs";
+import { enhanceForText, findCardBounds, stageOneIsEnough } from "../src/utils/cardPhotoReader.mjs";
 
 const numbers = (text) => findCardNumbers(text).map((n) => n.value);
 
@@ -88,4 +88,15 @@ test("camera frame maps to the right part of the video (object-fit: cover)", asy
   assert.ok(Math.abs(area.width - 200 / scale) < 0.01 && Math.abs(area.height - 344 / scale) < 0.01);
   const edge = frameToVideoRect({ boxWidth: 300, boxHeight: 400, videoWidth: 1920, videoHeight: 1080, frame: { x: -500, y: -10, width: 5000, height: 500 } });
   assert.ok(edge.x >= 0 && edge.y >= 0 && edge.x + edge.width <= 1920 && edge.y + edge.height <= 1080, "never outside the video");
+});
+
+test("the reader stops after the name strip and corners only when they give a real name and a number", () => {
+  const stage1 = (nameText, numberText) => parseCardPhotoText({ nameText, numberText });
+  assert.equal(stageOneIsEnough(stage1("Charizard ex 330 HP", "SV3 EN 125/197")), true);
+  assert.equal(stageOneIsEnough(stage1("Pikachu", "O58/1O2")), true);
+  assert.equal(stageOneIsEnough(stage1("Charizard ex", "")), false, "no number: read more");
+  assert.equal(stageOneIsEnough(stage1("", "125/197")), false, "no name: read more");
+  assert.equal(stageOneIsEnough(stage1("EEVA", "125/197")), false, "all-caps fragment: read more");
+  assert.equal(stageOneIsEnough(stage1("mew", "151/165")), false, "short or lower-case name: read more");
+  assert.equal(stageOneIsEnough(null), false);
 });

@@ -526,7 +526,7 @@ export default function HearthPage(props) {
           detail: foundationQuickActionItems[0]?.detail || "Card identity + variant reviewed before saving.",
           icon: "scan",
           tone: "vault",
-          onClick: () => openQuickAddAction("scanProduct"),
+          onClick: () => openQuickAddAction("scanCardReview"),
         },
         {
           key: "foundation-scan-restock",
