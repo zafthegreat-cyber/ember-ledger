@@ -7,6 +7,7 @@ import {
   buildLegacyCatalogSearchAliases,
   expandCatalogSearchQueries,
   normalizeSearchQuery,
+  POKEMON_SET_ALIAS_ROWS,
   scoreCatalogSearchRow,
 } from "../data/catalogSearchAliases.mjs";
 
@@ -790,9 +791,45 @@ function dedupeRows(rows = []) {
   return [...rowsByKey.values()];
 }
 
+// Printed set codes (Nov 24 2026): the code at the bottom of a card ("OBF", "MEW",
+// "PAF") names exactly one set, unlike words such as "ex" that match many. When the
+// search holds one, rows from that set rank first. BKT and PHF are each used by two
+// sets, so they are left to the normal ranking.
+const SET_BY_PRINTED_CODE = (() => {
+  const counts = new Map();
+  for (const set of POKEMON_SET_ALIAS_ROWS) if (set.ptcgoCode) counts.set(set.ptcgoCode.toLowerCase(), (counts.get(set.ptcgoCode.toLowerCase()) || 0) + 1);
+  const map = new Map();
+  for (const set of POKEMON_SET_ALIAS_ROWS) {
+    const code = String(set.ptcgoCode || "").toLowerCase();
+    if (code && counts.get(code) === 1) map.set(code, set);
+  }
+  return map;
+})();
+const setNameKey = (value) => String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+export function printedSetCodeIn(term = "") {
+  for (const word of String(term).toLowerCase().match(/[a-z0-9]+/g) || []) {
+    const set = SET_BY_PRINTED_CODE.get(word);
+    if (set) return set;
+  }
+  return null;
+}
+
+export function rowIsFromSet(row = {}, set = null) {
+  if (!set) return false;
+  const code = String(row.set_code ?? row.setCode ?? "").toLowerCase();
+  if (code && (code === String(set.setId).toLowerCase() || code === String(set.ptcgoCode).toLowerCase())) return true;
+  const rowSet = setNameKey(row.set_name ?? row.setName ?? row.expansion);
+  const wanted = setNameKey(set.name);
+  return Boolean(rowSet && wanted) && (rowSet === wanted || rowSet.endsWith(` ${wanted}`));
+}
+
 function rankRows(rows, analysis, exactTerm, sort) {
+  const printedSet = printedSetCodeIn(exactTerm);
   return rows.filter((row) => catalogCardQueryMatchesRow(exactTerm, row)).sort((a, b) => {
     if (sort === "bestMatch") {
+      const setOrder = printedSet ? Number(rowIsFromSet(b, printedSet)) - Number(rowIsFromSet(a, printedSet)) : 0;
+      if (setOrder) return setOrder;
       const aScore = scoreCatalogSearchRow(a, analysis, exactTerm).score;
       const bScore = scoreCatalogSearchRow(b, analysis, exactTerm).score;
       return bScore - aScore || exactPriority(a, exactTerm) - exactPriority(b, exactTerm) || compareCatalogProducts(a, b, "bestMatch");

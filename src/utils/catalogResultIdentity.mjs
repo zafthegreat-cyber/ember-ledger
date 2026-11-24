@@ -1,11 +1,21 @@
 const NUMBER = "(?:[a-z]{1,4})?\\d{1,4}[a-z]?";
 const COLLECTOR_FRACTION = new RegExp(`(^|[^a-z0-9])#?(${NUMBER})\\s*[/／]\\s*(${NUMBER})(?![a-z0-9])`, "i");
 const normalizedNumber = value => String(value || "").toLowerCase().replace(/\s+/g, "").replace(/／/g, "/").split("/").map(part => part.replace(/(^[a-z]*)0+(?=\d)/, "$1")).join("/");
-const words = value => String(value || "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().match(/[a-z0-9]+/g) || [];
+const words = value => String(value || "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().match(/[\p{L}\p{N}]+/gu) || []; // any script: Japanese, Korean, Chinese names count too (Nov 24 2026)
 const GENERIC_WORDS = new Set(["pokemon", "tcg", "the", "and", "of"]);
 // Black Star promo numbers have no set total: SWSH050, SM210, XY124, BW45, DP50,
 // HGSS18, and SVP 085 (often printed "SVP EN 085"). Nov 24 2026.
-const PROMO_CODE = /(^|[^a-z0-9])(swsh|svp|sm|xy|bw|dp|hgss)\s?(?:en\s?)?-?\s?0*(\d{1,3})(?![a-z0-9])/i;
+const PROMO_CODE = /(^|[^a-z0-9])(swsh|svp|sm|xy|bw|dp|hgss)\s?(?:en\s?)?-?\s?(\d{1,3})(?![a-z0-9])/i;
+// Set ids that look like promo numbers ("sm12" is Cosmic Eclipse, "swsh45" Shining
+// Fates). Typed without a leading zero they mean the set, not a promo card.
+const SET_IDS_LIKE_PROMOS = new Set([
+  ...Array.from({ length: 13 }, (_, n) => `sm${n}`), "sm35", "sm75", "sm115",
+  ...Array.from({ length: 13 }, (_, n) => `xy${n}`),
+  ...Array.from({ length: 12 }, (_, n) => `bw${n}`),
+  ...Array.from({ length: 8 }, (_, n) => `dp${n}`),
+  ...Array.from({ length: 5 }, (_, n) => `hgss${n}`),
+  ...Array.from({ length: 13 }, (_, n) => `swsh${n}`), "swsh35", "swsh45",
+]);
 // Promo series whose catalog rows store only the digits ("085") in a promo set.
 const BARE_DIGIT_PROMOS = new Set(["svp"]);
 
@@ -13,6 +23,7 @@ function promoCollectorQuery(value) {
   const match = PROMO_CODE.exec(value);
   if (!match) return null;
   const prefix = match[2].toLowerCase();
+  if (SET_IDS_LIKE_PROMOS.has(`${prefix}${match[3]}`)) return null;
   const digits = String(Number(match[3]));
   const remainder = value.slice(0, match.index) + match[1] + value.slice(match.index + match[0].length);
   return { collectorNumber: `${prefix}${digits}`, promoPrefix: prefix, promoDigits: digits, requiredWords: words(remainder).filter(word => !GENERIC_WORDS.has(word)) };

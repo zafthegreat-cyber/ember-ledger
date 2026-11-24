@@ -151,13 +151,17 @@ export function parseCardPhotoText({ nameText = "", numberText = "", fullText = 
   const name = names[0] || "";
   const number = numbers[0]?.value || "";
   const query = squash([name, number].filter(Boolean).join(" ")).slice(0, CARD_PHOTO_LIMITS.maxQueryLength);
-  const found = (name ? 1 : 0) + (number ? 1 : 0);
+  // Nov 24 2026: when the number strip was read but held no number, a number found
+  // elsewhere on the card (attack damage, HP, flavour text) is only a guess. It stays
+  // in the search text, but the read is not called certain, so nothing searches on its own.
+  const numberIsGuess = Boolean(number) && Boolean(String(numberText).trim()) && !findCardNumbers(numberText).length;
+  const found = (name ? 1 : 0) + (number && !numberIsGuess ? 1 : 0);
   return {
     query,
     name,
     number,
     suggestions: suggestions.slice(0, 6),
-    certainty: found === 2 ? "name-and-number" : number ? "number-only" : name ? "name-only" : "none",
+    certainty: found === 2 ? "name-and-number" : number && !numberIsGuess ? "number-only" : name ? "name-only" : number ? "number-only" : "none",
     text: clean([nameText, numberText, fullText].filter(Boolean).join("\n---\n")).trim(),
   };
 }

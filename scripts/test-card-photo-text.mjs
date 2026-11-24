@@ -110,3 +110,11 @@ test("promo numbers printed with a language code, and attack damage is not a car
   assert.deepEqual(numbers("230/193").map((entry) => entry.value), ["230/193"], "secret rares above the total still count");
   assert.deepEqual(numbers("0587102").map((entry) => entry.value), ["058/102"], "a slash read as 7 still works for real numbers");
 });
+
+
+test("a number found only elsewhere on the card is a guess, not a certain read (Nov 24 2026)", () => {
+  const guess = parseCardPhotoText({ nameText: "Charizard ex", numberText: "Illus. 5ban Graphics", fullText: "Charizard ex\nBurning Darkness 180/230" });
+  assert.notEqual(guess.certainty, "name-and-number", "damage text on the card does not count as the collector number");
+  const read = parseCardPhotoText({ nameText: "Charizard ex", numberText: "125/197" });
+  assert.equal(read.certainty, "name-and-number");
+});

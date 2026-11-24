@@ -138,3 +138,26 @@ test("Save all for scanned cards saves a row only when its name and number match
   assert.equal(await scope.find({ cardName: "Charizard", cardNumber: "" }), null, "no number: left for review");
   assert.equal(await scope.find({ cardName: "Pikachu", cardNumber: "4/102" }), null, "a different name with the same number is not saved");
 });
+
+
+test("set ids are not promo numbers, names in any script must match, printed set codes rank their set first (Nov 24 2026)", async () => {
+  const { catalogCardQueryMatchesRow: matches, getCatalogCollectorQuery: identity } = await import("../src/utils/catalogResultIdentity.mjs");
+  assert.equal(identity("Pikachu sm12"), null, "sm12 is Cosmic Eclipse, not promo SM12");
+  assert.equal(identity("Pikachu swsh45"), null, "swsh45 is Shining Fates");
+  assert.equal(identity("Pikachu SM012").collectorNumber, "sm12", "a padded number is still a promo");
+  assert.equal(identity("Charizard V SWSH050").collectorNumber, "swsh50");
+  assert.equal(matches("ピカチュウ 025/165", { name: "ピカチュウ", cardNumber: "025/165" }), true);
+  assert.equal(matches("ピカチュウ 025/165", { name: "リザードンex", cardNumber: "025/165" }), false, "another Japanese name with the same number");
+  assert.equal(matches("피카츄 025/165", { name: "Pikachu", cardNumber: "025/165" }), false, "a Korean name does not match an English row");
+
+  const bundlePath = resolve("artifacts/qa/catalog-search-100", "catalog-service-test.mjs");
+  await build({ entryPoints: [resolve("src/services/pokemonCatalogSearch.js")], bundle: true, outfile: bundlePath, format: "esm", platform: "node", define: { "import.meta.env": "{}" } });
+  const { printedSetCodeIn, rowIsFromSet } = await import(pathToFileURL(bundlePath) + "?setcode");
+  const obf = printedSetCodeIn("Charizard ex OBF 125/197");
+  assert.equal(obf?.name, "Obsidian Flames");
+  assert.equal(printedSetCodeIn("Charizard ex 125/197"), null);
+  assert.equal(printedSetCodeIn("Lugia BKT 140"), null, "BKT names two sets, so it does not pick one");
+  assert.equal(rowIsFromSet({ set_code: "sv3" }, obf), true);
+  assert.equal(rowIsFromSet({ setName: "SV03: Obsidian Flames" }, obf), true);
+  assert.equal(rowIsFromSet({ setName: "Paldea Evolved", setCode: "sv2" }, obf), false);
+});
