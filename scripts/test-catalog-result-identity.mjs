@@ -161,3 +161,19 @@ test("set ids are not promo numbers, names in any script must match, printed set
   assert.equal(rowIsFromSet({ setName: "SV03: Obsidian Flames" }, obf), true);
   assert.equal(rowIsFromSet({ setName: "Paldea Evolved", setCode: "sv2" }, obf), false);
 });
+
+test("printed codes are not name words, SWSH with a space is a promo, #N is the card's own number (Nov 24 2026)", async () => {
+  const { catalogCardQueryMatchesRow: matches, getCatalogCollectorQuery: identity } = await import("../src/utils/catalogResultIdentity.mjs");
+  const { normalizeSearchQuery: normalize } = await import("../src/data/catalogSearchAliases.mjs");
+  assert.deepEqual(identity(normalize("Charizard ex MEW EN 199/165")).requiredWords, ["charizard", "ex"], "the retry searches the name, not 'charizard ex mew en'");
+  assert.deepEqual(identity("Mew ex MEW 151/165").requiredWords, ["mew", "ex"], "Mew the Pokemon stays");
+  assert.equal(matches("Mew 151/165", { name: "Charizard", cardNumber: "151/165" }), false, "a lone name that is also a set code still has to match");
+  assert.equal(identity(normalize("Charizard V SWSH 050")).collectorNumber, "swsh50");
+  assert.equal(normalize("swsh 7"), "sword shield 7", "a set number after SWSH still reads as the set");
+  assert.equal(identity("Pikachu #25").collectorNumber, "25");
+  assert.equal(matches("Pikachu #25", { name: "Pikachu", cardNumber: "025/198" }), true);
+  assert.equal(matches("Pikachu #25", { name: "Pikachu", cardNumber: "58/102" }), false);
+  assert.equal(matches("Pikachu #25", { name: "Raichu", cardNumber: "25/198" }), false);
+  assert.equal(matches("ナッシー 103/108", { name: "ナッシー[Exeggutor]", cardNumber: "103/108" }), true, "a Japanese catalog row matches its own name");
+  assert.equal(matches("ナッシー 103/108", { name: "Exeggutor", cardNumber: "103/108" }), false, "a Japanese read does not match an English-only row");
+});

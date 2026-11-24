@@ -16,7 +16,8 @@ export function normalizeSearchQuery(value = "") {
     .toLowerCase()
     .replace(/\bpkmn\b/g, "pokemon")
     .replace(/\bpoke\b/g, "pokemon")
-    .replace(/\bswsh\b/g, "sword shield")
+    // "SWSH 156" is a promo number, not the set word (Nov 24 2026).
+    .replace(/\bswsh\b(?!\s?-?\s?\d{2,3}\b)/g, "sword shield")
     .replace(/\bs and v\b/g, "sv")
     .replace(/\b3\s*pk\b/g, "3 pack")
     .replace(/\bpc\s*etb\b/g, "pc etb")

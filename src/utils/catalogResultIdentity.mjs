@@ -1,3 +1,5 @@
+import { POKEMON_SET_ALIAS_ROWS } from "../data/catalogSearchAliases.mjs";
+
 const NUMBER = "(?:[a-z]{1,4})?\\d{1,4}[a-z]?";
 const COLLECTOR_FRACTION = new RegExp(`(^|[^a-z0-9])#?(${NUMBER})\\s*[/／]\\s*(${NUMBER})(?![a-z0-9])`, "i");
 const normalizedNumber = value => String(value || "").toLowerCase().replace(/\s+/g, "").replace(/／/g, "/").split("/").map(part => part.replace(/(^[a-z]*)0+(?=\d)/, "$1")).join("/");
@@ -16,6 +18,28 @@ const SET_IDS_LIKE_PROMOS = new Set([
   ...Array.from({ length: 5 }, (_, n) => `hgss${n}`),
   ...Array.from({ length: 13 }, (_, n) => `swsh${n}`), "swsh35", "swsh45",
 ]);
+// Printed set codes and language codes at the bottom of a card ("MEW EN") are not
+// part of the name (Nov 24 2026). Built on first use: the alias module imports this one.
+let printedCodes = null;
+const PRINTED_CODES = () => (printedCodes ||= new Set([
+  ...POKEMON_SET_ALIAS_ROWS.map(set => String(set.ptcgoCode || "").toLowerCase()).filter(Boolean),
+  "en", "jp", "ja", "kr", "ko", "zh", "fr", "de", "it", "es", "pt",
+]));
+
+/** Drops the last printed code from the name words, keeping at least one real name word ("Mew ex MEW" keeps "mew"). */
+function nameWordsOnly(list) {
+  const result = [...list];
+  for (let index = result.length - 1; index >= 0; index -= 1) {
+    if (!PRINTED_CODES().has(result[index])) continue;
+    const without = [...result.slice(0, index), ...result.slice(index + 1)];
+    if (without.some(word => word.length >= 3 && !/^\d+$/.test(word))) result.splice(index, 1);
+  }
+  return result;
+}
+
+// "Pikachu #25": the card's own number with no set total (Nov 24 2026).
+const HASH_NUMBER = /(^|[^a-z0-9])#\s?(\d{1,4})(?![a-z0-9/])/i;
+
 // Promo series whose catalog rows store only the digits ("085") in a promo set.
 const BARE_DIGIT_PROMOS = new Set(["svp"]);
 
@@ -26,7 +50,7 @@ function promoCollectorQuery(value) {
   if (SET_IDS_LIKE_PROMOS.has(`${prefix}${match[3]}`)) return null;
   const digits = String(Number(match[3]));
   const remainder = value.slice(0, match.index) + match[1] + value.slice(match.index + match[0].length);
-  return { collectorNumber: `${prefix}${digits}`, promoPrefix: prefix, promoDigits: digits, requiredWords: words(remainder).filter(word => !GENERIC_WORDS.has(word)) };
+  return { collectorNumber: `${prefix}${digits}`, promoPrefix: prefix, promoDigits: digits, requiredWords: nameWordsOnly(words(remainder).filter(word => !GENERIC_WORDS.has(word))) };
 }
 
 const rowIsPromo = row => /promo/i.test([row.setName, row.set_name, row.expansion].filter(Boolean).join(" ")) || /^(svp|pr|swsd)$/i.test(String(row.setCode ?? row.set_code ?? ""));
@@ -34,10 +58,17 @@ const rowIsPromo = row => /promo/i.test([row.setName, row.set_name, row.expansio
 export function getCatalogCollectorQuery(query) {
   const value = String(query || "").trim();
   const match = COLLECTOR_FRACTION.exec(value);
-  if (!match) return promoCollectorQuery(value);
+  if (!match) return promoCollectorQuery(value) || hashCollectorQuery(value);
   const collectorText = `${match[2]}/${match[3]}`;
   const remainder = value.slice(0, match.index) + match[1] + value.slice(match.index + match[0].length);
-  return { collectorNumber: normalizedNumber(collectorText), requiredWords: words(remainder).filter(word => !GENERIC_WORDS.has(word)) };
+  return { collectorNumber: normalizedNumber(collectorText), requiredWords: nameWordsOnly(words(remainder).filter(word => !GENERIC_WORDS.has(word))) };
+}
+
+function hashCollectorQuery(value) {
+  const match = HASH_NUMBER.exec(value);
+  if (!match) return null;
+  const remainder = value.slice(0, match.index) + match[1] + value.slice(match.index + match[0].length);
+  return { collectorNumber: String(Number(match[2])), numberOnly: true, requiredWords: nameWordsOnly(words(remainder).filter(word => !GENERIC_WORDS.has(word))) };
 }
 
 /** A card number alone is not evidence that a different named card matches. */
@@ -58,6 +89,7 @@ export function catalogCardQueryMatchesRow(query, row = {}) {
   // "SVP 085" is stored as 085 in the Scarlet & Violet promo set.
   const barePromoMatch = Boolean(identity.promoPrefix) && BARE_DIGIT_PROMOS.has(identity.promoPrefix) && !rowTotal && rowFirst === identity.promoDigits && rowIsPromo(row);
   if (barePromoMatch) { /* number matches */ }
+  else if (identity.numberOnly) { if (rowFirst !== queryNumber) return false; }
   else if (rowTotal) { if (rowNumber !== identity.collectorNumber) return false; }
   else if (rowFirst !== queryNumber) return false;
   else if (queryTotal) {
