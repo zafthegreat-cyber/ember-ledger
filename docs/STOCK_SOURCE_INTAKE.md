@@ -30,6 +30,7 @@ approved registrations, each with:
   retailer: one of the six approved retailers
   mode: official-api OR authorized-feed
   agreementRef: private approved agreement reference
+  originKind: retailer, supplier, or discord (explicit approved forwarding)
   approved: true
   secretEnv: an encrypted secret named CODE3_STOCK_HMAC_...
   publishStock: true ONLY if public stock redistribution is permitted
@@ -96,6 +97,15 @@ A product page, queue or third-party guess cannot prove a purchase order,
 shipment, receipt or warehouse putaway. Unknown is manual, not a verified
 warehouse state. No facilities, shipment IDs, routes, POs, exact quantities,
 supplier staff data, or vendor schedules are accepted or published.
+
+## Discord authorized-forwarding rule
+
+For Discord, set originKind to discord and mode to authorized-feed, require
+express consent from the server/channel owner, and use a separately keyed
+owner-controlled relay. Discord registrations cannot enable warehouse stages
+or official-api mode. The signed event contains only the retailer product URL,
+SKU and reported signal—not a private channel URL, message, member ID or
+copied content. It is always a reported lead, not confirmed availability.
 
 ## Classification and persistence
 
