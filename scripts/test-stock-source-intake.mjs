@@ -19,10 +19,10 @@ const INBOUND_EVENT={
   evidenceType:"warehouse_putaway",observedAt:new Date(NOW-20000).toISOString(),
   productUrl:URL,
 };
-function configured({mode="official-api",publishStock=true,inboundStages=["in_warehouse"],approved=true}={}){
+function configured({mode="official-api",publishStock=true,inboundStages=["in_warehouse"],approved=true,originKind="retailer"}={}){
   return parseApprovedSourceConfig(JSON.stringify([{
     id:"target-owned-feed",retailer:"Target",mode,agreementRef:"contract-001",
-    approved,secretEnv:"CODE3_STOCK_HMAC_TARGET_TEST",publishStock,inboundStages
+    approved,secretEnv:"CODE3_STOCK_HMAC_TARGET_TEST",publishStock,inboundStages,originKind
   }]),()=>SECRET);
 }
 async function request(event,{sourceId="target-owned-feed",secret=SECRET,stamp=Math.floor(NOW/1000),body,signature,headers}={}){
@@ -226,4 +226,21 @@ test("Data-access helpers use strict server-only queries and store only permitte
   assert.ok(traces[0].url.includes("retailer_monitor_targets"));
   assert.ok(traces[0].url.includes("enabled=eq.true"));
   assert.ok(!JSON.stringify(traces).includes("fixture-service-key"));
+});
+
+test("An owner-approved Discord relay stays reported, and can never supply verified warehouse proof",async()=>{
+  const registration=configured({mode:"authorized-feed",originKind:"discord",inboundStages:[]});
+  const db=backend({mode:"authorized-feed",registrations:registration});
+  const response=await db.handler(await request(STOCK_EVENT));
+  assert.equal(response.status,201);
+  const saved=[...db.savedStock.values()][0];
+  assert.equal(saved.source_type,"authorized_discord");
+  assert.equal(saved.signal_type,"reported_stock");
+  assert.equal(saved.evidence_level,"reported");
+  assert.ok(!JSON.stringify(saved).includes("discord.com/channels"));
+  const inbound=await db.handler(await request(INBOUND_EVENT));
+  assert.equal(inbound.status,403);
+  assert.equal(db.savedInbound.size,0);
+  assert.throws(()=>configured({mode:"official-api",originKind:"discord",inboundStages:[]}),/Invalid private source/);
+  assert.throws(()=>configured({mode:"authorized-feed",originKind:"discord",inboundStages:["in_warehouse"]}),/Invalid private source/);
 });
