@@ -105,7 +105,7 @@ export const WORKSPACE_DEFINITIONS = deepFreeze({
     entitlementLabels: [ENTITLEMENT_LABELS.FREE, ENTITLEMENT_LABELS.PRO],
     navigation: [
       navItem({ key: "find-home", label: "Home", path: "/find/home", iconKey: "home", placement: NAV_PLACEMENTS.HOME }),
-      navItem({ key: "find-deals", label: "Deals", path: "/find/deals", iconKey: "find" }),
+      navItem({ key: "find-deals", label: "Saved listings", path: "/find/deals", iconKey: "find" }),
       navItem({ key: "find-restocks", label: "Restocks", path: "/find/restocks", iconKey: "map", featureKey: "restocks" }),
       navItem({ key: "find-auctions", label: "Auctions", path: "/find/auctions", iconKey: "market", featureKey: "auctions" }),
     ],

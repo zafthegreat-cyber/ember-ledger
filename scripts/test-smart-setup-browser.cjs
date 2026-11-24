@@ -30,7 +30,7 @@ const frame=page=>page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>req
    const open=async()=>{
     await page.locator('.settings-layout').waitFor();
     if(profile.font)await page.addStyleTag({content:`html {font-size:${profile.font}px !important}`});
-    const summary=page.locator('.settings-layout__disclosure > summary').filter({hasText:'Appearance & preferences'});
+    const summary=page.locator('.settings-layout__disclosure > summary').filter({hasText:'Area & stores'});
     if(!(await summary.evaluate(n=>n.parentElement.open)))await summary.click();
     await page.getByRole('button',{name:'Update setup',exact:true}).click();
     await page.getByRole('dialog',{name:'Your Code 3 TCG'}).waitFor();

@@ -68,8 +68,7 @@ export default function OperationsHome({
     return Math.abs(Number(lot.totalLotCost || 0) - allocated) > 0.01;
   }).length;
   const attentionRows = [
-    { key: "deals", label: "Deals to review", count: summary.awaitingReview, detail: "Listings waiting for a decision", action: () => openFind("deals") },
-    { key: "auctions", label: "Auctions ending soon", count: summary.endingSoon, detail: "Ending within 24 hours", action: () => openFind("auctions") },
+    { key: "deals", label: "Listings to review", count: summary.awaitingReview, detail: "Listings waiting for a decision", action: () => openFind("deals") },
     { key: "receive", label: "Purchases to receive", count: state.purchases.filter((row) => /purchased|in transit|awaiting/i.test(row.status || row.currentStatus || "")).length, detail: "Purchased records not marked received", action: () => openFind("records", "purchases") },
     { key: "process", label: "Inventory to process", count: state.inventory.filter((row) => /new|processing|needs/i.test(row.currentStatus || row.status || "")).length, detail: "Items needing record work", action: () => openFind("records", "inventory") },
     { key: "ship", label: "Items to ship", count: state.sales.filter((row) => /paid|ready|ship/i.test(row.status || "") && !/shipped|complete/i.test(row.status || "")).length, detail: "Sales not marked shipped", action: () => openFind("records", "sales") },
@@ -137,7 +136,7 @@ export default function OperationsHome({
   const pageCards = rankAdaptivePageItems([
     { key: "scoutSignals", title: "Your restock watch", detail: followedStores.length ? `${followedStores.length} followed store${followedStores.length === 1 ? "" : "s"}` : "Follow the stores you visit to keep their reports close.", label: followedStores.length ? "View followed stores’ reports" : "Browse all restocks", icon: "find", activityKeys: ["reports"], action: followedStores.length ? onOpenFollowedReports || onOpenRestockReports : onOpenRestockReports },
     { key: "vaultSnapshot", title: "Your collection", detail: activeVaultItems.length ? `${collectionGroups.length} product${collectionGroups.length === 1 ? "" : "s"} · ${collectionQuantity} total quantity · ${activeVaultItems.length} purchase record${activeVaultItems.length === 1 ? "" : "s"}` : "Add your first card or sealed product.", label: "Open collection", icon: "inventory", activityKeys: ["collection"], action: () => setActiveTab("collectionWorkspace") },
-    { key: "marketWatch", title: presentation.isCollector ? "Prices & wants" : "Find & compare", detail: workspaceWatchlist.length ? `${workspaceWatchlist.length} watched item${workspaceWatchlist.length === 1 ? "" : "s"}` : presentation.isCollector ? "Look up a card or product. Save it to your wants." : "Review saved deals and upcoming auctions.", label: presentation.isCollector ? "Search cards & products" : "Explore Find", icon: "search", activityKeys: ["watchlist", "deals", "auctions"], action: () => presentation.isCollector ? setActiveTab("market") : openFind("deals") },
+    { key: "marketWatch", title: presentation.isCollector ? "Prices & wants" : "Find & compare", detail: workspaceWatchlist.length ? `${workspaceWatchlist.length} watched item${workspaceWatchlist.length === 1 ? "" : "s"}` : presentation.isCollector ? "Look up a card or product. Save it to your wants." : "Compare your saved listings before buying.", label: presentation.isCollector ? "Search cards & products" : "Explore Find", icon: "search", activityKeys: ["watchlist", "deals", "auctions"], action: () => presentation.isCollector ? setActiveTab("market") : openFind("deals") },
     ...(sellerVisible ? [{ key: "forgeSummary", title: presentation.copy.recordsTitle, detail: presentation.copy.recordsDetail, label: "Open inventory", icon: "business", activityKeys: ["sales", "purchases", "inventory", "expenses"], action: () => onOpenBusiness("inventory") }] : []),
   ].filter((card) => card.key === "forgeSummary" && !manualHome ? true : isVisible(card.key)), {
     activity: { ...state, ...adaptiveActivity,
@@ -167,14 +166,12 @@ export default function OperationsHome({
     </div>
     <section className="ops-home-section home-restock-hero" aria-labelledby="home-restock-title">
       <div className="home-restock-copy">
-        <h2 id="home-restock-title">Restock reports</h2>
-        <p>See what collectors found. Share what you saw.</p>
+        <div className="home-restock-intro"><h2 id="home-restock-title">Restock reports</h2>
+        <p>See what collectors found. Share what you saw.</p></div>
         <div className="home-restock-actions"><PrimaryButton onClick={() => onReportRestock()}>Report a restock</PrimaryButton><SecondaryButton onClick={onOpenRestockReports}>Browse all restocks</SecondaryButton></div>
         <QuickRestockLauncher followedStores={followedStores} nearbyStores={(scoutSnapshot.nearbyStores || []).slice(0, 3).length ? (scoutSnapshot.nearbyStores || []).slice(0, 3) : suggestedStores} kidSafe={kidSafeView} onLaunch={(options) => onReportRestock(options)} />
       </div>
     </section>
-    <PersonaChecklist persona={presentation.persona} kidSafe={kidSafeView} counts={checklistCounts} onOpen={openChecklistTarget} />
-    {!kidSafeView ? <WhatsNewCard isNewAccount={checklistCounts.vaultItems === 0 && checklistCounts.inventory === 0 && checklistCounts.reports === 0} onOpenAll={() => setActiveTab("whatsNew")} onTour={() => startAppTour?.()} onFeedback={() => onOpenFeedback?.()} onHome={() => window.scrollTo?.({ top: 0, behavior: "smooth" })} /> : null}
     {sellerVisible && (isVisible("forgeSummary") || !manualHome) && attentionRows.length ? <section className="ops-home-section ops-attention-panel home-attention-pending">
       <SectionHeader title="Needs attention" />
       <div className="ops-attention-list">{(allAttention ? attentionRows : attentionRows.slice(0, 5)).map((row) => <button type="button" key={row.key} onClick={row.action} aria-label={`${row.label}: ${row.count}. ${row.detail}`}><span className="ops-attention-count">{row.count}</span><span><strong>{row.label}</strong><small>{row.detail}</small></span><span aria-hidden="true">›</span></button>)}</div>{attentionRows.length > 5 && <SecondaryButton aria-expanded={allAttention} onClick={() => setAllAttention(value => !value)}>{allAttention ? "Show fewer" : `See all ${attentionRows.length} categories`}</SecondaryButton>}
@@ -184,11 +181,14 @@ export default function OperationsHome({
       {customizing && <HomeShortcutEditor visibleKeys={homePreference?.visibleKeys} business={sellerVisible} onApply={onSaveHomeShortcuts} onCancel={() => setCustomizing(false)} />}
       <div className="home-personal-grid" aria-label="Personalized shortcuts">
         {pageCards.map((card) => <article className="home-personal-card" key={card.key} data-home-card={card.key}>
-          <div className="home-card-heading"><span className="home-shortcut-icon" aria-hidden="true"><AppNavIcon kind={card.icon} /></span><h3>{card.title}</h3></div>
-          <p>{card.detail}</p>
-          {card.key === "scoutSignals" && followedStores.length ? <ul className="home-followed-stores" aria-label="Followed stores">{followedStores.slice(0, 3).map((store, index) => <li key={store.id || `${store.name}-${index}`}><button type="button" onClick={() => onOpenStoreReports ? onOpenStoreReports(store) : onOpenRestockReports?.()}><span><strong>{store.name || store.storeName || "Followed store"}</strong>{store.city && <small>{store.city}</small>}</span>{(() => { const latest = [...(scoutSnapshot.reports || [])].filter(report => String(report.storeId || report.store_id) === String(store.id)).filter(report => Number.isFinite(Date.parse(report.observedAt || report.observed_at || ""))).sort((a,b) => Date.parse(b.observedAt || b.observed_at) - Date.parse(a.observedAt || a.observed_at))[0]; return latest ? <small>Last observed {relativeUiTime(latest.observedAt || latest.observed_at)}</small> : <small>View reports</small>; })()}</button></li>)}{followedStores.length > 3 ? <li className="home-followed-stores__more">And {followedStores.length - 3} more</li> : null}</ul> : null}
+          <button className="home-shortcut-link" type="button" onClick={card.action} aria-label={card.label}>
+            <span className="home-shortcut-icon" aria-hidden="true"><AppNavIcon kind={card.icon} /></span>
+            <span><strong>{card.title}</strong><small>{card.detail}</small></span>
+            <span aria-hidden="true">›</span>
+          </button>
+          {card.key === "scoutSignals" && followedStores.length ? <details className="home-store-shortcuts"><summary>Choose a followed store</summary><ul className="home-followed-stores" aria-label="Followed stores">{followedStores.slice(0, 3).map((store, index) => <li key={store.id || `${store.name}-${index}`}><button type="button" onClick={() => onOpenStoreReports ? onOpenStoreReports(store) : onOpenRestockReports?.()}><span><strong>{store.name || store.storeName || "Followed store"}</strong>{store.city && <small>{store.city}</small>}</span>{(() => { const latest = [...(scoutSnapshot.reports || [])].filter(report => String(report.storeId || report.store_id) === String(store.id)).filter(report => Number.isFinite(Date.parse(report.observedAt || report.observed_at || ""))).sort((a,b) => Date.parse(b.observedAt || b.observed_at) - Date.parse(a.observedAt || a.observed_at))[0]; return latest ? <small>Last observed {relativeUiTime(latest.observedAt || latest.observed_at)}</small> : <small>View reports</small>; })()}</button></li>)}{followedStores.length > 3 ? <li className="home-followed-stores__more">And {followedStores.length - 3} more</li> : null}</ul></details> : null}
           {card.key === "vaultSnapshot" ? <SavedItemPreview items={activeVaultItems} onOpen={openCollectionItem} /> : card.key === "forgeSummary" && sellerVisible ? <SavedItemPreview items={(adaptiveActivity.inventory || []).filter((item) => inferOwnedItemPurpose(item) === OWNED_ITEM_PURPOSES.FOR_RESALE)} onOpen={item => onOpenInventoryItem ? onOpenInventoryItem(item) : onOpenBusiness("inventory")} /> : null}
-          {card.key === "forgeSummary" ? <div className="home-business-links">{["inventory", "sales", "purchases"].map((view) => <SecondaryButton key={view} onClick={() => onOpenBusiness(view)}>{view === "inventory" ? presentation.copy.inventoryLabel : view[0].toUpperCase() + view.slice(1)}</SecondaryButton>)}</div> : card.key === "marketWatch" && presentation.isCollector ? <div className="home-business-links"><SecondaryButton onClick={card.action}>{card.label}</SecondaryButton>{onOpenSellTrade ? <SecondaryButton onClick={onOpenSellTrade}>Sell or trade</SecondaryButton> : null}</div> : <SecondaryButton onClick={card.action}>{card.label}</SecondaryButton>}
+          {card.key === "forgeSummary" ? <div className="home-business-links">{["sales", "purchases"].map((view) => <SecondaryButton key={view} onClick={() => onOpenBusiness(view)}>{view[0].toUpperCase() + view.slice(1)}</SecondaryButton>)}</div> : card.key === "marketWatch" && presentation.isCollector && onOpenSellTrade ? <div className="home-business-links"><SecondaryButton onClick={onOpenSellTrade}>Sell or trade</SecondaryButton></div> : null}
         </article>)}
       </div>
     </section>
@@ -206,6 +206,10 @@ export default function OperationsHome({
       <span><small>Month Sales</small><strong>{monthSalesWithRevenue.length ? formatCurrency(monthRevenue) : "—"}</strong></span>
       <span><small>Month Profit</small><strong>{monthSalesWithProfit.length ? formatCurrency(monthProfit) : "—"}</strong></span>
     </div> : null}
+    <details className="home-community-details home-help-details"><summary>Getting started &amp; what's new<span aria-hidden="true">+</span></summary>
+      <PersonaChecklist persona={presentation.persona} kidSafe={kidSafeView} counts={checklistCounts} onOpen={openChecklistTarget} />
+      {!kidSafeView ? <WhatsNewCard isNewAccount={checklistCounts.vaultItems === 0 && checklistCounts.inventory === 0 && checklistCounts.reports === 0} onOpenAll={() => setActiveTab("whatsNew")} onTour={() => startAppTour?.()} onFeedback={() => onOpenFeedback?.()} onHome={() => window.scrollTo?.({ top: 0, behavior: "smooth" })} /> : null}
+    </details>
     <details className="home-community-details"><summary>Community & feedback<span aria-hidden="true">+</span></summary><RegionalCommunityBanner primaryLabel="Browse restocks" onPrimary={onOpenRestockReports} /></details>
   </div>;
 }

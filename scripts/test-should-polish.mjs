@@ -12,9 +12,10 @@ const read = (relative) => readFileSync(path.join(root, relative), "utf8");
 const css = read("src/styles/app/16-should-polish.css");
 const appCss = read("src/App.css");
 
-test("16-should-polish loads after the palette; only 17-touch-feedback and 18-collector-binder follow it", () => {
+test("16-should-polish, then 17-focused-pages, load after the palette; the Nov 17-23 looks follow them", () => {
   const imports = appCss.split("\n").filter((line) => line.startsWith("@import"));
-  assert.match(imports.at(-6), /16-should-polish\.css/);
+  assert.match(imports.at(-7), /16-should-polish.css/);
+  assert.match(imports.at(-6), /17-focused-pages.css/);
   assert.match(imports.at(-5), /17-touch-feedback\.css/);
   assert.match(imports.at(-4), /18-collector-binder\.css/);
   assert.match(imports.at(-3), /19-holo-tech.css/);

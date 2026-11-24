@@ -13,8 +13,8 @@ const { chromium, expect } = require('@playwright/test');
     { key: 'profile', route: '/settings/profile', selector: '.you-profile-command-card' },
     { key: 'plans', route: '/settings/plans', selector: '.membership-v4-command-board' },
     { key: 'trust', route: '/settings/trust', selector: '.trust-v4-command-board' },
-    { key: 'preferences', route: '/settings', disclosure: 'Appearance & preferences' },
-    { key: 'privacy', route: '/settings', disclosure: 'Privacy & safeguards' },
+    { key: 'preferences', route: '/settings', disclosure: 'Appearance' },
+    { key: 'privacy', route: '/settings', disclosure: 'Privacy & safeguards', category: 'Privacy' },
   ].filter(screen => (!desktopOnly || !screen.disclosure) && (!organizationOnly || ['profile', 'plans'].includes(screen.key)));
   try {
     for (const theme of ['light', 'dark']) for (const width of desktopOnly ? [1440] : [360, 1440]) {
@@ -29,6 +29,7 @@ const { chromium, expect } = require('@playwright/test');
         await page.evaluate(() => document.fonts.ready);
         let root;
         if (screen.disclosure) {
+          if (screen.category) await page.getByRole('button', {name: screen.category, exact: true}).click();
           const summary = page.locator('.settings-layout__disclosure > summary').filter({ hasText: screen.disclosure });
           await summary.focus();
           await page.keyboard.press('Enter');

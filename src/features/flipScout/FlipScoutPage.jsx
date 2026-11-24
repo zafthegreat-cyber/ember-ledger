@@ -22,12 +22,12 @@ const RestocksScreen = lazy(() => import("./screens/RestocksScreen.jsx"));
 
 const PRIMARY_NAV_ITEMS = [
   ["restocks", "Restocks"],
-  ["deals", "Deals"],
+  ["deals", "Saved listings"],
   ["auctions", "Auctions"],
 ];
 const SCREEN_TITLES = {
   dashboard: "Overview",
-  deals: "Deals",
+  deals: "Saved listings",
   restocks: "Restocks",
   ebay: "eBay Search",
   rules: "Saved Searches",
@@ -255,7 +255,7 @@ export default function FlipScoutPage({ onOpenRestocks, onReportRestock, initial
       <summary>More</summary>
       <div>
         <button type="button" onClick={() => navigate("rules")}>Saved searches</button>
-        <button type="button" onClick={() => navigate("appraise")}>Deal Analysis</button>
+        <button type="button" onClick={() => navigate("appraise")}>Compare costs</button>
         <button type="button" onClick={() => navigate("buy-offer")}>Buy Offer</button>
         {featureControls.ebaySearch !== false ? <button type="button" onClick={() => navigate("ebay")}>eBay Search</button> : null}
         {showOperationalTools && featureControls.ebaySearch !== false ? <button type="button" onClick={() => navigate("ebay")}>Import Review</button> : null}
@@ -270,10 +270,10 @@ export default function FlipScoutPage({ onOpenRestocks, onReportRestock, initial
       <PageHeader
         eyebrow={showOperationalTools ? "Sourcing" : "Restocks & finds"}
         title="Find"
-        description="Check community restocks, compare prices, and save your next find."
+        description="Restocks near you. Listings worth revisiting."
       />
       {activeScreen !== "deals" && PRIMARY_NAV_ITEMS.some(([key]) => key === activeScreen) ? findNavigation : null}
-      {!PRIMARY_NAV_ITEMS.some(([key]) => key === activeScreen) ? <div className="flip-context-bar"><button type="button" onClick={() => navigate("deals")}>Back to Deals</button><strong>{activeTitle}</strong></div> : null}
+      {!PRIMARY_NAV_ITEMS.some(([key]) => key === activeScreen) ? <div className="flip-context-bar"><button type="button" onClick={() => navigate("deals")}>Back to saved listings</button><strong>{activeTitle}</strong></div> : null}
       {storageMessage ? <div className="flip-storage-warning" role="alert"><strong>Local save warning</strong><span>{storageMessage}</span></div> : null}
       <main className="flip-scout-main" aria-label={activeTitle} tabIndex={-1}>
         <Suspense fallback={<LoadingState title={`Loading ${activeTitle}`} description="Preparing this workspace." />}>

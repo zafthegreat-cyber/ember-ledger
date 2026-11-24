@@ -43,12 +43,13 @@ test("collectors get the simple You page and a quiet Account page", () => {
   assert.match(app, /ACCOUNT_SETUP_TIER_ROWS\.filter\(\(tier\) => adminViewingAsAdmin \|\| !\["admin", "beta"\]\.includes\(tier\.key\)\)/);
 });
 
-test("warm palette polish is loaded last and defines the teal accent", () => {
+test("palette and accessibility polish precede focused page styling", () => {
   const appCss = src("src/App.css");
-  // 16-should-polish (SHOULD 12-14) now loads after it; 15 must still come after everything else.
+  // Preserve the palette/accessibility foundation before the focused-page overrides.
   const imports = appCss.split(/\r?\n/).filter((line) => line.startsWith("@import"));
-  assert.equal(imports.at(-7), '@import "./styles/app/15-warm-palette-polish.css";');
-  assert.equal(imports.at(-6), '@import "./styles/app/16-should-polish.css";');
+  assert.equal(imports.at(-8), '@import "./styles/app/15-warm-palette-polish.css";');
+  assert.equal(imports.at(-7), '@import "./styles/app/16-should-polish.css";');
+  assert.equal(imports.at(-6), '@import "./styles/app/17-focused-pages.css";');
   // 17-touch-feedback (owner, Nov 17): no blue tap flash; loads last.
   assert.equal(imports.at(-5), '@import "./styles/app/17-touch-feedback.css";');
   // 18-collector-binder (owner, Nov 17): the look for TCG fans; loads last.
