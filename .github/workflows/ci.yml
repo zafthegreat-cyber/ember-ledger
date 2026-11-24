@@ -78,6 +78,7 @@ jobs:
           node --no-warnings scripts/test-community-server.mjs
           node --no-warnings scripts/test-restock-alerts.mjs
           node --no-warnings --test scripts/test-stock-intelligence.mjs
+          node --no-warnings --test scripts/test-stock-source-intake.mjs
           node --no-warnings scripts/test-easy-nationwide-ui.mjs
           node --no-warnings scripts/test-catalog-barcode-evidence.mjs
           node --no-warnings scripts/test-market-search-presentation.mjs
