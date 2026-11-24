@@ -177,3 +177,34 @@ test("printed codes are not name words, SWSH with a space is a promo, #N is the 
   assert.equal(matches("ナッシー 103/108", { name: "ナッシー[Exeggutor]", cardNumber: "103/108" }), true, "a Japanese catalog row matches its own name");
   assert.equal(matches("ナッシー 103/108", { name: "Exeggutor", cardNumber: "103/108" }), false, "a Japanese read does not match an English-only row");
 });
+
+test("scanned rows are matched as they arrive and show their price (Nov 24 2026)", async () => {
+  const { readFileSync } = await import("node:fs");
+  const vm = await import("node:vm");
+  const source = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
+  const start = source.indexOf("  async function matchCardScanRows(rows = []) {");
+  const end = source.indexOf("\n  function setQuickAddPath(", start);
+  assert.ok(start > 0 && end > start, "the live matcher is extractable");
+  assert.match(source, /void matchCardScanRows\(created\);/, "new scan rows start matching straight away");
+  assert.match(source, /row\.matchedProduct && row\.matchedFor === `\$\{row\.cardName\}\|\$\{row\.cardNumber\}` \? row\.matchedProduct/, "Save all reuses a match the row still fits");
+  let state = { cardScanRows: [
+    { id: "a", cardName: "Pikachu", cardNumber: "58/102" },
+    { id: "b", cardName: "Pikachu", cardNumber: "" },
+    { id: "c", cardName: "Mewtwo", cardNumber: "10/102" },
+  ] };
+  const products = { Pikachu: { id: "p1", name: "Pikachu", setName: "Base Set", cardNumber: "58/102", marketPrice: 4.5 } };
+  const scope = {
+    findVerifiedCardForScanRow: async (row) => products[row.cardName] || null,
+    getTideTradrMarketInfo: (product) => ({ currentMarketValue: product.marketPrice }),
+    catalogTitle: (product) => product.name,
+    setQuickAddWizard: (fn) => { state = fn(state); },
+  };
+  vm.runInNewContext(source.slice(start, end) + "\nglobalThis.match = matchCardScanRows;", scope);
+  await scope.match(state.cardScanRows);
+  const [a, b, c] = state.cardScanRows;
+  assert.equal(a.matchState, "matched");
+  assert.equal(a.matchedValue, 4.5);
+  assert.equal(a.matchedLabel, "Pikachu · Base Set · 58/102");
+  assert.equal(b.matchState, undefined, "a row without a number waits for review");
+  assert.equal(c.matchState, "review");
+});

@@ -1,3 +1,4 @@
+import { isKnownCardName, snapCardName } from "./cardNameSnap.mjs";
 // Card reader text rules (Nov 17 2026). Pure: turns the text read from a card
 // photo into a catalog search such as "Charizard ex 125/197" or
 // "Monkey.D.Luffy OP01-024". It never decides the card: the person reviews the
@@ -135,8 +136,16 @@ export function rankCardNames(candidateLists = []) {
   return [...scores.keys()].sort((a, b) => rank(b) - rank(a)).map((key) => display.get(key));
 }
 
-export function parseCardPhotoText({ nameText = "", numberText = "", fullText = "", extraNameTexts = [] } = {}) {
-  const names = rankCardNames([findCardName(nameText), ...extraNameTexts.map((text) => findCardName(text)), findCardName(fullText).slice(0, 4)]);
+export function parseCardPhotoText({ nameText = "", numberText = "", fullText = "", extraNameTexts = [], nameIndex = null } = {}) {
+  // Nov 24 2026: with the catalog's card names loaded, each read name is corrected to
+  // the real name it is closest to ("Charizarb" -> "Charizard"), so separate reads
+  // agree and a real name is put first.
+  const snapList = (list) => (nameIndex ? list.map((name) => snapCardName(name, nameIndex) || name) : list);
+  let names = rankCardNames([findCardName(nameText), ...extraNameTexts.map((text) => findCardName(text)), findCardName(fullText).slice(0, 4)].map(snapList));
+  if (nameIndex) {
+    const known = names.findIndex((name) => isKnownCardName(name, nameIndex));
+    if (known > 0) names = [names[known], ...names.slice(0, known), ...names.slice(known + 1)];
+  }
   const numbers = [...findCardNumbers(numberText), ...findCardNumbers(fullText)];
   const seen = new Set();
   const suggestions = [];

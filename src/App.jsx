@@ -19131,7 +19131,7 @@ export default function App() {
           ? activeForgeWorkspace
           : workspaces.find((candidate) => String(candidate.id) === String(defaultWorkspaceIdForDestination("vault"))) || activeWorkspace;
         if (!workspace?.id || !canEditWorkspaceId(workspace.id)) { unsure.set(row.id, "You can't add to this workspace."); continue; }
-        const product = await findVerifiedCardForScanRow(row);
+        const product = row.matchedProduct && row.matchedFor === `${row.cardName}|${row.cardNumber}` ? row.matchedProduct : await findVerifiedCardForScanRow(row);
         if (!product) { unsure.set(row.id, row.cardNumber ? "Review this one: more than one card or no card matched." : "Review this one: add the card number to match it."); continue; }
         const known = buildCatalogAutofillDetails(product);
         const marketInfo = getTideTradrMarketInfo(product);
@@ -19941,11 +19941,32 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   // are added as rows, safely, even when several reads finish close together.
   function appendQuickAddCardScanRows(newRows = []) {
     if (!newRows.length) return;
+    const created = newRows.map((row) => createQuickAddCardScanRow(row));
     setQuickAddWizard((current) => {
       const existing = Array.isArray(current.cardScanRows) ? current.cardScanRows : [];
       const kept = existing.filter((row) => row.cardName || row.cardNumber || row.setName || row.variant || row.condition);
-      return { ...current, cardScanRows: [...kept, ...newRows.map((row) => createQuickAddCardScanRow(row))], message: "" };
+      return { ...current, cardScanRows: [...kept, ...created], message: "" };
     });
+    void matchCardScanRows(created);
+  }
+
+  // Scan several cards, live matching (Nov 24 2026, owner: "competitive"). Each scanned
+  // row is matched in the background with the same one-card check "Save all" uses, so
+  // the row shows its card, set and price, and the list shows a running total.
+  async function matchCardScanRows(rows = []) {
+    for (const row of rows) {
+      if (!String(row.cardName || "").trim() || !String(row.cardNumber || "").trim()) continue;
+      let product = null;
+      try { product = await findVerifiedCardForScanRow(row); } catch { product = null; }
+      const marketValue = product ? Number(getTideTradrMarketInfo(product).currentMarketValue || product.marketPrice || product.midPrice || 0) : 0;
+      const patch = product
+        ? { matchedProduct: product, matchState: "matched", matchedLabel: [catalogTitle(product), product.setName || product.expansion, product.cardNumber].filter(Boolean).join(" · "), matchedValue: Number.isFinite(marketValue) && marketValue > 0 ? marketValue : 0, matchedFor: `${row.cardName}|${row.cardNumber}` }
+        : { matchedProduct: null, matchState: "review", matchedLabel: "", matchedValue: 0, matchedFor: `${row.cardName}|${row.cardNumber}` };
+      setQuickAddWizard((current) => ({
+        ...current,
+        cardScanRows: (current.cardScanRows || []).map((candidate) => (candidate.id === row.id && `${candidate.cardName}|${candidate.cardNumber}` === patch.matchedFor ? { ...candidate, ...patch } : candidate)),
+      }));
+    }
   }
 
   function setQuickAddPath(path, patch = {}) {

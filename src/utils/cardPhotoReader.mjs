@@ -311,6 +311,16 @@ export function stageOneIsEnough(parsed) {
   return letters.length >= 4 && /^[A-ZÀ-Ž]/.test(parsed.name) && !/^[A-Z]+$/.test(letters.slice(0, 5));
 }
 
+// Printed card names for correcting misreads (about 24 KB compressed), loaded once
+// on the first card scan. Without it the reader still works, uncorrected.
+let cardNameIndex = null;
+function loadCardNameIndex() {
+  cardNameIndex ||= Promise.all([import("../data/generated/cardNames.json"), import("./cardNameSnap.mjs")])
+    .then(([names, snap]) => snap.createNameIndex(names.default || names))
+    .catch(() => { cardNameIndex = null; return null; });
+  return cardNameIndex;
+}
+
 export async function readCardPhoto(file, { signal, onProgress, timeoutMs = CARD_PHOTO_READER.cardTimeoutMs, workerUrl, framed = false } = {}) {
   const invalid = validateProductPhotoFile(file);
   if (invalid) return result("invalid", "file_invalid", invalid);
@@ -347,8 +357,11 @@ export async function readCardPhoto(file, { signal, onProgress, timeoutMs = CARD
         const response = await job.promise;
         for (const entry of response.texts || []) byKey[entry.key] = String(entry.text || "");
       };
-      const parse = () => parseCardPhotoText({ nameText: byKey.name0, extraNameTexts: [byKey.nameWide0, byKey.name1, byKey.nameWide1].filter(Boolean), numberText: [byKey.numberLeft0, byKey.numberRight0, byKey.number0, byKey.number1].filter(Boolean).join("\n"), fullText: byKey.full });
+      let nameIndex = null;
+      const parse = () => parseCardPhotoText({ nameIndex, nameText: byKey.name0, extraNameTexts: [byKey.nameWide0, byKey.name1, byKey.nameWide1].filter(Boolean), numberText: [byKey.numberLeft0, byKey.numberRight0, byKey.number0, byKey.number1].filter(Boolean).join("\n"), fullText: byKey.full });
+      const namesReady = loadCardNameIndex();
       await read(prepared.images, "Reading the card", 0, 0.5);
+      nameIndex = await namesReady;
       let parsed = parse();
       if (!stageOneIsEnough(parsed)) {
         if (stopped) throw fail("cancelled");
