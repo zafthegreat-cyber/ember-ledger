@@ -1,5 +1,6 @@
 import { compareCatalogProducts } from "../utils/catalogSortUtils";
 import { catalogCardQueryMatchesRow, getCatalogCollectorQuery } from "../utils/catalogResultIdentity.mjs";
+import { identifierEquivalents } from "../utils/barcodeIdentity.mjs";
 import {
   analyzeCatalogSearch,
   buildCatalogAliasSuggestions,
@@ -502,6 +503,8 @@ export function collectorNumberClauses(collectorNumber = "") {
   const [firstPart] = String(collectorNumber).split("/");
   const [, prefix = "", digits = firstPart, suffix = ""] = /^([a-z]*)(\d+)([a-z]*)$/.exec(firstPart) || [];
   const spellings = [...new Set([digits, digits.padStart(2, "0"), digits.padStart(3, "0")])].map((value) => `${prefix}${value}${suffix}`.replace(/[,()]/g, ""));
+  // SVP promos are stored as the digits alone ("085") in the promo set (Nov 24 2026).
+  if (prefix === "svp") spellings.push(...new Set([digits, digits.padStart(2, "0"), digits.padStart(3, "0")]));
   return spellings.flatMap((value) => [`card_number.ilike.${value}`, `card_number.ilike.${value}/%`]).join(",");
 }
 
@@ -740,7 +743,11 @@ function identifierTerms(term = "") {
   const normalized = normalizeCatalogQuery(term);
   const compact = normalized.replace(/[^a-z0-9]/g, "");
   const withoutLeadingZeroes = compact.replace(/^0+/, "");
-  return [...new Set([normalized, compact, withoutLeadingZeroes].filter((value) => value && value.length >= 3))].slice(0, 4);
+  // Nov 24 2026: a 12-digit UPC-A scan must also find rows stored as the 13-digit
+  // EAN (leading 0) or 14-digit GTIN, and the other way round. Only codes with a
+  // valid check digit are expanded, so a mistyped number is not padded into another.
+  const gtinSpellings = /^\d+$/.test(compact) ? identifierEquivalents(compact) : [];
+  return [...new Set([normalized, compact, withoutLeadingZeroes, ...gtinSpellings].filter((value) => value && value.length >= 3))].slice(0, 6);
 }
 
 function safeOrTerm(term = "") {

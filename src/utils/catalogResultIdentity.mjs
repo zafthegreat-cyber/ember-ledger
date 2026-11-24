@@ -3,11 +3,27 @@ const COLLECTOR_FRACTION = new RegExp(`(^|[^a-z0-9])#?(${NUMBER})\\s*[/／]\\s*(
 const normalizedNumber = value => String(value || "").toLowerCase().replace(/\s+/g, "").replace(/／/g, "/").split("/").map(part => part.replace(/(^[a-z]*)0+(?=\d)/, "$1")).join("/");
 const words = value => String(value || "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().match(/[a-z0-9]+/g) || [];
 const GENERIC_WORDS = new Set(["pokemon", "tcg", "the", "and", "of"]);
+// Black Star promo numbers have no set total: SWSH050, SM210, XY124, BW45, DP50,
+// HGSS18, and SVP 085 (often printed "SVP EN 085"). Nov 24 2026.
+const PROMO_CODE = /(^|[^a-z0-9])(swsh|svp|sm|xy|bw|dp|hgss)\s?(?:en\s?)?-?\s?0*(\d{1,3})(?![a-z0-9])/i;
+// Promo series whose catalog rows store only the digits ("085") in a promo set.
+const BARE_DIGIT_PROMOS = new Set(["svp"]);
+
+function promoCollectorQuery(value) {
+  const match = PROMO_CODE.exec(value);
+  if (!match) return null;
+  const prefix = match[2].toLowerCase();
+  const digits = String(Number(match[3]));
+  const remainder = value.slice(0, match.index) + match[1] + value.slice(match.index + match[0].length);
+  return { collectorNumber: `${prefix}${digits}`, promoPrefix: prefix, promoDigits: digits, requiredWords: words(remainder).filter(word => !GENERIC_WORDS.has(word)) };
+}
+
+const rowIsPromo = row => /promo/i.test([row.setName, row.set_name, row.expansion].filter(Boolean).join(" ")) || /^(svp|pr|swsd)$/i.test(String(row.setCode ?? row.set_code ?? ""));
 
 export function getCatalogCollectorQuery(query) {
   const value = String(query || "").trim();
   const match = COLLECTOR_FRACTION.exec(value);
-  if (!match) return null;
+  if (!match) return promoCollectorQuery(value);
   const collectorText = `${match[2]}/${match[3]}`;
   const remainder = value.slice(0, match.index) + match[1] + value.slice(match.index + match[0].length);
   return { collectorNumber: normalizedNumber(collectorText), requiredWords: words(remainder).filter(word => !GENERIC_WORDS.has(word)) };
@@ -28,7 +44,10 @@ export function catalogCardQueryMatchesRow(query, row = {}) {
   // the whole fraction.
   const [queryNumber, queryTotal] = identity.collectorNumber.split("/");
   const [rowFirst, rowTotal] = rowNumber.split("/");
-  if (rowTotal) { if (rowNumber !== identity.collectorNumber) return false; }
+  // "SVP 085" is stored as 085 in the Scarlet & Violet promo set.
+  const barePromoMatch = Boolean(identity.promoPrefix) && BARE_DIGIT_PROMOS.has(identity.promoPrefix) && !rowTotal && rowFirst === identity.promoDigits && rowIsPromo(row);
+  if (barePromoMatch) { /* number matches */ }
+  else if (rowTotal) { if (rowNumber !== identity.collectorNumber) return false; }
   else if (rowFirst !== queryNumber) return false;
   else if (queryTotal) {
     const printedTotal = row.setTotal ?? row.set_total ?? row.printedTotal ?? row.printed_total ?? row.totalCards ?? row.total_cards;

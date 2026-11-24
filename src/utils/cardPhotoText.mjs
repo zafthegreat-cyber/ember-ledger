@@ -47,9 +47,15 @@ export function findCardNumbers(text = "") {
       // A "/" read as "7" is only accepted when the result still looks like a set total.
       if (match[0].includes("7") && !match[0].includes("/") && Number(rightDigits) < 20) continue;
       if (Number(rightDigits) === 0) continue;
+      // Nov 24 2026: attack damage and HP ("120 60", "1207 30") are not collector
+      // numbers. A card's own number is at most about twice its set total (secret
+      // rares such as 230/193 stay in range); a "7" standing in for "/" must be closer still.
+      const leftNumber = Number(leftDigits.replace(/[a-z]$/, ""));
+      if (leftNumber > Number(rightDigits) * 2 + 10) continue;
+      if (match[0].includes("7") && !match[0].includes("/") && leftNumber > Number(rightDigits) + 20) continue;
       add(`${left}/${right}`, "fraction");
     }
-    for (const match of line.matchAll(/\b(SWSH|SVP|SM|XY|BW|DP|HGSS)\s?([0-9OoIl]{2,3})\b/g)) add(`${match[1]}${toDigits(match[2])}`, "promo");
+    for (const match of line.matchAll(/\b(SWSH|SVP|SM|XY|BW|DP|HGSS)\s?(?:EN\s?)?([0-9OoIl]{2,3})\b/g)) add(`${match[1]}${toDigits(match[2])}`, "promo");
   }
   return out;
 }

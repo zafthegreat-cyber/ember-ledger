@@ -90,3 +90,51 @@ test("scanner misreads: near-miss names and stray marks still match the same num
   assert.equal(nameWordsMatch(["blastoise", "ex"], ["charizard", "ex"]), false, "a short shared word is not enough");
   assert.equal(matches("Charizard Base Set 4/102", { name: "Fire Energy", cardNumber: "4/102", setName: "Base Set" }), false, "set words alone are not a name match");
 });
+
+test("promo numbers: SWSH keeps its prefix, SVP rows store the digits in the promo set (Nov 24 2026)", async () => {
+  const { catalogCardQueryMatchesRow: matches, getCatalogCollectorQuery: identity } = await import("../src/utils/catalogResultIdentity.mjs");
+  assert.equal(identity("Alakazam ex SVP EN 050").collectorNumber, "svp50");
+  assert.equal(identity("Smile"), null, "words that start like a promo code are not numbers");
+  const svpPromo = { name: "Alakazam ex 050", cardNumber: "050", setName: "SV: Scarlet & Violet Promo Cards", setCode: "SVP" };
+  assert.equal(matches("Alakazam ex SVP050", svpPromo), true);
+  assert.equal(matches("Alakazam ex SVP050", { name: "Alakazam ex", cardNumber: "050", setName: "Obsidian Flames" }), false, "the same digits outside the promo set");
+  assert.equal(matches("Charizard V SWSH050", { name: "Charizard V SWSH050", cardNumber: "SWSH050", setName: "SWSH: Sword & Shield Promo Cards" }), true);
+  assert.equal(matches("Pikachu SWSH050", { name: "Charizard V SWSH050", cardNumber: "SWSH050" }), false, "the name still has to match");
+});
+
+test("a 12-digit UPC scan also asks the catalog for its 13- and 14-digit spellings (Nov 24 2026)", async () => {
+  const bundlePath = resolve("artifacts/qa/catalog-search-100", "catalog-service-test.mjs");
+  const { searchPokemonCatalog } = await import(pathToFileURL(bundlePath));
+  const clauses = [];
+  const query = {
+    select() { return this; }, eq() { return this; }, neq() { return this; }, in() { return this; },
+    or(value) { clauses.push(value); return this; }, ilike() { return this; }, limit() { return this; }, order() { return this; }, range() { return this; },
+    then(done) { return Promise.resolve({ data: [], error: null, count: 0 }).then(done); },
+  };
+  await searchPokemonCatalog({ supabase: { from: () => query, rpc: async () => ({ data: [], error: null }) }, query: "196214114845", barcode: "196214114845", mode: "barcode", pageSize: 4 });
+  const all = clauses.join(",");
+  assert.ok(all.includes("196214114845"));
+  assert.ok(all.includes("0196214114845"), "EAN-13 spelling with the leading zero");
+});
+
+test("Save all for scanned cards saves a row only when its name and number match one card (Nov 24 2026)", async () => {
+  const { readFileSync } = await import("node:fs");
+  const vm = await import("node:vm");
+  const source = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
+  const start = source.indexOf("  async function findVerifiedCardForScanRow(row) {");
+  const end = source.indexOf("\n  async function saveAllCardScanRows()", start);
+  assert.ok(start > 0 && end > start, "the real matching function is extractable");
+  const rows = [
+    { id: "a", name: "Alakazam ex", cardNumber: "050", setName: "SV: Scarlet & Violet Promo Cards", setCode: "SVP" },
+    { id: "b", name: "Charizard", cardNumber: "4/102", setName: "Base Set" },
+    { id: "c", name: "Charizard", cardNumber: "4/102", setName: "Base Set Shadowless" },
+  ];
+  const scope = { getCatalogCollectorQuery, catalogCardQueryMatchesRow, isSupabaseConfigured: true, supabase: {},
+    searchPokemonCatalogOnDemand: async () => ({ rows }), mapCatalog: (row) => row, getBestCatalogMatches: () => [], catalogProducts: [] };
+  vm.runInNewContext(source.slice(start, end) + "\nglobalThis.find = findVerifiedCardForScanRow;", scope);
+  assert.equal((await scope.find({ cardName: "Alakazam ex", cardNumber: "SVP 050" }))?.id, "a", "one verified match is saved");
+  assert.equal(await scope.find({ cardName: "Charizard", cardNumber: "4/102" }), null, "two printings: left for review");
+  assert.equal((await scope.find({ cardName: "Charizard", cardNumber: "4/102", setName: "Shadowless" }))?.id, "c", "the typed set picks one");
+  assert.equal(await scope.find({ cardName: "Charizard", cardNumber: "" }), null, "no number: left for review");
+  assert.equal(await scope.find({ cardName: "Pikachu", cardNumber: "4/102" }), null, "a different name with the same number is not saved");
+});

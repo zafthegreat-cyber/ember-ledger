@@ -6131,6 +6131,7 @@ export default function App() {
   const [scanBatch, setScanBatch] = useState([]);
   const [scanBatchDestination, setScanBatchDestination] = useState("vault");
   const [scanBatchSaving, setScanBatchSaving] = useState(false);
+  const [cardScanSaving, setCardScanSaving] = useState(false);
   const [recentScans, setRecentScans] = useState(() => readRecentScans());
   // Picture memory: fingerprints of the user's own confirmed card scans (this device only).
   const [cardPictures, setCardPictures] = useState(() => readCardPictures());
@@ -18752,7 +18753,7 @@ export default function App() {
     });
   }
 
-  async function handleCatalogScanMatch(value, { preferId = "" } = {}) {
+  async function handleCatalogScanMatch(value, { preferId = "", numberFallbackFrom = "" } = {}) {
     const requestId = ++scanLookupRequestRef.current;
     const lookupValue = String(value || "").trim();
     if (!lookupValue) {
@@ -18854,7 +18855,17 @@ export default function App() {
       setScanReview(nextReview);
       rememberScan(nextReview);
       setScanSearchState("results");
-      setScanMessage(requiresPackageChoice ? "This barcode is shared by more than one package. Choose the matching artwork, edition and pack count before saving." : `${aiSummary.outputSummary} Review every match before saving.`);
+      setScanMessage(requiresPackageChoice
+        ? "This barcode is shared by more than one package. Choose the matching artwork, edition and pack count before saving."
+        : numberFallbackFrom
+          ? `No card matched "${numberFallbackFrom}" with that number, so these are cards with the same name. Check the number and set before saving.`
+          : `${aiSummary.outputSummary} Review every match before saving.`);
+    } else if (!exactIdentifier && !numberFallbackFrom && getCatalogCollectorQuery(lookupValue)?.requiredWords?.some((word) => word.length >= 3)) {
+      // Nov 24 2026: the photo can misread the number (attack damage, a smudge), and a
+      // name plus a wrong number finds nothing. Search the name alone instead of
+      // showing an empty result; the message says the number did not match.
+      const nameOnly = getCatalogCollectorQuery(lookupValue).requiredWords.join(" ");
+      await handleCatalogScanMatch(nameOnly, { preferId, numberFallbackFrom: lookupValue });
     } else {
       setScanReview(null);
       setScanSearchState("empty");
@@ -18935,32 +18946,52 @@ export default function App() {
   }
 
   // Rapid barcode batch: look each new code up quietly and keep a running count.
-  async function lookupBarcodeProduct(code) {
+  // Bulk scan fixes (Nov 24 2026): the cache holds the lookup itself, so the same
+  // code scanned again while its lookup is still running shares that one lookup
+  // instead of starting another (the old check read a stale batch). Products
+  // already in memory are checked first, then the online catalog and the large
+  // local seed run at the same time; the seed is only awaited when online found nothing.
+  function lookupBarcodeProduct(code) {
     const cache = scanBarcodeCacheRef.current;
     if (cache.has(code)) return cache.get(code);
-    let product = null;
-    try {
-      const seedProducts = await loadLocalCatalogSeed("barcode batch");
-      product = findCatalogProductsByBarcode(mergeCatalogProductLists(catalogProducts, seedProducts), code)[0] || null;
-      if (!product && isSupabaseConfigured && supabase) {
-        const normalized = normalizeBarcodeValue(code) || code;
-        const result = await searchPokemonCatalogOnDemand({ supabase, query: normalized, barcode: normalized, mode: "barcode", page: 1, pageSize: 4, force: true });
-        product = (result.rows || []).map(mapCatalog).find((item) => catalogIdentifiersForProduct(item).includes(normalized)) || null;
+    const lookup = (async () => {
+      try {
+        const inMemory = findCatalogProductsByBarcode(catalogProducts, code)[0];
+        if (inMemory) return inMemory;
+        const seedPromise = loadLocalCatalogSeed("barcode batch").catch(() => []);
+        if (isSupabaseConfigured && supabase) {
+          const normalized = normalizeBarcodeValue(code) || code;
+          try {
+            const result = await searchPokemonCatalogOnDemand({ supabase, query: normalized, barcode: normalized, mode: "barcode", page: 1, pageSize: 4, force: true });
+            const remote = (result.rows || []).map(mapCatalog).find((item) => catalogIdentifiersForProduct(item).includes(normalized));
+            if (remote) return remote;
+          } catch {
+            // Fall through to the local seed.
+          }
+        }
+        const seedProducts = await seedPromise;
+        return findCatalogProductsByBarcode(mergeCatalogProductLists(catalogProducts, seedProducts), code)[0] || null;
+      } catch {
+        return null;
       }
-    } catch {
-      product = null;
-    }
-    cache.set(code, product);
-    return product;
+    })();
+    cache.set(code, lookup);
+    return lookup;
   }
 
   async function handleRapidBarcode(code) {
     const clean = String(code || "").trim();
     if (!clean) return;
     setScanBatch((current) => tallyBarcode(current, { code: clean }));
-    const known = scanBatch.find((row) => row.code === clean && row.status);
-    if (known) return;
+    const alreadyLooked = scanBarcodeCacheRef.current.has(clean);
     const product = await lookupBarcodeProduct(clean);
+    if (alreadyLooked) {
+      // Fill in rows that were cleared and scanned again; leave counts alone.
+      setScanBatch((current) => current.map((row) => (row.code === clean && !row.status
+        ? (product ? { ...row, status: "found", product, catalogItemId: product.id, itemName: catalogTitle(product), marketValue: getTideTradrMarketInfo(product).currentMarketValue || product.marketPrice || "" } : { ...row, status: "missing" })
+        : row)));
+      return;
+    }
     setScanBatch((current) => current.map((row) => {
       if (row.code !== clean) return row;
       if (!product) return { ...row, status: "missing" };
@@ -19038,6 +19069,115 @@ export default function App() {
       setScanMessage(error?.message ? `The batch could not be saved: ${error.message}` : "The batch could not be saved. Try again.");
     } finally {
       setScanBatchSaving(false);
+    }
+  }
+
+  // Scan several cards, "Save all" (Nov 24 2026). A row is saved only when its name
+  // and number lead to exactly one catalog card (the same name-and-number check the
+  // scanner uses); rows without a number, with several possible printings, or going
+  // to Wants stay in the list to review one by one.
+  async function findVerifiedCardForScanRow(row) {
+    const name = String(row?.cardName || "").trim();
+    const number = String(row?.cardNumber || "").trim();
+    if (!name || !number) return null;
+    const query = `${name} ${number}`;
+    if (!getCatalogCollectorQuery(query)) return null;
+    let candidates = [];
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const result = await searchPokemonCatalogOnDemand({ supabase, query, mode: "general", page: 1, pageSize: 8, force: true });
+        candidates = (result.rows || []).map(mapCatalog);
+      } catch {
+        candidates = [];
+      }
+    }
+    if (!candidates.length) candidates = getBestCatalogMatches(query, catalogProducts).map((match) => match.item);
+    const verified = candidates.filter((item) => item && catalogCardQueryMatchesRow(query, item));
+    if (verified.length === 1) return verified[0];
+    const setName = String(row.setName || "").trim().toLowerCase();
+    if (!setName) return null;
+    const inSet = verified.filter((item) => String(item.setName || item.expansion || "").toLowerCase().includes(setName));
+    return inSet.length === 1 ? inSet[0] : null;
+  }
+
+  async function saveAllCardScanRows() {
+    if (cardScanSaving || blockGuestSave()) return;
+    const rows = (quickAddWizard.cardScanRows || []).filter((row) => String(row.cardName || "").trim());
+    if (!rows.length) {
+      updateQuickAddWizard({ message: "Add at least one card before saving." });
+      return;
+    }
+    setCardScanSaving(true);
+    updateQuickAddWizard({ message: "Matching your cards…" });
+    try {
+      const now = new Date().toISOString();
+      const records = [];
+      const rowIdByRecord = new Map();
+      const unsure = new Map();
+      for (const row of rows) {
+        const destination = row.destination || "vault";
+        if (destination !== "vault" && !(destination === "forge" && activeForgeWorkspace)) { unsure.set(row.id, "Review this one: it goes somewhere other than your collection."); continue; }
+        const workspace = destination === "forge"
+          ? activeForgeWorkspace
+          : workspaces.find((candidate) => String(candidate.id) === String(defaultWorkspaceIdForDestination("vault"))) || activeWorkspace;
+        if (!workspace?.id || !canEditWorkspaceId(workspace.id)) { unsure.set(row.id, "You can't add to this workspace."); continue; }
+        const product = await findVerifiedCardForScanRow(row);
+        if (!product) { unsure.set(row.id, row.cardNumber ? "Review this one: more than one card or no card matched." : "Review this one: add the card number to match it."); continue; }
+        const known = buildCatalogAutofillDetails(product);
+        const marketInfo = getTideTradrMarketInfo(product);
+        const shared = {
+          name: catalogTitle(product),
+          category: "Pokemon",
+          sku: known.sku || "",
+          productType: normalizedInventoryProductType(product),
+          catalogProductId: product.id || "",
+          catalogProductName: product.name || "",
+          externalProductId: known.externalProductId || "",
+          tcgplayerProductId: known.tcgplayerProductId || known.externalProductId || "",
+          itemImage: known.itemImage || "",
+          itemImageSource: product.imageSource || getDefaultImageSource(product),
+          itemImageStatus: product.imageStatus || getDefaultImageStatus(product),
+          marketPrice: blankToNull(marketInfo.currentMarketValue || product.marketPrice || product.midPrice),
+          setCode: known.setCode || "",
+          setName: known.setName || product.setName || row.setName || "",
+          expansion: known.setName || product.setName || row.setName || "",
+          cardNumber: product.cardNumber || row.cardNumber || "",
+          variant: row.variant || "",
+          notes: "Added from Scan several cards (Save all).",
+          sourceType: "TideTradr",
+          conditionName: row.condition || "Near Mint",
+          language: "English",
+          createdAt: now,
+        };
+        const record = destination === "forge"
+          ? applyWorkspaceToRecord({ id: makeId("item"), ...shared, destinationScope: ["forge"], recordType: "forge_inventory", businessInventory: true, ownedItemPurpose: OWNED_ITEM_PURPOSES.FOR_RESALE, quantity: 1, forgeQuantity: 1, ownedQuantity: 0, unitCost: 0, salePrice: 0, physicalLocation: DEFAULT_FORGE_PHYSICAL_LOCATION, status: "In Stock" }, workspace)
+          : applyWorkspaceToRecord({ id: makeId("vault"), ...shared, destinationScope: ["vault"], recordType: "vault_item", businessInventory: false, ownedItemPurpose: OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION, isWishlist: false, quantity: 1, ownedQuantity: 1, forgeQuantity: 0, unitCost: 0, status: vaultStatusLabel("personal_collection"), vaultStatus: "personal_collection", storageLocation: vaultStatusLabel("personal_collection") }, workspace);
+        records.push(record);
+        rowIdByRecord.set(record.id, row.id);
+      }
+      let savedRowIds = new Set();
+      let failureNote = "";
+      if (records.length) {
+        const result = await saveInventoryRecords(records);
+        const saved = result.saved || [];
+        if (saved.length) setItems((current) => [...saved, ...current]);
+        savedRowIds = new Set(saved.map((record) => rowIdByRecord.get(record.id)).filter(Boolean));
+        if (result.failures?.length) failureNote = ` ${result.failures.length} could not be saved: ${result.failures[0].error || "try again"}.`;
+      }
+      const left = rows.length - savedRowIds.size;
+      const message = savedRowIds.size
+        ? `Saved ${savedRowIds.size} card${savedRowIds.size === 1 ? "" : "s"}.${left ? ` ${left} need${left === 1 ? "s" : ""} a quick review below.` : ""}${failureNote}`
+        : `No card could be matched for sure. Add the card numbers or review each one.${failureNote}`;
+      setQuickAddWizard((current) => {
+        const remaining = (current.cardScanRows || [])
+          .filter((row) => !savedRowIds.has(row.id))
+          .map((row) => (unsure.has(row.id) ? { ...row, scanNote: unsure.get(row.id) } : row));
+        return { ...current, cardScanRows: remaining.length ? remaining : [createQuickAddCardScanRow()], message };
+      });
+    } catch (error) {
+      updateQuickAddWizard({ message: error?.message ? `The cards could not be saved: ${error.message}` : "The cards could not be saved. Try again." });
+    } finally {
+      setCardScanSaving(false);
     }
   }
 
@@ -43908,6 +44048,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         collectorVisualTypeLabel,
         createQuickAddCardScanRow,
         appendQuickAddCardScanRows,
+        saveAllCardScanRows,
+        cardScanSaving,
         createQuickAddWizardState,
         detectCollectorItemVisualType,
         getCatalogIdentifiers,

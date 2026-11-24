@@ -42,6 +42,8 @@ export default function AddAnythingContent({ scope }) {
     collectorVisualTypeLabel,
     createQuickAddCardScanRow,
     appendQuickAddCardScanRows,
+    saveAllCardScanRows,
+    cardScanSaving,
     createQuickAddWizardState,
     detectCollectorItemVisualType,
     findCatalogProductsByBarcode,
@@ -527,7 +529,7 @@ export default function AddAnythingContent({ scope }) {
           ) : null}
           <div className="scan-anything-principle-card">
             <strong>Review before saving.</strong>
-            <p>Each row defaults to Vault. Change the destination only when the card should go somewhere else.</p>
+            <p>Each row defaults to your collection. "Save all matched cards" saves every row whose name and number match exactly one card; the rest stay here to review.</p>
           </div>
           <datalist id="card-scan-printings">{[...COMMON_FINISHES, "1st Edition", "1st Edition Holo", "Unlimited", ...SPECIAL_PRINTINGS.map((item) => item.label.replace(/ (.*)$/, ""))].map((value) => <option key={value} value={value} />)}</datalist>
           <div className="quick-add-card-scan-list">
@@ -569,6 +571,7 @@ export default function AddAnythingContent({ scope }) {
           </div>
           {quickAddWizard.message ? <p className="flow-inline-message is-warning" role="alert">{quickAddWizard.message}</p> : null}
           <div className="quick-add-inline-actions quick-add-sticky-actions">
+            {saveAllCardScanRows ? <button type="button" className="primary-button" disabled={cardScanSaving || !rows.some((row) => String(row.cardName || "").trim())} onClick={saveAllCardScanRows}>{cardScanSaving ? "Saving…" : "Save all matched cards"}</button> : null}
             <button type="button" className="secondary-button" onClick={addCardScanRow}>Add card row</button>
             <button type="button" onClick={reviewFirstCardScanRow}>Review first filled card</button>
             <button type="button" className="ghost-button" onClick={() => setQuickAddPath("manual")}>Manual Entry</button>
