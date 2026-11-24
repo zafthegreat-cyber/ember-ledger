@@ -40,8 +40,13 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false }) {
   const [busy, setBusy] = useState(false);
   const [torchSupported, setTorchSupported] = useState(false);
   const [torch, setTorch] = useState(false);
+  const [zoomRange, setZoomRange] = useState(null); // { min, step, near } when the camera can zoom
+  const [zoomed, setZoomed] = useState(false);
+  const [captureError, setCaptureError] = useState("");
   const [auto, setAuto] = useState(readAutoPreference);
   const autoRef = useRef(auto);
+  const torchRef = useRef(false);
+  useEffect(() => { torchRef.current = torch; }, [torch]);
   useEffect(() => { autoRef.current = auto; }, [auto]);
   const [steady, setSteady] = useState(0);
   const [tip, setTip] = useState("");
@@ -66,6 +71,12 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false }) {
         let capabilities = {};
         try { capabilities = track?.getCapabilities?.() || {}; } catch { capabilities = {}; }
         setTorchSupported(Boolean(capabilities.torch));
+        // Nov 24 2026: a 2x zoom lets the phone stay farther back, where it can focus,
+        // while the card still fills the frame.
+        if (capabilities.zoom && Number(capabilities.zoom.max) >= 1.5) {
+          const min = Number(capabilities.zoom.min) || 1;
+          setZoomRange({ min, near: Math.min(Number(capabilities.zoom.max), Math.max(min, 2)) });
+        }
         // Keep refocusing as the card moves closer (phones that allow it).
         if (capabilities.focusMode?.includes?.("continuous")) track.applyConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(() => {});
         setReady(true);
@@ -105,7 +116,11 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false }) {
       canvas.getContext("2d").drawImage(video, area.x, area.y, area.width, area.height, 0, 0, canvas.width, canvas.height);
       const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
       canvas.width = 0; canvas.height = 0;
+      setCaptureError("");
       if (blob) await onCapture?.(new File([blob], slab ? "slab-scan.jpg" : "card-scan.jpg", { type: "image/jpeg" }));
+    } catch {
+      // Nov 24 2026: a failed read used to leave the camera stuck on "Reading…" with no word why.
+      setCaptureError(`That picture could not be read. Hold the ${slab ? "slab" : "card"} in the frame and try again.`);
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -141,7 +156,8 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false }) {
       const gray = toGray(lookContext.getImageData(0, 0, width, height).data);
       const view = assessCardView(gray, width, height, { sharp: sharpness.push(edgeSharpness(gray, width, height)), slab });
       viewRef.current = { padded, card: view.card, ready: view.ready };
-      setTip(view.tip);
+      // With the flashlight on, its own reflection is the usual glare.
+      setTip(view.glare && torchRef.current ? "Glare from the flashlight. Turn it off or tilt the card a little." : view.tip);
       if (!autoRef.current) { setSteady(0); return; }
       smallContext.drawImage(video, frame.x, frame.y, frame.width, frame.height, 0, 0, SAMPLE, SAMPLE);
       const sample = toGray(smallContext.getImageData(0, 0, SAMPLE, SAMPLE).data);
@@ -167,6 +183,17 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false }) {
     return () => { clearInterval(timer); small.width = 0; look.width = 0; setSteady(0); setTip(""); viewRef.current = null; };
   }, [ready, slab]);
 
+  async function toggleZoom() {
+    const track = trackRef.current;
+    if (!track || !zoomRange) return;
+    try {
+      await track.applyConstraints({ advanced: [{ zoom: zoomed ? zoomRange.min : zoomRange.near }] });
+      setZoomed((value) => !value);
+    } catch {
+      setZoomRange(null);
+    }
+  }
+
   async function toggleTorch() {
     const track = trackRef.current;
     if (!track) return;
@@ -186,7 +213,7 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false }) {
   }
 
   const what = slab ? "slab" : "card";
-  const status = !ready || error ? "" : busy ? "Reading…" : steady > 0 && auto ? `Hold still… ${Math.round(steady * 100)}%` : tip || (auto ? `Auto-scan on. Hold the ${what} in the frame.` : "");
+  const status = !ready || error ? "" : busy ? "Reading…" : captureError ? captureError : steady > 0 && auto ? `Hold still… ${Math.round(steady * 100)}%` : tip || (auto ? `Auto-scan on. Hold the ${what} in the frame.` : "");
 
   return <section className={slab ? "card-camera-frame card-camera-frame--slab" : "card-camera-frame"} ref={sectionRef} aria-label={slab ? "Slab camera" : "Card camera"}>
     <div className="card-camera-frame__view" ref={boxRef}>
@@ -199,6 +226,7 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false }) {
     {status ? <p className="card-camera-frame__auto-status" role="status" aria-live="polite">{status}</p> : null}
     <div className="card-camera-frame__toggles">
       <button type="button" className="card-camera-frame__toggle" aria-pressed={auto} onClick={toggleAuto} disabled={!ready}>{auto ? "Auto-scan: on" : "Auto-scan: off"}</button>
+      {zoomRange ? <button type="button" className="card-camera-frame__toggle" aria-pressed={zoomed} onClick={toggleZoom}>{zoomed ? "Zoom: 2x" : "Zoom: 1x"}</button> : null}
       {torchSupported ? <button type="button" className="card-camera-frame__toggle" aria-pressed={torch} onClick={toggleTorch}>{torch ? "Flashlight: on" : "Flashlight: off"}</button> : null}
     </div>
     <div className="card-camera-frame__actions">

@@ -32,6 +32,15 @@ const GRADE_WORDS = [
 /** Grade such as "10", "9.5", "10 Pristine" or "10 Black Label". */
 export function findGrade(text = "") {
   const all = clean(text);
+  // Nov 24 2026: Beckett prints "9.5 GEM MINT"; the number beside the words wins.
+  // Same line only: "#4" on the line above "PRISTINE 10" is the card number, not the grade.
+  const beside = all.match(/\b(10|[1-9](?:\.5)?)[ \t]*(?:GEM[ \t]*(?:MT|MINT)|PRISTINE|MINT[ \t]*\+?|NM[- \t]?MT[ \t]*\+?)(?![\w.])/i)
+    || all.match(/\b(?:GEM[ \t]*(?:MT|MINT)|PRISTINE|NM[- \t]?MT|MINT)[ \t]*\+?[ \t]*(10|[1-9](?:\.5)?)(?![\d./])/i);
+  if (beside && !/BLACK\s*LABEL/i.test(all)) {
+    const number = beside[1];
+    if (number === "10" && /\bPRISTINE\b/i.test(beside[0])) return "10 Pristine";
+    return number;
+  }
   for (const [pattern, grade] of GRADE_WORDS) if (pattern.test(all)) {
     if (grade === "10" || grade === "9.5" || grade === "8.5" || grade === "8") {
       const explicit = all.match(/\b(10|[1-9](?:\.5)?)\b(?!\s*\/)/);
@@ -69,10 +78,12 @@ export function findSlabCard(text = "") {
       const candidate = line
         .replace(/#\s?[A-Z]{0,4}\d{1,3}[a-z]?\b/gi, " ")
         .replace(/\b(?:19|20)\d{2}\b/g, " ")
+        .replace(/\b(?:ALT(?:ERNATE)?\.?\s*ART|SPECIAL\s*ILLUSTRATION\s*RARE|ILLUSTRATION\s*RARE|SPECIAL\s*ART\s*RARE|ULTRA\s*RARE|HYPER\s*RARE|RAINBOW\s*RARE|SECRET\s*RARE|DOUBLE\s*RARE|BECKETT|TRADING\s*CARDS?|COLLECTIBLES?|GRADING|POKEMON\s*GAME|GAME|BLACK\s*STAR)\b/gi, " ")
         .replace(/\b(?:POKEMON|POKÉMON|JAPANESE|ENGLISH|HOLO|REV(?:ERSE)?\.?\s*(?:HOLO|FOIL)?|1ST\s*EDITION|SHADOWLESS|PROMO|FULL\s*ART|SECRET|GEM\s*MT|MINT|NM[-\s]?MT|PRISTINE|BLACK\s*LABEL|PSA|CGC|BGS|SGC|TAG|CERT\w*)\b/gi, " ")
         .replace(/[^A-Za-zÀ-ž' .-]/g, " ")
         .replace(/\s+/g, " ")
-        .trim();
+        .trim()
+        .replace(/^[\s.'-]+|[\s.'-]+$/g, "");
       const looksLikeSet = /\b(?:SWSH|SV|SM|XY|BASE|JUNGLE|FOSSIL|EVOLVING|SKIES|FLAMES|CROWN|ZENITH|OBSIDIAN|PARADOX|SURGING|PRISMATIC|SCARLET|VIOLET|SWORD|SHIELD|CELEBRATIONS|151)\b/i.test(candidate);
       if (candidate.length >= 3 && /[AEIOUaeiou]/.test(candidate) && !looksLikeSet && candidate.split(" ").length <= 5) name = candidate;
     }
@@ -84,11 +95,21 @@ export function findSlabCard(text = "") {
 /** Everything a slab label says, plus a catalog search built from the card details. */
 export function parseSlabLabel(text = "") {
   const all = clean(text);
-  const grader = GRADERS.find((item) => item.match.test(all));
+  // Nov 24 2026: the PSA logo is often not read as text. "GEM MT" / "NM-MT" wording
+  // with an 8-9 digit cert and no other grader named is a PSA label.
+  const grader = GRADERS.find((item) => item.match.test(all))
+    || (/\b(?:GEM\s*MT|NM[-\s]?MT|EX[-\s]?MT|VG[-\s]?EX)\b/i.test(all) && /(?<![\dA-Z])\d{8,9}(?![\dA-Z])/i.test(all) ? GRADERS[0] : undefined);
   const grade = findGrade(all);
   const certificationNumber = findCertNumber(all, grader?.key || "");
   const card = findSlabCard(all);
-  const query = [card.name, card.number].filter(Boolean).join(" ").slice(0, 180);
+  // Nov 24 2026: a number without its set total ("#199") is searched as "#199" so the
+  // match checks the card's own number; Black Star promo numbers get their series.
+  const promoSeries = /\bBLACK\s*STAR\b|\bPROMO\b/i.test(all) ? (all.match(/\b(SVP|SV|SWSH|SM|XY|BW)\b(?=[^\n]*\b(?:BLACK\s*STAR|PROMO)\b)/i)?.[1] || "").toUpperCase() : "";
+  const searchNumber = !card.number ? ""
+    : /\//.test(card.number) || /^[A-Z]/.test(card.number) ? card.number
+      : promoSeries ? (promoSeries === "SV" ? "SVP" : promoSeries) + card.number
+        : "#" + card.number;
+  const query = [card.name, searchNumber].filter(Boolean).join(" ").slice(0, 180);
   const found = [grader, grade, certificationNumber, card.name || card.number].filter(Boolean).length;
   return {
     gradingCompany: grader?.label || "",

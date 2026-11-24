@@ -5,7 +5,7 @@ import { assessCardView, captureRect, createSharpnessGate, edgeSharpness, glareS
 const W = 160, H = 224;
 
 // A dark table with a light card (with some print inside) at the given box (fractions).
-function scene({ x = 0.1, y = 0.08, w = 0.8, h = 0.84, glare = 0, blur = false } = {}) {
+function scene({ x = 0.1, y = 0.08, w = 0.8, h = 0.84, glare = 0, glareFrom = 10, blur = false } = {}) {
   const gray = new Uint8Array(W * H).fill(40);
   const x0 = Math.round(x * W), x1 = Math.round((x + w) * W), y0 = Math.round(y * H), y1 = Math.round((y + h) * H);
   for (let row = y0; row < y1; row += 1) {
@@ -14,7 +14,7 @@ function scene({ x = 0.1, y = 0.08, w = 0.8, h = 0.84, glare = 0, blur = false }
       gray[row * W + col] = blur ? 180 : print;
     }
   }
-  for (let row = y0 + 10; row < y0 + 10 + Math.round(glare * (y1 - y0)); row += 1) for (let col = x0; col < x1; col += 1) gray[row * W + col] = 255;
+  for (let row = y0 + glareFrom; row < y0 + glareFrom + Math.round(glare * (y1 - y0)); row += 1) for (let col = x0; col < x1; col += 1) gray[row * W + col] = 255;
   return gray;
 }
 
@@ -50,6 +50,13 @@ test("padding and the cut stay inside the video and fall back to the frame", () 
   assert.deepEqual(padded, { x: 52, y: 0, width: 496, height: 640 });
   assert.deepEqual(captureRect({ padded, frame, card: null }), frame);
   const cut = captureRect({ padded, frame, card: { x: 0.1, y: 0.1, w: 0.8, h: 0.8 } });
-  assert.ok(Math.abs(cut.x - (52 + 0.09 * 496)) < 0.001);
-  assert.ok(Math.abs(cut.height - 0.82 * 640) < 0.001);
+  assert.ok(Math.abs(cut.x - (52 + 0.07 * 496)) < 0.001);
+  assert.ok(Math.abs(cut.height - 0.86 * 640) < 0.001);
+});
+
+test("shine on the art is fine; glare on the name or number strip is not (Nov 24 2026)", () => {
+  const cardRows = Math.round(0.84 * H);
+  assert.equal(assessCardView(scene({ glare: 0.15, glareFrom: Math.round(cardRows * 0.4) }), W, H).ready, true, "glare across the middle of a holo card");
+  assert.match(assessCardView(scene({ glare: 0.08, glareFrom: Math.round(cardRows * 0.9) }), W, H).tip, /Glare on the name or number/);
+  assert.match(assessCardView(scene({ glare: 0.5, glareFrom: Math.round(cardRows * 0.25) }), W, H).tip, /Glare/, "glare over most of the card");
 });

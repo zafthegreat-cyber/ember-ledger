@@ -30,11 +30,16 @@ export default function MultiCardScanner({ onRows }) {
 
   async function readCamera(file) {
     setStatus("Reading the card…");
-    const { readCardPhoto } = await loadReader();
-    const read = await readCardPhoto(file, { framed: true });
-    onRows?.([rowFrom(read)]);
-    setCount((value) => value + 1);
-    setStatus(read.query ? `Added: ${read.query}. Line up the next card.` : "Could not read that card; a blank row was added. Line up the next card.");
+    try {
+      const { readCardPhoto } = await loadReader();
+      const read = await readCardPhoto(file, { framed: true });
+      onRows?.([rowFrom(read)]);
+      setCount((value) => value + 1);
+      setStatus(read.query ? `Added: ${read.query}. Line up the next card.` : "Could not read that card; a blank row was added. Line up the next card.");
+    } catch {
+      // Nov 24 2026: a failed read no longer leaves "Reading the card…" on screen.
+      setStatus("That card could not be read. Line it up again and tap Scan this card.");
+    }
   }
 
   async function readBinder(event) {

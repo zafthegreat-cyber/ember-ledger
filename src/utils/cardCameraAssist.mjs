@@ -9,7 +9,9 @@ export const CAMERA_ASSIST = Object.freeze({
   pad: 0.12, // margin looked at around the frame, as a share of the frame size
   minFill: 0.62, // card height as a share of the padded view before it is "close enough"
   glareCutoff: 248, // brightness counted as glare
-  maxGlare: 0.025, // share of card pixels allowed to be glare
+  maxGlare: 0.025, // share of the name or number strip allowed to be glare
+  maxArtGlare: 0.2, // share of the whole card: holo art shines, which is fine if the text is clear
+  captureMargin: 0.03, // margin kept around the found card; the reader trims to the edges itself
   sharpShare: 0.72, // must be at least this share of the sharpest recent view
   minSharp: 3, // below this the view is a blur or blank
   sharpWindow: 12, // recent samples remembered for focus (about 3 seconds)
@@ -82,15 +84,27 @@ export function assessCardView(gray, width, height, { sharp = true, slab = false
   if (!found) return { card: null, tip: `Line the ${what} up with the frame.`, ready: false };
   if (found.sideways) return { card: found, tip: `Turn the ${what} upright, ${slab ? "label" : "name"} at the top.`, ready: false };
   if (found.h < CAMERA_ASSIST.minFill) return { card: found, tip: "Move a little closer.", ready: false };
-  if (glareShare(gray, width, height, found) > CAMERA_ASSIST.maxGlare) return { card: found, tip: `Glare on the ${what}. Tilt it a little or move away from the light.`, ready: false };
+  if (textGlare(gray, width, height, found, slab)) return { card: found, glare: true, tip: `Glare on the ${slab ? "label" : "name or number"}. Tilt the ${what} a little or move away from the light.`, ready: false };
   if (!sharp) return { card: found, tip: "Hold steady while it focuses.", ready: false };
   return { card: found, tip: "Hold still…", ready: true };
+}
+
+/**
+ * Glare only blocks a scan where the reader needs the text (Nov 24 2026): the
+ * name strip and number strip of a card, or the label of a slab. Shine across
+ * holo art is fine unless it covers most of the card.
+ */
+export function textGlare(gray, width, height, card, slab = false) {
+  const strip = (top, share) => ({ x: card.x, y: card.y + card.h * top, w: card.w, h: card.h * share });
+  const strips = slab ? [strip(0, 0.25)] : [strip(0, 0.14), strip(0.88, 0.12)];
+  return strips.some((box) => glareShare(gray, width, height, box) > CAMERA_ASSIST.maxGlare)
+    || glareShare(gray, width, height, card) > CAMERA_ASSIST.maxArtGlare;
 }
 
 /** Where to cut the picture (video pixels): the found card plus a hair of margin, else the frame itself. */
 export function captureRect({ padded, frame, card }) {
   if (!padded || !card) return frame;
-  const margin = 0.01;
+  const margin = CAMERA_ASSIST.captureMargin;
   const x = padded.x + clamp(card.x - margin, 0, 1) * padded.width;
   const y = padded.y + clamp(card.y - margin, 0, 1) * padded.height;
   const right = padded.x + clamp(card.x + card.w + margin, 0, 1) * padded.width;
