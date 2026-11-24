@@ -26,7 +26,7 @@ export function createApprovedStockAdapter(registration) {
     const signal={
       id:"00000000-0000-4000-8000-000000000001",retailer:config.retailer,sku:event.sku,
       signalType,evidenceLevel:official?"official":"reported",
-      sourceType:official?"official_api":"community_report",headline,
+      sourceType:official?"official_api":"retailer_notice",headline,
       sourceUrl:event.productUrl,productUrl:event.productUrl,product:null,
       observedAt:new Date(observedAt).toISOString(),expiresAt:new Date(observedAt+15*60_000).toISOString()
     };
