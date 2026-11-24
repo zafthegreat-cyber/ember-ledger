@@ -49,7 +49,8 @@ assert.match(app, /invite_email: email/, "frontend should submit normalized emai
 assert.match(app, /invite_role: role/, "frontend should submit role");
 assert.match(app, /workspaceInviteSending/, "frontend should expose invite loading state");
 assert.match(app, /Email is not configured - copy and send this invite link/, "frontend should not claim email was sent when no sender exists");
-assert.match(app, /Copy invite link/, "frontend should expose copy invite link action");
+// The admin invite screen that carries this action renders from a deferred view.
+assert.match(app + fs.readFileSync(new URL("../src/features/deferredViews/AdminBetaInvitesContent.jsx", import.meta.url), "utf8"), /Copy invite link/, "frontend should expose copy invite link action");
 assert.deepEqual(routeStateFromPath("/workspace-invite/qa%3Ainvite"), { activeTab: "workspaceInvite", workspaceInviteId: "qa:invite" }, "workspace invite route should retain its decoded exact ID through the active parser");
 assert.deepEqual(routeStateFromPath("/workspace-invite"), { activeTab: "workspaceInvite", workspaceInviteId: "" }, "missing invite IDs should remain on the handled invite page");
 assert.match(app, /from "\.\/utils\/appRouteState"/, "App must consume the tested route module");

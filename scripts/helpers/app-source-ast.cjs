@@ -6,7 +6,13 @@ const fs = require("node:fs");
 const path = require("node:path");
 const espree = require("espree");
 
-const APP_SOURCE_FILES = ["src/App.jsx", "src/features/vault/VaultPanels.jsx", "src/features/vault/vaultItemHelpers.jsx"];
+// Screens moved into lazy deferred views (Nov 23, 2026) keep a same-named wrapper in App.jsx;
+// listed after App.jsx so a walker that keeps the last declaration finds the real renderer.
+const DEFERRED_SCREEN_FILES = [
+  "ParentCenterContent", "SponsorInterestContent", "WhatsNewContent", "KnownLimitationsContent", "ComingSoonContent",
+  "MarketSourceControlsContent", "BetaReadinessContent", "AdminBetaInvitesContent", "RoleManagementContent", "AdminStoreManagementContent",
+].map((name) => `src/features/deferredViews/${name}.jsx`);
+const APP_SOURCE_FILES = ["src/App.jsx", "src/features/vault/VaultPanels.jsx", "src/features/vault/vaultItemHelpers.jsx", ...DEFERRED_SCREEN_FILES];
 
 function shiftRanges(node, offset) {
   if (!node || typeof node !== "object") return;
