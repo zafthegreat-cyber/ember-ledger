@@ -13,7 +13,9 @@ import { parseSlabLabel } from "./slabLabelText.mjs";
 export const CARD_PHOTO_READER = Object.freeze({
   timeoutMs: 120_000,
   // A single card should never take this long; a stuck read gives up sooner (Nov 24 2026).
-  cardTimeoutMs: 60_000,
+  // 20 s once the text reader is loaded, 40 s for the first scan, which also loads it.
+  cardTimeoutMs: 20_000,
+  cardColdTimeoutMs: 40_000,
   // Fractions of the card's height. Pokémon, Lorcana and Magic print the name at
   // the top and the number at the bottom; One Piece prints its code bottom right.
   nameBand: [0.025, 0.155],
@@ -333,7 +335,7 @@ function loadCardNameIndex() {
   return cardNameIndex;
 }
 
-export async function readCardPhoto(file, { signal, onProgress, timeoutMs = CARD_PHOTO_READER.cardTimeoutMs, workerUrl, framed = false } = {}) {
+export async function readCardPhoto(file, { signal, onProgress, timeoutMs = readers.size ? CARD_PHOTO_READER.cardTimeoutMs : CARD_PHOTO_READER.cardColdTimeoutMs, workerUrl, framed = false } = {}) {
   const invalid = validateProductPhotoFile(file);
   if (invalid) return result("invalid", "file_invalid", invalid);
   if (signal?.aborted) return result("cancelled", "cancelled", "Reading stopped. You can type the card name and number below.");
