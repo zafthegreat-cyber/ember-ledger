@@ -82,7 +82,11 @@ export function parseApprovedSourceConfig(raw,resolveSecret){
     throw Error("Invalid private source configuration");
   const result=new Map();
   for(const entry of registrations){
-    if(!entry||!SOURCE_ID.test(entry.id||"")||
+    const originKind=entry?.originKind||"retailer";
+    if(!entry||!["retailer","supplier","discord"].includes(originKind)||
+      (originKind==="discord"&&(entry.mode!=="authorized-feed"||
+        !Array.isArray(entry.inboundStages)||entry.inboundStages.length!==0))||
+      !SOURCE_ID.test(entry.id||"")||
       !RETAILER_NAMES.includes(entry.retailer)||
       !["official-api","authorized-feed"].includes(entry.mode)||
       entry.approved!==true||!AGREEMENT.test(entry.agreementRef||"")||
@@ -95,7 +99,7 @@ export function parseApprovedSourceConfig(raw,resolveSecret){
     const secret=resolveSecret(entry.secretEnv);
     if(typeof secret!=="string"||secret.length<32||secret.length>256)
       throw Error("Source signature secret unavailable");
-    result.set(entry.id,Object.freeze({...entry,inboundStages:Object.freeze([...entry.inboundStages]),secret}));
+    result.set(entry.id,Object.freeze({...entry,originKind,inboundStages:Object.freeze([...entry.inboundStages]),secret}));
   }
   return result;
 }
