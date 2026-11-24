@@ -81,7 +81,7 @@ import { observePlainLanguage } from "./config/plainLanguage";
 import { LEGACY_BACKUP_MAX_BYTES, parseLegacyBetaBackup } from "./features/backup/legacyBackupValidation.js";
 import { createLegacyAppStorageGuard } from "./features/persistence/legacyAppStorage.js";
 import { createDebouncedSaver, flushSaverOnPageHide } from "./utils/debouncedSave.js";
-import { AppShell, DesktopSidebar, MobileBottomNavigation } from "./components/operations/OperationsUI";
+import { AppShell, DesktopSidebar, MobileBottomNavigation, MobileSectionTabs } from "./components/operations/OperationsUI";
 import WorkspaceSwitcher from "./features/workspaces/WorkspaceSwitcher";
 import AppTour, { appTourSeen } from "./features/tour/AppTour.jsx";
 import QuickFeedback, { openQuickFeedback } from "./features/feedback/QuickFeedback.jsx";
@@ -7108,12 +7108,27 @@ export default function App() {
     || (activeTab === "dashboard" ? workspaceNavItems.find((item) => item.key.endsWith("-home")) : undefined);
   const globalAddTab = { key: "global-add", label: "Add", ariaLabel: "Open global Add menu", icon: "plus", isAction: true, action: () => openAddActionSheet("mobile-navigation") };
   const mobileWorkspaceItems = workspaceNavItems.filter((item) => item.mobileEligible !== false);
-  const addInsertIndex = Math.min(2, mobileWorkspaceItems.length);
+  // Bottom bar (owner, Nov 23 2026: "I hate the bottom", wants different tabs): the
+  // bar now holds the app's areas (Collect, Find, Sell, ...) with Add in the middle,
+  // so every area is one tap away. The pages inside the current area (Collection,
+  // Sets, Wants; Restocks; Inventory, Sales) move to a tab row at the top of the page.
+  const mobileAreaTabs = switcherWorkspaces
+    .filter((workspace) => workspace.id !== WORKSPACE_IDS.BOT)
+    .map((workspace) => ({ key: `area-${workspace.id.toLowerCase()}`, workspaceId: workspace.id, label: workspace.label, icon: workspace.icon, action: () => navigateProductWorkspace(workspace.id) }));
+  const addInsertIndex = Math.min(2, Math.ceil(mobileAreaTabs.length / 2));
   const mobileBottomTabs = presentationWorkspaceId === WORKSPACE_IDS.BOT
     ? mobileWorkspaceItems
-    : [...mobileWorkspaceItems.slice(0, addInsertIndex), globalAddTab, ...mobileWorkspaceItems.slice(addInsertIndex)].slice(0, 5);
+    : [...mobileAreaTabs.slice(0, addInsertIndex), globalAddTab, ...mobileAreaTabs.slice(addInsertIndex)].slice(0, 5);
   const mobilePrimaryTabKeys = new Set(mobileBottomTabs.map((tab) => tab.key));
-  const activeMobileTabKey = activeTab === "ownerCenter" ? "" : mobilePrimaryTabKeys.has(activeWorkspaceNavItem?.key) ? activeWorkspaceNavItem.key : "";
+  const activeAreaTabKey = mobileAreaTabs.find((tab) => tab.workspaceId === presentationWorkspaceId)?.key || "";
+  const activeMobileTabKey = activeTab === "ownerCenter" || shellRouteOwnership?.classification === ROUTE_CLASSIFICATIONS.OWNER
+    ? ""
+    : presentationWorkspaceId === WORKSPACE_IDS.BOT
+      ? (mobilePrimaryTabKeys.has(activeWorkspaceNavItem?.key) ? activeWorkspaceNavItem.key : "")
+      : activeAreaTabKey;
+  // Pages inside the current area, shown as the tab row at the top on phones.
+  const mobileSectionTabs = presentationWorkspaceId === WORKSPACE_IDS.BOT ? [] : mobileWorkspaceItems;
+  const activeMobileSectionKey = activeTab === "ownerCenter" ? "" : activeWorkspaceNavItem?.key || "";
   const desktopSidebarItems = workspaceNavItems.filter((item) => item.desktopEligible !== false);
   const desktopSecondaryItems = [
     ownerToolsVisible ? { key: "owner-center", label: "Owner Center", icon: "settings", badge: "Owner Only", action: () => { prepareRouteNavigation(); setOwnerCenterSection("overview"); setOwnerCenterSubview(""); setActiveTab("ownerCenter"); } } : null,
@@ -48189,6 +48204,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       {renderNotificationCenterPanel()}
 
       {renderDesktopCommandSidebar()}
+      <MobileSectionTabs items={mobileSectionTabs} activeKey={activeMobileSectionKey} onSelect={(tab) => navigateMainTab(tab)} />
 
       {guestPreviewActive ? (
         <section className="guest-preview-banner" role="status">

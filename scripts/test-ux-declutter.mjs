@@ -47,16 +47,19 @@ test("warm palette polish is loaded last and defines the teal accent", () => {
   const appCss = src("src/App.css");
   // 16-should-polish (SHOULD 12-14) now loads after it; 15 must still come after everything else.
   const imports = appCss.split(/\r?\n/).filter((line) => line.startsWith("@import"));
-  assert.equal(imports.at(-6), '@import "./styles/app/15-warm-palette-polish.css";');
-  assert.equal(imports.at(-5), '@import "./styles/app/16-should-polish.css";');
+  assert.equal(imports.at(-7), '@import "./styles/app/15-warm-palette-polish.css";');
+  assert.equal(imports.at(-6), '@import "./styles/app/16-should-polish.css";');
   // 17-touch-feedback (owner, Nov 17): no blue tap flash; loads last.
-  assert.equal(imports.at(-4), '@import "./styles/app/17-touch-feedback.css";');
+  assert.equal(imports.at(-5), '@import "./styles/app/17-touch-feedback.css";');
   // 18-collector-binder (owner, Nov 17): the look for TCG fans; loads last.
-  assert.equal(imports.at(-3), '@import "./styles/app/18-collector-binder.css";');
+  assert.equal(imports.at(-4), '@import "./styles/app/18-collector-binder.css";');
   // 19-holo-tech (owner, Nov 17: "more futuristic"); loads last.
-  assert.equal(imports.at(-2), '@import "./styles/app/19-holo-tech.css";');
+  assert.equal(imports.at(-3), '@import "./styles/app/19-holo-tech.css";');
   // 20-panel-fixes (simulated survey, Nov 17): readable labels, clearer active tab, dark set tiles; loads last.
-  assert.equal(imports.at(-1), '@import "./styles/app/20-panel-fixes.css";');
+  assert.equal(imports.at(-2), '@import "./styles/app/20-panel-fixes.css";');
+  // 21-bottom-bar (owner, Nov 23: "I hate the bottom"): flat docked bar, area tabs; loads last.
+  assert.equal(imports.at(-1), '@import "./styles/app/21-bottom-bar.css";');
+  assert.doesNotMatch(src("src/styles/app/21-bottom-bar.css"), /#(3b82f6|2563eb|60a5fa|5CC3BA|1F7A74)/i, "no blue or teal in the bottom bar");
   assert.doesNotMatch(src("src/styles/app/19-holo-tech.css"), /#(3b82f6|2563eb|60a5fa|5CC3BA|1F7A74)/i, "no blue or teal in the futuristic look");
   assert.doesNotMatch(src("src/styles/app/18-collector-binder.css"), /#(3b82f6|2563eb|60a5fa|5CC3BA|1F7A74)/i, "no blue or teal in the refresh");
   assert.match(src("src/styles/app/17-touch-feedback.css"), /-webkit-tap-highlight-color: transparent/);
