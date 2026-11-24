@@ -8,6 +8,7 @@
     "test:nationwide-tcgs": "node --no-warnings --test scripts/test-nationwide-tcg-expansion.mjs scripts/test-nationwide-tcg-expansion-ui.mjs scripts/test-collectible-games.mjs scripts/test-collection-sets.mjs scripts/test-free-restock-browsing.mjs scripts/test-stock-screenshot-draft.mjs",
     "test:discord-retailer-alerts": "node --test scripts/test-discord-retailer-alerts.mjs",
     "test:stock-intelligence": "node --test scripts/test-stock-intelligence.mjs",
+    "test:stock-source-intake": "node --test scripts/test-stock-source-intake.mjs",
     "prepare:scout-ocr": "node scripts/prepare-scout-ocr.mjs",
     "predev": "npm run prepare:scout-ocr",
     "prebuild": "npm run prepare:scout-ocr",
