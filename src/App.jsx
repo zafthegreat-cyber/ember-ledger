@@ -23,7 +23,7 @@ import { NATIVE_BUILD, isHiddenInNativeApp } from "./config/nativeLaunchScope.js
 import {nearbyCoordinatesForText} from './utils/nearbyPreference.mjs';
 import { compactSavedStores } from "./utils/storeDirectoryPersistence.js";
 import { isBlockedAuthor, useBlockedUsers } from "./utils/blockedUsers.js";
-import { catalogCardQueryMatchesRow, getCatalogCollectorQuery, getCatalogPageProducts } from "./utils/catalogResultIdentity.mjs";
+import { catalogCardQueryMatchesRow, getCatalogCollectorQuery, getCatalogPageProducts, pickScannedCard } from "./utils/catalogResultIdentity.mjs";
 import SocialSignInButtons, { ConnectedSignIns } from "./features/auth/SocialSignIn.jsx";
 import EmailConfirmationHelp, { SignupFieldPrivacy } from "./features/auth/EmailConfirmationHelp.jsx";
 import MemberStartGuide from "./features/auth/MemberStartGuide.jsx";
@@ -19087,27 +19087,30 @@ export default function App() {
   // scanner uses); rows without a number, with several possible printings, or going
   // to Wants stay in the list to review one by one.
   async function findVerifiedCardForScanRow(row) {
+    return (await matchScannedCardRow(row)).card;
+  }
+
+  // Nov 24 2026: the same card is in the catalog from two sources and as stamped
+  // reprints, so name + number alone matched several rows and almost every popular
+  // card went to review. pickScannedCard keeps the full number, the exact name and
+  // the main set, and reports how many other printings it left out.
+  async function matchScannedCardRow(row) {
     const name = String(row?.cardName || "").trim();
     const number = String(row?.cardNumber || "").trim();
-    if (!name || !number) return null;
+    if (!name || !number) return { card: null, others: 0 };
     const query = `${name} ${number}`;
-    if (!getCatalogCollectorQuery(query)) return null;
+    if (!getCatalogCollectorQuery(query)) return { card: null, others: 0 };
     let candidates = [];
     if (isSupabaseConfigured && supabase) {
       try {
-        const result = await searchPokemonCatalogOnDemand({ supabase, query, mode: "general", page: 1, pageSize: 8, force: true });
+        const result = await searchPokemonCatalogOnDemand({ supabase, query, mode: "general", page: 1, pageSize: 24, force: true });
         candidates = (result.rows || []).map(mapCatalog);
       } catch {
         candidates = [];
       }
     }
     if (!candidates.length) candidates = getBestCatalogMatches(query, catalogProducts).map((match) => match.item);
-    const verified = candidates.filter((item) => item && catalogCardQueryMatchesRow(query, item));
-    if (verified.length === 1) return verified[0];
-    const setName = String(row.setName || "").trim().toLowerCase();
-    if (!setName) return null;
-    const inSet = verified.filter((item) => String(item.setName || item.expansion || "").toLowerCase().includes(setName));
-    return inSet.length === 1 ? inSet[0] : null;
+    return pickScannedCard({ name, number, setName: row.setName }, candidates);
   }
 
   async function saveAllCardScanRows() {
@@ -19957,10 +19960,11 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     for (const row of rows) {
       if (!String(row.cardName || "").trim() || !String(row.cardNumber || "").trim()) continue;
       let product = null;
-      try { product = await findVerifiedCardForScanRow(row); } catch { product = null; }
+      let others = 0;
+      try { ({ card: product, others } = await matchScannedCardRow(row)); } catch { product = null; }
       const marketValue = product ? Number(getTideTradrMarketInfo(product).currentMarketValue || product.marketPrice || product.midPrice || 0) : 0;
       const patch = product
-        ? { matchedProduct: product, matchState: "matched", matchedLabel: [catalogTitle(product), product.setName || product.expansion, product.cardNumber].filter(Boolean).join(" · "), matchedValue: Number.isFinite(marketValue) && marketValue > 0 ? marketValue : 0, matchedFor: `${row.cardName}|${row.cardNumber}` }
+        ? { matchedProduct: product, matchState: "matched", matchedOthers: others || 0, matchedLabel: [catalogTitle(product), product.setName || product.expansion, product.cardNumber].filter(Boolean).join(" · "), matchedValue: Number.isFinite(marketValue) && marketValue > 0 ? marketValue : 0, matchedFor: `${row.cardName}|${row.cardNumber}` }
         : { matchedProduct: null, matchState: "review", matchedLabel: "", matchedValue: 0, matchedFor: `${row.cardName}|${row.cardNumber}` };
       setQuickAddWizard((current) => ({
         ...current,

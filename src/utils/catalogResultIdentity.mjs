@@ -144,3 +144,51 @@ export function getCatalogPageProducts({ hasRun, pagedIds = [], products = [], p
   const index = productsById || new Map(products.map(product => [String(product.id), product]));
   return pagedIds.map(id => index.get(String(id))).filter(Boolean);
 }
+
+// Reprints with a stamp or a special box: a scanned card is far more often the
+// main-set card, so these only win when nothing else fits (Nov 24 2026).
+const SPECIAL_PRINT_SETS = /prize pack|world championship|jumbo|miscellaneous|league|championship|deck exclusive|battle academy|blister|trick or trade|first partner|countdown calendar|burger king|mcdonald|trainer kit|southeast asia|professor program|alternate art promos|classic collection|build & battle|prerelease/i;
+const nameKeyOf = value => words(String(value || "")
+  .replace(/\s*\([^)]*\)/g, "")
+  .replace(/\s*-\s*#?[a-z]{0,4}\d+[a-z]?(?:\s*\/\s*[a-z]{0,4}\d+)?\s*$/i, "")).join("");
+const rowNameOf = row => row.name ?? row.productName ?? row.product_name ?? row.cardName ?? row.card_name ?? "";
+const rowSetOf = row => [row.setName, row.set_name, row.expansion].filter(Boolean).join(" ");
+// "SWSH08: Fusion Strike" and "Fusion Strike" are one set from two sources.
+const setKeyOf = row => words(rowSetOf(row).replace(/^[a-z0-9&. ]{1,12}:s+/i, "")).join("");
+const printingKeyOf = row => `${words(rowNameOf(row)).join("")}|${setKeyOf(row)}|${normalizedNumber(rowNumberOf(row)).split("/")[0]}`;
+const rowNumberOf = row => row.cardNumber ?? row.card_number ?? row.collectorNumber ?? row.collector_number ?? "";
+
+/**
+ * The one catalog card a scanned name and number most likely are (Nov 24 2026,
+ * owner: "competitive"). The catalog holds the same card from two sources (one
+ * stores "4", the other "004/102"), stamped reprints and variant rows ("(Black
+ * Dot Error)"). Each step keeps only the rows that fit better, when any do:
+ *   1. a set the user typed, 2. the full printed number, 3. the exact card name,
+ *   4. the plain card rather than a variant row, 5. the main set rather than a stamped reprint.
+ * Returns { card, others } where others counts the other printings left out, or
+ * { card: null } when two different cards still fit (the user picks).
+ */
+export function pickScannedCard({ name = "", number = "", setName = "" } = {}, candidates = []) {
+  const query = `${String(name).trim()} ${String(number).trim()}`.trim();
+  const identity = getCatalogCollectorQuery(query);
+  if (!identity || !String(name).trim()) return { card: null, others: 0 };
+  const verified = candidates.filter(row => row && catalogCardQueryMatchesRow(query, row));
+  const narrow = (list, keep) => { const kept = list.filter(keep); return kept.length ? kept : list; };
+  let list = verified;
+  const typedSet = String(setName || "").trim().toLowerCase();
+  if (typedSet) {
+    list = list.filter(row => rowSetOf(row).toLowerCase().includes(typedSet));
+    return { card: list.length === 1 ? list[0] : null, others: 0 };
+  }
+  if (identity.collectorNumber.includes("/")) list = narrow(list, row => normalizedNumber(rowNumberOf(row)) === identity.collectorNumber);
+  const sameNumber = list; // other printings are counted from these
+  const wanted = nameKeyOf(name);
+  if (wanted) list = narrow(list, row => nameKeyOf(rowNameOf(row)) === wanted);
+  // "Charizard (Black Dot Error)" is a variant of the plain card, not the card itself.
+  if (!String(name).includes("(")) list = narrow(list, row => !String(rowNameOf(row)).includes("("));
+  list = narrow(list, row => !SPECIAL_PRINT_SETS.test(rowSetOf(row)));
+  if (list.length !== 1) return { card: null, others: 0 };
+  const picked = printingKeyOf(list[0]);
+  const others = new Set(sameNumber.map(printingKeyOf).filter(key => key !== picked)).size;
+  return { card: list[0], others };
+}
