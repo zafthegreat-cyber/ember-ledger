@@ -180,6 +180,7 @@ $$;
 
 -- Runs every minute: applies fetched files, fetches the next few (at most 15
 -- in flight, 4 of them pokemontcg.io pages), and closes a run when all are done.
+-- A failed fetch is retried up to 5 times, waiting longer each time.
 create or replace function public.catalog_price_apply(p_batch integer default 15)
 returns table (run_id bigint, groups_loaded integer, groups_open integer, groups_failed integer, items_priced integer)
 language plpgsql
@@ -239,7 +240,7 @@ begin
     exception when others then
       update public.catalog_price_refresh_queue q
         set error = left(sqlerrm, 300), request_id = null,
-            done_at = case when r.attempts >= 3 then now() end
+            done_at = case when r.attempts >= 5 then now() end
         where q.run_id = r.run_id and q.source = r.source and q.group_id = r.group_id;
     end;
   end loop;
@@ -247,7 +248,7 @@ begin
   update public.catalog_price_refresh_queue q
     set request_id = null,
         error = 'no response',
-        done_at = case when q.attempts >= 3 then now() end
+        done_at = case when q.attempts >= 5 then now() end
     where q.done_at is null and q.request_id is not null and q.requested_at < now() - interval '15 minutes'
       and not exists (select 1 from net._http_response h where h.id = q.request_id);
 
@@ -262,6 +263,8 @@ begin
       from public.catalog_price_refresh_queue q
       join public.catalog_price_refresh_runs run on run.id = q.run_id and run.finished_at is null
       where q.done_at is null and q.request_id is null
+        -- a failed fetch waits 3, 6, 9... minutes before the next try
+        and (q.requested_at is null or q.requested_at < now() - q.attempts * interval '3 minutes')
     )
     select o.run_id, o.source, o.group_id
     from open o
