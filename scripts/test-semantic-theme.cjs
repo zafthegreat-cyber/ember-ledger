@@ -107,7 +107,7 @@ function installFixture({ theme }) {
             assert.equal(motion,true,"Reduced-motion controls have no transitions/animations");
             if(route.name==="collection"){
               assert.equal(await page.locator(".collection-portfolio-item").count(),2,"Synthetic personal collection records render");
-              await page.getByRole("button",{name:"Filters",exact:true}).click();const dialog=page.getByRole("dialog");await dialog.waitFor();await page.keyboard.press("Tab");assert.ok(await dialog.evaluate(el=>el.contains(document.activeElement)),"Dialog retains keyboard focus");await page.screenshot({path:path.join(output,`${theme}-${width}-filters.png`),fullPage:false});await page.keyboard.press("Escape");await dialog.waitFor({state:"hidden"});
+              await page.getByRole("button",{name:"Filter by condition",exact:true}).click();const dialog=page.getByRole("dialog");await dialog.waitFor();await page.keyboard.press("Tab");assert.ok(await dialog.evaluate(el=>el.contains(document.activeElement)),"Dialog retains keyboard focus");await page.screenshot({path:path.join(output,`${theme}-${width}-filters.png`),fullPage:false});await page.keyboard.press("Escape");await dialog.waitFor({state:"hidden"});
             }
             if(route.name==="home"){
               const resalePreview=await page.locator('[data-home-card="forgeSummary"] .home-collection-peek figcaption').allTextContents();

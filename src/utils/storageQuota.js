@@ -40,7 +40,8 @@ export function storageQuotaStatus(storage, advisoryThreshold = LOCAL_STORAGE_AS
   const threshold = Number.isFinite(advisoryThreshold) && advisoryThreshold > 0 ? advisoryThreshold : LOCAL_STORAGE_ASSUMED_LIMIT;
   if (bytes >= threshold * STORAGE_WARN_RATIO) {
     const size = (bytes / (1024 * 1024)).toFixed(1);
-    return { ...base, level: "warn", title: "Check your saved-data backup", message: "About " + size + " MiB of local text data is stored on this device. This is a size estimate, not your phone's storage or a measured browser limit. Download a backup and check Cloud saving & recovery for any unsaved changes. Keep the app installed and do not clear its data." };
+    const critical = bytes >= threshold * STORAGE_CRITICAL_RATIO;
+    return { ...base, level: critical ? "critical" : "warn", title: critical ? "Download a backup now" : "Check your saved-data backup", message: "About " + size + " MiB of local text data is stored on this device. This is a size estimate, not your phone's storage or a measured browser limit. Download a backup and check Cloud saving & recovery for any unsaved changes. Keep the app installed and do not clear its data." };
   }
   return { ...base, level: "ok", title: "", message: "" };
 }

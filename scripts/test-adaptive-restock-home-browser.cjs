@@ -273,9 +273,9 @@ const homeKeys = page => page.locator("[data-home-card]").evaluateAll(rows => ro
       await page.screenshot({ path: path.join(output, `${prefix}-collector-add.png`) });
       for (const persona of ["seller", "store"]) {
         await render("home", { persona }, businessRepository);
-        await expect(page.getByRole("heading", { name: persona === "store" ? "Your store records" : "Your selling records", exact: true })).toBeVisible();
-        const inventoryName = persona === "store" ? "Store inventory" : "Selling inventory";
-        await page.getByRole("button", { name: inventoryName, exact: true }).click();
+        const recordsCard = page.locator("[data-home-card='forgeSummary']");
+        await expect(recordsCard).toContainText(persona === "store" ? "Your store records" : "Your selling records");
+        await recordsCard.getByRole("button", { name: "Open inventory", exact: true }).click();
         assert.deepEqual(await page.evaluate(() => window.qaCalls.at(-1)), ["business", "inventory"]);
         await expect(page.getByText("Projected profit", { exact: true })).toBeVisible();
         await page.screenshot({ path: path.join(output, `${prefix}-${persona}-home.png`), fullPage: true });

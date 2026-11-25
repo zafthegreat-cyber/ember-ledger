@@ -153,7 +153,7 @@ async function openAppPreferences(page) {
   await expect(page.locator(".settings-layout")).toBeVisible();
   const preferences = page.getByRole("region", { name: "Make it yours" });
   if (!await preferences.isVisible()) {
-    await page.locator("summary").filter({ hasText: "Appearance & preferences" }).click();
+    await page.locator("summary").filter({ hasText: "Experience & tools" }).click();
   }
   await expect(preferences).toBeVisible();
   return preferences;

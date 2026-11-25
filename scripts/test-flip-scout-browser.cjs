@@ -61,22 +61,22 @@ async function main() {
     });
 
     await page.goto(appUrl("/find/deals"), { waitUntil: "domcontentloaded" });
-    await page.getByRole("heading", { name: "Deal Feed", exact: true }).waitFor();
+    await page.getByRole("heading", { name: "Saved listings", exact: true }).waitFor();
     assert.equal(await page.locator(".vite-error-overlay").count(), 0, "Vite error overlay should not render");
     assert.equal((await page.locator("body").innerText()).trim().length > 100, true, "Find route should not be blank");
     await assertCode3Branding(page, "mobile Find");
-    await assertNoHorizontalOverflow(page, "Deal Feed at 360px");
+    await assertNoHorizontalOverflow(page, "Saved listings at 360px");
 
-    await page.getByRole("button", { name: "Paste Listing", exact: true }).click();
+    await page.getByRole("button", { name: "Save a listing", exact: true }).click();
     await page.getByLabel("Listing URL").fill("https://example.com/real-manual-listing");
     await page.getByLabel("Title").fill("Manual vintage binder lead");
     await page.getByLabel("Asking price").fill("125");
-    await page.getByLabel("Purchase shipping").fill("15");
+    await page.getByLabel("Shipping").fill("15");
     await page.getByRole("button", { name: "Save listing", exact: true }).click();
     await page.getByRole("heading", { name: "Manual vintage binder lead" }).waitFor();
-    await assertNoHorizontalOverflow(page, "Deal Feed after manual listing at 360px");
+    await assertNoHorizontalOverflow(page, "Saved listings after manual listing at 360px");
 
-    await (await openFindMore(page)).getByRole("button", { name: "Deal Analysis", exact: true }).click();
+    await (await openFindMore(page)).getByRole("button", { name: "Compare costs", exact: true }).click();
     const futureProgress = page.locator(".flip-analysis-steps button").nth(1);
     assert.equal(await futureProgress.isDisabled(), true, "future Deal Analysis steps should be disabled until reached");
     assert.ok((await futureProgress.boundingBox()).height >= 44, "Deal Analysis progress targets should remain at least 44px high");
@@ -111,8 +111,8 @@ async function main() {
     const savedRevision = initialHistory[0];
     assert.ok(savedRevision?.analyzedAt, "saved analysis should retain an analysis timestamp");
 
-    await page.getByRole("button", { name: "Back to Deals", exact: true }).click();
-    await (await openFindMore(page)).getByRole("button", { name: "Deal Analysis", exact: true }).click();
+    await page.getByRole("button", { name: "Back to saved listings", exact: true }).click();
+    await (await openFindMore(page)).getByRole("button", { name: "Compare costs", exact: true }).click();
     const savedAnalyses = page.locator(".code3-saved-analyses");
     await savedAnalyses.locator("summary").click();
     await savedAnalyses.getByRole("button", { name: "Open", exact: true }).first().click();
@@ -158,7 +158,7 @@ async function main() {
     await page.getByRole("button", { name: "Save reanalysis", exact: true }).waitFor();
     await page.getByText("Unsaved resumed draft title", { exact: true }).first().waitFor();
     await page.waitForFunction((previous) => document.querySelector(".code3-intelligence-result")?.getAttribute("data-analyzed-at") !== previous, storedViewAnalyzedAt);
-    await page.getByRole("button", { name: "Back to Deals", exact: true }).click();
+    await page.getByRole("button", { name: "Back to saved listings", exact: true }).click();
     await page.locator(".flip-main-nav").getByRole("button", { name: "Auctions", exact: true }).click();
     await page.getByRole("button", { name: "Add Auction", exact: true }).click();
     await page.getByLabel("Title").fill("Local estate auction");
@@ -189,13 +189,13 @@ async function main() {
     assert.equal(savedState.schemaVersion, 8);
     assert.equal(savedState.deals.length, 1);
     assert.equal(savedState.deals[0].listingUrl, "https://example.com/real-manual-listing");
-    await page.getByRole("button", { name: "Back to Deals", exact: true }).click();
+    await page.getByRole("button", { name: "Back to saved listings", exact: true }).click();
     await page.getByRole("heading", { name: "Manual vintage binder lead", exact: true }).waitFor();
     await page.getByRole("button", { name: "Review", exact: true }).click();
     const detailMore = page.locator(".ops-detail-more");
     await detailMore.locator("summary").click();
     await detailMore.getByRole("button", { name: "Delete", exact: true }).click();
-    await page.getByRole("heading", { name: "Your next find starts here", exact: true }).waitFor();
+    await page.getByRole("heading", { name: "No saved listings yet", exact: true }).waitFor();
     const stateAfterDelete = await page.evaluate(() => JSON.parse(localStorage.getItem("ember-and-tide.flip-scout.v1") || "{}"));
     assert.equal(stateAfterDelete.deals.length, 0, "Deal Inbox deletion should remove only the confirmed listing record");
     await page.screenshot({ path: path.join(process.cwd(), "artifacts", "qa", "flip-scout-phase2-ebay-mobile.png"), fullPage: true });

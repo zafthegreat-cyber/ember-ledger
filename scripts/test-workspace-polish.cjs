@@ -27,7 +27,7 @@ const { chromium } = require("@playwright/test");
       const { card, name } = shortcutButtons[label];
       const shortcuts = page.getByLabel("Personalized shortcuts", { exact: true }).locator(`[data-home-card="${card}"]`);
       await shortcuts.getByRole("button", typeof name === "string" ? { name, exact: true } : { name }).click();
-      if (label === "Find") await page.getByRole("heading", { name: "Deal Feed", exact: true }).waitFor();
+      if (label === "Find") await page.getByRole("heading", { name: "Saved listings", exact: true }).waitFor();
       else await page.waitForURL(new RegExp("/business/" + label.toLowerCase()));
       console.log("Home shortcut opened:", label, page.url());
     }

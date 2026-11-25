@@ -6,7 +6,7 @@ const {storageQuotaStatus,estimateLocalStorageBytes}=await import('data:text/jav
 function memory(value){return {length:1,key:()=> 'record',getItem:()=>value,setItem:()=>{throw Error('Must not probe or change saved data')},removeItem:()=>{throw Error('Must not remove data')}};}
 test('large saved text never claims measured capacity or a percentage',()=>{
  const status=storageQuotaStatus(memory('x'.repeat(5_000_000)));
- assert.equal(status.level,'warn');assert.equal(status.percent,null);assert.equal(status.limit,null);assert.equal(status.capacityKnown,false);
+ assert.equal(status.level,'critical');assert.equal(status.percent,null);assert.equal(status.limit,null);assert.equal(status.capacityKnown,false);
  assert.match(status.message,/9.5 MiB/);assert.match(status.message,/size estimate/);assert.doesNotMatch(status.message,/almost full|191%|using.*of.*MB|remove items/);
 });
 test('UTF-16 text estimate counts keys and non-ASCII code units without writing',()=>{
@@ -25,5 +25,6 @@ test('a blocked localStorage getter is caught before status rendering',()=>{
 });
 test('empty storage and invalid advisory thresholds are handled predictably',()=>{
  assert.equal(storageQuotaStatus({length:0,key:()=>null,getItem:()=>null}).level,'ok');
- assert.equal(storageQuotaStatus(memory('x'.repeat(5_000_000)),NaN).level,'warn');
+ assert.equal(storageQuotaStatus(memory('x'.repeat(5_000_000)),NaN).level,'critical');
+ assert.equal(storageQuotaStatus(memory('x'.repeat(2_000_000))).level,'warn');
 });

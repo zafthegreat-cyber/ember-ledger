@@ -50,7 +50,7 @@ const cases = [{width:320,height:568},{width:390,height:844},{width:1440,height:
         await expect(page.getByRole("button",{name:/^Community/})).toHaveCount(0);
         await expect(page.getByText("Family protection",{exact:true})).toHaveCount(0);
         await expect(page.locator(".settings-layout__note")).toHaveCount(0);
-        await page.getByRole("button",{name:"Account",exact:true}).click();
+        await page.getByRole("navigation",{name:"Settings categories"}).getByRole("button",{name:"Account",exact:true}).click();
         await page.locator("summary").filter({hasText:"Account overview"}).click();
         await expect(page.locator(".settings-layout__account-meta")).toContainText(persona[0].toUpperCase()+persona.slice(1));
         await expect(page.locator(".ops-page-header")).toContainText("Settings");
@@ -58,7 +58,7 @@ const cases = [{width:320,height:568},{width:390,height:844},{width:1440,height:
         await page.getByRole("button",{name:/^Safety center/}).click();assert.deepEqual(await page.evaluate(()=>window.qaCalls.at(-1)),["utility","trust"]);
         const privacy=page.locator("summary").filter({hasText:"Privacy & safeguards"});await privacy.click();await expect(page.getByText("Existing privacy controls",{exact:true})).toBeVisible();
         for(const [label,destination,category] of [[/^Profile/,"profile","Account"],[/^Account & security/,"account","Account"],[/^Plans & access/,"membership","Account"],[/^Archive & backups/,"dataBackup","Everyday"],[/^Help & app status/,"help","Help"]]){
-          await page.getByRole("button",{name:category,exact:true}).click();
+          await page.getByRole("navigation",{name:"Settings categories"}).getByRole("button",{name:category,exact:true}).click();
           await page.getByRole("button",{name:label}).click();assert.deepEqual(await page.evaluate(()=>window.qaCalls.at(-1)),["utility",destination]);
         }
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,"Settings fit the viewport");
@@ -67,7 +67,7 @@ const cases = [{width:320,height:568},{width:390,height:844},{width:1440,height:
       await render({family:true});
       await page.getByRole("button",{name:"Privacy",exact:true}).click();
       await expect(page.getByRole("heading",{name:"Privacy",exact:true})).toBeVisible();
-      await page.getByRole("button",{name:"Account",exact:true}).click();
+      await page.getByRole("navigation",{name:"Settings categories"}).getByRole("button",{name:"Account",exact:true}).click();
       await page.locator("summary").filter({hasText:"Account overview"}).click();
       await expect(page.getByText("Family protection",{exact:true})).toBeVisible();
       await page.getByRole("button",{name:"Privacy",exact:true}).click();

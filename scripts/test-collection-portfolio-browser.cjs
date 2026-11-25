@@ -268,16 +268,17 @@ async function exercisePortfolio(page, region, testCase, result) {
   await expect(grid).toContainText("Aurora legacy collectible");
   await expect(region.locator(".collection-portfolio-value")).toHaveText("$877.00");
   await search.fill("");
-  await region.getByRole("button", { name: /^Filters/ }).click();
+  await region.getByRole("button", { name: /^Filter/ }).click();
   const filters = page.getByRole("dialog", { name: "Filter collection", exact: true });
   await filters.getByLabel("Condition", { exact: true }).selectOption("Mint");
   await filters.getByRole("button", { name: "Close", exact: true }).click();
   await expect(grid.locator("button")).toHaveCount(1);
   await expect(grid).toContainText("Zenith repository collectible");
   await expect(region.locator(".collection-portfolio-value")).toHaveText("$877.00");
-  await region.getByRole("button", { name: /^Filters/ }).click();
+  await region.getByRole("button", { name: /^Filter/ }).click();
   await filters.getByRole("button", { name: "Clear Filter", exact: true }).click();
   await expect(grid.locator("button")).toHaveCount(4);
+  { const options = region.locator("details.collection-browse-options"); if (!await options.evaluate(node => node.open)) await options.locator(":scope > summary").click(); }
   await region.getByRole("combobox", { name: "Sort collection", exact: true }).selectOption("value");
   await expect(grid.locator(".collection-portfolio-item-name")).toHaveText(["Excluded held item", "Aurora legacy collectible", "Zenith repository collectible", "Unknown estimate collectible"]);
   await region.getByRole("combobox", { name: "Sort collection", exact: true }).selectOption("name");

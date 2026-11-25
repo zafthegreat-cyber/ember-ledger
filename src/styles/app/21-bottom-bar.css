@@ -109,4 +109,8 @@
     color: var(--app-brand-selected-ink, #F3D987);
   }
   html:root body .app[data-theme="light"] .ops-mobile-sections button.is-active { background: #7A0F1E; color: #FFF8EE; }
+  /* Command-board pages pin the main area to the first grid row, which pushed the
+     pills below the page. Keep them at the top there too. */
+  html:root body .app.app-command-shell[data-theme]:has(.command-board-v4) > .ops-mobile-sections { grid-row: 1; grid-column: 1 / -1; align-self: start; }
+  html:root body .app.app-command-shell[data-theme]:has(.command-board-v4):has(> .ops-mobile-sections) > .main { grid-row: 2 !important; min-height: calc(100dvh - 56px) !important; }
 }

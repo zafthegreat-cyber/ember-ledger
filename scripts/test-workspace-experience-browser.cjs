@@ -54,7 +54,7 @@ window.qaRender=({screen='find',persona='collector',view='overview',admin=false}
       await page.goto(`${origin}/__qa/experience`);
       const nav = page.getByRole("navigation", { name: "Find navigation", exact: true });
       await expect(nav).toBeVisible();
-      assert.deepEqual(await nav.locator("button").allTextContents(), ["Restocks", "Deals", "Auctions"]);
+      assert.deepEqual(await nav.locator("button").allTextContents(), ["Restocks", "Saved listings", "Auctions"]);
       await expect(page.locator(".flip-deal-summary")).toContainText("Saved status");
       await expect(page.locator(".flip-deal-summary")).not.toContainText("Projected profit");
       await page.locator(".flip-more-menu > summary").click();

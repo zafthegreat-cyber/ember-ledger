@@ -363,7 +363,7 @@ async function verifyFixture(page, fixture) {
       await page.getByRole("button", { name: "Sets", exact: true }).first().click();
       await page.getByTestId("collection-workspace").getByRole("heading", { level: 1, name: "Card sets", exact: true }).waitFor();
       equal(new URL(page.url()).pathname, "/collection/sets", "Collect Sets action should update the visible route");
-      await page.getByRole("navigation", { name: "Primary navigation" }).getByRole("button", { name: "Collection", exact: true }).click();
+      await page.getByRole("navigation", { name: "Pages in this area" }).getByRole("button", { name: "Collection", exact: true }).click();
       await page.getByLabel("Search collection", { exact: true }).waitFor();
       equal(new URL(page.url()).pathname, "/collection", "Collection dock action should update the visible view and URL");
       await page.goBack();
@@ -396,10 +396,10 @@ async function verifyFixture(page, fixture) {
     case "sell-populated":
       await page.getByTestId("sell-workspace-home").waitFor();
       match(await body(), /Ready to list\s*1[\s\S]*Listed\s*1/i, "Sell populated state should derive resale workload");
-      await page.getByRole("navigation", { name: "Primary navigation" }).getByRole("button", { name: "Inventory", exact: true }).click();
+      await page.getByRole("navigation", { name: "Pages in this area" }).getByRole("button", { name: "Inventory", exact: true }).click();
       await page.getByRole("region", { name: "Current inventory", exact: true }).waitFor();
       equal(new URL(page.url()).pathname, "/business/inventory", "Sell Inventory dock action should update the visible Business view and URL");
-      await page.getByRole("navigation", { name: "Primary navigation" }).getByRole("button", { name: "Sales", exact: true }).click();
+      await page.getByRole("navigation", { name: "Pages in this area" }).getByRole("button", { name: "Sales", exact: true }).click();
       await page.getByRole("heading", { name: "Sales history", exact: true }).waitFor();
       equal(new URL(page.url()).pathname, "/business/sales", "Sell Sales dock action should update the visible Business view and URL");
       await page.goBack();
@@ -464,7 +464,7 @@ async function verifyFixture(page, fixture) {
     case "legacy-route-redirect":
       await page.getByTestId("business-workspace").waitFor();
       equal(new URL(page.url()).pathname, "/business/sales", "legacy /sell should redirect to the canonical sales route");
-      match(await body(), /Completed sales/i, "legacy redirect should resolve to a real page, not a blank surface");
+      match(await body(), /Sales history/i, "legacy redirect should resolve to a real page, not a blank surface");
       break;
     case "remembered-workspace": {
       const switcher = await openSwitcher(page);
