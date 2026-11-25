@@ -9,6 +9,7 @@
     "test:discord-retailer-alerts": "node --test scripts/test-discord-retailer-alerts.mjs",
     "test:stock-intelligence": "node --test scripts/test-stock-intelligence.mjs",
     "test:stock-source-intake": "node --test scripts/test-stock-source-intake.mjs",
+    "test:stock-alert-preferences": "node --test scripts/test-stock-alert-preferences.mjs",
     "prepare:scout-ocr": "node scripts/prepare-scout-ocr.mjs",
     "predev": "npm run prepare:scout-ocr",
     "prebuild": "npm run prepare:scout-ocr",

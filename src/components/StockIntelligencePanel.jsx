@@ -1,6 +1,7 @@
 import {useEffect,useMemo,useState} from "react";
 import {EVIDENCE_LABELS,RETAILER_NAMES,SIGNAL_KINDS,filterStockIntelligence,loadStockIntelligence,sourceHealth,currentStockSignals} from "../services/stockIntelligence.mjs";
 import StockSignalReview from "./StockSignalReview.jsx";
+import StockAlertPreferences from "./StockAlertPreferences.jsx";
 import WarehouseInboundPanel from "./WarehouseInboundPanel.jsx";
 import "./stock-intelligence-panel.css";
 
@@ -121,6 +122,7 @@ export default function StockIntelligencePanel() {
           <button type="button" aria-pressed={active==="products"} className={active==="products"?"is-active":""} onClick={()=>setActive("products")}>Products <span>{snapshot.targets.length}</span></button>
           <button type="button" aria-pressed={active==="signals"} className={active==="signals"?"is-active":""} onClick={()=>setActive("signals")}>Signals <span>{signalCount}</span></button>
           <button type="button" aria-pressed={active==="inbound"} className={active==="inbound"?"is-active":""} onClick={()=>setActive("inbound")}>Inbound / Warehouse</button>
+          <button type="button" aria-pressed={active==="alerts"} className={active==="alerts"?"is-active":""} onClick={()=>setActive("alerts")}>Alert choices</button>
           <button type="button" aria-pressed={active==="sources"} className={active==="sources"?"is-active":""} onClick={()=>setActive("sources")}>Sources</button>
         </div>
         {(active==="products" || active==="signals") && <div className="stock-intel__filters">
@@ -197,7 +199,8 @@ export default function StockIntelligencePanel() {
           <p className="stock-intel__footnote">A Pokémon Center queue is not proof of a product launch. No automatic checkout, queue bypass, or unauthorized Discord access is used.</p>
         </div>}
         {active==="inbound" && <WarehouseInboundPanel targets={snapshot.targets} />}
-        {active!=="inbound" && <StockSignalReview targets={snapshot.targets} onPublished={()=>{setActive("signals");setRevision(v=>v+1);}} />}
+        {active==="alerts" && <StockAlertPreferences targets={snapshot.targets} />}
+        {active!=="inbound" && active!=="alerts" && <StockSignalReview targets={snapshot.targets} onPublished={()=>{setActive("signals");setRevision(v=>v+1);}} />}
       </>}
     </section>
   );
