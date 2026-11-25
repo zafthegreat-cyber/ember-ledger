@@ -17,8 +17,10 @@ export const CAMERA_ASSIST = Object.freeze({
   sharpWindow: 12, // recent samples remembered for focus (about 3 seconds)
   // Nov 24 2026 (scanner review):
   cardSharpFloor: 3, // the card itself, not the table around it, must show at least this much detail
-  sameBoxTolerance: 0.04, // the found card may shift this much between looks and still count as the same card
-  steadyLooks: 12, // a found, close, upright card held still this many looks (about 3 s) is taken despite glare or soft focus
+  sameBoxTolerance: 0.06, // the found card may shift this much between looks and still count as the same card
+  steadyLooks: 8, // a found, close, upright card held still this many looks (about 2 s) is taken despite glare or soft focus
+  // Nov 24 2026 (auto-scan too strict in the hand): 2.5K video instead of 4K, and a little hand shake still counts as still.
+  handShake: 12, // average brightness change per look (0-255) that still counts as held still; was 6
   minFrameDetail: 24, // brightness spread the frame needs before a no-edges picture is taken (not an empty table)
 });
 

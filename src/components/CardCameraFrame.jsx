@@ -16,7 +16,7 @@ import { assessCardView, CAMERA_ASSIST, captureRect, cardThumb, createSharpnessG
 // edges itself, the picture is cut to the card it found, live tips say what to
 // fix, and auto-scan waits for a found, sharp, glare-free card.
 // Nov 24 2026 (scanner review): the card must be found in the same place in two
-// looks in a row; a close, upright card held still ~3 s is taken even if glare or
+// looks in a row; a close, upright card held still ~2 s is taken even if glare or
 // focus never clears; the no-edges fallback needs something in the frame (not an
 // empty table); the camera restarts when the app comes back from the background;
 // and it asks for 4K so small print stays readable.
@@ -87,7 +87,7 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false, con
     (async () => {
       try {
         if (!navigator.mediaDevices?.getUserMedia) throw new Error("unsupported");
-        stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: "environment" }, width: { ideal: 3840 }, height: { ideal: 2160 } } });
+        stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: "environment" }, width: { ideal: 2560 }, height: { ideal: 1440 } } });
         if (!active) { stream.getTracks().forEach((track) => track.stop()); return; }
         const video = videoRef.current;
         video.srcObject = stream;
@@ -167,7 +167,7 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false, con
   useEffect(() => { captureRef.current = capture; });
   useEffect(() => {
     if (!ready) return undefined;
-    const tracker = createSteadyTracker({ holdFrames: 4 });
+    const tracker = createSteadyTracker({ holdFrames: 4, threshold: CAMERA_ASSIST.handShake });
     const sharpness = createSharpnessGate();
     const small = document.createElement("canvas");
     small.width = SAMPLE; small.height = SAMPLE;
