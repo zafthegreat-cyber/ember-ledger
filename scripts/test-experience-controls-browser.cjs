@@ -160,7 +160,10 @@ async function openSettingsInApp(page) {
 }
 
 async function openAppPreferences(page) {
-  await expect(page.locator(".settings-layout")).toBeVisible();
+  // Settings is often the first screen after a whole page load here (goto or reload),
+  // which takes 3 to 5 seconds on a quiet machine, so it gets the same 30 seconds as the
+  // Home loads in this file instead of the 5 second default.
+  await expect(page.locator(".settings-layout")).toBeVisible({ timeout: 30000 });
   const preferences = page.getByRole("region", { name: "Make it yours" });
   if (!await preferences.isVisible()) {
     await page.locator("summary").filter({ hasText: "Appearance & preferences" }).click();
