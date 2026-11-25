@@ -3,6 +3,8 @@ import { inspectionImageUrl } from "./faceProjection.mjs";
 import inspectionFaces from "../data/productInspectionFaces.json" with { type: "json" };
 import { resolveInspectionArtwork } from "./productInspection.mjs";
 
+import { NATIVE_BUILD } from "../config/nativeLaunchScope.js";
+
 const usable = value => typeof value === "string" && value.trim() && !/^(null|undefined|none|n\/a|na|unknown|image needed|image unavailable|placeholder)$/i.test(value.trim()) ? value.trim() : "";
 const unique = values => [...new Set(values.map(usable).filter(Boolean))];
 function detailSource(source) {
@@ -43,7 +45,7 @@ export function getDisplayImageCandidates(product = {}, preferredSource = "", { 
   // An exact manually indexed product may have researched faces before the
   // read-only catalog has a thumbnail. Use its real front only when it has no
   // existing image source; never replace an owner's photo or borrow by name.
-  if (!sources.length && !String(product.tcgplayerProductId ?? "").trim()) {
+  if ((!NATIVE_BUILD || quality === "detail") && !sources.length && !String(product.tcgplayerProductId ?? "").trim()) {
     const front = usable(resolveInspectionArtwork(product, inspectionFaces)?.faces?.front?.src);
     if (front) sources.push(front);
   }

@@ -27,6 +27,8 @@ jobs:
         run: npm run lint:src
       - name: Connected sign-in regression checks
         run: npm run test:social-sign-in
+      - name: Optimized image and viewer checks
+        run: node --no-warnings --test scripts/test-optimized-inspection-assets.mjs scripts/test-native-inspection-assets.mjs scripts/test-product-inspection-ui.mjs scripts/test-card-back-eligibility.mjs scripts/test-wrapper-artwork-ui.mjs scripts/test-packaging-header.mjs
       - name: Beta suites (node --test)
         run: >
           node --no-warnings --test
@@ -45,6 +47,8 @@ jobs:
           scripts/test-age-confirmation.mjs
           scripts/test-restock-map.mjs
           scripts/test-card-photo-text.mjs
+          scripts/test-card-name-snap.mjs
+          scripts/test-catalog-result-identity.mjs
           scripts/test-card-printings.mjs
           scripts/test-slab-label.mjs
           scripts/test-listing-screenshot.mjs
@@ -77,8 +81,8 @@ jobs:
           node --no-warnings scripts/test-shared-device-signout.mjs
           node --no-warnings scripts/test-community-server.mjs
           node --no-warnings scripts/test-restock-alerts.mjs
-          node --no-warnings --test scripts/test-stock-intelligence.mjs
           node --no-warnings --test scripts/test-stock-source-intake.mjs
+          node --no-warnings --test scripts/test-stock-intelligence.mjs
           node --no-warnings scripts/test-easy-nationwide-ui.mjs
           node --no-warnings scripts/test-catalog-barcode-evidence.mjs
           node --no-warnings scripts/test-market-search-presentation.mjs

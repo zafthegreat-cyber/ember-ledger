@@ -84,7 +84,8 @@ for(const face of ["front","back"])test(`a failed ${face} strip disables the who
  assert.equal(document.querySelectorAll(".product-inspect__face").length,1);
  assert.equal(document.querySelector("img").getAttribute("src"),model.faces[other].src);
  assert.equal(document.querySelector('[aria-label="Wrapper faces"]'),null);
- assert.match(document.querySelector('[role="status"]').textContent,new RegExp(other==="front"?"Front photo":"Back photo"));
+ assert.match(document.querySelector('.product-inspect__view[role="status"]').textContent,new RegExp(other==="front"?"Front photo":"Back photo"));
+ assert.match(document.querySelector('.product-inspect__retry[role="status"]').textContent,/Some photos couldn’t load/);
 }));
 
 test("full-screen wrapper uses its new measured size, preserves sources and cleans up the additional observers",async()=>environment(async({render,click,observers})=>{

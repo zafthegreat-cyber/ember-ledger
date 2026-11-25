@@ -119,6 +119,10 @@
 .app.app-command-shell[data-theme] .product-inspect__box-material::before,.app.app-command-shell[data-theme] .product-inspect__box-material::after{content:"";position:absolute;inset:0;pointer-events:none}
 .app.app-command-shell[data-theme] .product-inspect__box-material::before{background:#080d10;opacity:var(--face-shade,.08);mix-blend-mode:multiply}
 .app.app-command-shell[data-theme] .product-inspect__box-material::after{background:radial-gradient(ellipse 38% 95% at var(--face-x,35%) var(--face-y,30%),#fff,#fff7 30%,transparent 75%);opacity:var(--face-gloss,.02);mix-blend-mode:screen}
+.app.app-command-shell[data-theme] .product-inspect__header{position:absolute;bottom:100%;left:calc(50% - var(--object-width)*var(--header-width)/2);width:calc(var(--object-width)*var(--header-width));height:calc(var(--object-width)*var(--header-height));backface-visibility:hidden;-webkit-backface-visibility:hidden;mask-size:100% 100%;mask-repeat:no-repeat;overflow:hidden;background:transparent}
+.app.app-command-shell[data-theme] .product-inspect__header--front{transform:translateZ(calc(var(--object-depth)/-2 + .35px))}
+.app.app-command-shell[data-theme] .product-inspect__header--back{transform:translateZ(calc(var(--object-depth)/-2 - .35px)) rotateY(180deg)}
+.app.app-command-shell[data-theme] .product-inspect__header img{display:block;max-width:none!important;max-height:none!important;border-radius:0!important;object-fit:fill!important}
 .app.app-command-shell[data-theme="light"] .product-inspect button[aria-pressed="true"]{background:#78081c!important;color:#fbf4e6!important;border-color:#78081c!important}
 
 .app.app-command-shell[data-theme] .product-inspect__tools{flex-wrap:wrap}

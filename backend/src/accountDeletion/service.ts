@@ -4,7 +4,9 @@ type Environment = Record<string, string | undefined>;
 export class AccountDeletionError extends Error {
   constructor(public code: string, message: string, public status = 400) { super(message); }
 }
-export type DeletionIdentity = { id: string; email: string; token: string; pending: boolean };
+// passwordAccount: the account can sign in with email and password. Accounts that only use
+// Google, Apple, Discord or Facebook confirm deletion with a fresh sign-in through that provider.
+export type DeletionIdentity = { id: string; email: string; token: string; pending: boolean; passwordAccount?: boolean };
 export type DeletionState = { state: "ready" | "pending"; blockers: { code: string; message: string }[] };
 export const DELETION_SCOPE = [
   "Your sign-in account, profile, personal cloud collection, sales, preferences, and saved cloud versions.",
@@ -24,9 +26,25 @@ const pending = () => new AccountDeletionError("account_deletion_pending", "Dele
 export interface AccountDeletionService {
   identify(token: string): Promise<DeletionIdentity>;
   status(identity: DeletionIdentity): Promise<DeletionState>;
+  /** An empty password means the social path: the verified session must come from a fresh provider sign-in. */
   remove(identity: DeletionIdentity, password: string): Promise<void>;
 }
 type Options = { env?: Environment; admin?: SupabaseClient; clientFactory?: (token?: string) => SupabaseClient; now?: () => number };
+
+/** Social re-authentication must be this recent (seconds); the provider round trip takes a minute or two. */
+export const SOCIAL_REAUTH_WINDOW_SECONDS = 300;
+function hasPasswordSignIn(user: User) {
+  const providers = user.app_metadata?.providers;
+  const identities = Array.isArray(user.identities) ? user.identities.map(item => item.provider) : [];
+  // Unknown shape: keep the stricter password requirement.
+  if (!Array.isArray(providers) && !identities.length) return true;
+  return [...(Array.isArray(providers) ? providers : []), ...identities].includes("email");
+}
+function decodeClaims(token: string) {
+  try { return JSON.parse(Buffer.from(token.split(".")[1] || "", "base64url").toString("utf8")); } catch { return null; }
+}
+const freshMethod = (claims: { amr?: unknown }, method: string, seconds: number, nowSeconds: number) => Array.isArray(claims?.amr)
+  && claims.amr.some((entry: { method?: string; timestamp?: number }) => entry?.method === method && typeof entry.timestamp === "number" && entry.timestamp <= nowSeconds + 30 && nowSeconds - entry.timestamp <= seconds);
 
 function validUser(user: User | null | undefined): user is User & { email: string } {
   return Boolean(user && UUID.test(user.id) && user.email && user.email_confirmed_at && !user.is_anonymous);
@@ -72,7 +90,7 @@ export function createAccountDeletionService(options: Options = {}): AccountDele
         const active = await sessionClient.rpc("code3_current_session_valid");
         if (active.error || active.data !== true) throw new AccountDeletionError("account_sign_in_required", "Sign in again before deleting your account.", 401);
       }
-      return { id: user.id, email: user.email, token, pending: state.state === "pending" };
+      return { id: user.id, email: user.email, token, pending: state.state === "pending", passwordAccount: hasPasswordSignIn(user) };
     },
     status,
     async remove(identity, password) {
@@ -82,19 +100,33 @@ export function createAccountDeletionService(options: Options = {}): AccountDele
       if (before.blockers.length) throw new AccountDeletionError(before.blockers[0].code, before.blockers[0].message, 409);
       const confirmation = factory();
       let freshToken = "";
+      // Only a session this call created is signed out if deletion never starts.
+      let ownsFreshToken = false;
       let started = before.state === "pending";
       let lease = "";
       try {
-        const signed = await confirmation.auth.signInWithPassword({ email: identity.email, password });
-        password = "";
-        if (signed.error || !validUser(signed.data.user) || signed.data.user.id !== identity.id || !signed.data.session?.access_token) {
-          throw new AccountDeletionError("account_reauthentication_failed", "Your password could not be confirmed. Try again or reset your password first.", 401);
-        }
-        freshToken = signed.data.session.access_token;
-        // Decode only a token received directly from Auth, never client claims.
-        const claims = JSON.parse(Buffer.from(freshToken.split(".")[1] || "", "base64url").toString("utf8"));
-        if (claims.sub !== identity.id || !Array.isArray(claims.amr) || !claims.amr.some((entry: { method?: string; timestamp?: number }) => entry.method === "password" && typeof entry.timestamp === "number" && Math.abs(now() / 1000 - entry.timestamp) <= 120)) {
-          throw new AccountDeletionError("account_reauthentication_failed", "Fresh password confirmation is required.", 401);
+        if (!password) {
+          // Social-only accounts: the bearer was verified by Auth in identify(); decode
+          // only that token, never client-sent claims, and require a fresh provider sign-in.
+          if (identity.passwordAccount !== false) throw new AccountDeletionError("account_reauthentication_failed", "Enter your account password to confirm.", 401);
+          const claims = decodeClaims(identity.token);
+          if (!claims || claims.sub !== identity.id || !freshMethod(claims, "oauth", SOCIAL_REAUTH_WINDOW_SECONDS, now() / 1000)) {
+            throw new AccountDeletionError("account_social_reauthentication_required", "Sign in again with Google or Apple, then delete within 5 minutes.", 401);
+          }
+          freshToken = identity.token;
+        } else {
+          const signed = await confirmation.auth.signInWithPassword({ email: identity.email, password });
+          password = "";
+          if (signed.error || !validUser(signed.data.user) || signed.data.user.id !== identity.id || !signed.data.session?.access_token) {
+            throw new AccountDeletionError("account_reauthentication_failed", "Your password could not be confirmed. Try again or reset your password first.", 401);
+          }
+          freshToken = signed.data.session.access_token;
+          ownsFreshToken = true;
+          // Decode only a token received directly from Auth, never client claims.
+          const claims = decodeClaims(freshToken);
+          if (!claims || claims.sub !== identity.id || !Array.isArray(claims.amr) || !claims.amr.some((entry: { method?: string; timestamp?: number }) => entry.method === "password" && typeof entry.timestamp === "number" && Math.abs(now() / 1000 - entry.timestamp) <= 120)) {
+            throw new AccountDeletionError("account_reauthentication_failed", "Fresh password confirmation is required.", 401);
+          }
         }
         checkDeadline();
         // A timeout can hide a committed begin RPC. Treat its outcome as pending
@@ -131,7 +163,7 @@ export function createAccountDeletionService(options: Options = {}): AccountDele
       } finally {
         password = "";
         if (lease) await rpc("code3_release_account_deletion", { target_user: identity.id, lease_token: lease }).catch(() => undefined);
-        if (freshToken && !started) await ready().auth.admin.signOut(freshToken, "local").catch(() => undefined);
+        if (freshToken && ownsFreshToken && !started) await ready().auth.admin.signOut(freshToken, "local").catch(() => undefined);
         freshToken = "";
       }
     },

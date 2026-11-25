@@ -57,6 +57,28 @@ export function MobileBottomNavigation({ items = [], activeKey = "", onSelect })
   );
 }
 
+// Pages inside the current area (Collection, Sets, Wants...), as a scrollable row of
+// pills at the top of the page on phones. Hidden on wide screens, where the sidebar
+// lists them. Hidden when the area has only its Home page.
+export function MobileSectionTabs({ items = [], activeKey = "", onSelect }) {
+  if (items.length < 2) return null;
+  return (
+    <nav className="ops-mobile-sections" aria-label="Pages in this area">
+      {items.map((item) => (
+        <button
+          key={item.key}
+          type="button"
+          className={item.key === activeKey ? "is-active" : ""}
+          aria-current={item.key === activeKey ? "page" : undefined}
+          onClick={() => onSelect?.(item)}
+        >
+          {item.label}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
 export function DesktopSidebar({ items = [], secondaryItems = [], activeKey = "", onSelect, footer = null }) {
   return (
     <aside className="ops-desktop-sidebar" aria-label="Primary navigation">

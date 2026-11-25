@@ -23,7 +23,7 @@ import { NATIVE_BUILD, isHiddenInNativeApp } from "./config/nativeLaunchScope.js
 import {nearbyCoordinatesForText} from './utils/nearbyPreference.mjs';
 import { compactSavedStores } from "./utils/storeDirectoryPersistence.js";
 import { isBlockedAuthor, useBlockedUsers } from "./utils/blockedUsers.js";
-import { catalogCardQueryMatchesRow, getCatalogCollectorQuery, getCatalogPageProducts } from "./utils/catalogResultIdentity.mjs";
+import { catalogCardQueryMatchesRow, getCatalogCollectorQuery, getCatalogPageProducts, pickScannedCard } from "./utils/catalogResultIdentity.mjs";
 import SocialSignInButtons, { ConnectedSignIns } from "./features/auth/SocialSignIn.jsx";
 import EmailConfirmationHelp, { SignupFieldPrivacy } from "./features/auth/EmailConfirmationHelp.jsx";
 import MemberStartGuide from "./features/auth/MemberStartGuide.jsx";
@@ -81,7 +81,7 @@ import { observePlainLanguage } from "./config/plainLanguage";
 import { LEGACY_BACKUP_MAX_BYTES, parseLegacyBetaBackup } from "./features/backup/legacyBackupValidation.js";
 import { createLegacyAppStorageGuard } from "./features/persistence/legacyAppStorage.js";
 import { createDebouncedSaver, flushSaverOnPageHide } from "./utils/debouncedSave.js";
-import { AppShell, DesktopSidebar, MobileBottomNavigation } from "./components/operations/OperationsUI";
+import { AppShell, DesktopSidebar, MobileBottomNavigation, MobileSectionTabs } from "./components/operations/OperationsUI";
 import WorkspaceSwitcher from "./features/workspaces/WorkspaceSwitcher";
 import AppTour, { appTourSeen } from "./features/tour/AppTour.jsx";
 import QuickFeedback, { openQuickFeedback } from "./features/feedback/QuickFeedback.jsx";
@@ -569,6 +569,16 @@ const InventoryImportContent = lazy(() => import("./features/deferredViews/Inven
 const CommunityContent = lazy(() => import("./features/deferredViews/CommunityContent"));
 const MarketplaceContent = lazy(() => import("./features/deferredViews/MarketplaceContent"));
 const AdminReviewContent = lazy(() => import("./features/deferredViews/AdminReviewContent"));
+const AdminStoreManagementContent = lazy(() => import("./features/deferredViews/AdminStoreManagementContent"));
+const RoleManagementContent = lazy(() => import("./features/deferredViews/RoleManagementContent"));
+const AdminBetaInvitesContent = lazy(() => import("./features/deferredViews/AdminBetaInvitesContent"));
+const BetaReadinessContent = lazy(() => import("./features/deferredViews/BetaReadinessContent"));
+const MarketSourceControlsContent = lazy(() => import("./features/deferredViews/MarketSourceControlsContent"));
+const ComingSoonContent = lazy(() => import("./features/deferredViews/ComingSoonContent"));
+const KnownLimitationsContent = lazy(() => import("./features/deferredViews/KnownLimitationsContent"));
+const WhatsNewContent = lazy(() => import("./features/deferredViews/WhatsNewContent"));
+const SponsorInterestContent = lazy(() => import("./features/deferredViews/SponsorInterestContent"));
+const ParentCenterContent = lazy(() => import("./features/deferredViews/ParentCenterContent"));
 const TrustContent = lazy(() => import("./features/deferredViews/TrustContent"));
 const ProfileContent = lazy(() => import("./features/deferredViews/ProfileContent"));
 const MembershipContent = lazy(() => import("./features/deferredViews/MembershipContent"));
@@ -6110,6 +6120,8 @@ export default function App() {
   const [scanMode, setScanMode] = useState("upc");
   const [scanMatches, setScanMatches] = useState([]);
   const [scanReview, setScanReview] = useState(null);
+  // Nov 24 2026: a new match scrolls into view, above the photo panel's fold.
+  const scanReviewCardRef = useRef(null);
   // Grader, grade and cert number read from a slab label; carried to the save screen.
   const [scanSlabDetails, setScanSlabDetails] = useState(null);
   // Site, price and shipping read from a listing screenshot (eBay, Marketplace…).
@@ -6117,10 +6129,19 @@ export default function App() {
   // Nov 19 2026 scanner extras: price check (shows prices, saves nothing), rapid
   // barcode batch, and the last 20 scans on this device.
   const [scanPriceCheck, setScanPriceCheck] = useState(false);
+  const scanReviewId = scanReview?.scanId || "";
+  useEffect(() => {
+    if (!scanReviewId || scanPriceCheck) return;
+    const node = scanReviewCardRef.current;
+    if (!node?.scrollIntoView) return;
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    window.requestAnimationFrame(() => node.scrollIntoView({ block: "start", behavior: reduce ? "auto" : "smooth" }));
+  }, [scanReviewId, scanPriceCheck]);
   const [scanRapid, setScanRapid] = useState(false);
   const [scanBatch, setScanBatch] = useState([]);
   const [scanBatchDestination, setScanBatchDestination] = useState("vault");
   const [scanBatchSaving, setScanBatchSaving] = useState(false);
+  const [cardScanSaving, setCardScanSaving] = useState(false);
   const [recentScans, setRecentScans] = useState(() => readRecentScans());
   // Picture memory: fingerprints of the user's own confirmed card scans (this device only).
   const [cardPictures, setCardPictures] = useState(() => readCardPictures());
@@ -7108,12 +7129,27 @@ export default function App() {
     || (activeTab === "dashboard" ? workspaceNavItems.find((item) => item.key.endsWith("-home")) : undefined);
   const globalAddTab = { key: "global-add", label: "Add", ariaLabel: "Open global Add menu", icon: "plus", isAction: true, action: () => openAddActionSheet("mobile-navigation") };
   const mobileWorkspaceItems = workspaceNavItems.filter((item) => item.mobileEligible !== false);
-  const addInsertIndex = Math.min(2, mobileWorkspaceItems.length);
+  // Bottom bar (owner, Nov 23 2026: "I hate the bottom", wants different tabs): the
+  // bar now holds the app's areas (Collect, Find, Sell, ...) with Add in the middle,
+  // so every area is one tap away. The pages inside the current area (Collection,
+  // Sets, Wants; Restocks; Inventory, Sales) move to a tab row at the top of the page.
+  const mobileAreaTabs = switcherWorkspaces
+    .filter((workspace) => workspace.id !== WORKSPACE_IDS.BOT)
+    .map((workspace) => ({ key: `area-${workspace.id.toLowerCase()}`, workspaceId: workspace.id, label: workspace.label, icon: workspace.icon, action: () => navigateProductWorkspace(workspace.id) }));
+  const addInsertIndex = Math.min(2, Math.ceil(mobileAreaTabs.length / 2));
   const mobileBottomTabs = presentationWorkspaceId === WORKSPACE_IDS.BOT
     ? mobileWorkspaceItems
-    : [...mobileWorkspaceItems.slice(0, addInsertIndex), globalAddTab, ...mobileWorkspaceItems.slice(addInsertIndex)].slice(0, 5);
+    : [...mobileAreaTabs.slice(0, addInsertIndex), globalAddTab, ...mobileAreaTabs.slice(addInsertIndex)].slice(0, 5);
   const mobilePrimaryTabKeys = new Set(mobileBottomTabs.map((tab) => tab.key));
-  const activeMobileTabKey = activeTab === "ownerCenter" ? "" : mobilePrimaryTabKeys.has(activeWorkspaceNavItem?.key) ? activeWorkspaceNavItem.key : "";
+  const activeAreaTabKey = mobileAreaTabs.find((tab) => tab.workspaceId === presentationWorkspaceId)?.key || "";
+  const activeMobileTabKey = activeTab === "ownerCenter" || shellRouteOwnership?.classification === ROUTE_CLASSIFICATIONS.OWNER
+    ? ""
+    : presentationWorkspaceId === WORKSPACE_IDS.BOT
+      ? (mobilePrimaryTabKeys.has(activeWorkspaceNavItem?.key) ? activeWorkspaceNavItem.key : "")
+      : activeAreaTabKey;
+  // Pages inside the current area, shown as the tab row at the top on phones.
+  const mobileSectionTabs = presentationWorkspaceId === WORKSPACE_IDS.BOT ? [] : mobileWorkspaceItems;
+  const activeMobileSectionKey = activeTab === "ownerCenter" ? "" : activeWorkspaceNavItem?.key || "";
   const desktopSidebarItems = workspaceNavItems.filter((item) => item.desktopEligible !== false);
   const desktopSecondaryItems = [
     ownerToolsVisible ? { key: "owner-center", label: "Owner Center", icon: "settings", badge: "Owner Only", action: () => { prepareRouteNavigation(); setOwnerCenterSection("overview"); setOwnerCenterSubview(""); setActiveTab("ownerCenter"); } } : null,
@@ -11242,7 +11278,7 @@ export default function App() {
       return;
     }
     if (normalized === "scan_card") {
-      beginScanProduct("vault");
+      beginScanProduct("vault", "card");
       return;
     }
     if (normalized === "add_sealed_product") {
@@ -17505,6 +17541,7 @@ export default function App() {
       catalogType: product?.catalogType || "unknown",
       productType: normalizedInventoryProductType(product || {}),
       setName: product?.setName || product?.expansion || "",
+      cardNumber: product ? masterCardNumber(product) : "",
       upc: product ? reviewedProductBarcode(product, rawValue) : "",
       sku: product?.sku || "",
       imageUrl: product ? getCatalogImage(product) : "",
@@ -17520,19 +17557,53 @@ export default function App() {
     };
   }
 
-  function beginScanProduct(defaultDestination = "none") {
+  // Fewer steps after a scan (Nov 23 2026): the scanner starts on the place the
+  // person saved to last on this device (Collection the first time), not on "Choose".
+  function readLastScanDestination() {
+    try {
+      const saved = window.localStorage.getItem("code3.scanner.lastDestination");
+      if (saved === "forge" && !activeForgeWorkspace) return "vault";
+      return ["vault", "wishlist", "forge"].includes(saved) ? saved : "vault";
+    } catch {
+      return "vault";
+    }
+  }
+
+  function rememberScanDestination(destination) {
+    if (!["vault", "wishlist", "forge"].includes(destination)) return;
+    try { window.localStorage.setItem("code3.scanner.lastDestination", destination); } catch { /* Optional convenience. */ }
+  }
+
+  // Nov 24 2026: general "Scan" buttons reopen the tab the person used last on this
+  // device (Card the first time); barcode-only buttons still pass "upc".
+  function readLastScanMode() {
+    try {
+      const saved = window.localStorage.getItem("code3.scanner.lastMode");
+      return ["card", "upc", "slab"].includes(saved) ? saved : "card";
+    } catch {
+      return "card";
+    }
+  }
+
+  function rememberScanMode(mode) {
+    if (!["card", "upc", "slab"].includes(mode)) return;
+    try { window.localStorage.setItem("code3.scanner.lastMode", mode); } catch { /* Optional convenience. */ }
+  }
+
+  // mode: the scanner tab to open on ("upc" barcode, "card", ...). Scan card actions open on Card.
+  function beginScanProduct(defaultDestination = "none", mode = "upc") {
     scanLookupRequestRef.current += 1;
     setEditingItemId(null);
     setScanSlabDetails(null);
     setScanListingDetails(null);
-    setScanMode("upc");
+    setScanMode(mode);
     setScanPriceCheck(false);
     setScanRapid(false);
     setScanPictureHash("");
     setScanMatches([]);
     setScanReview(null);
     setScanSearchState("idle");
-    setScanDestination(normalizeAddDestinationValue(defaultDestination, "none", { allowIgnore: true }));
+    setScanDestination(normalizeAddDestinationValue(defaultDestination === "none" ? readLastScanDestination() : defaultDestination, "none", { allowIgnore: true }));
     setScanMessage("");
     setScanInput("");
     setScanManualDraft({ itemType: "Sealed", quantity: 1, purchasePrice: "" });
@@ -18692,7 +18763,7 @@ export default function App() {
     });
   }
 
-  async function handleCatalogScanMatch(value, { preferId = "" } = {}) {
+  async function handleCatalogScanMatch(value, { preferId = "", numberFallbackFrom = "" } = {}) {
     const requestId = ++scanLookupRequestRef.current;
     const lookupValue = String(value || "").trim();
     if (!lookupValue) {
@@ -18712,10 +18783,21 @@ export default function App() {
     const mode = detectCatalogSearchMode(lookupValue);
     const normalizedLookupCode = normalizeBarcodeValue(lookupValue);
     const exactIdentifier = ["barcode", "id"].includes(mode) || isLikelyBarcodeValue(lookupValue);
-    const seedProducts = await loadLocalCatalogSeed("barcode scan");
-    if (requestId !== scanLookupRequestRef.current) return;
-    const searchPool = mergeCatalogProductLists(catalogProducts, seedProducts);
-    const localBarcodeProducts = findCatalogProductsByBarcode(searchPool, lookupValue);
+    // Scanner speed (Nov 23 2026): the local sealed seed is a large file. Start it,
+    // but check the products already in memory first and run the online lookup at
+    // the same time; the seed is only awaited when neither of those found a match.
+    const seedPromise = loadLocalCatalogSeed("barcode scan").catch(() => []);
+    let searchPool = catalogProducts;
+    let localBarcodeProducts = findCatalogProductsByBarcode(searchPool, lookupValue);
+    const addSeedProducts = async () => {
+      const seedProducts = await seedPromise;
+      searchPool = mergeCatalogProductLists(catalogProducts, seedProducts);
+      if (!localBarcodeProducts.length) localBarcodeProducts = findCatalogProductsByBarcode(searchPool, lookupValue);
+    };
+    if (!localBarcodeProducts.length && !(isSupabaseConfigured && supabase && lookupValue.length >= 2)) {
+      await addSeedProducts();
+      if (requestId !== scanLookupRequestRef.current) return;
+    }
     matches = localBarcodeProducts.map(item => ({
       item,
       score: 1200,
@@ -18759,7 +18841,11 @@ export default function App() {
     }
 
     if (!matches.length) {
-      matches = getBestCatalogMatches(lookupValue, searchPool);
+      await addSeedProducts();
+      if (requestId !== scanLookupRequestRef.current) return;
+      matches = localBarcodeProducts.length
+        ? localBarcodeProducts.map(item => ({ item, score: 1200, confidencePercent: 98, explanation: localBarcodeProducts.length > 1 ? "Shared barcode — choose the matching artwork and package" : "Exact UPC/EAN/GTIN or SKU match — review before saving", reason: "local identifier match" }))
+        : getBestCatalogMatches(lookupValue, searchPool);
     }
     // A picture-memory pick: put the remembered card first when the search found it.
     if (preferId) {
@@ -18779,7 +18865,17 @@ export default function App() {
       setScanReview(nextReview);
       rememberScan(nextReview);
       setScanSearchState("results");
-      setScanMessage(requiresPackageChoice ? "This barcode is shared by more than one package. Choose the matching artwork, edition and pack count before saving." : `${aiSummary.outputSummary} Review every match before saving.`);
+      setScanMessage(requiresPackageChoice
+        ? "This barcode is shared by more than one package. Choose the matching artwork, edition and pack count before saving."
+        : numberFallbackFrom
+          ? `No card matched "${numberFallbackFrom}" with that number, so these are cards with the same name. Check the number and set before saving.`
+          : `${aiSummary.outputSummary} Review every match before saving.`);
+    } else if (!exactIdentifier && !numberFallbackFrom && getCatalogCollectorQuery(lookupValue)?.requiredWords?.some((word) => word.length >= 3)) {
+      // Nov 24 2026: the photo can misread the number (attack damage, a smudge), and a
+      // name plus a wrong number finds nothing. Search the name alone instead of
+      // showing an empty result; the message says the number did not match.
+      const nameOnly = getCatalogCollectorQuery(lookupValue).requiredWords.join(" ");
+      await handleCatalogScanMatch(nameOnly, { preferId, numberFallbackFrom: lookupValue });
     } else {
       setScanReview(null);
       setScanSearchState("empty");
@@ -18860,32 +18956,52 @@ export default function App() {
   }
 
   // Rapid barcode batch: look each new code up quietly and keep a running count.
-  async function lookupBarcodeProduct(code) {
+  // Bulk scan fixes (Nov 24 2026): the cache holds the lookup itself, so the same
+  // code scanned again while its lookup is still running shares that one lookup
+  // instead of starting another (the old check read a stale batch). Products
+  // already in memory are checked first, then the online catalog and the large
+  // local seed run at the same time; the seed is only awaited when online found nothing.
+  function lookupBarcodeProduct(code) {
     const cache = scanBarcodeCacheRef.current;
     if (cache.has(code)) return cache.get(code);
-    let product = null;
-    try {
-      const seedProducts = await loadLocalCatalogSeed("barcode batch");
-      product = findCatalogProductsByBarcode(mergeCatalogProductLists(catalogProducts, seedProducts), code)[0] || null;
-      if (!product && isSupabaseConfigured && supabase) {
-        const normalized = normalizeBarcodeValue(code) || code;
-        const result = await searchPokemonCatalogOnDemand({ supabase, query: normalized, barcode: normalized, mode: "barcode", page: 1, pageSize: 4, force: true });
-        product = (result.rows || []).map(mapCatalog).find((item) => catalogIdentifiersForProduct(item).includes(normalized)) || null;
+    const lookup = (async () => {
+      try {
+        const inMemory = findCatalogProductsByBarcode(catalogProducts, code)[0];
+        if (inMemory) return inMemory;
+        const seedPromise = loadLocalCatalogSeed("barcode batch").catch(() => []);
+        if (isSupabaseConfigured && supabase) {
+          const normalized = normalizeBarcodeValue(code) || code;
+          try {
+            const result = await searchPokemonCatalogOnDemand({ supabase, query: normalized, barcode: normalized, mode: "barcode", page: 1, pageSize: 4, force: true });
+            const remote = (result.rows || []).map(mapCatalog).find((item) => catalogIdentifiersForProduct(item).includes(normalized));
+            if (remote) return remote;
+          } catch {
+            // Fall through to the local seed.
+          }
+        }
+        const seedProducts = await seedPromise;
+        return findCatalogProductsByBarcode(mergeCatalogProductLists(catalogProducts, seedProducts), code)[0] || null;
+      } catch {
+        return null;
       }
-    } catch {
-      product = null;
-    }
-    cache.set(code, product);
-    return product;
+    })();
+    cache.set(code, lookup);
+    return lookup;
   }
 
   async function handleRapidBarcode(code) {
     const clean = String(code || "").trim();
     if (!clean) return;
     setScanBatch((current) => tallyBarcode(current, { code: clean }));
-    const known = scanBatch.find((row) => row.code === clean && row.status);
-    if (known) return;
+    const alreadyLooked = scanBarcodeCacheRef.current.has(clean);
     const product = await lookupBarcodeProduct(clean);
+    if (alreadyLooked) {
+      // Fill in rows that were cleared and scanned again; leave counts alone.
+      setScanBatch((current) => current.map((row) => (row.code === clean && !row.status
+        ? (product ? { ...row, status: "found", product, catalogItemId: product.id, itemName: catalogTitle(product), marketValue: getTideTradrMarketInfo(product).currentMarketValue || product.marketPrice || "" } : { ...row, status: "missing" })
+        : row)));
+      return;
+    }
     setScanBatch((current) => current.map((row) => {
       if (row.code !== clean) return row;
       if (!product) return { ...row, status: "missing" };
@@ -18963,6 +19079,118 @@ export default function App() {
       setScanMessage(error?.message ? `The batch could not be saved: ${error.message}` : "The batch could not be saved. Try again.");
     } finally {
       setScanBatchSaving(false);
+    }
+  }
+
+  // Scan several cards, "Save all" (Nov 24 2026). A row is saved only when its name
+  // and number lead to exactly one catalog card (the same name-and-number check the
+  // scanner uses); rows without a number, with several possible printings, or going
+  // to Wants stay in the list to review one by one.
+  async function findVerifiedCardForScanRow(row) {
+    return (await matchScannedCardRow(row)).card;
+  }
+
+  // Nov 24 2026: the same card is in the catalog from two sources and as stamped
+  // reprints, so name + number alone matched several rows and almost every popular
+  // card went to review. pickScannedCard keeps the full number, the exact name and
+  // the main set, and reports how many other printings it left out.
+  async function matchScannedCardRow(row) {
+    const name = String(row?.cardName || "").trim();
+    const number = String(row?.cardNumber || "").trim();
+    if (!name || !number) return { card: null, others: 0 };
+    const query = `${name} ${number}`;
+    if (!getCatalogCollectorQuery(query)) return { card: null, others: 0 };
+    let candidates = [];
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const result = await searchPokemonCatalogOnDemand({ supabase, query, mode: "general", page: 1, pageSize: 24, force: true });
+        candidates = (result.rows || []).map(mapCatalog);
+      } catch {
+        candidates = [];
+      }
+    }
+    if (!candidates.length) candidates = getBestCatalogMatches(query, catalogProducts).map((match) => match.item);
+    return pickScannedCard({ name, number, setName: row.setName }, candidates);
+  }
+
+  async function saveAllCardScanRows() {
+    if (cardScanSaving || blockGuestSave()) return;
+    const rows = (quickAddWizard.cardScanRows || []).filter((row) => String(row.cardName || "").trim());
+    if (!rows.length) {
+      updateQuickAddWizard({ message: "Add at least one card before saving." });
+      return;
+    }
+    setCardScanSaving(true);
+    updateQuickAddWizard({ message: "Matching your cards…" });
+    try {
+      const now = new Date().toISOString();
+      const records = [];
+      const rowIdByRecord = new Map();
+      const unsure = new Map();
+      for (const row of rows) {
+        const destination = row.destination || "vault";
+        if (destination !== "vault" && !(destination === "forge" && activeForgeWorkspace)) { unsure.set(row.id, "Review this one: it goes somewhere other than your collection."); continue; }
+        const workspace = destination === "forge"
+          ? activeForgeWorkspace
+          : workspaces.find((candidate) => String(candidate.id) === String(defaultWorkspaceIdForDestination("vault"))) || activeWorkspace;
+        if (!workspace?.id || !canEditWorkspaceId(workspace.id)) { unsure.set(row.id, "You can't add to this workspace."); continue; }
+        const product = row.matchedProduct && row.matchedFor === `${row.cardName}|${row.cardNumber}` ? row.matchedProduct : await findVerifiedCardForScanRow(row);
+        if (!product) { unsure.set(row.id, row.cardNumber ? "Review this one: more than one card or no card matched." : "Review this one: add the card number to match it."); continue; }
+        const known = buildCatalogAutofillDetails(product);
+        const marketInfo = getTideTradrMarketInfo(product);
+        const shared = {
+          name: catalogTitle(product),
+          category: "Pokemon",
+          sku: known.sku || "",
+          productType: normalizedInventoryProductType(product),
+          catalogProductId: product.id || "",
+          catalogProductName: product.name || "",
+          externalProductId: known.externalProductId || "",
+          tcgplayerProductId: known.tcgplayerProductId || known.externalProductId || "",
+          itemImage: known.itemImage || "",
+          itemImageSource: product.imageSource || getDefaultImageSource(product),
+          itemImageStatus: product.imageStatus || getDefaultImageStatus(product),
+          marketPrice: blankToNull(marketInfo.currentMarketValue || product.marketPrice || product.midPrice),
+          setCode: known.setCode || "",
+          setName: known.setName || product.setName || row.setName || "",
+          expansion: known.setName || product.setName || row.setName || "",
+          cardNumber: product.cardNumber || row.cardNumber || "",
+          variant: row.variant || "",
+          notes: "Added from Scan several cards (Save all).",
+          sourceType: "TideTradr",
+          conditionName: row.condition || "Near Mint",
+          language: "English",
+          createdAt: now,
+        };
+        const record = destination === "forge"
+          ? applyWorkspaceToRecord({ id: makeId("item"), ...shared, destinationScope: ["forge"], recordType: "forge_inventory", businessInventory: true, ownedItemPurpose: OWNED_ITEM_PURPOSES.FOR_RESALE, quantity: 1, forgeQuantity: 1, ownedQuantity: 0, unitCost: 0, salePrice: 0, physicalLocation: DEFAULT_FORGE_PHYSICAL_LOCATION, status: "In Stock" }, workspace)
+          : applyWorkspaceToRecord({ id: makeId("vault"), ...shared, destinationScope: ["vault"], recordType: "vault_item", businessInventory: false, ownedItemPurpose: OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION, isWishlist: false, quantity: 1, ownedQuantity: 1, forgeQuantity: 0, unitCost: 0, status: vaultStatusLabel("personal_collection"), vaultStatus: "personal_collection", storageLocation: vaultStatusLabel("personal_collection") }, workspace);
+        records.push(record);
+        rowIdByRecord.set(record.id, row.id);
+      }
+      let savedRowIds = new Set();
+      let failureNote = "";
+      if (records.length) {
+        const result = await saveInventoryRecords(records);
+        const saved = result.saved || [];
+        if (saved.length) setItems((current) => [...saved, ...current]);
+        savedRowIds = new Set(saved.map((record) => rowIdByRecord.get(record.id)).filter(Boolean));
+        if (result.failures?.length) failureNote = ` ${result.failures.length} could not be saved: ${result.failures[0].error || "try again"}.`;
+      }
+      const left = rows.length - savedRowIds.size;
+      const message = savedRowIds.size
+        ? `Saved ${savedRowIds.size} card${savedRowIds.size === 1 ? "" : "s"}.${left ? ` ${left} need${left === 1 ? "s" : ""} a quick review below.` : ""}${failureNote}`
+        : `No card could be matched for sure. Add the card numbers or review each one.${failureNote}`;
+      setQuickAddWizard((current) => {
+        const remaining = (current.cardScanRows || [])
+          .filter((row) => !savedRowIds.has(row.id))
+          .map((row) => (unsure.has(row.id) ? { ...row, scanNote: unsure.get(row.id) } : row));
+        return { ...current, cardScanRows: remaining.length ? remaining : [createQuickAddCardScanRow()], message };
+      });
+    } catch (error) {
+      updateQuickAddWizard({ message: error?.message ? `The cards could not be saved: ${error.message}` : "The cards could not be saved. Try again." });
+    } finally {
+      setCardScanSaving(false);
     }
   }
 
@@ -19143,12 +19371,17 @@ export default function App() {
         if (!await persistScannerIntake(destination, "confirmed")) return;
       }
       rememberScanPicture(product);
+      rememberScanDestination(destination);
+      rememberScanMode(scanMode);
       closeInventoryScanner();
       return openProductAddFlow({
         product,
         source: "scanner",
         destinations: destinationDefaults({ [destination]: true }),
         seed: {
+          // The scan already chose the item and the place: open on the last step
+          // (Business still needs cost details first). Back still reaches every step.
+          initialStep: destination === "forge" ? "details" : "review",
           catalogSearchQuery: scanReview?.rawValue || scanInput || catalogTitle(product),
           ...(scanSlabDetails ? {
             graded: true,
@@ -19632,7 +19865,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   function openVaultScanFlow() {
     setActiveTab("vault");
     closeFlowModal({ force: true, reset: false });
-    beginScanProduct("vault");
+    beginScanProduct("vault", readLastScanMode());
   }
 
   function openVaultImportCollectionFlow() {
@@ -19711,11 +19944,33 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   // are added as rows, safely, even when several reads finish close together.
   function appendQuickAddCardScanRows(newRows = []) {
     if (!newRows.length) return;
+    const created = newRows.map((row) => createQuickAddCardScanRow(row));
     setQuickAddWizard((current) => {
       const existing = Array.isArray(current.cardScanRows) ? current.cardScanRows : [];
       const kept = existing.filter((row) => row.cardName || row.cardNumber || row.setName || row.variant || row.condition);
-      return { ...current, cardScanRows: [...kept, ...newRows.map((row) => createQuickAddCardScanRow(row))], message: "" };
+      return { ...current, cardScanRows: [...kept, ...created], message: "" };
     });
+    void matchCardScanRows(created);
+  }
+
+  // Scan several cards, live matching (Nov 24 2026, owner: "competitive"). Each scanned
+  // row is matched in the background with the same one-card check "Save all" uses, so
+  // the row shows its card, set and price, and the list shows a running total.
+  async function matchCardScanRows(rows = []) {
+    for (const row of rows) {
+      if (!String(row.cardName || "").trim() || !String(row.cardNumber || "").trim()) continue;
+      let product = null;
+      let others = 0;
+      try { ({ card: product, others } = await matchScannedCardRow(row)); } catch { product = null; }
+      const marketValue = product ? Number(getTideTradrMarketInfo(product).currentMarketValue || product.marketPrice || product.midPrice || 0) : 0;
+      const patch = product
+        ? { matchedProduct: product, matchState: "matched", matchedOthers: others || 0, matchedLabel: [catalogTitle(product), product.setName || product.expansion, product.cardNumber].filter(Boolean).join(" · "), matchedValue: Number.isFinite(marketValue) && marketValue > 0 ? marketValue : 0, matchedFor: `${row.cardName}|${row.cardNumber}` }
+        : { matchedProduct: null, matchState: "review", matchedLabel: "", matchedValue: 0, matchedFor: `${row.cardName}|${row.cardNumber}` };
+      setQuickAddWizard((current) => ({
+        ...current,
+        cardScanRows: (current.cardScanRows || []).map((candidate) => (candidate.id === row.id && `${candidate.cardName}|${candidate.cardNumber}` === patch.matchedFor ? { ...candidate, ...patch } : candidate)),
+      }));
+    }
   }
 
   function setQuickAddPath(path, patch = {}) {
@@ -21922,7 +22177,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       return;
     }
     if (action === "scanUpc") return openQuickFindFlow({ source: "quick-add-upc" });
-    if (action === "scanCard") return beginScanProduct("none");
+    if (action === "scanCard") return beginScanProduct("vault", "card");
     if (action === "comparePrice") {
       setActiveTab("market");
       return openDealFinderModal();
@@ -22007,7 +22262,8 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       setActiveTab("adminReview");
       return;
     }
-    if (action === "scanProduct") return beginScanProduct("none");
+    if (action === "scanProduct") return beginScanProduct("none", readLastScanMode());
+    if (action === "scanCardReview") return beginScanProduct("none", "card");
     if (action === "pictureLookup") return openPictureLookupFlow("none");
     if (action === "scanVault") return openVaultScanFlow();
     if (action === "scanForge") {
@@ -32337,7 +32593,7 @@ function renderForgeBusinessLedgerPanel() {
     ].filter(Boolean);
     const emberAssistQuickActions = [
       { label: "Replay first-time guide", helper: "Open the setup guide again; progress stays local to this browser.", action: () => { setEmberAssistOpen(false); restartOnboarding(); } },
-      { label: "Scan a card", helper: "Open review-first card or product scan.", action: () => { setEmberAssistOpen(false); openQuickAddAction("scanProduct"); } },
+      { label: "Scan a card", helper: "Open review-first card or product scan.", action: () => { setEmberAssistOpen(false); openQuickAddAction("scanCardReview"); } },
       { label: "Scan restock screenshot", helper: "Review proof first; no upload or live AI promise.", action: () => { setEmberAssistOpen(false); openLiveScoutReportFlow("scanScreenshot"); } },
       { label: "Check trade fairness", helper: "Compare exact variants with parent-aware warnings.", action: () => { setEmberAssistOpen(false); setActiveTab("inventory"); openTradeCompassFlow({ source: "ember-assist-quick-action-trade-fairness" }); } },
       { label: "Help price listing", helper: "Use fair context; nothing posts or checks out.", action: () => { setEmberAssistOpen(false); setActiveTab("market"); } },
@@ -37806,89 +38062,33 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function renderMarketSourceControls() {
-    if (!adminToolsVisible) return null;
-    return (
-      <section className="settings-subsection marketplace-admin-review">
-        <div className="compact-card-header">
-          <div>
-            <h3>Market Source Controls</h3>
-            <p>Admin-only source status, sync actions, manual values, and market to-do items.</p>
-          </div>
-          <span className="status-badge">Admin only</span>
-        </div>
-        <div className="small-empty-state admin-only-note">
-          <strong>Admin only.</strong>
-          <span>Source credentials stay server-side; review import status before publishing shared market data.</span>
-        </div>
-        <div className="cards mini-cards">
-          <div className="card"><p>Catalog Products</p><h2>{supabaseCatalogStatus.totalCount ?? catalogProducts.length}</h2></div>
-          <div className="card"><p>Found Market Values</p><h2>{catalogMarketPriceCount}</h2></div>
-          <div className="card"><p>Missing Market Prices</p><h2>{missingMarketPriceItems.length}</h2></div>
-          <div className="card"><p>Needs Market Check</p><h2>{needsMarketCheckItems.length}</h2></div>
-          <div className="card"><p>Cached Price Records</p><h2>{cachedMarketPriceCount}</h2></div>
-          <div className="card"><p>Failed Matches</p><h2>{failedMarketMatches.length}</h2></div>
-          <div className="card"><p>Last Sync</p><h2>{lastMarketSync === "Not synced yet" ? "None" : new Date(lastMarketSync).toLocaleDateString()}</h2></div>
-          <div className="card"><p>Live API</p><h2>Unavailable</h2></div>
-        </div>
-        <p className="compact-subtitle">Market values are labeled Live, Cached, Manual, Estimated, or Unknown. Beta sync uses local/import-ready data unless a backend source is connected.</p>
-        {marketSyncMessage ? <p className="compact-subtitle">{marketSyncMessage}</p> : null}
-        <div className="quick-actions">
-          <button type="button" onClick={() => refreshMarketCatalog("card")}>Review saved card prices</button>
-          <button type="button" className="secondary-button" onClick={() => refreshMarketCatalog("sealed")}>Review saved product prices</button>
-          <button type="button" className="secondary-button" onClick={refreshMarketWatchlist}>Refresh Watchlist</button>
-          <button type="button" className="secondary-button" onClick={refreshPinnedMarketWatch}>Refresh Pinned Market Watch</button>
-        </div>
-        <details className="scout-score-guidelines">
-          <summary>Manual Price Entry</summary>
-          <form className="form market-price-form" onSubmit={saveManualMarketPrice}>
-            <Field label="Catalog Item">
-              <select value={manualMarketForm.catalogItemId} onChange={(event) => setManualMarketForm((current) => ({ ...current, catalogItemId: event.target.value }))}>
-                <option value="">Choose item</option>
-                {catalogProducts.map((product) => (
-                  <option key={product.id} value={product.id}>{catalogTitle(product)}</option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Market Price">
-              <input type="number" step="0.01" value={manualMarketForm.marketPrice} onChange={(event) => setManualMarketForm((current) => ({ ...current, marketPrice: event.target.value }))} placeholder="Manual market value" />
-            </Field>
-            <Field label="Low / Mid / High">
-              <div className="inline-input-grid">
-                <input type="number" step="0.01" value={manualMarketForm.lowPrice} onChange={(event) => setManualMarketForm((current) => ({ ...current, lowPrice: event.target.value }))} placeholder="Low" />
-                <input type="number" step="0.01" value={manualMarketForm.midPrice} onChange={(event) => setManualMarketForm((current) => ({ ...current, midPrice: event.target.value }))} placeholder="Mid" />
-                <input type="number" step="0.01" value={manualMarketForm.highPrice} onChange={(event) => setManualMarketForm((current) => ({ ...current, highPrice: event.target.value }))} placeholder="High" />
-              </div>
-            </Field>
-            <button type="submit">Save Manual Price</button>
-          </form>
-        </details>
-        <details className="scout-score-guidelines">
-          <summary>Market To-Do</summary>
-          {needsMarketCheckItems.length || missingMarketPriceItems.length || missingMsrpItems.length ? (
-            <>
-              <ActionReport title="Needs Market Check" items={needsMarketCheckItems} button="Update Market" action={startEditingItem} />
-              <ActionReport title="Missing Market Price" items={missingMarketPriceItems} button="Add Market Price" action={startEditingItem} />
-              <ActionReport title="Missing MSRP" items={missingMsrpItems} button="Add MSRP" action={startEditingItem} />
-            </>
-          ) : (
-            <div className="empty-state">
-              <h3>No items need review</h3>
-              <p>Market to-do items will appear here when catalog prices or MSRP fields need attention.</p>
-            </div>
-          )}
-        </details>
-        <div className="market-source-list">
-          {MARKET_SOURCES.map((source) => (
-            <div className="market-source-row" key={source.key}>
-              <strong>{source.label}</strong>
-              <span>{source.status}</span>
-              <p>{source.notes}</p>
-            </div>
-          ))}
-        </div>
-          <p className="compact-subtitle">{AI_PRICE_DISCLAIMER} Protected provider credentials are handled server-side. Some live source connectors may remain unavailable during private beta.</p>
-      </section>
-    );
+    return <LazyToolBoundary label="Loading market sources…">
+      <MarketSourceControlsContent scope={{
+        AI_PRICE_DISCLAIMER,
+        ActionReport,
+        Field,
+        MARKET_SOURCES,
+        adminToolsVisible,
+        cachedMarketPriceCount,
+        catalogMarketPriceCount,
+        catalogProducts,
+        catalogTitle,
+        failedMarketMatches,
+        lastMarketSync,
+        manualMarketForm,
+        marketSyncMessage,
+        missingMarketPriceItems,
+        missingMsrpItems,
+        needsMarketCheckItems,
+        refreshMarketCatalog,
+        refreshMarketWatchlist,
+        refreshPinnedMarketWatch,
+        saveManualMarketPrice,
+        setManualMarketForm,
+        startEditingItem,
+        supabaseCatalogStatus,
+      }} />
+    </LazyToolBoundary>;
   }
 
   async function runFeedbackAiSummary() {
@@ -38788,305 +38988,36 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
 
   function renderParentCenterPage() {
-    const parentCenterKidsApplication = (betaReadinessData.kidsApplications || [])[0] || null;
-    const mockKidProfiles = [
-      { name: "Young collector", age: "8-10", visibility: "Private to family workspace", status: "Parent managed", focus: "Binder goals and safe trades" },
-      { name: "Teen collector", age: "11-13", visibility: "Wishlist hidden from public spaces", status: "Setup preview", focus: "Deck lists and missing cards" },
-    ];
-    const safetyRows = [
-      { title: "Child privacy default", body: "Kid profiles begin private. Names, ages, notes, and wishlists are not shown in public surfaces.", status: "Private" },
-      { title: "Trade approval", body: "Kid trades are treated as parent-review decisions before anything changes hands.", status: "Approval first" },
-      { title: "Community restrictions", body: "Community remains adult-guided and moderated. No unmoderated kid messaging is connected.", status: "Restricted" },
-      { title: "Purchase reminders", body: "Market and Restocks guide fair value and planning, not rush buying, checkout, or guaranteed stock.", status: "Fair pace" },
-    ];
-    const approvalRows = [
-      { title: "Trade review", body: "Check exact variants, condition, value range, and who receives each card.", status: "Parent approval" },
-      { title: "Restocks trip decision", body: "Use Worth the Trip and proof confidence without exposing harmful restock patterns.", status: "Current signals" },
-      { title: "Spark participation", body: parentCenterKidsApplication ? `Latest request: ${statusLabel(parentCenterKidsApplication.status || "pending")}.` : "Requests are reviewed before a child-sensitive program action is counted.", status: "Review queue" },
-      { title: "Purchase pause", body: "Add a reminder to compare budget, fair range, and family rules before buying.", status: "Reminder" },
-    ];
-    const participationRows = [
-      { title: "The Spark", body: parentCenterKidsApplication ? `Request status: ${statusLabel(parentCenterKidsApplication.status || "pending")}. No child details are shared publicly.` : "Parent-approved Spark requests can start from The Spark without public child details.", action: "Open The Spark", onClick: () => setActiveTab("kidsProgram") },
-      { title: "Trusted adults", body: "Trusted adult helpers are a placeholder for a future approval model. Nothing grants access yet.", action: "Review Privacy", onClick: () => setActiveTab("trust") },
-      { title: "Family workspace", body: activeWorkspace?.name ? `${activeWorkspace.name} keeps collection access scoped.` : "Use workspace settings to keep family collection access scoped.", action: "Open Settings", onClick: () => openUtilityPage("settings") },
-    ];
-    return renderUtilityPageShell({
-      title: "Parent Center",
-      subtitle: "Kids can collect safely with parent-guided tools.",
-      className: "parent-center-page",
-      actions: (
-        <>
-          <button type="button" className="secondary-button" onClick={() => setActiveTab("kidsProgram")}>Open The Spark</button>
-          <button type="button" className="secondary-button" onClick={() => setActiveTab("trust")}>Privacy &amp; Safety</button>
-        </>
-      ),
-      children: (
-        <>
-          <section className="drawer-info-card parent-center-hero-card utility-card utility-card-wide">
-            <div>
-              <p className="section-kicker">Family safety</p>
-              <h3>Parent-guided collecting, private by default.</h3>
-              <p className="compact-subtitle">Parent Center is a mock-only safety shell for child privacy defaults, trade approvals, community restrictions, purchase reminders, and Spark participation. No child account backend, messaging, or auth change is connected.</p>
-            </div>
-            <div className="settings-section-grid compact">
-              {safetyRows.map((row) => (
-                <article className="settings-section-card" key={row.title}>
-                  <strong>{row.title}</strong>
-                  <span>{row.body}</span>
-                  <small className="status-badge">{row.status}</small>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className="drawer-info-card parent-center-profile-card utility-card">
-            <div className="compact-card-header">
-              <div>
-                <strong>Kid profile previews</strong>
-                <p className="compact-subtitle">Mock-only age-band examples. No public child profiles, legal names, photos, or child account records are created.</p>
-              </div>
-              <span className="status-badge">Private</span>
-            </div>
-            <div className="parent-center-profile-list">
-              {mockKidProfiles.map((profile) => (
-                <article className="parent-center-profile-row" key={profile.name}>
-                  <div>
-                    <strong>{profile.name}</strong>
-                    <span>{profile.age}</span>
-                  </div>
-                  <p>{profile.visibility}</p>
-                  <p>{profile.focus}</p>
-                  <small className="status-badge">{profile.status}</small>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className="drawer-info-card parent-center-approval-card utility-card">
-            <div className="compact-card-header">
-              <div>
-                <strong>Approval checklist</strong>
-                <p className="compact-subtitle">A parent-first review layer for trades, trips, purchases, and Spark participation.</p>
-              </div>
-              <span className="status-badge">Preview</span>
-            </div>
-            <div className="parent-center-approval-list">
-              {approvalRows.map((row) => (
-                <article className="parent-center-approval-row" key={row.title}>
-                  <div>
-                    <strong>{row.title}</strong>
-                    <span>{row.body}</span>
-                  </div>
-                  <small className="status-badge">{row.status}</small>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className="drawer-info-card parent-center-support-card utility-card">
-            <div className="compact-card-header">
-              <div>
-                <strong>Family support paths</strong>
-                <p className="compact-subtitle">Safe shortcuts for Spark requests, trusted adult planning, and workspace privacy review.</p>
-              </div>
-              <span className="status-badge">Mock controls</span>
-            </div>
-            <div className="settings-section-grid compact">
-              {participationRows.map((row) => (
-                <article className="settings-section-card parent-center-action-card" key={row.title}>
-                  <strong>{row.title}</strong>
-                  <span>{row.body}</span>
-                  <button type="button" className="secondary-button" onClick={row.onClick}>{row.action}</button>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className="drawer-info-card parent-center-summary-card utility-card utility-card-wide">
-            <strong>Safety summary</strong>
-            <p className="compact-subtitle">No live messaging, no child account backend, no payment flow, no public child identity, and no unsafe restock pattern access were added. Parent Center stays a UI shell until the safety system is explicitly approved.</p>
-            <div className="settings-section-grid compact">
-              {["No unmoderated kid messaging", "Parent-reviewed trade guidance", "Private child/family details", "Spark participation is reviewed"].map((item) => (
-                <article className="settings-section-card" key={item}>
-                  <strong>{item}</strong>
-                  <span>Enabled as safety copy and mock UI only.</span>
-                </article>
-              ))}
-            </div>
-          </section>
-        </>
-      ),
-    });
+    return <LazyToolBoundary label="Loading Parent Center…">
+      <ParentCenterContent scope={{
+        activeWorkspace,
+        betaReadinessData,
+        openUtilityPage,
+        renderUtilityPageShell,
+        setActiveTab,
+        statusLabel,
+      }} />
+    </LazyToolBoundary>;
   }
 
   function renderSponsorInterestPage() {
-    const shopPortalTrustCards = [
-      { title: "Trusted Family Friend badge", body: "Approved shops can show family-safe event support, fair update language, and Spark participation status after review.", status: "Review required" },
-      { title: "Helpful updates", body: "Use broad status context without exact quantities, vendor schedules, employee details, or rush-feed language.", status: "No rush feed" },
-      { title: "Spark support", body: "Coordinate packs, supplies, volunteer support, event help, or sponsorship interest after admin review.", status: "Preview only" },
-    ];
-    const shopPortalStatuses = ["In stock", "Limited", "Sold out", "Call first", "Family hold", "Event only"];
-    const shopPortalTools = [
-      { title: "Shop profile", body: "Preview family-friendly description, public contact boundaries, and review status." },
-      { title: "Drop/event composer", body: "Draft a Learn to Play Day, trade night, or Spark drop-off event for review." },
-      { title: "Restock status composer", body: "Use safe broad labels instead of exact quantities, vendor timing, or employee details." },
-      { title: "Spark sponsor tools", body: "Share support categories without payments, checkout, or donation processing." },
-      { title: "Admin review status", body: "Updates stay pending until Code 3 TCG review approves safe public wording." },
-    ];
-    const shopPortalReviewSteps = [
-      { title: "Profile review", body: "Shop identity, region, and family-friendly contact details are reviewed before any badge appears.", status: "Pending" },
-      { title: "Update review", body: "Restock and event drafts stay broad, current, and non-exploitable.", status: "Manual review" },
-      { title: "Spark support review", body: "Donation or sponsor interest is counted only after a safe admin review.", status: "Review first" },
-      { title: "No live posting", body: "This preview does not publish posts, sync inventory, send alerts, or process payments.", status: "Preview-safe" },
-    ];
-    return (
-      <>
-        <PageHeader
-          className={getHeaderCardClass("panel page-summary-card shop-portal-header")}
-          title="Shop Portal"
-          subtitle="Post helpful updates without creating a rush feed."
-          actions={(
-            <>
-              <button type="button" className="secondary-button" onClick={() => openPublicBetaFeedback({ page: "Shop Portal", role: "Shop", mainReason: "Shop partnership", interests: ["Shop partnership", "Restocks restock alerts", "The Spark kids program"] })}>I&apos;m a shop or sponsor</button>
-              <button type="button" className="secondary-button" onClick={() => setActiveTab("trust")}>Review safety rules</button>
-              <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>
-            </>
-          )}
-        />
-        <section className="panel sponsor-interest-panel">
-          <div className="shop-portal-grid" aria-label="Shop Portal trust controls">
-            <article className="shop-portal-profile-card">
-              <span className="section-kicker">Family-friendly shop profile</span>
-              <h2>Trusted local support, never a scalper feed.</h2>
-              <p>Shop Portal is a mock-only review surface for future trusted family friends, stores, sellers, and sponsors. Nothing posts publicly, syncs inventory, charges money, or sends alerts from this page.</p>
-              <div className="summary-pill-row">
-                <span className="trust-badge trust-badge--secure">Trusted Family Friend badge pending</span>
-                <span className="status-badge">Admin review required</span>
-                <span className="status-badge">Preview-safe</span>
-              </div>
-            </article>
-            {shopPortalTrustCards.map((card) => (
-              <article className="shop-portal-trust-card" key={card.title}>
-                <strong>{card.title}</strong>
-                <span>{card.body}</span>
-                <small>{card.status}</small>
-              </article>
-            ))}
-          </div>
-
-          <div className="shop-portal-composer-grid" aria-label="Shop Portal mock composer">
-            <article className="shop-portal-composer-card">
-              <div className="compact-card-header">
-                <div>
-                  <h3>Restock status composer</h3>
-                  <p>Choose broad, family-safe labels. Exact quantities stay hidden unless a trusted shop chooses to share them later through an approved path.</p>
-                </div>
-              </div>
-              <div className="shop-portal-status-row">
-                {shopPortalStatuses.map((status) => <span className="status-badge" key={status}>{status}</span>)}
-              </div>
-              <div className="shop-portal-preview-post">
-                <strong>Preview update</strong>
-                <span>Helpful status: Call first. Family note: good for patient local planning, not rush buying.</span>
-              </div>
-              <p className="compact-subtitle">Mock composer only. No live posting, inventory sync, checkout, payment, upload, or notification blast is connected.</p>
-            </article>
-            <article className="shop-portal-composer-card">
-              <div className="compact-card-header">
-                <div>
-                  <h3>Drop or event draft</h3>
-                  <p>Preview a family-safe event update before admin review.</p>
-                </div>
-                <span className="status-badge">Draft only</span>
-              </div>
-              <div className="catalog-detail-grid">
-                <DetailItem label="Event type" value="Learn to Play afternoon" />
-                <DetailItem label="Audience" value="Families and new collectors" />
-                <DetailItem label="Safety" value="No vendor schedule or rush window" />
-                <DetailItem label="Review" value="Pending admin approval" />
-              </div>
-            </article>
-          </div>
-
-          <div className="shop-portal-review-grid" aria-label="Shop Portal review status">
-            {shopPortalReviewSteps.map((step) => (
-              <article className="shop-portal-review-card" key={step.title}>
-                <strong>{step.title}</strong>
-                <span>{step.body}</span>
-                <small className="status-badge">{step.status}</small>
-              </article>
-            ))}
-          </div>
-
-          <div className="shop-portal-tools-grid" aria-label="Shop Portal support tools">
-            {shopPortalTools.map((tool) => (
-              <article className="shop-portal-tool-card" key={tool.title}>
-                <strong>{tool.title}</strong>
-                <span>{tool.body}</span>
-              </article>
-            ))}
-          </div>
-
-          <form className="form beta-form-card" onSubmit={submitSponsorInterest} noValidate>
-            <div className="compact-card-header">
-              <div>
-                <h3>Partner interest</h3>
-                <p>Tell Code 3 TCG about your shop or support idea. This queues a local beta interest record only and does not publish anything publicly.</p>
-              </div>
-              <span className="status-badge">Mock review intake</span>
-            </div>
-            <p className="compact-subtitle">Please do not include payment details, private child information, passwords, vendor schedules, or exact inventory quantities in this preview form.</p>
-            <Field label="Name">
-              <input value={sponsorForm.name} onChange={(event) => updateSponsorForm("name", event.target.value)} />
-            </Field>
-            <Field label="Business/shop name optional">
-              <input value={sponsorForm.businessName} onChange={(event) => updateSponsorForm("businessName", event.target.value)} />
-            </Field>
-            <div className="inline-input-grid">
-              <Field label="Email (required)">
-                <input type="email" value={sponsorForm.email} onChange={(event) => updateSponsorForm("email", event.target.value)} />
-              </Field>
-              <Field label="Phone optional">
-                <input value={sponsorForm.phone} onChange={(event) => updateSponsorForm("phone", event.target.value)} />
-              </Field>
-            </div>
-            <Field label="Website/social optional">
-              <input value={sponsorForm.websiteUrl} onChange={(event) => updateSponsorForm("websiteUrl", event.target.value)} />
-            </Field>
-            <Field label="Location/city">
-              <input value={sponsorForm.city} onChange={(event) => updateSponsorForm("city", event.target.value)} />
-            </Field>
-            <Field label="Partnership types">
-              <div className="checkbox-grid">
-                {SPONSOR_PARTNERSHIP_TYPES.map((option) => (
-                  <label key={option}>
-                    <input
-                      type="checkbox"
-                      checked={sponsorForm.partnershipTypes.includes(option)}
-                      onChange={() => updateSponsorForm("partnershipTypes", toggleArrayValue(sponsorForm.partnershipTypes, option))}
-                    />
-                    <span>{option}</span>
-                  </label>
-                ))}
-              </div>
-            </Field>
-            <Field label="Message">
-              <textarea value={sponsorForm.message} onChange={(event) => updateSponsorForm("message", event.target.value)} />
-            </Field>
-            <label className="checkbox-row">
-              <input type="checkbox" checked={sponsorForm.consent} onChange={(event) => updateSponsorForm("consent", event.target.checked)} />
-              <span>I agree Code 3 TCG may contact me about partnership opportunities.</span>
-            </label>
-            <button type="submit">Send sponsor interest</button>
-            <button type="button" className="secondary-button" onClick={() => openPublicBetaFeedback({ page: "Shop Portal", role: "Shop", mainReason: "Shop partnership", interests: ["Shop partnership"] })}>Request shop review</button>
-          </form>
-          <footer className="brand-legal-footer">
-            <p>{BRAND_LEGAL_NOTICE}</p>
-            <p>{POKEMON_AFFILIATION_NOTICE}</p>
-          </footer>
-        </section>
-      </>
-    );
+    return <LazyToolBoundary label="Loading Sponsor…">
+      <SponsorInterestContent scope={{
+        BRAND_LEGAL_NOTICE,
+        DetailItem,
+        Field,
+        POKEMON_AFFILIATION_NOTICE,
+        PageHeader,
+        SPONSOR_PARTNERSHIP_TYPES,
+        getHeaderCardClass,
+        openPublicBetaFeedback,
+        setActiveTab,
+        sponsorForm,
+        submitSponsorInterest,
+        toggleArrayValue,
+        updateSponsorForm,
+      }} />
+    </LazyToolBoundary>;
   }
 
   function navigatePrivacyPage(tab) {
@@ -39163,289 +39094,50 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function renderComingSoonPage() {
-    const totalPlannedFeatures = COMING_SOON_GROUPS
-      .filter((group) => group.tone !== "guardrail")
-      .reduce((sum, group) => sum + group.features.length, 0);
-    const delayedCount = COMING_SOON_GROUPS.find((group) => group.key === "delayed")?.features.length || 0;
-    const notPlannedCount = COMING_SOON_GROUPS.find((group) => group.key === "not-planned")?.features.length || 0;
-    const noteInterest = (feature, group) => {
-      showToast({
-        type: "info",
-        title: "Interest noted locally",
-        message: `${feature.name} is ${String(feature.status || group.defaultStatus || "planned").toLowerCase()} and is not available yet. No notification, checkout, or waitlist was created.`,
-      });
-    };
-
-    return renderUtilityPageShell({
-      title: "Coming Soon",
-      subtitle: "Code 3 TCG is growing carefully. These features are planned for future phases, but we are perfecting the core app first.",
-      className: "coming-soon-page",
-      actions: (
-        <button
-          type="button"
-          className="secondary-button"
-          onClick={() => openFeedbackDialog("feature", { whatHappened: "Coming Soon roadmap feedback: " })}
-        >
-          Share roadmap feedback
-        </button>
-      ),
-      children: (
-        <>
-          <section className="panel coming-soon-hero" aria-label="Coming Soon focus">
-            <div>
-              <p className="section-kicker">Roadmap visibility</p>
-              <h2>Core app first. Future systems later.</h2>
-              <p>
-                Coming Soon is a planning view only. Nothing on this page turns on Kid Mode, Spark Points, friends, marketplace selling,
-                partner shops, Vault Play, payments, notifications, or backend workflows.
-              </p>
-            </div>
-            <dl className="coming-soon-summary">
-              <div><dt>Planned ideas</dt><dd>{totalPlannedFeatures}</dd></div>
-              <div><dt>Delayed</dt><dd>{delayedCount}</dd></div>
-              <div><dt>Not planned</dt><dd>{notPlannedCount}</dd></div>
-            </dl>
-          </section>
-
-          <div className="coming-soon-group-stack">
-            {COMING_SOON_GROUPS.map((group) => (
-              <section className={`coming-soon-group coming-soon-group--${group.tone}`} key={group.key}>
-                <div className="compact-card-header coming-soon-group-header">
-                  <div>
-                    <p className="section-kicker">{group.tone === "guardrail" ? "Safety guardrail" : group.tone === "delayed" ? "Delayed scope" : "Future phase"}</p>
-                    <h2>{group.title}</h2>
-                    <p>{group.description}</p>
-                  </div>
-                  <span className={`status-badge coming-soon-group-status coming-soon-status--${group.tone}`}>
-                    {group.defaultStatus}
-                  </span>
-                </div>
-                <div className="coming-soon-card-grid">
-                  {group.features.map((feature) => {
-                    const status = feature.status || group.defaultStatus;
-                    const disabled = group.tone === "guardrail";
-                    return (
-                      <article className={`coming-soon-card coming-soon-card--${group.tone}`} key={`${group.key}-${feature.name}`}>
-                        <div className="coming-soon-card-meta">
-                          <span className={`status-badge coming-soon-status--${group.tone}`}>{status}</span>
-                          {feature.userType ? <small>{feature.userType}</small> : null}
-                        </div>
-                        <h3>{feature.name}</h3>
-                        <p>{feature.description}</p>
-                        <small className="coming-soon-unavailable">
-                          {disabled ? "Not planned." : group.tone === "delayed" ? "Delayed - not upcoming soon." : "Interest can be shared, but this is not live yet."}
-                        </small>
-                        <button
-                          type="button"
-                          className="secondary-button"
-                          disabled={disabled}
-                          onClick={() => noteInterest(feature, group)}
-                        >
-                          {disabled ? "Not planned" : group.tone === "delayed" ? "Track interest" : "I'm interested"}
-                        </button>
-                      </article>
-                    );
-                  })}
-                </div>
-              </section>
-            ))}
-          </div>
-        </>
-      ),
-    });
+    return <LazyToolBoundary label="Loading…">
+      <ComingSoonContent scope={{
+        COMING_SOON_GROUPS,
+        openFeedbackDialog,
+        renderUtilityPageShell,
+        showToast,
+      }} />
+    </LazyToolBoundary>;
   }
 
   function renderWhatsNewPage() {
-    const openAnnouncementsDetail = () => {
-      if (typeof document === "undefined") return;
-      document.getElementById("announcements-detail-list")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    };
-    const routeAnnouncementCta = (entry = {}) => {
-      const destination = String(entry.ctaDestination || entry.actionUrl || "").toLowerCase();
-      if (destination.includes("daily") || destination.includes("control")) setActiveTab("dailyTide");
-      else if (destination.includes("home") || destination === "/") setActiveTab("dashboard");
-      else if (destination.includes("kid")) setActiveTab("kidsProgram");
-      else if (destination.includes("scout")) setActiveTab("scout");
-      else if (destination.includes("market")) setActiveTab("market");
-      else if (destination.includes("forge")) setActiveTab("inventory");
-      else if (destination.includes("vault")) setActiveTab("vault");
-      else setVaultToast("Announcement details are shown below.");
-    };
-    const staticUpdates = [
-      {
-        title: "Kids Program Updates",
-        body: "Easier requests, family-safe wording, and a warmer Spark home for collectors.",
-        type: "Kids Program update",
-        priority: "highlight",
-      },
-      {
-        title: "Restocks Improvements",
-        body: "Better signals, report flow polish, and stronger store/restock card treatment.",
-        type: "Restocks update",
-        priority: "normal",
-      },
-      {
-        title: "Daily Refresh",
-        body: "A tighter overview with the Restocks, Vault, Market, and Business daily loop.",
-        type: "New feature",
-        priority: "normal",
-      },
-      {
-        title: "Bug Fixes & Performance",
-        body: "Smoother beta flows, safer inventory saves, and cleaner mobile navigation.",
-        type: "App update",
-        priority: "normal",
-      },
-    ];
-    const activeAnnouncements = getPersistedNotificationRows().filter(canShowAnnouncement);
-    // COULD 31: real release notes lead the list; the generic static blurbs follow.
-    const releaseUpdates = RELEASE_NOTES.map((note) => ({ title: note.title, body: note.body, type: note.type, priority: note.priority, publishedAt: note.date, ctaLabel: note.ctaLabel, ctaDestination: note.ctaDestination === "tour" || note.ctaDestination === "feedback" ? "" : note.ctaDestination }));
-    const recentAnnouncements = activeAnnouncements.length ? [...releaseUpdates, ...activeAnnouncements] : [...releaseUpdates, ...staticUpdates];
-    const heroAnnouncement = recentAnnouncements[0];
-    const heroType = heroAnnouncement?.type || "New feature";
-    const heroPriority = heroAnnouncement?.priority || "normal";
-    return (
-      <>
-        <PageHeader
-          className={getHeaderCardClass("panel page-summary-card announcements-new-stuff-header")}
-          title={heroAnnouncement?.title || "Announcements"}
-          subtitle={heroAnnouncement?.message || heroAnnouncement?.body || "Important Code 3 TCG updates appear here before the daily command view."}
-          actions={(
-            <>
-              {adminToolsVisible ? <button type="button" className="secondary-button" onClick={() => void runRoadmapChangelogAiAssist()}>Draft changelog</button> : null}
-              <button type="button" onClick={() => setActiveTab("dailyTide")}>Open Control Panel</button>
-              <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Go Home</button>
-              <button type="button" className="ghost-button" onClick={openAnnouncementsDetail}>View details</button>
-              {heroAnnouncement?.id && heroAnnouncement.dismissible !== false ? <button type="button" className="ghost-button" onClick={() => dismissNotification(heroAnnouncement.id)}>Dismiss</button> : null}
-            </>
-          )}
-          summary={(
-            <div className="announcement-hero-summary">
-              <span className={`announcement-type-badge ${statusClass(heroType)}`}>{heroType}</span>
-              <span className={`announcement-priority-badge priority-${String(heroPriority).toLowerCase()}`}>Priority: {heroPriority}</span>
-              <span>{heroAnnouncement?.createdAt ? shortDate(heroAnnouncement.createdAt) : "Current beta update"}</span>
-            </div>
-          )}
-        />
-        <section className="panel announcements-command-panel" id="announcements-detail-list">
-          <div className="compact-card-header">
-            <div>
-              <h2>Announcement details</h2>
-              <p>Active announcements appear before Today&apos;s Tide. Dismissible updates stay hidden after dismissal; required updates remain visible until resolved.</p>
-            </div>
-            <span className="status-badge">{activeAnnouncements.length ? `${activeAnnouncements.length} active` : "No active blockers"}</span>
-          </div>
-          <div className="beta-foundation-grid announcements-update-grid">
-            {recentAnnouncements.map((entry) => {
-              const entryType = entry.type || "New feature";
-              const entryPriority = entry.priority || "normal";
-              const entryDate = entry.createdAt || entry.startDate || "";
-              return (
-              <article className="beta-readiness-card announcement-detail-card" key={entry.id || entry.title}>
-                <div className="announcement-card-topline">
-                  <span className={`announcement-type-badge ${statusClass(entryType)}`}>{entryType}</span>
-                  <span className={`announcement-priority-badge priority-${String(entryPriority).toLowerCase()}`}>{entryPriority}</span>
-                </div>
-                <strong>{entry.title}</strong>
-                <p>{entry.message || entry.body}</p>
-                <div className="catalog-detail-grid announcement-detail-grid">
-                  <DetailItem label="Date" value={entryDate ? shortDate(entryDate) : "Current"} />
-                  <DetailItem label="Audience" value={entry.audience || "All users"} />
-                  <DetailItem label="Window" value={announcementWindowState(entry)} />
-                  <DetailItem label="Dismissible" value={entry.dismissible === false ? "Required" : "Yes"} />
-                </div>
-                <div className="quick-actions">
-                  {(entry.ctaLabel || entry.ctaDestination || entry.actionUrl) ? <button type="button" onClick={() => routeAnnouncementCta(entry)}>{entry.ctaLabel || "Open"}</button> : null}
-                  {entry.id && entry.dismissible !== false ? <button type="button" className="secondary-button" onClick={() => dismissNotification(entry.id)}>Dismiss</button> : null}
-                </div>
-              </article>
-              );
-            })}
-          </div>
-          {adminToolsVisible ? (
-            <div className="announcement-admin-structure">
-              <strong>Admin structure ready</strong>
-              <span>Title</span>
-              <span>Message</span>
-              <span>Audience</span>
-              <span>Priority</span>
-              <span>Start date</span>
-              <span>End date</span>
-              <span>Dismissible</span>
-              <span>CTA label</span>
-              <span>CTA destination</span>
-            </div>
-          ) : null}
-        </section>
-      </>
-    );
+    return <LazyToolBoundary label="Loading What's New…">
+      <WhatsNewContent scope={{
+        DetailItem,
+        PageHeader,
+        RELEASE_NOTES,
+        adminToolsVisible,
+        announcementWindowState,
+        canShowAnnouncement,
+        dismissNotification,
+        getHeaderCardClass,
+        getPersistedNotificationRows,
+        runRoadmapChangelogAiAssist,
+        setActiveTab,
+        setVaultToast,
+        shortDate,
+        statusClass,
+      }} />
+    </LazyToolBoundary>;
   }
 
   function renderKnownLimitationsPage() {
-    return (
-      <>
-        <PageHeader
-          className={getHeaderCardClass("panel page-summary-card")}
-          title="Known Limitations"
-          subtitle={`${PRODUCT_PROMISE_COPY} Some features are still being built, tested, or verified.`}
-          actions={<button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>}
-          summary={<p>{PRODUCT_TAGLINES.primary} {PRODUCT_TAGLINES.secondary}</p>}
-        />
-        <section className="panel">
-          <div className="compact-card-header">
-            <div>
-              <h2>Beta limitations</h2>
-              <p>Known gaps stay labeled so the app does not overpromise.</p>
-            </div>
-          </div>
-          <div className="beta-foundation-grid">
-            {KNOWN_LIMITATIONS.map((item) => (
-              <article className="beta-readiness-card" key={item}>
-                <span>Beta limitation</span>
-                <strong>{item}</strong>
-              </article>
-            ))}
-          </div>
-        </section>
-        <section className="panel">
-          <div className="compact-card-header">
-            <div>
-              <h2>Product glossary</h2>
-              <p>Final names for the live app and permission-safe beta surfaces.</p>
-            </div>
-            <span className="status-badge">Code 3 TCG</span>
-          </div>
-          <div className="beta-foundation-grid">
-            {PRODUCT_GLOSSARY.map((item) => (
-              <article className="beta-readiness-card" key={item.key}>
-                <span>{item.status}</span>
-                <strong>{item.term}</strong>
-                <p>{item.body}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-        <section className="panel">
-          <div className="compact-card-header">
-            <div>
-              <h2>Roadmap language</h2>
-              <p>Planned names are documented here without turning them into live features.</p>
-            </div>
-            <span className="status-badge">Future</span>
-          </div>
-          <div className="beta-foundation-grid">
-            {PRODUCT_ROADMAP_NOTES.map((item) => (
-              <article className="beta-readiness-card" key={item.key}>
-                <span>{item.status}</span>
-                <strong>{item.term}</strong>
-                <p>{item.body}</p>
-                {item.caution ? <p className="compact-subtitle">{item.caution}</p> : null}
-              </article>
-            ))}
-          </div>
-        </section>
-      </>
-    );
+    return <LazyToolBoundary label="Loading Known Limitations…">
+      <KnownLimitationsContent scope={{
+        KNOWN_LIMITATIONS,
+        PRODUCT_GLOSSARY,
+        PRODUCT_PROMISE_COPY,
+        PRODUCT_ROADMAP_NOTES,
+        PRODUCT_TAGLINES,
+        PageHeader,
+        getHeaderCardClass,
+        setActiveTab,
+      }} />
+    </LazyToolBoundary>;
   }
 
   function renderMembershipFoundation() {
@@ -39661,171 +39353,35 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function renderBetaReadinessPanel() {
-    if (!adminToolsVisible) return null;
-    const blockers = betaReadinessData.readiness?.blockers || [];
-    const pendingProfileUsers = (shorelineState.adminProfileUsers || []).filter((entry) =>
-      !entry.isAdmin && !betaAccessAllowedForProfile(entry)
-    ).length;
-    const reviewCounts = {
-      "Kids Program Applications": (shorelineState.adminLittleSparksApplications || []).filter((entry) => entry.status === "pending").length + (betaReadinessData.kidsApplications || []).filter((entry) => entry.status === "pending_review").length,
-      "Data Requests": (betaReadinessData.dataRequests || []).filter((entry) => ["new", "reviewing"].includes(entry.status || "new")).length,
-      "User Management": shorelineState.adminProfileUsersReady ? pendingProfileUsers : 1,
-      "App Error Logs": (betaReadinessData.appErrorLogs || []).length,
-      "Sponsor Interest": (betaReadinessData.sponsorInterest || []).filter((entry) => ["new", "pending"].includes(entry.status || "new")).length,
-      "Beta Feedback": (betaReadinessData.betaFeedback || []).filter((entry) => ["new", "reviewing"].includes(entry.status || "new")).length,
-      "Beta Access": (shorelineState.adminBetaRequests || []).filter((entry) => ["pending", "waitlist"].includes(entry.status)).length,
-      "Store Reports": scoutNeedsReviewReports.length,
-      "Catalog Corrections": suggestions.filter((entry) => getSuggestionReviewSection(entry) === "catalog").length,
-    };
-    return (
-      <>
-        <PageHeader
-          className={getHeaderCardClass("panel admin-page-header")}
-          title="Beta Readiness"
-          subtitle="Launch control panel for auth, inventory, mobile UI, admin tools, feedback, blockers, safety, marketing, and roadmap."
-          actions={(
-            <>
-              <button type="button" className="secondary-button" onClick={() => void runBetaReadinessAiAssist()}>Summarize beta status</button>
-              <button type="button" className="secondary-button" onClick={() => void runRoadmapChangelogAiAssist()}>Draft roadmap summary</button>
-              <button type="button" className="secondary-button" onClick={() => setActiveTab("adminReview")}>Admin Review</button>
-            </>
-          )}
-        />
-        <section className="panel beta-readiness-panel">
-          <div className="compact-card-header">
-            <div>
-              <h2>Launch decision</h2>
-              <p>{BETA_MODE_COPY}</p>
-            </div>
-            <select
-              value={betaReadinessData.readiness?.launchState || "Not ready"}
-              onChange={(event) => updateBetaReadinessData((current) => ({
-                ...current,
-                readiness: { ...(current.readiness || {}), launchState: event.target.value },
-              }))}
-            >
-              {BETA_LAUNCH_STATES.map((state) => <option key={state} value={state}>{state}</option>)}
-            </select>
-          </div>
-          <div className="settings-subsection">
-            <h3>Beta access control</h3>
-            <p className="compact-subtitle">Open beta is the default. Invite-only and waitlist modes gate protected app access while keeping guest preview available.</p>
-            <select value={betaAccessMode()} onChange={(event) => updateBetaAccessMode(event.target.value)}>
-              {BETA_ACCESS_MODES.map((mode) => <option key={mode} value={mode}>{mode.replace(/_/g, " ")}</option>)}
-            </select>
-          </div>
-          <div className="beta-foundation-grid">
-            {BETA_READINESS_SECTIONS.map((section) => (
-              <article className="beta-readiness-card" key={section}>
-                <span>{section}</span>
-                <strong>{section === "Known Blockers" ? blockers.length : section === "Launch Decision" ? betaReadinessData.readiness?.launchState || "Not ready" : "Foundation ready"}</strong>
-              </article>
-            ))}
-          </div>
-          <div className="settings-subsection">
-            <h3>Auth / email copy review</h3>
-            <div className="beta-foundation-grid">
-              {AUTH_COPY_REVIEW.map((entry) => (
-                <article className="beta-readiness-card" key={entry.key}>
-                  <span>{entry.title}</span>
-                  <strong>{entry.expected}</strong>
-                </article>
-              ))}
-            </div>
-          </div>
-          <div className="settings-subsection">
-            <h3>Production config audit</h3>
-            <div className="beta-foundation-grid">
-              {PRODUCTION_CONFIG_AUDIT.map((entry) => (
-                <article className="beta-readiness-card" key={entry}>
-                  <span>Audit item</span>
-                  <strong>{entry}</strong>
-                </article>
-              ))}
-            </div>
-          </div>
-          <div className="settings-subsection">
-            <h3>Review queues</h3>
-            <div className="beta-foundation-grid">
-              {BETA_REVIEW_SECTIONS.map((section) => (
-                <button type="button" className="beta-action-card" key={section} onClick={() => setAdminReviewFilter(section)}>
-                  <span>{section}</span>
-                  <strong>{reviewCounts[section] || 0}</strong>
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="settings-subsection">
-            <h3>Known blockers</h3>
-            <div className="inventory-list compact-inventory-list">
-              {blockers.map((blocker, index) => (
-                <article className="inventory-card compact-card" key={`${blocker.title}-${index}`}>
-                  <div className="compact-card-header">
-                    <div>
-                      <strong>{blocker.title}</strong>
-                      <p>{blocker.notes}</p>
-                    </div>
-                    <span className={`status-badge severity-${blocker.severity}`}>{blocker.severity}</span>
-                  </div>
-                  <small>{blocker.owner} | {blocker.status}</small>
-                </article>
-              ))}
-            </div>
-          </div>
-          <div className="settings-subsection">
-            <h3>Beta launch materials</h3>
-            <div className="quick-actions">
-              <button type="button" className="secondary-button" onClick={() => void runMarketingAiAssist("parents")}>Draft parent post</button>
-              <button type="button" className="secondary-button" onClick={() => void runMarketingAiAssist("card_shop")}>Draft card shop outreach</button>
-            </div>
-            <div className="brand-asset-reference">
-              <img src={BRAND_ASSETS.mark} alt="" aria-hidden="true" />
-              <div>
-                <strong>Brand asset rules</strong>
-                <p>App icon = flame/wave only. Splash = logo + Track. Trade. Thrive. Promo mockup = marketing hero/social/flyer only. Do not use official Pokemon logos or art.</p>
-                <p>Approved colors: ember orange, tide blue, deep navy. Secondary tagline: Built for collectors. Powered by community.</p>
-              </div>
-            </div>
-            <div className="beta-foundation-grid">
-              {[
-                "Final human-refined SVG logo created",
-                "Trademark search completed",
-                "Trademark filing considered",
-                "Domains secured",
-                "Social handles secured",
-                "Source files archived",
-              ].map((item) => (
-                <article className="beta-readiness-card" key={item}>
-                  <span>Brand checklist</span>
-                  <strong>{item}</strong>
-                </article>
-              ))}
-            </div>
-            <div className="beta-foundation-grid">
-              {(betaReadinessData.marketingMaterials || []).map((entry) => (
-                <article className="beta-readiness-card" key={entry.title}>
-                  <span>{entry.platform}</span>
-                  <strong>{entry.title}</strong>
-                  <small>{entry.status}</small>
-                </article>
-              ))}
-            </div>
-          </div>
-          <div className="settings-subsection">
-            <h3>Roadmap</h3>
-            <div className="beta-foundation-grid">
-              {(betaReadinessData.roadmapItems || []).map((entry) => (
-                <article className="beta-readiness-card" key={`${entry.section}-${entry.title}`}>
-                  <span>{entry.section}</span>
-                  <strong>{entry.title}</strong>
-                  <small>{entry.status}</small>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-      </>
-    );
+    return <LazyToolBoundary label="Loading beta readiness…">
+      <BetaReadinessContent scope={{
+        AUTH_COPY_REVIEW,
+        BETA_ACCESS_MODES,
+        BETA_LAUNCH_STATES,
+        BETA_MODE_COPY,
+        BETA_READINESS_SECTIONS,
+        BETA_REVIEW_SECTIONS,
+        BRAND_ASSETS,
+        PRODUCTION_CONFIG_AUDIT,
+        PageHeader,
+        adminToolsVisible,
+        betaAccessAllowedForProfile,
+        betaAccessMode,
+        betaReadinessData,
+        getHeaderCardClass,
+        getSuggestionReviewSection,
+        runBetaReadinessAiAssist,
+        runMarketingAiAssist,
+        runRoadmapChangelogAiAssist,
+        scoutNeedsReviewReports,
+        setActiveTab,
+        setAdminReviewFilter,
+        shorelineState,
+        suggestions,
+        updateBetaAccessMode,
+        updateBetaReadinessData,
+      }} />
+    </LazyToolBoundary>;
   }
 
   function renderBetaUsersDashboard() {
@@ -39866,341 +39422,69 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function renderAdminBetaInviteManagement() {
-    if (!betaAdminVisible) return null;
-    const createdInviteLink = adminBetaInviteCreated ? betaInviteLinkForCreatedInvite(adminBetaInviteCreated) : "";
-    const inviteRows = shorelineState.adminBetaInvites || [];
-    const activeInviteCount = inviteRows.filter((invite) => invite.status === "active").length;
-    const inviteSearchText = adminBetaInviteSearch.trim().toLowerCase();
-    const inviteMatchesSearch = (invite = {}) => {
-      if (!inviteSearchText) return true;
-      return [
-        invite.recipientName,
-        invite.recipientEmail,
-        invite.claimedEmail,
-        invite.status,
-        invite.note,
-        invite.audience,
-      ].filter(Boolean).join(" ").toLowerCase().includes(inviteSearchText);
-    };
-    const inviteIsActive = (invite = {}) => invite.status === "active" && !invite.claimedAt && !invite.revokedAt;
-    const visibleInviteRows = inviteRows.filter((invite) =>
-      inviteMatchesSearch(invite) && (adminBetaInviteShowInactive || inviteIsActive(invite))
-    );
-    const selectedAdminBetaInvite = inviteRows.find((invite) => String(invite.id) === String(selectedAdminBetaInviteId));
-    return (
-      <section className="settings-subsection beta-review-queue beta-invite-management">
-        <div className="compact-card-header">
-          <div>
-            <h3>Personal Beta Invites</h3>
-            <p>Create one-time invite links for specific people. Links grant normal beta access only after a signed-in user claims them through Supabase.</p>
-          </div>
-          <span className="status-badge">{activeInviteCount} active</span>
-        </div>
-        {!shorelineState.adminBetaInvitesReady && shorelineState.adminBetaInvitesMessage ? (
-          <div className="empty-state compact-empty-state">
-            <h3>Secure invite backend needed</h3>
-            <p>{shorelineState.adminBetaInvitesMessage}</p>
-          </div>
-        ) : null}
-        {shorelineState.adminBetaInvitesError ? <p className="auth-status-message error" role="alert">{shorelineState.adminBetaInvitesError}</p> : null}
-        {shorelineState.adminBetaInvitesMessage && shorelineState.adminBetaInvitesReady ? <p className="auth-status-message success" role="status">{shorelineState.adminBetaInvitesMessage}</p> : null}
-        <form className="form admin-beta-invite-form" onSubmit={handleCreateAdminBetaInvite}>
-          <div className="auth-name-grid">
-            <Field label="Recipient name">
-              <input value={adminBetaInviteForm.recipientName} onChange={(event) => updateAdminBetaInviteForm("recipientName", event.target.value)} placeholder="Person receiving this invite" />
-            </Field>
-            <Field label="Recipient email optional">
-              <input type="email" value={adminBetaInviteForm.recipientEmail} onChange={(event) => updateAdminBetaInviteForm("recipientEmail", event.target.value)} placeholder="Optional email lock" />
-            </Field>
-            <Field label="Expiration optional">
-              <input type="datetime-local" value={adminBetaInviteForm.expiresAt} onChange={(event) => updateAdminBetaInviteForm("expiresAt", event.target.value)} />
-            </Field>
-          </div>
-          <Field label="Private note optional">
-            <textarea value={adminBetaInviteForm.note} onChange={(event) => updateAdminBetaInviteForm("note", event.target.value)} placeholder="Private admin note. Never shown publicly." />
-          </Field>
-          <div className="quick-actions">
-            <button type="submit" className="ember-gradient-button" disabled={adminBetaInviteLoading}>{adminBetaInviteLoading ? "Creating..." : "Create Invite"}</button>
-            <button type="button" className="secondary-button" onClick={() => void refreshAdminBetaInvites()} disabled={adminBetaInviteLoading}>Refresh Invites</button>
-          </div>
-          <p className="compact-subtitle">Raw invite tokens are shown only once after creation. Do not post invite links publicly.</p>
-        </form>
-        {adminBetaInviteCreated && createdInviteLink ? (
-          <div className="drawer-info-card">
-            <strong>Copy this invite link now</strong>
-            <p className="compact-subtitle">This raw one-time token will not appear in invite history.</p>
-            <input readOnly value={createdInviteLink} onFocus={(event) => event.target.select()} />
-            <div className="quick-actions">
-              <button type="button" className="secondary-button" onClick={() => void copyAdminBetaInviteLink(adminBetaInviteCreated)}>Copy invite link</button>
-              <button type="button" className="ghost-button" onClick={() => setAdminBetaInviteCreated(null)}>Hide link</button>
-            </div>
-          </div>
-        ) : null}
-        <div className="compact-card-header">
-          <div>
-            <h4>Invite history</h4>
-            <p>Active invites show by default. History never shows plaintext tokens or token hashes; claimed, revoked, and expired invites stay available in details.</p>
-          </div>
-          <div className="admin-invite-toolbar">
-            <input value={adminBetaInviteSearch} onChange={(event) => setAdminBetaInviteSearch(event.target.value)} placeholder="Search invites" />
-            <label className="inline-toggle">
-              <input type="checkbox" checked={adminBetaInviteShowInactive} onChange={(event) => setAdminBetaInviteShowInactive(event.target.checked)} />
-              <span>Show old invites</span>
-            </label>
-          </div>
-        </div>
-        <div className="inventory-list compact-inventory-list">
-          {visibleInviteRows.length ? visibleInviteRows.map((invite) => {
-            const canRevoke = inviteIsActive(invite);
-            return (
-              <article className="inventory-card compact-card" key={invite.id}>
-                <div className="compact-card-header">
-                  <div>
-                    <strong>{invite.recipientName || "Unnamed invite"}</strong>
-                    <p>{invite.recipientEmail ? maskEmail(invite.recipientEmail) : "No email lock"} | Created {invite.createdAt ? shortDate(invite.createdAt) : "date unavailable"}</p>
-                  </div>
-                  <span className={`status-badge ${invite.status}`}>{String(invite.status || "active").replace(/_/g, " ")}</span>
-                </div>
-                <p className="compact-subtitle">{invite.note || "No private note."}</p>
-                <div className="detail-grid compact-detail-grid">
-                  <DetailItem label="Audience" value={invite.audience || "beta"} />
-                  <DetailItem label="Expires" value={invite.expiresAt ? shortDate(invite.expiresAt) : "No expiration"} />
-                  <DetailItem label="Claimed" value={invite.claimedAt ? shortDate(invite.claimedAt) : "Not claimed"} />
-                </div>
-                <div className="quick-actions">
-                  <button type="button" className="secondary-button" onClick={() => setSelectedAdminBetaInviteId(invite.id)}>View details</button>
-                  {canRevoke ? (
-                    <button type="button" className="delete-button" onClick={() => void handleRevokeAdminBetaInvite(invite)} disabled={adminBetaInviteLoading}>Revoke Invite</button>
-                  ) : null}
-                </div>
-              </article>
-            );
-          }) : (
-            <div className="empty-state">
-              <h3>No invites in this view</h3>
-              <p>Create a named invite, change the search, or show old invites to include claimed and revoked rows.</p>
-            </div>
-          )}
-        </div>
-        {selectedAdminBetaInvite ? (
-          <div className="location-modal-backdrop" role="presentation" onClick={() => setSelectedAdminBetaInviteId("")}>
-            <section className="location-modal beta-invite-detail-drawer" role="dialog" aria-modal="true" aria-labelledby="beta-invite-detail-title" onClick={(event) => event.stopPropagation()}>
-              <div className="modal-header">
-                <div>
-                  <p>Invite details</p>
-                  <h2 id="beta-invite-detail-title">{selectedAdminBetaInvite.recipientName || "Beta invite"}</h2>
-                </div>
-                <button type="button" className="modal-close-button" aria-label="Close invite detail" onClick={() => setSelectedAdminBetaInviteId("")}>X</button>
-              </div>
-              <div className="detail-grid compact-detail-grid">
-                <DetailItem label="Recipient" value={selectedAdminBetaInvite.recipientEmail ? maskEmail(selectedAdminBetaInvite.recipientEmail) : "No email lock"} />
-                <DetailItem label="Status" value={String(selectedAdminBetaInvite.status || "active").replace(/_/g, " ")} />
-                <DetailItem label="Created" value={selectedAdminBetaInvite.createdAt ? shortDate(selectedAdminBetaInvite.createdAt) : "Unavailable"} />
-                <DetailItem label="Expires" value={selectedAdminBetaInvite.expiresAt ? shortDate(selectedAdminBetaInvite.expiresAt) : "No expiration"} />
-                <DetailItem label="Claimed by" value={selectedAdminBetaInvite.claimedEmail ? maskEmail(selectedAdminBetaInvite.claimedEmail) : selectedAdminBetaInvite.claimedBy ? "Signed-in user" : "Not claimed"} />
-                <DetailItem label="Revoked" value={selectedAdminBetaInvite.revokedAt ? shortDate(selectedAdminBetaInvite.revokedAt) : "No"} />
-              </div>
-              {selectedAdminBetaInvite.note ? (
-                <div className="drawer-info-card">
-                  <strong>Private note</strong>
-                  <p>{selectedAdminBetaInvite.note}</p>
-                </div>
-              ) : null}
-              {betaInviteLinkForCreatedInvite(selectedAdminBetaInvite) ? (
-                <div className="quick-actions">
-                  <button type="button" className="secondary-button" onClick={() => void copyAdminBetaInviteLink(selectedAdminBetaInvite)}>Copy active link</button>
-                </div>
-              ) : null}
-              <details className="technical-details-disclosure">
-                <summary>Technical details</summary>
-                <div className="detail-grid compact-detail-grid">
-                  <DetailItem label="Invite row" value={selectedAdminBetaInvite.id || "Unavailable"} />
-                  <DetailItem label="Created by" value={selectedAdminBetaInvite.createdByEmail ? maskEmail(selectedAdminBetaInvite.createdByEmail) : selectedAdminBetaInvite.createdBy ? "Admin user" : "Unavailable"} />
-                  <DetailItem label="Claimed user" value={selectedAdminBetaInvite.claimedBy || "Not claimed"} />
-                </div>
-              </details>
-              <div className="location-modal-actions modal-sticky-footer">
-                {inviteIsActive(selectedAdminBetaInvite) ? (
-                  <button type="button" className="delete-button" disabled={adminBetaInviteLoading} onClick={() => void handleRevokeAdminBetaInvite(selectedAdminBetaInvite)}>Revoke Invite</button>
-                ) : null}
-                <button type="button" className="secondary-button" onClick={() => setSelectedAdminBetaInviteId("")}>Close</button>
-              </div>
-            </section>
-          </div>
-        ) : null}
-      </section>
-    );
+    return <LazyToolBoundary label="Loading beta invites…">
+      <AdminBetaInvitesContent scope={{
+        DetailItem,
+        Field,
+        adminBetaInviteCreated,
+        adminBetaInviteForm,
+        adminBetaInviteLoading,
+        adminBetaInviteSearch,
+        adminBetaInviteShowInactive,
+        betaAdminVisible,
+        betaInviteLinkForCreatedInvite,
+        copyAdminBetaInviteLink,
+        handleCreateAdminBetaInvite,
+        handleRevokeAdminBetaInvite,
+        maskEmail,
+        refreshAdminBetaInvites,
+        selectedAdminBetaInviteId,
+        setAdminBetaInviteCreated,
+        setAdminBetaInviteSearch,
+        setAdminBetaInviteShowInactive,
+        setSelectedAdminBetaInviteId,
+        shorelineState,
+        shortDate,
+        updateAdminBetaInviteForm,
+      }} />
+    </LazyToolBoundary>;
   }
 
   function renderRoleManagementSection() {
-    if (!roleManagementVisible) return null;
-    const actorProfile = { ...rolePermissionProfile, appRole: actualAdminRole, app_role: actualAdminRole };
-    const roleRows = (shorelineState.roleManagementUsers || []).map((entry) => {
-      const appRole = normalizeAppRole(entry.appRole || entry.app_role || entry.userRole);
-      return {
-        ...entry,
-        appRole,
-        app_role: appRole,
-        protectedOfficialAdmin: Boolean(entry.protectedOfficialAdmin || entry.protected_official_admin || isOfficialAdminProfile(entry)),
-      };
-    });
-    const searchText = roleManagementSearch.trim().toLowerCase();
-    const visibleRoleRows = roleRows.filter((entry) => {
-      const haystack = `${entry.displayName || ""} ${entry.fullName || ""} ${entry.username || ""} ${entry.publicUsername || ""} ${entry.email || ""} ${entry.appRole || ""} ${entry.betaAccessStatus || ""}`.toLowerCase();
-      return (!searchText || haystack.includes(searchText)) && roleFilterMatches(entry, roleManagementFilter);
-    });
-    const roleCounts = {
-      owner: roleRows.filter((entry) => entry.appRole === APP_ROLES.OWNER).length,
-      admin: roleRows.filter((entry) => entry.appRole === APP_ROLES.ADMIN).length,
-      moderator: roleRows.filter((entry) => entry.appRole === APP_ROLES.MODERATOR).length,
-      betaUser: roleRows.filter((entry) => entry.appRole === APP_ROLES.BETA_USER).length,
-      user: roleRows.filter((entry) => entry.appRole === APP_ROLES.USER).length,
-    };
-    const assignableRoles = isOwner(actorProfile)
-      ? [APP_ROLES.USER, APP_ROLES.BETA_USER, APP_ROLES.MODERATOR, APP_ROLES.ADMIN, APP_ROLES.OWNER]
-      : [APP_ROLES.USER, APP_ROLES.BETA_USER, APP_ROLES.MODERATOR];
-
-    return (
-      <section className="settings-subsection role-management-panel" aria-label="Role Management">
-        <div className="compact-card-header">
-          <div>
-            <h3>Role Management</h3>
-            <p>Owner/admin-only controls for assigning beta users, moderators, admins, and owners. Role changes are handled by secure Supabase RPCs and logged.</p>
-          </div>
-          <button type="button" className="secondary-button" onClick={() => void refreshRoleManagementData(roleManagementSearch)}>Refresh roles</button>
-        </div>
-        {shorelineState.roleManagementMessage ? (
-          <div className="empty-state compact-empty-state">
-            <h3>Role backend setup needed</h3>
-            <p>{shorelineState.roleManagementMessage}</p>
-          </div>
-        ) : null}
-        {shorelineState.roleManagementError ? <p className="auth-status-message error" role="alert">{shorelineState.roleManagementError}</p> : null}
-        <div className="role-management-overview">
-          <article><span>Owners</span><strong>{roleCounts.owner}</strong></article>
-          <article><span>Admins</span><strong>{roleCounts.admin}</strong></article>
-          <article><span>Moderators</span><strong>{roleCounts.moderator}</strong></article>
-          <article><span>Beta users</span><strong>{roleCounts.betaUser}</strong></article>
-          <article><span>Users</span><strong>{roleCounts.user}</strong></article>
-        </div>
-        <div className="beta-users-toolbar">
-          <input value={roleManagementSearch} onChange={(event) => setRoleManagementSearch(event.target.value)} placeholder="Search users by name, username, or email" />
-          <div className="segmented-control" role="tablist" aria-label="Role filters">
-            {ROLE_FILTERS.map((filter) => (
-              <button
-                type="button"
-                key={filter}
-                className={roleManagementFilter === filter ? "active" : ""}
-                onClick={() => setRoleManagementFilter(filter)}
-              >
-                {filter}
-              </button>
-            ))}
-          </div>
-        </div>
-        <p className="role-warning">
-          Admins can assign moderator, beta user, and user roles. Only owners can assign owner/admin roles. Self role changes and the last owner/admin downgrade are blocked server-side.
-        </p>
-        <div className="role-management-user-grid">
-          {visibleRoleRows.length ? visibleRoleRows.map((entry) => {
-            const currentRole = normalizeAppRole(entry.appRole || entry.app_role);
-            return (
-              <article className="role-user-card" key={entry.userId || entry.email}>
-                <div className="role-user-card-main">
-                  <div>
-                    <strong>{entry.displayName || entry.fullName || entry.email || "User"}</strong>
-                    <p>{maskEmail(entry.email)} | {entry.username || entry.publicUsername || "No username"}</p>
-                    <small>Joined {entry.createdAt ? shortDate(entry.createdAt) : "date unavailable"} | Last active {entry.lastActiveAt || entry.lastSeenAt ? shortDate(entry.lastActiveAt || entry.lastSeenAt) : "unavailable"}</small>
-                  </div>
-                  <span className={`status-badge ${currentRole}`}>{roleLabel(currentRole)}</span>
-                </div>
-                <div className="detail-grid compact-detail-grid">
-                  <DetailItem label="Beta access" value={entry.appAccess ? "Allowed" : statusLabel(entry.betaAccessStatus || entry.beta_status)} />
-                  <DetailItem label="App access" value={entry.appAccess ? "true" : "false"} />
-                  <DetailItem label="Protected admin" value={entry.protectedOfficialAdmin ? "Yes" : "No"} />
-                  <DetailItem label="Plan" value={entry.planTier || entry.tier || "free"} />
-                </div>
-                <div className="role-action-grid">
-                  {assignableRoles.map((nextRole) => {
-                    const disabled = nextRole === currentRole || !canAssignAppRole(actorProfile, entry, nextRole) || (entry.protectedOfficialAdmin && !isOwner(actorProfile));
-                    return (
-                      <button
-                        type="button"
-                        className={nextRole === APP_ROLES.ADMIN || nextRole === APP_ROLES.OWNER ? "delete-button" : "secondary-button"}
-                        key={nextRole}
-                        disabled={disabled}
-                        onClick={() => openRoleChangeConfirmation(entry, nextRole)}
-                      >
-                        Make {roleLabel(nextRole)}
-                      </button>
-                    );
-                  })}
-                </div>
-              </article>
-            );
-          }) : (
-            <div className="empty-state compact-empty-state">
-              <h3>No role users match this view</h3>
-              <p>{shorelineState.roleManagementUsersReady ? "Try another search or filter." : "Apply the role management migration to load live users."}</p>
-            </div>
-          )}
-        </div>
-        <section className="role-audit-panel">
-          <div className="compact-card-header">
-            <div>
-              <h4>Recent role changes</h4>
-              <p>Audit log entries are admin-only and do not expose protected app data.</p>
-            </div>
-            <span className="status-badge">{(shorelineState.roleAuditLog || []).length} entries</span>
-          </div>
-          <div className="admin-compact-list">
-            {(shorelineState.roleAuditLog || []).slice(0, 8).map((entry) => (
-              <article className="admin-compact-row" key={entry.id}>
-                <div>
-                  <strong>{maskEmail(entry.targetEmail) || "User role changed"}</strong>
-                  <p>{roleLabel(entry.oldRole)} to {roleLabel(entry.newRole)} | {entry.createdAt ? shortDate(entry.createdAt) : "No date"}</p>
-                </div>
-                <span className="status-badge">{entry.reason || "role change"}</span>
-              </article>
-            ))}
-            {!(shorelineState.roleAuditLog || []).length ? (
-              <div className="small-empty-state"><strong>No role changes logged yet</strong><span>Role changes made through the secure RPC will appear here.</span></div>
-            ) : null}
-          </div>
-        </section>
-        {roleChangeTarget ? (
-          <div className="location-modal-backdrop" role="presentation" onClick={() => setRoleChangeTarget(null)}>
-            <section className="location-modal role-change-modal" role="dialog" aria-modal="true" aria-labelledby="role-change-title" onClick={(event) => event.stopPropagation()}>
-              <div className="modal-header">
-                <div>
-                  <p>Confirm role change</p>
-                  <h2 id="role-change-title">{roleChangeTarget.displayName || roleChangeTarget.email || "User"}</h2>
-                </div>
-                <button type="button" className="modal-close-button" aria-label="Close role confirmation" onClick={() => setRoleChangeTarget(null)}>X</button>
-              </div>
-              <p className="compact-subtitle">
-                Change this user from {roleLabel(roleChangeTarget.appRole)} to {roleLabel(roleChangeRole)}. This does not grant seller access, paid tier, or private workspace data by itself.
-              </p>
-              {roleChangeRole === APP_ROLES.ADMIN || roleChangeRole === APP_ROLES.OWNER ? (
-                <p className="role-warning">Admin and owner promotion is sensitive. Confirm the user is an official Code 3 TCG operator before continuing.</p>
-              ) : null}
-              {roleChangeTarget.protectedOfficialAdmin ? (
-                <p className="role-warning">This looks like official admin Code 3 TCG. Only owners should change this role.</p>
-              ) : null}
-              <Field label="Reason optional">
-                <textarea value={roleChangeReason} onChange={(event) => setRoleChangeReason(event.target.value)} placeholder="Why is this role changing?" />
-              </Field>
-              <div className="quick-actions">
-                <button type="button" className="ember-gradient-button" disabled={roleChangeSaving} onClick={() => void confirmRoleChange()}>
-                  {roleChangeSaving ? "Saving..." : `Confirm ${roleLabel(roleChangeRole)}`}
-                </button>
-                <button type="button" className="secondary-button" onClick={() => setRoleChangeTarget(null)}>Cancel</button>
-              </div>
-            </section>
-          </div>
-        ) : null}
-      </section>
-    );
+    return <LazyToolBoundary label="Loading role management…">
+      <RoleManagementContent scope={{
+        APP_ROLES,
+        DetailItem,
+        Field,
+        ROLE_FILTERS,
+        actualAdminRole,
+        canAssignAppRole,
+        confirmRoleChange,
+        isOfficialAdminProfile,
+        isOwner,
+        maskEmail,
+        normalizeAppRole,
+        openRoleChangeConfirmation,
+        refreshRoleManagementData,
+        roleChangeReason,
+        roleChangeRole,
+        roleChangeSaving,
+        roleChangeTarget,
+        roleFilterMatches,
+        roleLabel,
+        roleManagementFilter,
+        roleManagementSearch,
+        roleManagementVisible,
+        rolePermissionProfile,
+        setRoleChangeReason,
+        setRoleChangeTarget,
+        setRoleManagementFilter,
+        setRoleManagementSearch,
+        shorelineState,
+        shortDate,
+        statusLabel,
+      }} />
+    </LazyToolBoundary>;
   }
 
   function renderBetaAdminReviewQueues() {
@@ -40481,150 +39765,31 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function renderAdminStoreManagementSection() {
-    if (!adminToolsVisible || !betaAdminVisible || adminReviewFilter !== "Store Management") return null;
-    const storeRows = buildStoreMapRows({ unfiltered: true, admin: true });
-    const summary = getAdminStoreManagementSummary(storeRows.map((row) => row.store), suggestions);
-    return (
-      <section className="settings-subsection admin-ops-section">
-        <div className="compact-card-header">
-          <div>
-            <h3>Store Management</h3>
-            <p>Manage store records, nicknames, city/state/area data, active status, reportable status, and family-friendly partner fields. {STORE_PARTNER_NO_GUARANTEE_COPY}</p>
-          </div>
-          <button type="button" className="secondary-button" onClick={() => { setActiveTab("scout"); setScoutView("stores"); setScoutStoresMode("map"); }}>Open Stores</button>
-        </div>
-        <div className="cards mini-cards admin-store-summary-cards">
-          <div className="card"><p>Total Stores</p><h2>{summary.totalStores}</h2></div>
-          <div className="card"><p>Active</p><h2>{summary.activeStores}</h2></div>
-          <div className="card"><p>Inactive</p><h2>{summary.inactiveStores}</h2></div>
-          <div className="card"><p>Family-Friendly</p><h2>{summary.familyFriendlyStores}</h2></div>
-          <div className="card"><p>Featured</p><h2>{summary.featuredPartners}</h2></div>
-          <div className="card"><p>Open Suggestions</p><h2>{summary.openStoreSuggestions}</h2></div>
-        </div>
-        <div className="small-empty-state admin-only-note">
-          <strong>Persistence note</strong>
-          <span>{ADMIN_STORE_PERSISTENCE_NOTE}</span>
-        </div>
-        <form className="admin-store-draft-form compact-form-grid" onSubmit={saveAdminStoreManagementDraft}>
-          <label className="form-field">
-            <span>Display name</span>
-            <input value={adminStoreDraft.displayName} onChange={(event) => updateAdminStoreDraft("displayName", event.target.value)} placeholder="Store or shop name" />
-          </label>
-          <label className="form-field">
-            <span>Chain / brand</span>
-            <input value={adminStoreDraft.chain} onChange={(event) => updateAdminStoreDraft("chain", event.target.value)} placeholder="Target, local shop, bookstore" />
-          </label>
-          <label className="form-field">
-            <span>Store type</span>
-            <select value={adminStoreDraft.storeType} onChange={(event) => updateAdminStoreDraft("storeType", event.target.value)}>
-              {STORE_LOCATION_TYPES.map((type) => <option key={type}>{type}</option>)}
-            </select>
-          </label>
-          <label className="form-field">
-            <span>Nickname</span>
-            <input value={adminStoreDraft.nickname} onChange={(event) => updateAdminStoreDraft("nickname", event.target.value)} placeholder="RM T, Pem T, shop nickname" />
-          </label>
-          <label className="form-field">
-            <span>City</span>
-            <input value={adminStoreDraft.city} onChange={(event) => updateAdminStoreDraft("city", event.target.value)} placeholder="Virginia Beach" />
-          </label>
-          <label className="form-field">
-            <span>State</span>
-            <input value={adminStoreDraft.state} onChange={(event) => updateAdminStoreDraft("state", event.target.value)} placeholder="Virginia" />
-          </label>
-          <label className="form-field">
-            <span>Region / area</span>
-            <input value={adminStoreDraft.region} onChange={(event) => updateAdminStoreDraft("region", event.target.value)} placeholder="Hampton Roads / 757" />
-          </label>
-          <label className="form-field">
-            <span>Public notes</span>
-            <textarea value={adminStoreDraft.publicNotes} onChange={(event) => updateAdminStoreDraft("publicNotes", event.target.value)} placeholder="Public-safe store notes" />
-          </label>
-          <label className="form-field">
-            <span>Kids / fair-access notes</span>
-            <textarea value={adminStoreDraft.kidsFairAccessNotes} onChange={(event) => updateAdminStoreDraft("kidsFairAccessNotes", event.target.value)} placeholder="Private review context stays in admin tools/local data" />
-          </label>
-          <label className="form-field">
-            <span>Partner notes</span>
-            <textarea value={adminStoreDraft.partnerNotes} onChange={(event) => updateAdminStoreDraft("partnerNotes", event.target.value)} placeholder="Events, trade nights, partner context" />
-          </label>
-          <label className="inline-toggle">
-            <input type="checkbox" checked={adminStoreDraft.active} onChange={(event) => updateAdminStoreDraft("active", event.target.checked)} />
-            <span>Active store</span>
-          </label>
-          <label className="inline-toggle">
-            <input type="checkbox" checked={adminStoreDraft.reportable} onChange={(event) => updateAdminStoreDraft("reportable", event.target.checked)} />
-            <span>Reportable in Restocks</span>
-          </label>
-          <label className="inline-toggle">
-            <input type="checkbox" checked={adminStoreDraft.familyFriendlyApproved} onChange={(event) => updateAdminStoreDraft("familyFriendlyApproved", event.target.checked)} />
-            <span>Family-friendly approved</span>
-          </label>
-          <label className="inline-toggle">
-            <input type="checkbox" checked={adminStoreDraft.supportsKidsAccess} onChange={(event) => updateAdminStoreDraft("supportsKidsAccess", event.target.checked)} />
-            <span>Kids access support</span>
-          </label>
-          <label className="inline-toggle">
-            <input type="checkbox" checked={adminStoreDraft.supportsMsrpOrReasonablePricing} onChange={(event) => updateAdminStoreDraft("supportsMsrpOrReasonablePricing", event.target.checked)} />
-            <span>Reasonable pricing when possible</span>
-          </label>
-          <label className="inline-toggle">
-            <input type="checkbox" checked={adminStoreDraft.agreedToCommunityMotto} onChange={(event) => updateAdminStoreDraft("agreedToCommunityMotto", event.target.checked)} />
-            <span>Agreed to community motto</span>
-          </label>
-          <label className="inline-toggle">
-            <input type="checkbox" checked={adminStoreDraft.offersKidEvents} onChange={(event) => updateAdminStoreDraft("offersKidEvents", event.target.checked)} />
-            <span>Kid events</span>
-          </label>
-          <label className="inline-toggle">
-            <input type="checkbox" checked={adminStoreDraft.offersTradeNights} onChange={(event) => updateAdminStoreDraft("offersTradeNights", event.target.checked)} />
-            <span>Trade nights</span>
-          </label>
-          <label className="inline-toggle">
-            <input type="checkbox" checked={adminStoreDraft.featuredPartner} onChange={(event) => updateAdminStoreDraft("featuredPartner", event.target.checked)} />
-            <span>Featured partner</span>
-          </label>
-          <label className="inline-toggle">
-            <input type="checkbox" checked={adminStoreDraft.advertisingPartner} onChange={(event) => updateAdminStoreDraft("advertisingPartner", event.target.checked)} />
-            <span>Advertising partner</span>
-          </label>
-          <div className="flow-form-footer">
-            <button type="submit" disabled={!adminEditModeActive}>{adminStoreEditingId ? "Save Store Metadata" : "Add Store Draft"}</button>
-            <button type="button" className="secondary-button" onClick={resetAdminStoreDraft}>Reset</button>
-          </div>
-        </form>
-        <div className="admin-store-management-grid">
-          {storeRows.slice(0, 16).map((row) => (
-            <article className="admin-store-card" key={`admin-store-${row.id}`}>
-              <div>
-                <strong>{row.name}</strong>
-                <p>{row.retailer} | {row.profile?.storeType || row.storeType} | {row.area || "Area not listed"}</p>
-              </div>
-              <div className="summary-pill-row">
-                <span className={`status-badge${["Empty shelves", "Low stock", "Needs report"].includes(row.status) ? " warning" : ""}`}>{row.status}</span>
-                <span className="confidence-badge">{row.confidence} confidence</span>
-                <span className={row.store.active === false || row.store.isActive === false ? "status-badge danger" : "status-badge"}>{row.store.active === false || row.store.isActive === false ? "Inactive" : "Active"}</span>
-                {row.store.reportable === false || row.store.isReportable === false ? <span className="status-badge warning">Not reportable</span> : <span className="status-badge">Restocks reportable</span>}
-              </div>
-              {row.profile?.badges?.length ? (
-                <div className="store-expansion-badges">
-                  {row.profile.badges.slice(0, 6).map((badge) => (
-                    <span key={badge.key} className={`store-expansion-badge store-expansion-badge-${badge.tone || "muted"}`}>{badge.label}</span>
-                  ))}
-                </div>
-              ) : null}
-              <p className="compact-subtitle">{row.store.publicNotes || row.store.public_notes || row.store.partnerNotes || row.store.partner_notes || "No public notes yet."}</p>
-              <div className="quick-actions">
-                <button type="button" className="secondary-button" onClick={() => openStoreProfile(row)}>Details</button>
-                <button type="button" className="secondary-button" disabled={!adminEditModeActive} onClick={() => startAdminStoreDraft(row)}>Edit</button>
-                <button type="button" className="secondary-button" disabled={!adminEditModeActive} onClick={() => quickPatchAdminStore(row, { familyFriendlyApproved: true, supportsKidsAccess: true, reviewStatus: "Approved" })}>Approve Family</button>
-                <button type="button" className="ghost-button" disabled={!adminEditModeActive} onClick={() => quickPatchAdminStore(row, { active: false, reportable: false, reviewStatus: "Inactive" })}>Mark Inactive</button>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-    );
+    return <LazyToolBoundary label="Loading store management…">
+      <AdminStoreManagementContent scope={{
+        ADMIN_STORE_PERSISTENCE_NOTE,
+        STORE_LOCATION_TYPES,
+        STORE_PARTNER_NO_GUARANTEE_COPY,
+        adminEditModeActive,
+        adminReviewFilter,
+        adminStoreDraft,
+        adminStoreEditingId,
+        adminToolsVisible,
+        betaAdminVisible,
+        buildStoreMapRows,
+        getAdminStoreManagementSummary,
+        openStoreProfile,
+        quickPatchAdminStore,
+        resetAdminStoreDraft,
+        saveAdminStoreManagementDraft,
+        setActiveTab,
+        setScoutStoresMode,
+        setScoutView,
+        startAdminStoreDraft,
+        suggestions,
+        updateAdminStoreDraft,
+      }} />
+    </LazyToolBoundary>;
   }
 
   function renderAdminAnnouncementSection() {
@@ -43827,6 +42992,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         collectorVisualTypeLabel,
         createQuickAddCardScanRow,
         appendQuickAddCardScanRows,
+        saveAllCardScanRows,
+        cardScanSaving,
         createQuickAddWizardState,
         detectCollectorItemVisualType,
         getCatalogIdentifiers,
@@ -48152,6 +47319,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       {renderNotificationCenterPanel()}
 
       {renderDesktopCommandSidebar()}
+      <MobileSectionTabs items={mobileSectionTabs} activeKey={activeMobileSectionKey} onSelect={(tab) => navigateMainTab(tab)} />
 
       {guestPreviewActive ? (
         <section className="guest-preview-banner" role="status">
@@ -49129,7 +48297,18 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     <button type="button" className="secondary-button" disabled={!primaryMultiDestinationSavedItem()} onClick={() => openMultiDestinationSavedItem("view")}>
                       View
                     </button>
-                    <button type="button" onClick={() => {
+                    {activeFlowModal?.source === "scanner" ? (
+                      // Nov 24 2026: scanning many cards in a row. Saved from a scan: go
+                      // straight back to the camera on the same tab and destination.
+                      <button type="button" data-scan-next="true" onClick={() => {
+                        closeFlowModal({ force: true, reset: false });
+                        resetMultiDestinationForm();
+                        window.setTimeout(() => beginScanProduct("none", readLastScanMode()), 80);
+                      }}>
+                        Scan next
+                      </button>
+                    ) : null}
+                    <button type="button" className={activeFlowModal?.source === "scanner" ? "secondary-button" : undefined} onClick={() => {
                       const receipt = multiDestinationSuccess?.receiptId ? findReceiptRecord(multiDestinationSuccess.receiptId) : null;
                       if (receipt) {
                         closeFlowModal({ force: true, reset: false });
@@ -50200,6 +49379,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     setScanMatches([]);
                     setScanSearchState("idle");
                     setScanMode(key);
+                    rememberScanMode(key);
                     setScanMessage("");
                   }}
                 >
@@ -50267,14 +49447,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
             ) : scanMode === "slab" ? (
               <div className="scan-product-mode-panel scan-product-mode-panel--card">
-                <ProductPhotoLookup key="slab" ai={scannerAi} kind="card" initialSlab onSlabDetails={setScanSlabDetails} initialQuery={scanInput} disabled={scanSearchState === "loading"} onDraftChange={() => { scanLookupRequestRef.current += 1; setScanReview(null); setScanMatches([]); setScanSearchState("idle"); setScanMessage(""); }} onQuery={async query => {
+                <ProductPhotoLookup key="slab" ai={scannerAi} kind="card" autoCamera initialSlab onSlabDetails={setScanSlabDetails} initialQuery={scanInput} disabled={scanSearchState === "loading"} onDraftChange={() => { scanLookupRequestRef.current += 1; setScanReview(null); setScanMatches([]); setScanSearchState("idle"); setScanMessage(""); }} onQuery={async query => {
                   setPictureLookup(current => ({ ...current, text: query }));
                   await handleCatalogScanMatch(query);
                 }} />
               </div>
             ) : scanMode === "card" ? (
               <div className="scan-product-mode-panel scan-product-mode-panel--card">
-                <ProductPhotoLookup key="card" ai={scannerAi} kind="card" onPicture={setScanPictureHash} onSlabDetails={setScanSlabDetails} initialQuery={scanInput} disabled={scanSearchState === "loading"} onDraftChange={() => { scanLookupRequestRef.current += 1; setScanReview(null); setScanMatches([]); setScanSearchState("idle"); setScanMessage(""); }} onQuery={async query => {
+                <ProductPhotoLookup key="card" ai={scannerAi} kind="card" autoCamera onPicture={setScanPictureHash} onSlabDetails={setScanSlabDetails} initialQuery={scanInput} disabled={scanSearchState === "loading"} onDraftChange={() => { scanLookupRequestRef.current += 1; setScanReview(null); setScanMatches([]); setScanSearchState("idle"); setScanMessage(""); }} onQuery={async query => {
                   setPictureLookup(current => ({ ...current, text: query }));
                   const preferId = scanPicturePreferRef.current;
                   scanPicturePreferRef.current = "";
@@ -50470,51 +49650,43 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             ) : null}
 
             {scanReview && !scanPriceCheck ? (
-              <div className="scanner-review-card">
-                <div className="scanner-review-steps" aria-label="Scanner add flow">
-                  <span className="is-complete">1. Match</span>
-                  <span className="is-current">2. Review</span>
-                  <span>3. Destination</span>
-                  <span>4. Submit</span>
-                </div>
-                <div className="scanner-section-heading">
-                  <strong>Review Before Saving</strong>
-                  <span>Best match selected. Change it below if needed. Nothing is saved early.</span>
-                </div>
-                <div className="small-empty-state ai-helper-note scanner-match-confidence-note">
-                  <strong>{aiConfidenceLabel(scanReview.matchConfidence)}</strong>
-                  <span>{scanReview.aiSummary || "Suggested matches may be incomplete. Review every detail before saving."}</span>
-                </div>
-                <div className="compact-card-header scanner-review-product-summary">
-                  <div>
+              <div className="scanner-review-card" ref={scanReviewCardRef}>
+                {/* Nov 24 2026: result first. Picture, name, set and number, and the
+                    market price lead; nothing is saved until the person confirms. */}
+                <div className="scanner-review-hero">
+                  {scanReview.imageUrl ? <PrivateStorageImage className="scanner-review-image" src={scanReview.imageUrl} alt={scanReview.itemName} /> : null}
+                  <div className="scanner-review-hero-copy">
                     <h3>{scanReview.itemName}</h3>
-                    <p>{scanReview.setName || "No set"} | {scanReview.productType || scanReview.catalogType}</p>
+                    <p>{[scanReview.setName || "No set", scanReview.cardNumber ? `#${scanReview.cardNumber}` : ""].filter(Boolean).join(" · ")}</p>
+                    <p className="scanner-review-price">
+                      <strong>{scanReview.marketValue ? money(scanReview.marketValue) : "No price yet"}</strong>
+                      <span>Market price</span>
+                    </p>
+                    <span className={`scanner-confidence-badge is-${scannerConfidenceClass(scanReview.matchConfidence)}`}>
+                      {scannerConfidenceLabel(scanReview.matchConfidence)} | {scanReview.matchConfidence}%
+                    </span>
                   </div>
-                  <span className={`scanner-confidence-badge is-${scannerConfidenceClass(scanReview.matchConfidence)}`}>
-                    {scannerConfidenceLabel(scanReview.matchConfidence)} | {scanReview.matchConfidence}%
-                  </span>
                 </div>
-                {scanReview.imageUrl ? <PrivateStorageImage className="scanner-review-image" src={scanReview.imageUrl} alt={scanReview.itemName} /> : null}
-                <div className="catalog-detail-grid">
-                  <DetailItem label="UPC / SKU" value={[scanReview.upc, scanReview.sku].filter(Boolean).join(" / ") || "Unknown"} />
-                  <DetailItem label="Market Value" value={scanReview.marketValue ? money(scanReview.marketValue) : "Unknown" } />
-                  <DetailItem label="MSRP" value={scanReview.msrp ? money(scanReview.msrp) : "Unknown" } />
-                  <DetailItem label="Source" value={scanReview.sourceType || "unknown"} />
-                </div>
+                {scanMatches.length > 1 ? (
+                  <button type="button" className="ghost-button scanner-review-not-this" onClick={() => document.getElementById("scanner-other-matches")?.scrollIntoView({ block: "start", behavior: "smooth" })}>
+                    Not this card? See {scanMatches.length - 1} other {scanMatches.length - 1 === 1 ? "match" : "matches"}
+                  </button>
+                ) : null}
+                {scanReview.aiSummary ? (
+                  <div className="small-empty-state ai-helper-note scanner-match-confidence-note">
+                    <strong>{aiConfidenceLabel(scanReview.matchConfidence)}</strong>
+                    <span>{scanReview.aiSummary}</span>
+                  </div>
+                ) : null}
+                {scanReview.upc || scanReview.sku || scanReview.msrp ? (
+                  <div className="catalog-detail-grid">
+                    {scanReview.upc || scanReview.sku ? <DetailItem label="UPC / SKU" value={[scanReview.upc, scanReview.sku].filter(Boolean).join(" / ")} /> : null}
+                    {scanReview.msrp ? <DetailItem label="MSRP" value={money(scanReview.msrp)} /> : null}
+                  </div>
+                ) : null}
                 {scanMode === "listing" && scanListingDetails ? (
                   <DealCheck verdict={listingVerdict(scanListingDetails, scanReview.marketValue)} site={scanListingDetails.site || ""} />
                 ) : null}
-                <div className="scanner-correction-panel">
-                  <strong>Need to correct the match?</strong>
-                  <p className="compact-subtitle">Corrections become admin-reviewed suggestions. Universal catalog data is not changed directly.</p>
-                  <div className="scanner-correction-grid">
-                    {SCANNER_CORRECTION_REASONS.map((reason) => (
-                      <button key={reason} type="button" className="secondary-button" onClick={() => submitScannerCorrection(reason)}>
-                        {reason}
-                      </button>
-                    ))}
-                  </div>
-                </div>
                 <Field label="Destination">
                   <select value={scanDestination} onChange={(event) => setScanDestination(normalizeAddDestinationValue(event.target.value, "none", { allowIgnore: true }))}>
                     {SCAN_DESTINATIONS
@@ -50571,11 +49743,22 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <button type="button" className="secondary-button" onClick={() => { setActiveTab("market"); closeInventoryScanner(); }}>Search Market Watch</button>
                   <button type="button" className="ghost-button" onClick={closeInventoryScanner}>Cancel</button>
                 </div>
+                <details className="scanner-correction-panel">
+                  <summary>Report a catalog problem</summary>
+                  <p className="compact-subtitle">Tell us when the catalog itself is wrong. Reports are reviewed before the catalog changes. To pick a different card, use the other matches instead.</p>
+                  <div className="scanner-correction-grid">
+                    {SCANNER_CORRECTION_REASONS.map((reason) => (
+                      <button key={reason} type="button" className="secondary-button" onClick={() => submitScannerCorrection(reason)}>
+                        {reason}
+                      </button>
+                    ))}
+                  </div>
+                </details>
               </div>
             ) : null}
 
             {scanMatches.length > 1 ? (
-              <div className="inventory-list compact-inventory-list">
+              <div className="inventory-list compact-inventory-list" id="scanner-other-matches">
                 <h3>{scanReview ? "Other matches" : "Choose your package"}</h3>
                 {!scanReview && <p role="status">{scanMessage}</p>}
                 {scanMatches.map((match) => (
@@ -50599,8 +49782,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     </div>
                     <span className="catalog-picker-copy">
                       <strong>{match.item.name || match.item.productName || match.item.cardName}</strong>
-                      <small>{match.item.setName || match.item.expansion || "No set"} | {match.item.productType || match.item.catalogType || "Product"}</small>
-                      <small>{match.confidencePercent}% | {match.explanation || "Possible match"}</small>
+                      <small>{[match.item.setName || match.item.expansion || "No set", masterCardNumber(match.item) ? `#${masterCardNumber(match.item)}` : "", match.item.productType || match.item.catalogType || "Product"].filter(Boolean).join(" · ")}</small>
+                      <small>
+                        {(() => { const price = getTideTradrMarketInfo(match.item).currentMarketValue || match.item.marketPrice; return price ? <strong className="scanner-match-price">{money(price)} </strong> : null; })()}
+                        {match.confidencePercent}% | {match.explanation || "Possible match"}
+                      </small>
                     </span>
                   </button>
                 ))}

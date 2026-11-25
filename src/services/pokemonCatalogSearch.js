@@ -1,11 +1,13 @@
 import { compareCatalogProducts } from "../utils/catalogSortUtils";
 import { catalogCardQueryMatchesRow, getCatalogCollectorQuery } from "../utils/catalogResultIdentity.mjs";
+import { identifierEquivalents } from "../utils/barcodeIdentity.mjs";
 import {
   analyzeCatalogSearch,
   buildCatalogAliasSuggestions,
   buildLegacyCatalogSearchAliases,
   expandCatalogSearchQueries,
   normalizeSearchQuery,
+  POKEMON_SET_ALIAS_ROWS,
   scoreCatalogSearchRow,
 } from "../data/catalogSearchAliases.mjs";
 
@@ -493,6 +495,26 @@ function applyFilters(query, filters = {}) {
   return next;
 }
 
+/**
+ * card_number clauses for a collector number (Nov 23 2026). Rows store "4", "04",
+ * "004", "4/102" or "004/102"; list those exact spellings. The older "%04" pattern
+ * also matched 104, 204, ... and filled the bounded candidate page with wrong cards.
+ */
+export function collectorNumberClauses(collectorNumber = "") {
+  const [firstPart] = String(collectorNumber).split("/");
+  const [, prefix = "", digits = firstPart, suffix = ""] = /^([a-z]*)(\d+)([a-z]*)$/.exec(firstPart) || [];
+  const spellings = [...new Set([digits, digits.padStart(2, "0"), digits.padStart(3, "0")])].map((value) => `${prefix}${value}${suffix}`.replace(/[,()]/g, ""));
+  // SVP promos are stored as the digits alone ("085") in the promo set (Nov 24 2026).
+  if (prefix === "svp") spellings.push(...new Set([digits, digits.padStart(2, "0"), digits.padStart(3, "0")]));
+  return spellings.flatMap((value) => [`card_number.ilike.${value}`, `card_number.ilike.${value}/%`]).join(",");
+}
+
+/** First four letters of the longest name word (4+ letters), or "" when the name gives nothing usable. */
+export function collectorNameHint(words = []) {
+  const longest = [...words].filter((word) => /^[a-z]{4,}$/.test(word)).sort((a, b) => b.length - a.length)[0] || "";
+  return longest.slice(0, 4);
+}
+
 function buildPriorityTextClauses(terms = []) {
   return [...new Set(terms.map(safeOrTerm).filter((term) => term.length >= 3))]
     .slice(0, 6)
@@ -722,7 +744,11 @@ function identifierTerms(term = "") {
   const normalized = normalizeCatalogQuery(term);
   const compact = normalized.replace(/[^a-z0-9]/g, "");
   const withoutLeadingZeroes = compact.replace(/^0+/, "");
-  return [...new Set([normalized, compact, withoutLeadingZeroes].filter((value) => value && value.length >= 3))].slice(0, 4);
+  // Nov 24 2026: a 12-digit UPC-A scan must also find rows stored as the 13-digit
+  // EAN (leading 0) or 14-digit GTIN, and the other way round. Only codes with a
+  // valid check digit are expanded, so a mistyped number is not padded into another.
+  const gtinSpellings = /^\d+$/.test(compact) ? identifierEquivalents(compact) : [];
+  return [...new Set([normalized, compact, withoutLeadingZeroes, ...gtinSpellings].filter((value) => value && value.length >= 3))].slice(0, 6);
 }
 
 function safeOrTerm(term = "") {
@@ -765,9 +791,45 @@ function dedupeRows(rows = []) {
   return [...rowsByKey.values()];
 }
 
+// Printed set codes (Nov 24 2026): the code at the bottom of a card ("OBF", "MEW",
+// "PAF") names exactly one set, unlike words such as "ex" that match many. When the
+// search holds one, rows from that set rank first. BKT and PHF are each used by two
+// sets, so they are left to the normal ranking.
+const SET_BY_PRINTED_CODE = (() => {
+  const counts = new Map();
+  for (const set of POKEMON_SET_ALIAS_ROWS) if (set.ptcgoCode) counts.set(set.ptcgoCode.toLowerCase(), (counts.get(set.ptcgoCode.toLowerCase()) || 0) + 1);
+  const map = new Map();
+  for (const set of POKEMON_SET_ALIAS_ROWS) {
+    const code = String(set.ptcgoCode || "").toLowerCase();
+    if (code && counts.get(code) === 1) map.set(code, set);
+  }
+  return map;
+})();
+const setNameKey = (value) => String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+export function printedSetCodeIn(term = "") {
+  for (const word of String(term).toLowerCase().match(/[a-z0-9]+/g) || []) {
+    const set = SET_BY_PRINTED_CODE.get(word);
+    if (set) return set;
+  }
+  return null;
+}
+
+export function rowIsFromSet(row = {}, set = null) {
+  if (!set) return false;
+  const code = String(row.set_code ?? row.setCode ?? "").toLowerCase();
+  if (code && (code === String(set.setId).toLowerCase() || code === String(set.ptcgoCode).toLowerCase())) return true;
+  const rowSet = setNameKey(row.set_name ?? row.setName ?? row.expansion);
+  const wanted = setNameKey(set.name);
+  return Boolean(rowSet && wanted) && (rowSet === wanted || rowSet.endsWith(` ${wanted}`));
+}
+
 function rankRows(rows, analysis, exactTerm, sort) {
+  const printedSet = printedSetCodeIn(exactTerm);
   return rows.filter((row) => catalogCardQueryMatchesRow(exactTerm, row)).sort((a, b) => {
     if (sort === "bestMatch") {
+      const setOrder = printedSet ? Number(rowIsFromSet(b, printedSet)) - Number(rowIsFromSet(a, printedSet)) : 0;
+      if (setOrder) return setOrder;
       const aScore = scoreCatalogSearchRow(a, analysis, exactTerm).score;
       const bScore = scoreCatalogSearchRow(b, analysis, exactTerm).score;
       return bScore - aScore || exactPriority(a, exactTerm) - exactPriority(b, exactTerm) || compareCatalogProducts(a, b, "bestMatch");
@@ -882,10 +944,7 @@ async function runTextSearchAgainstSource({ supabase, sourceName, query, barcode
     // A104/A105 (2026-11-01): search the card's own number alone; the stored
     // column may or may not include the "/total" part. The full identity is
     // still required client-side before a row ranks.
-    const [firstPart] = collectorQuery.collectorNumber.split("/");
-    const [, prefix, digits, suffix] = /^([a-z]*)(\d+)([a-z]*)$/.exec(firstPart) || [null, "", firstPart, ""];
-    const numberPattern = [prefix, digits, suffix].filter(Boolean).join("%");
-    dbQuery = dbQuery.or(`card_number.ilike.${numberPattern},card_number.ilike.${numberPattern}/%,card_number.ilike.%0${numberPattern},card_number.ilike.%0${numberPattern}/%`);
+    dbQuery = dbQuery.or(collectorNumberClauses(collectorQuery.collectorNumber));
   } else if (remoteSearchTerms.length) {
     const orClauses = remoteSearchTerms.flatMap((term) =>
       remoteTextFields.map((field) => `${field}.ilike.${matchMode === "prefix" ? `${safeOrTerm(term)}%` : `%${safeOrTerm(term)}%`}`)
@@ -900,7 +959,19 @@ async function runTextSearchAgainstSource({ supabase, sourceName, query, barcode
   if (error) throw error;
 
   let priorityRows = [];
-  if (!collectorQuery && sort === "bestMatch" && searchTerms.length > 1 && !broadMultiTokenSearch) {
+  // Scanner (Nov 23 2026): a common number like "4" exists in almost every set, so
+  // the bounded number query can miss the right card. Also fetch rows with this
+  // number whose name contains the start of the longest name word (OCR keeps short
+  // runs right more often than whole words), so the right card is always a candidate.
+  const nameHint = collectorQuery ? collectorNameHint(collectorQuery.requiredWords) : "";
+  if (collectorQuery && nameHint) {
+    let hintQuery = supabase.from(sourceName).select(selectFields).limit(60);
+    hintQuery = applyFilters(hintQuery, filters);
+    hintQuery = hintQuery.or(collectorNumberClauses(collectorQuery.collectorNumber)).ilike("name", `%${nameHint}%`);
+    const hintResult = await withAbortSignal(hintQuery, signal);
+    if (hintResult.error) throw hintResult.error;
+    priorityRows = hintResult.data || [];
+  } else if (!collectorQuery && sort === "bestMatch" && searchTerms.length > 1 && !broadMultiTokenSearch) {
     const priorityClauses = buildPriorityTextClauses([exactTerm, ...searchTerms]);
     if (priorityClauses.length) {
       let priorityQuery = supabase

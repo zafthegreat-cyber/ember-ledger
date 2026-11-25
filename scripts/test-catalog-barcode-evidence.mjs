@@ -200,7 +200,7 @@ function appSlice(startMarker,endMarker){
 }
 
 test('actual scanner and Add autofill use physical reviewed barcodes without copying quarantined imports or changing prices',()=>{
- const scope={reviewedProductBarcode,isLikelyBarcodeValue,normalizeBarcodeValue,
+ const scope={masterCardNumber:(item={})=>String(item.cardNumber||item.card_number||''),reviewedProductBarcode,isLikelyBarcodeValue,normalizeBarcodeValue,
   makeId:prefix=>`${prefix}-fixture`,scanMode:'upc',getTideTradrMarketInfo:row=>({currentMarketValue:row.marketPrice,msrp:row.msrpPrice}),
   normalizedInventoryProductType:row=>row.productType,getCatalogImage:row=>row.imageUrl,catalogTitle:row=>row.name,
   catalogProductTypeLabel:row=>row.productType,catalogExpansionName:row=>row.setName,catalogSourceUrl:row=>row.sourceUrl,
@@ -246,7 +246,7 @@ test('actual lazy seed completion preserves the current live quote when a refres
 test('actual scanner mode change invalidates a pending result before it can repopulate the new mode',async()=>{
  let resolve;
  const {state,run,scope}=scannerHarness({loadSeed:()=>new Promise(done=>{resolve=done;})});
- const pending=run('196214108417');scope.key='picture';scope.setScanMode=value=>{state.mode=value;};
+ const pending=run('196214108417');scope.key='picture';scope.setScanMode=value=>{state.mode=value;};scope.rememberScanMode=()=>{};
  const modeSource=appSlice('.map(([key, label, tone]) => (','<span className={`scan-product-mode-icon');
  const handler=modeSource.match(/onClick=\{\(\) => \{([\s\S]*?)\}\}/)?.[1];assert.ok(handler,'Actual scanner tab callback found');
  vm.runInNewContext(`(function(){${handler}})()`,scope);resolve([byId('610953')]);await pending;

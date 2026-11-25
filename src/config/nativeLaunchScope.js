@@ -18,13 +18,10 @@ export function isHiddenInNativeApp(tab, native = NATIVE_BUILD) {
   return Boolean(native) && NATIVE_HIDDEN_TABS.has(String(tab || ""));
 }
 
-// Official card and product photos are not licensed for the store apps, so
-// the phone apps only show the app's own images and members' own uploads
-// (Supabase Storage); everything else falls back to the generic placeholder.
-// The website keeps showing catalog photos.
+// Allow existing catalog providers, hosted inspection images and owner uploads.
 export function nativeAllowsRemoteProductImage(url, native = NATIVE_BUILD) {
   if (!native || !url) return true;
   const value = String(url).trim();
   if (/^(data|blob|capacitor):/i.test(value) || value.startsWith("/") || !/^[a-z][a-z0-9+.-]*:/i.test(value)) return true;
-  return /^https:\/\/(localhost|[a-z0-9]{20}\.supabase\.co|code3tcg\.app)(\/|$)/i.test(value);
+  return /^https:\/\/(localhost|[a-z0-9]{20}\.supabase\.co|code3tcg\.app|tcgplayer-cdn\.tcgplayer\.com|images\.pokemontcg\.io)(\/|$)/i.test(value);
 }

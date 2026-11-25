@@ -14,11 +14,12 @@ const appCss = read("src/App.css");
 
 test("16-should-polish loads after the palette; only 17-touch-feedback and 18-collector-binder follow it", () => {
   const imports = appCss.split("\n").filter((line) => line.startsWith("@import"));
-  assert.match(imports.at(-5), /16-should-polish\.css/);
-  assert.match(imports.at(-4), /17-touch-feedback\.css/);
-  assert.match(imports.at(-3), /18-collector-binder\.css/);
-  assert.match(imports.at(-2), /19-holo-tech.css/);
-  assert.match(imports.at(-1), /20-panel-fixes.css/);
+  assert.match(imports.at(-6), /16-should-polish\.css/);
+  assert.match(imports.at(-5), /17-touch-feedback\.css/);
+  assert.match(imports.at(-4), /18-collector-binder\.css/);
+  assert.match(imports.at(-3), /19-holo-tech.css/);
+  assert.match(imports.at(-2), /20-panel-fixes.css/);
+  assert.match(imports.at(-1), /21-bottom-bar.css/);
   assert.ok(imports.findIndex((line) => line.includes("15-warm-palette")) < imports.length - 1);
 });
 

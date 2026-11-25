@@ -66,6 +66,7 @@ async function main() {
       normalizeAddDestinationValue: (value) => value, guestPreviewActive: false,
       catalogProducts: [{ id: "catalog-1", name: "Synthetic card" }], catalogTitle: (product) => product.name,
       destinationDefaults: (value) => value,
+      rememberScanPicture: () => {}, rememberScanDestination: () => {}, rememberScanMode: () => {}, scanMode: "card", scanSlabDetails: null, scanListingDetails: null, listingScreenshotSeed: () => ({}),
       kidProjectForm: { name: "Synthetic pack plan", targetPackCount: 5, budget: 20, eventDate: "2026-09-20", notes: "Preserve draft" },
       kidBuilderItems: [{ id: "Exact-Kid-Item", quantity: 4 }, { quantity: 2 }], packItForwardCost: 15,
       buildCrossListingChannels: (listing) => [{ id: "Exact-Channel-ID", platform: "other", sourceInventoryId: listing.sourceItemId || listing.id, status: "draft" }],

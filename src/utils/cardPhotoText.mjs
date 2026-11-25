@@ -1,3 +1,4 @@
+import { isKnownCardName, snapCardName } from "./cardNameSnap.mjs";
 // Card reader text rules (Nov 17 2026). Pure: turns the text read from a card
 // photo into a catalog search such as "Charizard ex 125/197" or
 // "Monkey.D.Luffy OP01-024". It never decides the card: the person reviews the
@@ -47,9 +48,15 @@ export function findCardNumbers(text = "") {
       // A "/" read as "7" is only accepted when the result still looks like a set total.
       if (match[0].includes("7") && !match[0].includes("/") && Number(rightDigits) < 20) continue;
       if (Number(rightDigits) === 0) continue;
+      // Nov 24 2026: attack damage and HP ("120 60", "1207 30") are not collector
+      // numbers. A card's own number is at most about twice its set total (secret
+      // rares such as 230/193 stay in range); a "7" standing in for "/" must be closer still.
+      const leftNumber = Number(leftDigits.replace(/[a-z]$/, ""));
+      if (leftNumber > Number(rightDigits) * 2 + 10) continue;
+      if (match[0].includes("7") && !match[0].includes("/") && leftNumber > Number(rightDigits) + 20) continue;
       add(`${left}/${right}`, "fraction");
     }
-    for (const match of line.matchAll(/\b(SWSH|SVP|SM|XY|BW|DP|HGSS)\s?([0-9OoIl]{2,3})\b/g)) add(`${match[1]}${toDigits(match[2])}`, "promo");
+    for (const match of line.matchAll(/\b(SWSH|SVP|SM|XY|BW|DP|HGSS)\s?(?:EN\s?)?([0-9OoIl]{2,3})\b/g)) add(`${match[1]}${toDigits(match[2])}`, "promo");
   }
   return out;
 }
@@ -129,8 +136,16 @@ export function rankCardNames(candidateLists = []) {
   return [...scores.keys()].sort((a, b) => rank(b) - rank(a)).map((key) => display.get(key));
 }
 
-export function parseCardPhotoText({ nameText = "", numberText = "", fullText = "", extraNameTexts = [] } = {}) {
-  const names = rankCardNames([findCardName(nameText), ...extraNameTexts.map((text) => findCardName(text)), findCardName(fullText).slice(0, 4)]);
+export function parseCardPhotoText({ nameText = "", numberText = "", fullText = "", extraNameTexts = [], nameIndex = null } = {}) {
+  // Nov 24 2026: with the catalog's card names loaded, each read name is corrected to
+  // the real name it is closest to ("Charizarb" -> "Charizard"), so separate reads
+  // agree and a real name is put first.
+  const snapList = (list) => (nameIndex ? list.map((name) => snapCardName(name, nameIndex) || name) : list);
+  let names = rankCardNames([findCardName(nameText), ...extraNameTexts.map((text) => findCardName(text)), findCardName(fullText).slice(0, 4)].map(snapList));
+  if (nameIndex) {
+    const known = names.findIndex((name) => isKnownCardName(name, nameIndex));
+    if (known > 0) names = [names[known], ...names.slice(0, known), ...names.slice(known + 1)];
+  }
   const numbers = [...findCardNumbers(numberText), ...findCardNumbers(fullText)];
   const seen = new Set();
   const suggestions = [];
@@ -145,13 +160,17 @@ export function parseCardPhotoText({ nameText = "", numberText = "", fullText = 
   const name = names[0] || "";
   const number = numbers[0]?.value || "";
   const query = squash([name, number].filter(Boolean).join(" ")).slice(0, CARD_PHOTO_LIMITS.maxQueryLength);
-  const found = (name ? 1 : 0) + (number ? 1 : 0);
+  // Nov 24 2026: when the number strip was read but held no number, a number found
+  // elsewhere on the card (attack damage, HP, flavour text) is only a guess. It stays
+  // in the search text, but the read is not called certain, so nothing searches on its own.
+  const numberIsGuess = Boolean(number) && Boolean(String(numberText).trim()) && !findCardNumbers(numberText).length;
+  const found = (name ? 1 : 0) + (number && !numberIsGuess ? 1 : 0);
   return {
     query,
     name,
     number,
     suggestions: suggestions.slice(0, 6),
-    certainty: found === 2 ? "name-and-number" : number ? "number-only" : name ? "name-only" : "none",
+    certainty: found === 2 ? "name-and-number" : number && !numberIsGuess ? "number-only" : name ? "name-only" : number ? "number-only" : "none",
     text: clean([nameText, numberText, fullText].filter(Boolean).join("\n---\n")).trim(),
   };
 }

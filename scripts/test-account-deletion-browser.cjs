@@ -30,7 +30,7 @@ window.__switchPublicUser=id=>{mockUser=id?{id}:null;window.__publicAccountId=id
 const mockClient={auth:{onAuthStateChange:callback=>{window.__authCallback=callback;return {data:{subscription:{unsubscribe(){}}}}},getSession:async()=>({data:{session:mockUser?{user:mockUser}:null}}),signInWithPassword:async input=>{window.__signedInEmail=input.email;window.__switchPublicUser('11111111-1111-4111-8111-111111111111');return {data:{session:{user:mockUser}}}},signOut:async()=>{window.__signedOutAccountIds.push(mockUser?.id||null);window.__switchPublicUser(null);if(params.get('holdSignOut'))await new Promise(resolve=>window.__finishPublicSignOut=resolve);return {error:null}},resetPasswordForEmail:async(email)=>{window.__resetEmail=email;return {data:{}}}}};
 const status={available:true,state:params.get('pending')?'pending':'ready',accountEmail:'synthetic@example.invalid',blockers:params.get('blocked')?[{code:'account_protected_owner',message:'Transfer protected service ownership first.'}]:[],deletionScope:['Synthetic personal collection and files'],retainedScope:['Other accounts and current prices']};
 function SwitchingAccount(){const [user,setUser]=React.useState({id:'11111111-1111-4111-8111-111111111111'});window.__switchDeletionAccount=()=>setUser({id:'22222222-2222-4222-8222-222222222222'});return React.createElement(AccountDeletionPage,{user,statusLoader:async({expectedUserId})=>{if(params.get('switch')==='review'&&expectedUserId.startsWith('1111'))await new Promise(resolve=>window.__finishOldReview=resolve);return{...status,accountEmail:expectedUserId.startsWith('2222')?'new-account@example.invalid':'synthetic@example.invalid'}},deleteAccount:async()=>{await new Promise(resolve=>window.__finishOldDelete=resolve);return{state:'deleted',localCleanupRequired:true}},onDeleted:()=>window.__success++})}
-if(params.get('switch'))createRoot(document.getElementById('root')).render(React.createElement(SwitchingAccount));else if(params.get('auth'))createRoot(document.getElementById('root')).render(React.createElement(PublicPrivacyRoute,{route:'delete',client:mockClient}));else createRoot(document.getElementById('root')).render(React.createElement('main',{className:'app code3-public-privacy','data-theme':params.get('theme')||'light'},React.createElement(AccountDeletionPage,{user:{id:'11111111-1111-4111-8111-111111111111'},statusLoader:async()=>status,deleteAccount:async(input)=>{window.__calls++;if(input.password==='wrong')throw Object.assign(new Error('Password confirmation failed. Check your account password and try again.'),{code:'account_reauthentication_failed'});await new Promise(resolve=>window.__finish=resolve);return {state:'deleted',localCleanupRequired:true}},onDeleted:async()=>{window.__success++},onNavigate:tab=>{window.__navigation=tab}})));
+if(params.get('social'))createRoot(document.getElementById('root')).render(React.createElement('main',{className:'app code3-public-privacy','data-theme':params.get('theme')||'light'},React.createElement(AccountDeletionPage,{user:{id:'11111111-1111-4111-8111-111111111111',identities:[{provider:'google'}]},statusLoader:async()=>({...status,confirmWith:'social'}),socialConfirmedAt:async()=>params.get('social')==='fresh'?Math.floor(Date.now()/1000)-30:0,startSocialConfirm:async(provider,userId)=>{window.__socialStart=[provider,userId]},deleteAccount:async(input)=>{window.__socialInput=input;return {state:'deleted',localCleanupRequired:true}},onDeleted:async()=>{window.__success++}})));else if(params.get('switch'))createRoot(document.getElementById('root')).render(React.createElement(SwitchingAccount));else if(params.get('auth'))createRoot(document.getElementById('root')).render(React.createElement(PublicPrivacyRoute,{route:'delete',client:mockClient}));else createRoot(document.getElementById('root')).render(React.createElement('main',{className:'app code3-public-privacy','data-theme':params.get('theme')||'light'},React.createElement(AccountDeletionPage,{user:{id:'11111111-1111-4111-8111-111111111111'},statusLoader:async()=>status,deleteAccount:async(input)=>{window.__calls++;if(input.password==='wrong')throw Object.assign(new Error('Password confirmation failed. Check your account password and try again.'),{code:'account_reauthentication_failed'});await new Promise(resolve=>window.__finish=resolve);return {state:'deleted',localCleanupRequired:true}},onDeleted:async()=>{window.__success++},onNavigate:tab=>{window.__navigation=tab}})));
 </script></body></html>`);
 
 (async () => {
@@ -190,6 +190,35 @@ if(params.get('switch'))createRoot(document.getElementById('root')).render(React
       assert.equal(await switchPage.evaluate(() => window.__success), 0);
       results.push({ accountSwitchDuring: stage, staleResultIgnored: true, newAccountNotBusy: true, credentialsCleared: true });
       await switchContext.close();
+    }
+    // Google/Apple-only accounts have no password: they confirm with their provider, then delete.
+    for (const theme of ["light", "dark"]) {
+      const context = await browser.newContext({ viewport: { width: 390, height: 900 }, colorScheme: theme, reducedMotion: "reduce", serviceWorkers: "block" });
+      const errors = [];
+      await context.route("**/*", route => new URL(route.request().url()).origin === base ? route.continue() : route.abort());
+      const page = await context.newPage(); page.on("pageerror", error => errors.push(error.message));
+      await page.goto(`${base}/artifacts/qa/mobile-beta/privacy-deletion/fixture.html?social=stale&theme=${theme}`);
+      await page.getByRole("button", { name: "Review account deletion" }).click();
+      await expect(page.getByText("Your account uses Google to sign in", { exact: false })).toBeVisible();
+      await expect(page.getByLabel("Confirm your account password", { exact: true })).toHaveCount(0);
+      await page.getByLabel("Type DELETE MY ACCOUNT").fill("DELETE MY ACCOUNT");
+      await page.getByRole("checkbox").check();
+      await expect(page.getByRole("button", { name: "Permanently delete my account" })).toBeDisabled();
+      await page.getByRole("button", { name: "Confirm with Google", exact: true }).click();
+      assert.deepEqual(await page.evaluate(() => window.__socialStart), ["google", "11111111-1111-4111-8111-111111111111"]);
+      await assertReadableContrast(page);
+      await page.screenshot({ path: path.join(output, `social-confirm-${theme}.png`), fullPage: true });
+      await page.goto(`${base}/artifacts/qa/mobile-beta/privacy-deletion/fixture.html?social=fresh&theme=${theme}`);
+      await page.getByRole("button", { name: "Review account deletion" }).click();
+      await expect(page.getByText("Confirmed with Google.", { exact: false })).toBeVisible();
+      await page.getByLabel("Type DELETE MY ACCOUNT").fill("DELETE MY ACCOUNT");
+      await page.getByRole("checkbox").check();
+      await page.getByRole("button", { name: "Permanently delete my account" }).click();
+      await expect(page.getByRole("heading", { name: "Account deleted", exact: true })).toBeVisible();
+      assert.deepEqual(await page.evaluate(() => window.__socialInput), { confirmation: "DELETE MY ACCOUNT" }, "no password is sent");
+      assert.deepEqual(errors, []);
+      results.push({ theme, socialOnlyAccount: true, confirmBeforeDelete: true, noPasswordSent: true });
+      await context.close();
     }
     // Real public routes must bypass recovery gates without mounting App or any
     // cloud workspace record readers/writers. Keep synthetic recovery markers.

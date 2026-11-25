@@ -20,7 +20,9 @@ const LISTING_FIELDS=[['site','Site'],['price','Price'],['shipping','Shipping']]
 const money=value=>value===null||value===undefined||value===''?'':String(value);
 const SLAB_FIELDS=[['gradingCompany','Grader'],['grade','Grade'],['certificationNumber','Cert number']];
 import PictureMatches from './PictureMatches.jsx';
-import { aiScanSuggestions, describeAiScan } from '../utils/aiScanText.mjs';
+import { aiScanQuery, aiScanSuggestions, describeAiScan } from '../utils/aiScanText.mjs';
+// Start loading the text model when the card screen opens, so the first scan skips the load.
+const warmCardReader=()=>import('../utils/cardPhotoReader.mjs').then(module=>module.warmCardReader?.()).catch(()=>{});
 import './product-photo-lookup.css';
 
 // Only the explicitly reviewed query leaves this component. The selected file,
@@ -28,10 +30,11 @@ import './product-photo-lookup.css';
 // Card mode may also hand `onPicture` a 16-character fingerprint of the photo
 // (made on this device) so earlier confirmed scans can be suggested.
 const fingerprintCard=file=>import("../utils/cardPictureFingerprint.js").then(module=>module.fingerprintCardFile(file)).catch(()=>"");
-export default function ProductPhotoLookup({onQuery,onDraftChange,onSlabDetails,initialSlab=false,initialQuery='',disabled=false,kind='item',onListingDetails,onPicture,pictureMemory,ai,reader=kind==='card'?readCardPhoto:kind==='listing'?readListingScreenshot:readProductPhotoText,slabReader=readSlabPhoto}){
+export default function ProductPhotoLookup({onQuery,onDraftChange,onSlabDetails,initialSlab=false,initialQuery='',disabled=false,kind='item',onListingDetails,onPicture,pictureMemory,ai,autoCamera=false,autoSearch=kind==='card',reader=kind==='card'?readCardPhoto:kind==='listing'?readListingScreenshot:readProductPhotoText,slabReader=readSlabPhoto}){
  const fileRef=useRef(null),[aiBusy,setAiBusy]=useState(false),[aiResult,setAiResult]=useState(null),[aiError,setAiError]=useState(''),[aiRemaining,setAiRemaining]=useState(null);
  const id=useId(),sequence=useRef(0),controller=useRef(null),previewRef=useRef(''),edited=useRef(false),queryRef=useRef(null);
- const [preview,setPreview]=useState(''),[fileName,setFileName]=useState(''),[query,setQuery]=useState(initialQuery),[text,setText]=useState(''),[suggestions,setSuggestions]=useState([]),[busy,setBusy]=useState(false),[searching,setSearching]=useState(false),[progress,setProgress]=useState(null),[message,setMessage]=useState(''),[error,setError]=useState(''),[cameraOpen,setCameraOpen]=useState(false),[slab,setSlab]=useState(initialSlab),[slabDetails,setSlabDetails]=useState(initialSlab?{gradingCompany:'',grade:'',certificationNumber:''}:null),[listingDetails,setListingDetails]=useState(null);
+ const [preview,setPreview]=useState(''),[fileName,setFileName]=useState(''),[query,setQuery]=useState(initialQuery),[text,setText]=useState(''),[suggestions,setSuggestions]=useState([]),[busy,setBusy]=useState(false),[searching,setSearching]=useState(false),[progress,setProgress]=useState(null),[message,setMessage]=useState(''),[error,setError]=useState(''),[cameraOpen,setCameraOpen]=useState(Boolean(autoCamera&&kind==='card')),[slab,setSlab]=useState(initialSlab),[slabDetails,setSlabDetails]=useState(initialSlab?{gradingCompany:'',grade:'',certificationNumber:''}:null),[listingDetails,setListingDetails]=useState(null);
+ useEffect(()=>{if(kind==='card'&&reader===readCardPhoto)void warmCardReader();},[kind,reader]);
  useEffect(()=>()=>{sequence.current++;controller.current?.abort();if(previewRef.current)URL.revokeObjectURL(previewRef.current);},[]);
  function stop(){sequence.current++;controller.current?.abort();controller.current=null;setBusy(false);setProgress(null);}
  function clearPreview(){if(previewRef.current)URL.revokeObjectURL(previewRef.current);previewRef.current='';fileRef.current=null;setAiResult(null);setAiError('');setPreview('');setFileName('');}
@@ -54,6 +57,9 @@ export default function ProductPhotoLookup({onQuery,onDraftChange,onSlabDetails,
    if(result.listing){const details={site:result.site||'',price:money(result.price),shipping:money(result.shipping),sold:Boolean(result.sold),title:result.title||'',condition:result.condition||'',graded:Boolean(result.graded),gradingCompany:result.gradingCompany||'',grade:result.grade||''};setListingDetails(details);onListingDetails?.(details);}
    if(slab){const details={gradingCompany:result.gradingCompany||'',grade:result.grade||'',certificationNumber:result.certificationNumber||''};setSlabDetails(details);onSlabDetails?.(details);}
    setMessage(result.message||'Review the text before searching.');
+   // A card read with both name and number (or a slab with its card number) is searched straight away; the person still picks the match.
+   const confident=result.certainty==='name-and-number'||(slab&&result.number&&result.name);
+   if(autoSearch&&confident&&!edited.current&&result.query){setBusy(false);setProgress(null);controller.current=null;await runSearch(result.query,request);}
    if(['invalid','failed','unsupported','timeout'].includes(result.status))setError(result.message||'Type the details below to continue.');
   }catch{if(request===sequence.current&&!abort.signal.aborted)setError('The photo could not be read. Type the product details below.');}
   finally{if(request===sequence.current){setBusy(false);setProgress(null);controller.current=null;}}
@@ -71,7 +77,7 @@ export default function ProductPhotoLookup({onQuery,onDraftChange,onSlabDetails,
    const result=reply.result;setAiResult(result);
    if(!result.found){setAiError(result.notes||'AI could not find a trading card item in this photo. Try a closer, brighter photo.');return;}
    if(slab&&(result.gradingCompany||result.grade||result.certNumber)){const details={gradingCompany:result.gradingCompany||slabDetails?.gradingCompany||'',grade:result.grade||slabDetails?.grade||'',certificationNumber:result.certNumber||slabDetails?.certificationNumber||''};setSlabDetails(details);onSlabDetails?.(details);}
-   setSuggestions(aiScanSuggestions(result));setAiBusy(false);pickQuery(result.searchQuery);
+   setSuggestions(aiScanSuggestions(result));setAiBusy(false);pickQuery(aiScanQuery(result));
   }catch{setAiError('AI scan did not finish. Check your connection and try again.');}
   finally{setAiBusy(false);}
  }
@@ -82,12 +88,16 @@ export default function ProductPhotoLookup({onQuery,onDraftChange,onSlabDetails,
   const request=sequence.current;setSearching(true);
   Promise.resolve().then(()=>onQuery(value)).catch(()=>{if(request===sequence.current)setError('Catalog search did not finish. Your search text is still here; try again.');}).finally(()=>{if(request===sequence.current)setSearching(false);});
  }
- async function search(){
-  const value=normalizeProductPhotoQuery(query);if(!value||disabled||busy||searching||typeof onQuery!=='function')return;
-  const request=sequence.current;setSearching(true);setError('');
+ async function runSearch(text,request=sequence.current){
+  const value=normalizeProductPhotoQuery(text);if(!value||disabled||typeof onQuery!=='function')return;
+  setSearching(true);setError('');
   try{await onQuery(value);}
   catch{if(request===sequence.current)setError('Catalog search did not finish. Your search text is still here; try again.');}
   finally{if(request===sequence.current)setSearching(false);}
+ }
+ async function search(){
+  if(busy||searching)return;
+  await runSearch(query);
  }
   const subject=kind==='card'?'card':kind==='sealed'?'sealed product':'card or sealed product';
  const isListing=kind==='listing';

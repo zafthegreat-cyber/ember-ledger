@@ -6,6 +6,10 @@ export const SOCIAL_INTENT_KEY = "code3.social-sign-in.v1";
 const providerIds = new Set(SOCIAL_PROVIDERS.map(provider => provider.id));
 const idPattern = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const MAX_AGE = 15 * 60_000;
+// "reauth": a signed-in social-only account signs in again with its provider so account
+// deletion can see a fresh provider sign-in (Google Play requires deletion for every account).
+const MODES = ["signin", "link", "reauth"];
+export const REAUTH_RETURN_PATH = "/delete-account";
 const failure = () => new Error("This sign-in could not be verified. Return to Code 3 TCG and try again. Your saved records have not been moved.");
 
 export function releasedProviders(value = "") {
@@ -23,7 +27,8 @@ export function webSocialRedirect(origin, development = false) {
 export function parseSocialCallback(value, expectedOrigin) {
   let url;
   try { url = new URL(value); } catch { throw failure(); }
-  if (url.origin !== expectedOrigin || url.pathname !== "/auth/callback" || url.username || url.password || url.hash) throw failure();
+  // Facebook appends the literal "#_=_" to its redirect; browsers carry it to our callback.
+  if (url.origin !== expectedOrigin || url.pathname !== "/auth/callback" || url.username || url.password || (url.hash && url.hash !== "#_=_")) throw failure();
   const keys = [...url.searchParams.keys()];
   if (keys.length !== new Set(keys).size || keys.some(key => !["code", "error", "error_code", "error_description"].includes(key))) throw failure();
   if (url.searchParams.has("error")) return { error: true };
@@ -86,7 +91,7 @@ export function createSocialAuthService({ client, oauthClient, clearOAuthStorage
   async function clear() { await store.removeItem(SOCIAL_INTENT_KEY); }
   return {
     async start(provider, { mode = "signin", userId } = {}) {
-      if (!client || !oauthClient || !providerIds.has(provider) || !["signin", "link"].includes(mode)) throw failure();
+      if (!client || !oauthClient || !providerIds.has(provider) || !MODES.includes(mode)) throw failure();
       if (!(await loadAvailability()).some(item => item.id === provider)) throw new Error("This sign-in option is not available yet. Use email and password.");
       if (mode === "link") {
         if (!linkingEnabled || !idPattern.test(userId || "")) throw new Error("Connecting sign-in methods is not available yet.");
@@ -96,6 +101,9 @@ export function createSocialAuthService({ client, oauthClient, clearOAuthStorage
         const adopted = await oauthClient.auth.setSession({ access_token: original.data.session.access_token, refresh_token: original.data.session.refresh_token });
         if (adopted.error) throw failure();
         await verifiedUser(userId, oauthClient);
+      } else if (mode === "reauth") {
+        if (!idPattern.test(userId || "")) throw failure();
+        await verifiedUser(userId);
       } else {
         const session = await client.auth.getSession();
         if (session.error || session.data?.session) throw new Error("You are already signed in. Connect another sign-in method from account settings.");
@@ -103,7 +111,7 @@ export function createSocialAuthService({ client, oauthClient, clearOAuthStorage
       const redirectTo = native ? "code3tcg://auth/callback?flow=oauth" : webSocialRedirect(origin, development);
       // This receipt contains no email, password, authorization code or token.
       // Native receipts use the same encrypted storage as the native session.
-      const intent = { provider, mode, userId: mode === "link" ? userId : null, issuedAt: now(), origin: native ? "native" : origin };
+      const intent = { provider, mode, userId: mode === "signin" ? null : userId, issuedAt: now(), origin: native ? "native" : origin };
       await store.setItem(SOCIAL_INTENT_KEY, JSON.stringify(intent));
       let redirecting = false;
       try {
@@ -130,16 +138,21 @@ export function createSocialAuthService({ client, oauthClient, clearOAuthStorage
         let adopted = false;
         try {
           const intent = JSON.parse(await store.getItem(SOCIAL_INTENT_KEY) || "null");
-          if (!intent || !providerIds.has(intent.provider) || !["signin", "link"].includes(intent.mode)
+          if (!intent || !providerIds.has(intent.provider) || !MODES.includes(intent.mode)
             || !Number.isFinite(intent.issuedAt) || now() - intent.issuedAt > MAX_AGE || now() < intent.issuedAt
-            || intent.origin !== (native ? "native" : origin) || intent.mode === "link" && (!linkingEnabled || !idPattern.test(intent.userId || ""))) throw failure();
+            || intent.origin !== (native ? "native" : origin) || intent.mode === "link" && (!linkingEnabled || !idPattern.test(intent.userId || ""))
+            || intent.mode === "reauth" && !idPattern.test(intent.userId || "")) throw failure();
           if (callback.error || !/^[A-Za-z0-9_-]{20,256}$/.test(callback.code || "")) throw failure();
           const response = await oauthClient.auth.exchangeCodeForSession(callback.code);
           if (response.error || !response.data?.user?.id || !response.data?.session?.access_token || !response.data.session.refresh_token) throw failure();
-          const user = await verifiedUser(intent.mode === "link" ? intent.userId : response.data.user.id, oauthClient);
+          // reauth must come back as the same account; another provider account is refused.
+          const user = await verifiedUser(intent.mode === "signin" ? response.data.user.id : intent.userId, oauthClient);
           if (!user.identities?.some(identity => identity.provider === intent.provider)) throw failure();
           if (intent.mode === "link") await verifiedUser(intent.userId);
-          else {
+          else if (intent.mode === "reauth") {
+            const current = await client.auth.getSession();
+            if (current.error || current.data?.session && current.data.session.user?.id !== intent.userId) throw failure();
+          } else {
             const current = await client.auth.getSession();
             if (current.error || current.data?.session) throw failure();
           }
@@ -147,6 +160,7 @@ export function createSocialAuthService({ client, oauthClient, clearOAuthStorage
           if (accepted.error) throw failure();
           adopted = true;
           await verifiedUser(user.id);
+          if (intent.mode === "reauth") return { path: REAUTH_RETURN_PATH, userId: user.id, reload: true };
           return { path: intent.mode === "link" ? "/settings" : "/find/home", userId: user.id };
         } catch {
           if (adopted) await client.auth.signOut({ scope: "local" }).catch(() => {});

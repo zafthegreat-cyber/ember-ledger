@@ -13,7 +13,7 @@ const token = (extra = {}) => `eyJhbGciOiJIUzI1NiJ9.${Buffer.from(JSON.stringify
 const identity = { id, email: "synthetic@example.test", token: "original", pending: false };
 function harness(options = {}) {
   const events = [];
-  const user = { id, email: identity.email, email_confirmed_at: new Date(now).toISOString(), is_anonymous: false };
+  const user = { id, email: identity.email, email_confirmed_at: new Date(now).toISOString(), is_anonymous: false, ...(options.social ? { app_metadata: { providers: ["google"] }, identities: [{ provider: "google" }] } : {}) };
   const state = { state: options.pending ? "pending" : "ready", blockers: options.blockers || [] };
   const admin = {
     rpc: async (name, args) => {
@@ -103,6 +103,30 @@ test("successful Auth deletion is not misreported when completion-marker cleanup
   await h.service.remove(identity, "synthetic-secret");
   assert.equal(h.events.some(x => x.name === "deleteUser"), true);
 });
+const oauthToken = (secondsAgo = 30, sub = id) => token({ sub, amr: [{ method: "oauth", timestamp: Math.floor(now / 1000) - secondsAgo }] });
+test("social-only accounts delete after a fresh Google/Apple sign-in, without a password", async () => {
+  const h = harness({ social: true });
+  const who = await h.service.identify(oauthToken());
+  assert.equal(who.passwordAccount, false);
+  await h.service.remove(who, "");
+  const names = h.events.map(x => x.name);
+  assert.equal(names.includes("password"), false, "no password sign-in is attempted");
+  assert.deepEqual(names.filter(name => ["code3_begin_account_deletion", "signOut", "deleteUser"].includes(name)), ["code3_begin_account_deletion", "signOut", "deleteUser"]);
+  assert.equal(h.events.find(x => x.name === "signOut").scope, "global");
+});
+test("social deletion refuses a stale sign-in, another account's token, a non-oauth token and password accounts", async () => {
+  for (const tokenValue of [oauthToken(301), oauthToken(30, foreign), token(), oauthToken(-120)]) {
+    const h = harness({ social: true });
+    const who = await h.service.identify(tokenValue);
+    await assert.rejects(h.service.remove(who, ""), { code: "account_social_reauthentication_required", status: 401 });
+    assert.equal(h.events.some(x => ["code3_begin_account_deletion", "signOut", "deleteUser"].includes(x.name)), false, "nothing starts and the user's session is kept");
+  }
+  const passwordAccount = harness();
+  const who = await passwordAccount.service.identify(oauthToken());
+  assert.equal(who.passwordAccount, true);
+  await assert.rejects(passwordAccount.service.remove(who, ""), { code: "account_reauthentication_failed" });
+  assert.equal(passwordAccount.events.some(x => x.name === "code3_begin_account_deletion"), false);
+});
 test("HTTP routes reject unauthed requests, client target IDs, missing confirmation and invalid bodies", async t => {
   const calls = [];
   const app = express();
@@ -119,4 +143,19 @@ test("HTTP routes reject unauthed requests, client target IDs, missing confirmat
   for (const body of [{ password: "test", confirmation: "DELETE MY ACCOUNT", userId: foreign }, { password: "test" }, { password: 1, confirmation: "DELETE MY ACCOUNT" }, []]) assert.equal((await send(body)).status, 400);
   assert.equal((await send({ password: "test", confirmation: "DELETE MY ACCOUNT" }, "?userId=other")).status, 400);
   assert.equal(calls.length, 0);
+});
+test("HTTP route accepts a confirmation without a password for the social path and reports how to confirm", async t => {
+  const calls = [];
+  const app = express();
+  const social = { ...identity, passwordAccount: false };
+  app.use("/api/account/deletion", createAccountDeletionRouter({ env: { NODE_ENV: "development" }, service: { identify: async () => social, status: async () => ({ state: "ready", blockers: [] }), remove: async (who, password) => calls.push({ id: who.id, length: password.length }) } }));
+  const server = app.listen(0, "127.0.0.1");
+  await new Promise(resolve => server.once("listening", resolve));
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const url = `http://127.0.0.1:${server.address().port}/api/account/deletion`;
+  assert.equal((await (await fetch(url + "/status", { headers: { Authorization: "Bearer synthetic" } })).json()).confirmWith, "social");
+  const send = body => fetch(url, { method: "POST", headers: { Authorization: "Bearer synthetic", "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  for (const body of [{}, { confirmation: "delete" }, { password: "", confirmation: "DELETE MY ACCOUNT" }]) assert.equal((await send(body)).status, 400);
+  assert.equal((await send({ confirmation: "DELETE MY ACCOUNT" })).status, 200);
+  assert.deepEqual(calls, [{ id, length: 0 }]);
 });

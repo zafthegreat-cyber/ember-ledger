@@ -13,6 +13,7 @@ for (const [name, version] of Object.entries(expected)) {
 const copies = [
   ["src/workers/scoutScreenshotOcr.worker.js", "scout-screenshot-v1.worker.js"],
   ["src/workers/cardPhotoOcr.worker.js", "card-photo-v1.worker.js"],
+  ["src/workers/cardPhotoOcrPool.worker.js", "card-photo-v2.worker.js"],
   ["node_modules/tesseract.js/dist/tesseract.min.js", "tesseract-7.0.0/tesseract.min.js"],
   ["node_modules/tesseract.js/dist/tesseract.min.js.LICENSE.txt", "tesseract-7.0.0/tesseract.min.js.LICENSE.txt"],
   ["node_modules/tesseract.js/dist/worker.min.js", "tesseract-7.0.0/worker.min.js"],

@@ -67,6 +67,9 @@ self.addEventListener("fetch", (event) => {
     // Hashed build files (/assets/name-HASH.ext) never change, so let the browser's
     // HTTP cache serve them (vercel.json marks them immutable). Anything else stays fresh.
     if (/^\/assets\/[^/]+-[A-Za-z0-9_-]{8}\.[a-z0-9]+$/.test(requestUrl.pathname)) return;
+    // The card reader's text model sits in a versioned folder (about 8 MB), so the
+    // HTTP cache can keep it too instead of downloading it for every scan.
+    if (requestUrl.pathname.startsWith("/ocr/tesseract-7.0.0/")) return;
     event.respondWith(fetch(event.request, { cache: "no-store" }));
     return;
   }

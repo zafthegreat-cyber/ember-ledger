@@ -22,15 +22,17 @@ export function createAccountDeletionRouter(options: Options = {}) {
     next();
   }).catch(next); });
   const identity = (res: Response) => res.locals.deletionIdentity as DeletionIdentity;
-  router.get("/status", run(async (_req, res) => res.json({ ok: true, available: true, accountEmail: identity(res).email, ...await service.status(identity(res)), deletionScope: DELETION_SCOPE, retainedScope: RETAINED_SCOPE })));
+  router.get("/status", run(async (_req, res) => res.json({ ok: true, available: true, accountEmail: identity(res).email, confirmWith: identity(res).passwordAccount === false ? "social" : "password", ...await service.status(identity(res)), deletionScope: DELETION_SCOPE, retainedScope: RETAINED_SCOPE })));
   router.post("/", createOwnerRateLimit({ maximumRequests: 4 }), express.json({ limit: "4kb", strict: true, inflate: false }), run(async (req, res) => {
     const body = req.body;
     req.body = undefined;
-    if (!body || typeof body !== "object" || Array.isArray(body) || Object.keys(body).some(key => !["password", "confirmation"].includes(key)) || body.confirmation !== "DELETE MY ACCOUNT" || typeof body.password !== "string" || !body.password || body.password.length > 1024) {
+    // No password key = social-only account; the service then requires a fresh provider sign-in.
+    const socialConfirmation = Boolean(body && typeof body === "object" && !Array.isArray(body) && !("password" in body));
+    if (!body || typeof body !== "object" || Array.isArray(body) || Object.keys(body).some(key => !["password", "confirmation"].includes(key)) || body.confirmation !== "DELETE MY ACCOUNT" || (!socialConfirmation && (typeof body.password !== "string" || !body.password || body.password.length > 1024))) {
       if (body && typeof body === "object") delete body.password;
       throw new AccountDeletionError("account_deletion_request_invalid", "Enter your password and type DELETE MY ACCOUNT to confirm.");
     }
-    let password = body.password;
+    let password = socialConfirmation ? "" : body.password;
     delete body.password;
     try { await service.remove(identity(res), password); return res.json({ ok: true, state: "deleted", localCleanupRequired: true }); }
     finally { password = ""; }

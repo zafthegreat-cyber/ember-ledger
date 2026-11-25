@@ -1,0 +1,112 @@
+/*
+ * Bottom bar, redone (owner, Nov 23 2026: "I hate the bottom").
+ * Loaded last. The bar is docked flat to the bottom edge instead of floating as a
+ * rounded dock: even tabs for the app's areas (Collect, Find, Sell...), a plain
+ * round Add in the middle (no raised diamond), a gold line on the active area.
+ * The pages inside an area sit in a pill row at the top (.ops-mobile-sections).
+ * Delete this file and its import in App.css to return to the floating dock.
+ */
+@media (max-width: 899px) {
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav {
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    min-height: 0 !important;
+    padding: 6px max(8px, env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px)) !important;
+    border: 0 !important;
+    border-top: 1px solid var(--holo-edge, rgb(255 255 255 / 12%)) !important;
+    border-radius: 0 !important;
+    background: var(--c3-surface) !important;
+    box-shadow: 0 -6px 18px rgb(0 0 0 / 22%) !important;
+    backdrop-filter: none !important;
+    gap: 0 !important;
+  }
+  /* No fade band above the bar: content simply ends above it. */
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav::before { content: none !important; }
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav button {
+    min-height: 52px !important;
+    gap: 3px !important;
+    padding: 4px 2px !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: var(--text-secondary, #CFC8CC) !important;
+  }
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav button span { font-size: 12px !important; font-weight: 700; }
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav button.is-active {
+    background: transparent !important;
+    box-shadow: none !important;
+    color: var(--app-brand-selected-ink, #F3D987) !important;
+  }
+  html:root body .app.app-command-shell[data-theme="light"] .ops-mobile-nav button.is-active { color: #7A0F1E !important; }
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav button.is-active::after {
+    content: "";
+    position: absolute;
+    top: -6px;
+    bottom: auto !important;
+    left: 30% !important;
+    right: 30% !important;
+    height: 3px !important;
+    border-radius: 0 0 3px 3px;
+  }
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav button { position: relative; }
+  /* Add: a plain round button that sits in the bar like the other tabs. */
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav button.is-global-action { align-self: center !important; }
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav__action-icon {
+    width: 34px !important;
+    height: 34px !important;
+    margin: 0 !important;
+    border: 0 !important;
+    border-radius: 50% !important;
+    transform: none !important;
+    background: #E8C86B !important;
+    box-shadow: none !important;
+    color: #1A1418 !important;
+  }
+  html:root body .app.app-command-shell[data-theme="light"] .ops-mobile-nav__action-icon { background: #7A0F1E !important; color: #FFF8EE !important; }
+  html:root body .app.app-command-shell[data-theme] .ops-mobile-nav__action-icon > * { transform: none !important; }
+  html:root body .app.app-command-shell[data-theme] .main { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important; }
+  html:root:has(.ops-mobile-nav) { scroll-padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+  /* The feedback bubble rests above the bar's right edge instead of on top of the page's last button. */
+  html:root body .app[data-theme] .quick-feedback-fab { bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important; }
+  /* "Reopen getting started" is a quiet text link, not a gold button. */
+  html:root body .app[data-theme] .member-start-reopen-link {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    color: var(--text-secondary, #CFC8CC) !important;
+    font-weight: 600 !important;
+  }
+}
+
+/* Pages inside the current area, as a row of pills at the top on phones. */
+.ops-mobile-sections { display: none; }
+@media (max-width: 1179px) {
+  html:root body .app[data-theme] .ops-mobile-sections {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 8px 16px 4px;
+    scrollbar-width: none;
+  }
+  html:root body .app[data-theme] .ops-mobile-sections::-webkit-scrollbar { display: none; }
+  html:root body .app[data-theme] .ops-mobile-sections button {
+    flex: 0 0 auto;
+    min-height: 44px;
+    padding: 0 16px;
+    border: 1px solid var(--holo-edge, rgb(255 255 255 / 18%));
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-secondary, #CFC8CC);
+    font: 700 14px/1 var(--c3-font-body, "DM Sans", sans-serif);
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  html:root body .app[data-theme] .ops-mobile-sections button.is-active {
+    border-color: transparent;
+    background: var(--app-brand-selected, #2B2530);
+    color: var(--app-brand-selected-ink, #F3D987);
+  }
+  html:root body .app[data-theme="light"] .ops-mobile-sections button.is-active { background: #7A0F1E; color: #FFF8EE; }
+}

@@ -42,6 +42,8 @@ export default function AddAnythingContent({ scope }) {
     collectorVisualTypeLabel,
     createQuickAddCardScanRow,
     appendQuickAddCardScanRows,
+    saveAllCardScanRows,
+    cardScanSaving,
     createQuickAddWizardState,
     detectCollectorItemVisualType,
     findCatalogProductsByBarcode,
@@ -527,8 +529,15 @@ export default function AddAnythingContent({ scope }) {
           ) : null}
           <div className="scan-anything-principle-card">
             <strong>Review before saving.</strong>
-            <p>Each row defaults to Vault. Change the destination only when the card should go somewhere else.</p>
+            <p>Each row defaults to your collection. "Save all matched cards" saves every row whose name and number match exactly one card; the rest stay here to review.</p>
           </div>
+          {(() => {
+            const matched = rows.filter((row) => row.matchState === "matched" && row.matchedFor === `${row.cardName}|${row.cardNumber}`);
+            const total = matched.reduce((sum, row) => sum + (Number(row.matchedValue) || 0), 0);
+            return matched.length ? (
+              <p className="quick-add-card-scan-total" role="status">{matched.length} of {rows.length} card{rows.length === 1 ? "" : "s"} matched{total > 0 ? ` · about ${money(total)} market value` : ""}</p>
+            ) : null;
+          })()}
           <datalist id="card-scan-printings">{[...COMMON_FINISHES, "1st Edition", "1st Edition Holo", "Unlimited", ...SPECIAL_PRINTINGS.map((item) => item.label.replace(/ (.*)$/, ""))].map((value) => <option key={value} value={value} />)}</datalist>
           <div className="quick-add-card-scan-list">
             {rows.map((row, index) => (
@@ -540,6 +549,11 @@ export default function AddAnythingContent({ scope }) {
                     <button type="button" className="ghost-button" onClick={() => removeCardScanRow(row.id)} disabled={rows.length <= 1}>Remove</button>
                   </div>
                 </div>
+                {row.matchedFor === `${row.cardName}|${row.cardNumber}` && row.matchState === "matched" ? (
+                  <p className="quick-add-card-scan-match">Matched: {row.matchedLabel}{row.matchedValue ? ` · ${money(row.matchedValue)}` : ""}{row.matchedOthers ? ` · ${row.matchedOthers} other printing${row.matchedOthers === 1 ? "" : "s"}: tap Review this card to change it` : ""}</p>
+                ) : row.matchedFor === `${row.cardName}|${row.cardNumber}` && row.matchState === "review" ? (
+                  <p className="quick-add-card-scan-match quick-add-card-scan-match--review">More than one card or none matched. Tap Review this card to pick it.</p>
+                ) : null}
                 <div className="flow-form-grid quick-add-card-scan-grid">
                   <Field label="Card name">
                     <input value={row.cardName} onChange={(event) => updateCardScanRow(row.id, { cardName: event.target.value })} placeholder="Pikachu, Charizard..." />
@@ -569,6 +583,7 @@ export default function AddAnythingContent({ scope }) {
           </div>
           {quickAddWizard.message ? <p className="flow-inline-message is-warning" role="alert">{quickAddWizard.message}</p> : null}
           <div className="quick-add-inline-actions quick-add-sticky-actions">
+            {saveAllCardScanRows ? <button type="button" className="primary-button" disabled={cardScanSaving || !rows.some((row) => String(row.cardName || "").trim())} onClick={saveAllCardScanRows}>{cardScanSaving ? "Saving…" : "Save all matched cards"}</button> : null}
             <button type="button" className="secondary-button" onClick={addCardScanRow}>Add card row</button>
             <button type="button" onClick={reviewFirstCardScanRow}>Review first filled card</button>
             <button type="button" className="ghost-button" onClick={() => setQuickAddPath("manual")}>Manual Entry</button>

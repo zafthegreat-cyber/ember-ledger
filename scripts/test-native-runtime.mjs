@@ -94,6 +94,8 @@ await check("native page trust requires bridge and exact bundled origin", () => 
 });
 await check("only bounded PKCE callbacks are accepted; token fragments, foreign hosts and duplicate parameters fail", () => {
   assert.deepEqual(runtime.parseNativeAuthCallback(callback), { code, flow: "recovery", error: false });
+  assert.deepEqual(runtime.parseNativeAuthCallback("code3tcg://auth/callback?flow=oauth&code=" + code + "#_=_"), { code, flow: "oauth", error: false });
+  assert.equal(runtime.parseNativeAuthCallback(callback + "#_=_&access_token=secret"), null);
   assert.equal(runtime.getNativeAuthRedirect("signin"), "code3tcg://auth/callback?flow=signin");
   assert.throws(() => runtime.getNativeAuthRedirect("delete"));
   for (const url of [callback + "#access_token=secret", callback + "&code=another", callback + "&access_token=secret", callback.replace("auth/", "evil/"), callback.replace("code3tcg:", "https:"), callback.replace("callback", "other"), "code3tcg://auth/callback?code=short", callback.replace("recovery", "delete"), "code3tcg://user@auth/callback?code=" + code]) assert.equal(runtime.parseNativeAuthCallback(url), null);
