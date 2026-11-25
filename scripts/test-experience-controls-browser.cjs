@@ -115,18 +115,28 @@ async function seedApp(context, { theme, admin = false, family = false }) {
   }, { theme, admin, family });
 }
 
-// Start-up saves (workspace backfill, catalog seed) land shortly after load; take baselines
-// only once et-tcg-beta-data has been unchanged for ~500ms.
+// Start-up saves land in steps. The app first writes the stored data back as it found it;
+// one debounced save later (about half a second here, longer on a slow CI machine) it
+// writes the records again with their workspace fields added; then the catalog seed.
+// A quiet half second between those steps is not "settled": CI took the baseline before
+// the second write, and the unchanged records then looked changed. A baseline is settled
+// once every saved item, sale and expense carries its workspace (the app adds one to each
+// record it saves) and what these tests compare has then stayed the same for a second.
 async function settledSnapshot(page) {
+  await expect.poll(() => page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem("et-tcg-beta-data"));
+    return [data.items, data.sales, data.expenses].flatMap(rows => rows || []).every(record => record.workspaceId);
+  }), { timeout: 30000, message: "The app saves every record with its workspace after start-up" }).toBe(true);
   let last = null, stableSince = Date.now();
-  const deadline = Date.now() + 15000;
+  const deadline = Date.now() + 20000;
   while (Date.now() < deadline) {
-    const current = await page.evaluate(() => localStorage.getItem("et-tcg-beta-data"));
+    const snapshot = await appSnapshot(page);
+    const current = JSON.stringify(snapshot);
     if (current !== last) { last = current; stableSince = Date.now(); }
-    else if (Date.now() - stableSince >= 500) break;
+    else if (Date.now() - stableSince >= 1000) return snapshot;
     await page.waitForTimeout(100);
   }
-  return appSnapshot(page);
+  throw new Error("Saved records, account and preferences kept changing for 20 seconds after start-up");
 }
 
 async function appSnapshot(page) {
