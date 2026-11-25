@@ -33,7 +33,9 @@ for (const file of files) {
   } else {
     failed.push(file);
     console.log(`FAIL ${file} (${seconds}s)`);
-    const tail = `${result.stdout || ""}\n${result.stderr || ""}`.trim().split("\n").slice(-25).join("\n");
+    const lines = `${result.stdout || ""}\n${result.stderr || ""}`.trim().split("\n");
+    const roots = lines.filter(line => /^(?:Error:|[a-z]+\/(?:mobile|tablet|desktop):|(?:mobile|tablet|desktop):|AssertionError|TimeoutError|locator\.|Call log:|\s+- waiting for|\s+- element is|\s+at (?:verifyFixture|validateLayout))/.test(line)).slice(0, 10);
+    const tail = [...roots, ...lines.slice(-25)].join("\n");
     console.log(tail);
     // Annotations show on the run page without signing in, unlike the full log.
     if (process.env.GITHUB_ACTIONS) {
