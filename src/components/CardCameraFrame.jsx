@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import "./card-camera-frame.css";
 import { frameToVideoRect } from "../utils/cardCameraFrame.mjs";
-import { createSteadyTracker, frameDetail, frameDifference } from "../utils/scannerExtras.mjs";
-import { assessCardView, CAMERA_ASSIST, captureRect, createSharpnessGate, edgeSharpness, padRect, sameCardBox, toGray } from "../utils/cardCameraAssist.mjs";
+import { createNextCardWatcher, createSteadyTracker, frameDetail } from "../utils/scannerExtras.mjs";
+import { assessCardView, CAMERA_ASSIST, captureRect, cardThumb, createSharpnessGate, edgeSharpness, padRect, sameCardBox, toGray } from "../utils/cardCameraAssist.mjs";
 
 // Live camera with a card-shaped frame (Nov 17 2026). Lining the card up in the
 // frame gives the card reader an upright, full-size card, which is what makes
@@ -20,6 +20,9 @@ import { assessCardView, CAMERA_ASSIST, captureRect, createSharpnessGate, edgeSh
 // focus never clears; the no-edges fallback needs something in the frame (not an
 // empty table); the camera restarts when the app comes back from the background;
 // and it asks for 4K so small print stays readable.
+// Nov 25 2026 (owner: "continuous scanner improvement"): continuous shows "Got it.
+// Show the next card." as soon as the picture is taken; a new retryKey lets the same
+// card be taken once more after it could not be read.
 
 const AUTO_KEY = "code3.scanner.autoCapture.v1";
 const SAMPLE = 32;
@@ -34,7 +37,8 @@ function buzz(pattern = 40) {
   try { navigator.vibrate?.(pattern); } catch { /* Optional feedback. */ }
 }
 
-export default function CardCameraFrame({ onCapture, onCancel, slab = false }) {
+// below: shown straight under the camera picture (the last card scanned), where it is seen without scrolling.
+export default function CardCameraFrame({ onCapture, onCancel, slab = false, continuous = false, retryKey = 0, below = null }) {
   const videoRef = useRef(null);
   const boxRef = useRef(null);
   const frameRef = useRef(null);
@@ -55,6 +59,9 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false }) {
   useEffect(() => { autoRef.current = auto; }, [auto]);
   const [steady, setSteady] = useState(0);
   const [tip, setTip] = useState("");
+  const [waiting, setWaiting] = useState(false); // a picture was taken; waiting for the next card
+  const retryRef = useRef(retryKey);
+  useEffect(() => { retryRef.current = retryKey; }, [retryKey]);
   const viewRef = useRef(null); // last look: { padded, card, ready }
   const sectionRef = useRef(null);
   // On a phone the camera opens below the fold; bring it into view.
@@ -125,7 +132,7 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false }) {
   }
 
   // useCard: cut to the card found in the last look (manual and auto), else the frame.
-  async function capture({ useCard = true } = {}) {
+  async function capture({ useCard = true, sameCardGuard = false } = {}) {
     const video = videoRef.current;
     const frame = frameArea();
     if (!frame || busyRef.current) return;
@@ -142,7 +149,7 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false }) {
       const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
       canvas.width = 0; canvas.height = 0;
       setCaptureError("");
-      if (blob) await onCapture?.(new File([blob], slab ? "slab-scan.jpg" : "card-scan.jpg", { type: "image/jpeg" }));
+      if (blob) await onCapture?.(new File([blob], slab ? "slab-scan.jpg" : "card-scan.jpg", { type: "image/jpeg" }), { sameCardGuard });
     } catch {
       // Nov 24 2026: a failed read used to leave the camera stuck on "Reading…" with no word why.
       setCaptureError(`That picture could not be read. Hold the ${slab ? "slab" : "card"} in the frame and try again.`);
@@ -167,13 +174,19 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false }) {
     const smallContext = small.getContext("2d", { willReadFrequently: true });
     const look = document.createElement("canvas");
     const lookContext = look.getContext("2d", { willReadFrequently: true });
-    let lastShot = null;
+    const nextCard = createNextCardWatcher();
+    let guardNext = false; // the next picture follows only a small change: it may be the same card
     let waitingForChange = false;
     let stillWithoutCard = 0;
     let previousCard = null;
     let usableStill = 0;
     const usableHold = CAMERA_ASSIST.steadyLooks - 4; // looks after the tracker's own 4-look hold
+    let seenRetry = retryRef.current;
     const timer = setInterval(() => {
+      if (retryRef.current !== seenRetry) {
+        seenRetry = retryRef.current;
+        if (waitingForChange) { waitingForChange = false; guardNext = false; setWaiting(false); tracker.reset(); stillWithoutCard = 0; usableStill = 0; }
+      }
       const video = videoRef.current;
       const frame = frameArea();
       if (!frame || !smallContext || !lookContext || busyRef.current || document.hidden) return;
@@ -193,7 +206,9 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false }) {
       smallContext.drawImage(video, frame.x, frame.y, frame.width, frame.height, 0, 0, SAMPLE, SAMPLE);
       const sample = toGray(smallContext.getImageData(0, 0, SAMPLE, SAMPLE).data);
       if (waitingForChange) {
-        if (frameDifference(lastShot, sample) > 18) { waitingForChange = false; tracker.reset(); stillWithoutCard = 0; usableStill = 0; }
+        const settledCard = view.card && !view.card.sideways && stableCard ? cardThumb(gray, width, height, view.card) : null;
+        const change = nextCard.push(sample, settledCard, { cardFound: Boolean(view.card) });
+        if (change) { waitingForChange = false; guardNext = change === "maybe-same"; setWaiting(false); tracker.reset(); stillWithoutCard = 0; usableStill = 0; }
         setSteady(0);
         return;
       }
@@ -208,16 +223,18 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false }) {
         : view.usable ? Math.min(1, usableStill / usableHold) * 0.9
           : view.card ? 0 : Math.min(1, stillWithoutCard / (FALLBACK_HOLD - 4)) * 0.9);
       if (readyToShoot || heldLongEnough || fallback) {
-        lastShot = sample;
+        nextCard.start(sample, (readyToShoot || heldLongEnough) && view.card ? cardThumb(gray, width, height, view.card) : null);
         waitingForChange = true;
+        setWaiting(true);
         tracker.reset();
         stillWithoutCard = 0;
         usableStill = 0;
         setSteady(0);
-        void captureRef.current?.({ useCard: readyToShoot || heldLongEnough });
+        void captureRef.current?.({ useCard: readyToShoot || heldLongEnough, sameCardGuard: guardNext });
+        guardNext = false;
       }
     }, 250);
-    return () => { clearInterval(timer); small.width = 0; look.width = 0; setSteady(0); setTip(""); viewRef.current = null; };
+    return () => { clearInterval(timer); small.width = 0; look.width = 0; setSteady(0); setTip(""); setWaiting(false); viewRef.current = null; };
   }, [ready, slab]);
 
   async function toggleZoom() {
@@ -250,16 +267,18 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false }) {
   }
 
   const what = slab ? "slab" : "card";
-  const status = !ready || error ? "" : busy ? "Reading…" : captureError ? captureError : steady > 0 && auto ? `Hold still… ${Math.round(steady * 100)}%` : tip || (auto ? `Auto-scan on. Hold the ${what} in the frame.` : "");
+  const status = !ready || error ? "" : busy ? "Reading…" : captureError ? captureError : continuous && waiting && auto ? "Got it. Show the next card." : steady > 0 && auto ? `Hold still… ${Math.round(steady * 100)}%` : tip || (auto ? `Auto-scan on. Hold the ${what} in the frame.` : "");
 
   return <section className={slab ? "card-camera-frame card-camera-frame--slab" : "card-camera-frame"} ref={sectionRef} aria-label={slab ? "Slab camera" : "Card camera"}>
     <div className="card-camera-frame__view" ref={boxRef}>
       <video ref={videoRef} playsInline muted aria-hidden="true" />
       <div className={`card-camera-frame__guide${steady > 0 ? " is-steadying" : ""}`} ref={frameRef} aria-hidden="true" style={steady > 0 ? { "--steady": steady } : undefined}>{slab ? <span className="card-camera-frame__name">Label here</span> : <><span className="card-camera-frame__name">Name here</span><span className="card-camera-frame__number">Number here</span></>}</div>
+      {continuous && waiting && auto && ready ? <span className="card-camera-frame__got" aria-hidden="true">✓</span> : null}
       {!ready && !error ? <p className="card-camera-frame__status" role="status">Starting the camera…</p> : null}
       {error ? <p className="card-camera-frame__status" role="alert">{error}</p> : null}
     </div>
-    <p className="card-camera-frame__hint">{slab ? "Fit the whole slab in the frame, label at the top. Tilt it slightly to stop glare on the plastic." : "Hold the card upright, name at the top. It doesn't have to be exact: the camera finds the card's edges."}</p>
+    {below}
+    {below ? null : <p className="card-camera-frame__hint">{slab ? "Fit the whole slab in the frame, label at the top. Tilt it slightly to stop glare on the plastic." : "Hold the card upright, name at the top. It doesn't have to be exact: the camera finds the card's edges."}</p>}
     {status ? <p className="card-camera-frame__auto-status" role="status" aria-live="polite">{status}</p> : null}
     <div className="card-camera-frame__toggles">
       <button type="button" className="card-camera-frame__toggle" aria-pressed={auto} onClick={toggleAuto} disabled={!ready}>{auto ? "Auto-scan: on" : "Auto-scan: off"}</button>
@@ -268,7 +287,7 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false }) {
     </div>
     <div className="card-camera-frame__actions">
       <button type="button" className="card-camera-frame__shutter" onClick={() => capture()} disabled={!ready || busy}>{busy ? "Reading…" : slab ? "Scan this slab" : "Scan this card"}</button>
-      <button type="button" className="card-camera-frame__cancel" onClick={onCancel}>Close camera</button>
+      {continuous ? null : <button type="button" className="card-camera-frame__cancel" onClick={onCancel}>Close camera</button>}
     </div>
   </section>;
 }

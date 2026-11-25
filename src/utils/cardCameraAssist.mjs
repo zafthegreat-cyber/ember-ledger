@@ -102,6 +102,29 @@ export function assessCardView(gray, width, height, { sharp = true, slab = false
   return { card: found, tip: "Hold still…", ready: true, usable: true };
 }
 
+/**
+ * A small brightness picture of just the found card (size x size), so two looks at
+ * a card can be compared wherever it sits in the view. Kept a little inside the
+ * outline, where the table does not show.
+ */
+export function cardThumb(gray, width, height, card, size = 16) {
+  if (!gray || !card || !(width > 0) || !(height > 0)) return null;
+  const left = (card.x + card.w * 0.06) * width, top = (card.y + card.h * 0.06) * height;
+  const cellWidth = (card.w * 0.88 * width) / size, cellHeight = (card.h * 0.88 * height) / size;
+  if (!(cellWidth > 0) || !(cellHeight > 0)) return null;
+  const thumb = new Uint8ClampedArray(size * size);
+  for (let row = 0; row < size; row += 1) {
+    const y0 = clamp(Math.floor(top + row * cellHeight), 0, height - 1), y1 = clamp(Math.ceil(top + (row + 1) * cellHeight), y0 + 1, height);
+    for (let column = 0; column < size; column += 1) {
+      const x0 = clamp(Math.floor(left + column * cellWidth), 0, width - 1), x1 = clamp(Math.ceil(left + (column + 1) * cellWidth), x0 + 1, width);
+      let total = 0;
+      for (let y = y0; y < y1; y += 1) for (let x = x0; x < x1; x += 1) total += gray[y * width + x];
+      thumb[row * size + column] = total / ((y1 - y0) * (x1 - x0));
+    }
+  }
+  return thumb;
+}
+
 /** True when two found card boxes (fractions) are the same card in the same place, give or take a little. */
 export function sameCardBox(a, b, tolerance = CAMERA_ASSIST.sameBoxTolerance) {
   if (!a || !b) return false;

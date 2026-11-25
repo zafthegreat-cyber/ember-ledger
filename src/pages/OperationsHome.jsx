@@ -39,7 +39,7 @@ function SavedItemPreview({ items = [], onOpen }) {
 }
 
 export default function OperationsHome({
-  setActiveTab, isOffline, onOpenBusiness, onOpenFind, onReportRestock, onOpenRestockReports, onScanCards,
+  setActiveTab, isOffline, onOpenBusiness, onOpenFind, onReportRestock, onOpenRestockReports, onOpenRestockMap, onScanCards,
   adaptiveActivity = {}, personalizationPreferences = {}, experiencePresentation,
   onOpenSellTrade, onOpenExperienceSettings, activeVaultItems = [], workspaceWatchlist = [],
   scoutSnapshot = {}, isWatchedEmberStore = () => false,
@@ -152,21 +152,16 @@ export default function OperationsHome({
     <PageHeader eyebrow={<><span className="home-desktop-context">Home</span><span className="home-mobile-identity"><BrandIdentity /></span></>} title={activeVaultItems.length || recent.length || workspaceWatchlist.length || followedStores.length ? "Welcome back." : "Welcome to Code 3 TCG."} description={activeVaultItems.length || recent.length || workspaceWatchlist.length ? "" : "Track your cards and get free restock alerts."} />
     {isOffline ? <OfflineState action={<SecondaryButton onClick={() => window.location.reload()}>Try again</SecondaryButton>} /> : null}
     {/* Competitor review, Nov 17: open on a search bar and the person's own numbers. */}
-    <div className="home-glance">
-      {/* Nov 25 2026 (owner: "more simple"): the one thing most people open the app to do. */}
-      {onScanCards ? <button type="button" className="home-glance__scan" onClick={onScanCards} aria-label="Scan cards. Point your camera at your cards to add them with prices."><AppNavIcon kind="scan" /><span><strong>Scan cards</strong><small>Point your camera at a card to add it with its price</small></span></button> : null}
-      <button type="button" className="home-glance__search" onClick={() => setActiveTab("market")} aria-label="Search cards and products"><AppNavIcon kind="search" /><span>Search cards &amp; products</span></button>
-      {!kidSafeView && collectionWorth.knownCount > 0 && collectionWorth.total != null ? <button type="button" className="home-glance__value" onClick={() => setActiveTab("collectionWorkspace")} aria-label={`Collection value ${formatCurrency(collectionWorth.total)}. Open collection.`}>
-        <span>Collection value</span>
-        <strong>{formatCurrency(collectionWorth.total)}</strong>
-        <small>{collectionWorth.knownCount === activeVaultItems.length ? "Every item has a saved value" : `${collectionWorth.knownCount} of ${activeVaultItems.length} items have a saved value`}</small>
-      </button> : null}
-      <div className="home-glance__stats" aria-label="Your numbers">
-        <button type="button" className="home-glance__stat" onClick={() => setActiveTab("collectionWorkspace")} aria-label={`${collectionQuantity} in your collection. Open collection.`}><strong>{collectionQuantity}</strong><span>{collectionQuantity === 1 ? "Card" : "Cards"}</span></button>
-        <button type="button" className="home-glance__stat" onClick={() => setActiveTab("market")} aria-label={`${workspaceWatchlist.length} on your wants list. Search to add more.`}><strong>{workspaceWatchlist.length}</strong><span>{workspaceWatchlist.length === 1 ? "Want" : "Wants"}</span></button>
-        <button type="button" className="home-glance__stat" onClick={() => (followedStores.length ? onOpenFollowedReports || onOpenRestockReports : onOpenRestockReports)?.()} aria-label={`${followedStores.length} stores followed. Open restocks.`}><strong>{followedStores.length}</strong><span>{followedStores.length === 1 ? "Store" : "Stores"}</span></button>
-      </div>
-    </div>
+    {/* Nov 25 2026 (owner: "first screen ... a handful of options"): Home opens on a few
+        big choices. Everything else on Home is under "More" at the bottom. */}
+    <nav className="home-choices" aria-label="What do you want to do?">
+      {onScanCards ? <button type="button" className="home-choice home-choice--scan" onClick={onScanCards} aria-label="Scan cards. Point your camera at your cards to add them with prices."><AppNavIcon kind="scan" /><span><strong>Scan cards</strong><small>Point your camera at a card to add it with its price</small></span></button> : null}
+      <button type="button" className="home-choice" onClick={() => setActiveTab("collectionWorkspace")} aria-label={`My collection. ${collectionQuantity} ${collectionQuantity === 1 ? "card" : "cards"}.`}><AppNavIcon kind="inventory" /><span><strong>My collection</strong><small>{collectionQuantity ? `${collectionQuantity} ${collectionQuantity === 1 ? "card" : "cards"}${!kidSafeView && collectionWorth.knownCount > 0 && collectionWorth.total != null ? ` · ${formatCurrency(collectionWorth.total)}` : ""}` : "See what you have"}</small></span></button>
+      <button type="button" className="home-choice" onClick={() => (onOpenRestockMap || onOpenRestockReports)?.()} aria-label="Restocks. See stores on a map and what collectors found."><AppNavIcon kind="store" /><span><strong>Restocks</strong><small>{followedStores.length ? `${followedStores.length} ${followedStores.length === 1 ? "store" : "stores"} you follow` : "See what is in stores"}</small></span></button>
+      <button type="button" className="home-choice" onClick={() => setActiveTab("market")} aria-label="Prices. Look up what a card or product is worth."><AppNavIcon kind="search" /><span><strong>Prices</strong><small>Look up what a card is worth</small></span></button>
+      {sellerVisible ? <button type="button" className="home-choice" onClick={() => onOpenBusiness("inventory")} aria-label={`${presentation.copy.inventoryLabel || "Inventory"}. Your selling stock, sales and purchases.`}><AppNavIcon kind="sell" /><span><strong>{presentation.copy.inventoryLabel || "Inventory"}</strong><small>Stock, sales and purchases</small></span></button>
+        : onOpenSellTrade ? <button type="button" className="home-choice" onClick={onOpenSellTrade} aria-label="Sell or trade. List cards or check a trade."><AppNavIcon kind="sell" /><span><strong>Sell or trade</strong><small>List cards or check a trade</small></span></button> : null}
+    </nav>
     <section className="ops-home-section home-restock-hero" aria-labelledby="home-restock-title">
       <div className="home-restock-copy">
         <h2 id="home-restock-title">Restock reports</h2>
@@ -175,6 +170,8 @@ export default function OperationsHome({
         <QuickRestockLauncher followedStores={followedStores} nearbyStores={(scoutSnapshot.nearbyStores || []).slice(0, 3).length ? (scoutSnapshot.nearbyStores || []).slice(0, 3) : suggestedStores} kidSafe={kidSafeView} onLaunch={(options) => onReportRestock(options)} />
       </div>
     </section>
+    <details className="home-more">
+    <summary>More</summary>
     <PersonaChecklist persona={presentation.persona} kidSafe={kidSafeView} counts={checklistCounts} onOpen={openChecklistTarget} />
     {!kidSafeView ? <WhatsNewCard isNewAccount={checklistCounts.vaultItems === 0 && checklistCounts.inventory === 0 && checklistCounts.reports === 0} onOpenAll={() => setActiveTab("whatsNew")} onTour={() => startAppTour?.()} onFeedback={() => onOpenFeedback?.()} onHome={() => window.scrollTo?.({ top: 0, behavior: "smooth" })} /> : null}
     {sellerVisible && (isVisible("forgeSummary") || !manualHome) && attentionRows.length ? <section className="ops-home-section ops-attention-panel home-attention-pending">
@@ -194,6 +191,7 @@ export default function OperationsHome({
         </article>)}
       </div>
     </section>
+    </details>
     {bestDeal && isVisible("marketWatch") ? <section className="ops-home-section">
       <SectionHeader title="A saved find" />
       <article className="ops-home-best-opportunity">{recordImage(bestDeal) ? <PrivateStorageImage src={recordImage(bestDeal)} alt="" /> : <span className="ops-home-opportunity-placeholder" aria-hidden="true" />}<div><span>{bestDeal.marketplace || bestDeal.source || "Manual source"}</span><h3>{bestDeal.title}</h3><dl><div><dt>Price</dt><dd>{bestDealHasPrice ? formatCurrency(bestDealPrice) : "Not entered"}</dd></div>{sellerVisible ? <div><dt>Projected profit</dt><dd>{bestDealHasProfit ? formatCurrency(bestDealProfit) : "Needs analysis"}</dd></div> : null}</dl></div><PrimaryButton onClick={() => openFind("deals")}>Review</PrimaryButton></article>

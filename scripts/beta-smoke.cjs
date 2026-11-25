@@ -3915,7 +3915,7 @@ async function main() {
     await clickAddWizardNext();
     await clickAddWizardNext();
     await page.locator(".flow-modal").getByRole("button", { name: /Save and Close/ }).click();
-    await assertVisibleText("saved to Vault");
+    await assertVisibleText("your collection x1");
     await page.locator(".flow-modal").getByRole("button", { name: /^Finish$/ }).click();
     await marketAddModal.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
 

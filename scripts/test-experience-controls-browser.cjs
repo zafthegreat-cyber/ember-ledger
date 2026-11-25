@@ -33,7 +33,7 @@ async function bundleFixture() {
 }
 
 async function isolatedContext(browser, viewport) {
-  const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, serviceWorkers: "block", reducedMotion: "reduce" });
+  const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, serviceWorkers: "block", reducedMotion: "reduce" }); await context.addInitScript(require("./lib/open-home-more.cjs"));
   const networkWrites = [];
   await context.route("**/*", route => {
     const request = route.request(); const url = new URL(request.url());

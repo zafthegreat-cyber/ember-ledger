@@ -46,9 +46,11 @@ jobs:
           scripts/test-debounced-save.mjs
           scripts/test-age-confirmation.mjs
           scripts/test-restock-map.mjs
+          scripts/test-slippy-map.mjs
           scripts/test-card-photo-text.mjs
           scripts/test-card-name-snap.mjs
           scripts/test-catalog-result-identity.mjs
+          scripts/test-card-scan-rows.mjs
           scripts/test-card-printings.mjs
           scripts/test-slab-label.mjs
           scripts/test-listing-screenshot.mjs

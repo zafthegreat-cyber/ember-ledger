@@ -24,6 +24,7 @@ import {nearbyCoordinatesForText} from './utils/nearbyPreference.mjs';
 import { compactSavedStores } from "./utils/storeDirectoryPersistence.js";
 import { isBlockedAuthor, useBlockedUsers } from "./utils/blockedUsers.js";
 import { catalogCardQueryMatchesRow, getCatalogCollectorQuery, getCatalogPageProducts, pickScannedCard } from "./utils/catalogResultIdentity.mjs";
+import { mergeScannedCardRows, undoScannedCardRow } from "./utils/cardScanRows.mjs";
 import SocialSignInButtons, { ConnectedSignIns } from "./features/auth/SocialSignIn.jsx";
 import EmailConfirmationHelp, { SignupFieldPrivacy } from "./features/auth/EmailConfirmationHelp.jsx";
 import MemberStartGuide from "./features/auth/MemberStartGuide.jsx";
@@ -19138,6 +19139,7 @@ export default function App() {
         if (!product) { unsure.set(row.id, row.cardNumber ? "Review this one: more than one card or no card matched." : "Review this one: add the card number to match it."); continue; }
         const known = buildCatalogAutofillDetails(product);
         const marketInfo = getTideTradrMarketInfo(product);
+        const copies = Math.max(1, Math.floor(Number(row.quantity) || 1));
         const shared = {
           name: catalogTitle(product),
           category: "Pokemon",
@@ -19163,23 +19165,25 @@ export default function App() {
           createdAt: now,
         };
         const record = destination === "forge"
-          ? applyWorkspaceToRecord({ id: makeId("item"), ...shared, destinationScope: ["forge"], recordType: "forge_inventory", businessInventory: true, ownedItemPurpose: OWNED_ITEM_PURPOSES.FOR_RESALE, quantity: 1, forgeQuantity: 1, ownedQuantity: 0, unitCost: 0, salePrice: 0, physicalLocation: DEFAULT_FORGE_PHYSICAL_LOCATION, status: "In Stock" }, workspace)
-          : applyWorkspaceToRecord({ id: makeId("vault"), ...shared, destinationScope: ["vault"], recordType: "vault_item", businessInventory: false, ownedItemPurpose: OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION, isWishlist: false, quantity: 1, ownedQuantity: 1, forgeQuantity: 0, unitCost: 0, status: vaultStatusLabel("personal_collection"), vaultStatus: "personal_collection", storageLocation: vaultStatusLabel("personal_collection") }, workspace);
+          ? applyWorkspaceToRecord({ id: makeId("item"), ...shared, destinationScope: ["forge"], recordType: "forge_inventory", businessInventory: true, ownedItemPurpose: OWNED_ITEM_PURPOSES.FOR_RESALE, quantity: copies, forgeQuantity: copies, ownedQuantity: 0, unitCost: 0, salePrice: 0, physicalLocation: DEFAULT_FORGE_PHYSICAL_LOCATION, status: "In Stock" }, workspace)
+          : applyWorkspaceToRecord({ id: makeId("vault"), ...shared, destinationScope: ["vault"], recordType: "vault_item", businessInventory: false, ownedItemPurpose: OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION, isWishlist: false, quantity: copies, ownedQuantity: copies, forgeQuantity: 0, unitCost: 0, status: vaultStatusLabel("personal_collection"), vaultStatus: "personal_collection", storageLocation: vaultStatusLabel("personal_collection") }, workspace);
         records.push(record);
         rowIdByRecord.set(record.id, row.id);
       }
       let savedRowIds = new Set();
+      let savedCopies = 0;
       let failureNote = "";
       if (records.length) {
         const result = await saveInventoryRecords(records);
         const saved = result.saved || [];
         if (saved.length) setItems((current) => [...saved, ...current]);
         savedRowIds = new Set(saved.map((record) => rowIdByRecord.get(record.id)).filter(Boolean));
+        savedCopies = saved.reduce((sum, record) => sum + (Number(record.quantity) || 1), 0);
         if (result.failures?.length) failureNote = ` ${result.failures.length} could not be saved: ${result.failures[0].error || "try again"}.`;
       }
       const left = rows.length - savedRowIds.size;
       const message = savedRowIds.size
-        ? `Saved ${savedRowIds.size} card${savedRowIds.size === 1 ? "" : "s"}.${left ? ` ${left} need${left === 1 ? "s" : ""} a quick review below.` : ""}${failureNote}`
+        ? `Saved ${savedCopies || savedRowIds.size} card${(savedCopies || savedRowIds.size) === 1 ? "" : "s"}.${left ? ` ${left} need${left === 1 ? "s" : ""} a quick review below.` : ""}${failureNote}`
         : `No card could be matched for sure. Add the card numbers or review each one.${failureNote}`;
       setQuickAddWizard((current) => {
         const remaining = (current.cardScanRows || [])
@@ -19945,12 +19949,17 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   function appendQuickAddCardScanRows(newRows = []) {
     if (!newRows.length) return;
     const created = newRows.map((row) => createQuickAddCardScanRow(row));
-    setQuickAddWizard((current) => {
-      const existing = Array.isArray(current.cardScanRows) ? current.cardScanRows : [];
-      const kept = existing.filter((row) => row.cardName || row.cardNumber || row.setName || row.variant || row.condition);
-      return { ...current, cardScanRows: [...kept, ...created], message: "" };
-    });
+    // Nov 25 2026: the same card shown to the camera again is one more copy (x2), not a second line.
+    setQuickAddWizard((current) => ({ ...current, cardScanRows: mergeScannedCardRows(current.cardScanRows, created), message: "" }));
     void matchCardScanRows(created);
+  }
+
+  // Undo in the scanner: takes back the newest scan of that card (one copy, or the line).
+  function undoQuickAddCardScan(read = {}) {
+    setQuickAddWizard((current) => {
+      const rows = undoScannedCardRow(current.cardScanRows, read);
+      return rows === current.cardScanRows ? current : { ...current, cardScanRows: rows, message: "" };
+    });
   }
 
   // Scan several cards, live matching (Nov 24 2026, owner: "competitive"). Each scanned
@@ -20635,6 +20644,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     }
     const nextSeed = {
       ...seed,
+      // Nov 25 2026 (owner: "adding to collection or inventory is very complex"): when the
+      // button already says where the item goes, open one screen: find it, how many, Save.
+      quickSave: seed.quickSave ?? Boolean(seed.ownedItemPurpose && !seed.initialStep),
       destinations: destinationDefaults({ ...(seed.destinations || {}), ...destinations }),
     };
     if (product) return openMultiDestinationAddForProduct(product, { source, seed: nextSeed });
@@ -22724,9 +22736,11 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
 
     const uniqueSuccesses = [...new Set(successes)];
     const uniqueFailures = [...new Set(failures)];
+    // Nov 25 2026: plain words in the saved message ("saved to your collection x2", not "Vault x2").
+    const plainSaveDestination = { vault: "your collection", wishlist: "your wants", business: "selling inventory", forge: "selling inventory" };
     const quickAddSaveSummary = buildQuickAddSuccessMessage({
       itemName,
-      entries: saveConfirmationEntries,
+      entries: saveConfirmationEntries.map((entry) => ({ ...entry, destination: plainSaveDestination[String(entry.destination || "").toLowerCase()] || entry.destination })),
     });
     const marketAddSource = isMarketAddFlowSource(activeFlowModal?.source);
     const receiptAddSource = String(activeFlowModal?.source || "").startsWith("receipt-");
@@ -42794,6 +42808,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           size: "medium",
         };
       }
+      if (multiDestinationForm.quickSave && multiDestinationStep === "item") {
+        return {
+          title: multiDestinationForm.destinations?.forge ? "Add to selling inventory" : multiDestinationForm.destinations?.wishlist && !multiDestinationForm.destinations?.vault ? "Add to my wants" : "Add to my collection",
+          description: "Find it, say how many, then save.",
+          size: "medium",
+        };
+      }
       return {
         title: "Review and Add",
         description: "Verify the match, choose destination settings, then save.",
@@ -42992,6 +43013,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         collectorVisualTypeLabel,
         createQuickAddCardScanRow,
         appendQuickAddCardScanRows,
+        undoQuickAddCardScan,
         saveAllCardScanRows,
         cardScanSaving,
         createQuickAddWizardState,
@@ -46718,6 +46740,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     onReportRestock: (options = {}) => openScoutSubmitFlow({ source: "home-restock", ...options }),
     onScanCards: () => openQuickAddAction("scanCards"),
     onOpenRestockReports: openCommunityRestockReports,
+    onOpenRestockMap: () => openFlipScoutView("restocks"),
     onOpenStoreReports: store => openCommunityRestockReports({ storeId: store.id }),
     onOpenFollowedReports: () => openCommunityRestockReports({ followedOnly: true }),
     onOpenReport: report => openScoutReportDetail(report),
@@ -48338,6 +48361,20 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     </button>
                     <button type="submit" form="multi-destination-add-form" name="saveMode" value="close" aria-label="Save and Close" disabled={multiDestinationSaving}>
                       {multiDestinationSaving ? "Saving..." : "Save and Close"}
+                    </button>
+                  </>
+                ) : multiDestinationForm.quickSave && multiDestinationStep === "item" ? (
+                  <>
+                    <button type="button" className="secondary-button" disabled={multiDestinationSaving} onClick={(event) => {
+                      if (!String(multiDestinationForm.itemName || "").trim()) return advanceMultiDestinationStep(event);
+                      setMultiDestinationForm((current) => ({ ...current, quickSave: false }));
+                      setMultiDestinationMessage("");
+                      setMultiDestinationStep("details");
+                    }}>
+                      More options
+                    </button>
+                    <button type="submit" form="multi-destination-add-form" name="saveMode" value="close" data-quick-save="true" disabled={multiDestinationSaving || !String(multiDestinationForm.itemName || "").trim()}>
+                      {multiDestinationSaving ? "Saving..." : "Save"}
                     </button>
                   </>
                 ) : (

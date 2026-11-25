@@ -29,3 +29,8 @@
 
 /* Graded slab: taller frame (about 3.1 x 5.3 in), label band at the top. */
 .card-camera-frame--slab .card-camera-frame__guide { aspect-ratio: 31 / 53; }
+
+/* Nov 25 2026: a big tick the moment a card is taken, so the next card can be shown right away. */
+.card-camera-frame__got { position: absolute; top: 50%; left: 50%; width: 88px; height: 88px; margin: -44px 0 0 -44px; display: grid; place-items: center; border-radius: 50%; background: #F3D987; color: #1a0f12; font: 800 48px/1 var(--font-ui, sans-serif); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55); pointer-events: none; animation: card-camera-got 220ms ease-out; }
+@keyframes card-camera-got { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .card-camera-frame__got { animation: none; } }

@@ -242,12 +242,14 @@ async function makeScreenshot(page, theme) {
           for (const entry of ["direct", "scan-anything"]) {
             await addOpener.click();
             const addModal = page.locator('.flow-modal[data-flow="addActionSheet"]');
-            const entryButton = addModal.getByRole("button", { name: entry === "direct" ? /^Review a restock screenshot before saving/ : /^Scan (Listing|or review|with camera)\./ });
+            const entryButton = addModal.getByRole("button", { name: entry === "direct" ? /^Review a restock screenshot before saving/ : /^(Scan (Listing|or review|with camera)|Other scans)\./ });
             if (!(await entryButton.isVisible())) await addModal.locator(".add-anything-more > summary").click();
             await entryButton.click();
             if (entry === "scan-anything") {
               await expect(addModal.locator(".add-anything-scan-foundation")).toBeVisible();
-              await addModal.getByRole("button", { name: /^Restocks screenshot or photo review\./ }).click();
+              const screenshotChoice = addModal.getByRole("button", { name: /^Restocks screenshot or photo review\./ });
+              if (!(await screenshotChoice.isVisible())) await addModal.locator(".scan-anything-more > summary").click();
+              await screenshotChoice.click();
             }
             await expect(modal).toBeVisible();
             await expect(modal.locator(".stock-screenshot-panel")).toBeVisible();

@@ -1,4 +1,5 @@
 import MultiCardScanner from "../../components/MultiCardScanner.jsx";
+import { cardScanCopies } from "../../utils/cardScanRows.mjs";
 import { COMMON_FINISHES, SPECIAL_PRINTINGS } from "../../utils/cardPrintings.mjs";
 import "./add-anything.css";
 import { useMemo } from "react";
@@ -42,6 +43,7 @@ export default function AddAnythingContent({ scope }) {
     collectorVisualTypeLabel,
     createQuickAddCardScanRow,
     appendQuickAddCardScanRows,
+    undoQuickAddCardScan,
     saveAllCardScanRows,
     cardScanSaving,
     createQuickAddWizardState,
@@ -497,11 +499,12 @@ export default function AddAnythingContent({ scope }) {
       // matched card shows as one line with its price, and its details fold away.
       const rows = (Array.isArray(quickAddWizard.cardScanRows) ? quickAddWizard.cardScanRows : [])
         .filter((row) => row.byHand || String(row.cardName || "").trim() || String(row.cardNumber || "").trim());
-      const filledCount = rows.filter((row) => String(row.cardName || "").trim()).length;
+      const copiesOf = cardScanCopies;
+      const filledCount = rows.filter((row) => String(row.cardName || "").trim()).reduce((sum, row) => sum + copiesOf(row), 0);
       return (
         <div className="add-anything-flow add-anything-card-page-review">
           {renderFlowHeader("Scan cards", "Scan one card or a whole stack. Each card is matched with its price. Check the list, then tap Save.")}
-          {appendQuickAddCardScanRows ? <MultiCardScanner onRows={appendQuickAddCardScanRows} autoStart={!rows.length} /> : null}
+          {appendQuickAddCardScanRows ? <MultiCardScanner onRows={appendQuickAddCardScanRows} autoStart={!rows.length} rows={rows} onUndo={undoQuickAddCardScan} money={money} /> : null}
           {cardScanSetProgress?.length ? (
             <section className="card-scan-set-progress" aria-label="Set progress">
               {cardScanSetProgress.map((set) => (
@@ -525,7 +528,7 @@ export default function AddAnythingContent({ scope }) {
           ) : null}
           {(() => {
             const matched = rows.filter((row) => row.matchState === "matched" && row.matchedFor === `${row.cardName}|${row.cardNumber}`);
-            const total = matched.reduce((sum, row) => sum + (Number(row.matchedValue) || 0), 0);
+            const total = matched.reduce((sum, row) => sum + (Number(row.matchedValue) || 0) * copiesOf(row), 0);
             return matched.length ? (
               <p className="quick-add-card-scan-total" role="status">{matched.length} of {rows.length} card{rows.length === 1 ? "" : "s"} matched{total > 0 ? ` · about ${money(total)} market value` : ""}</p>
             ) : null;
@@ -539,14 +542,14 @@ export default function AddAnythingContent({ scope }) {
               return (
               <div className={`quick-add-card-scan-row${isMatched ? " is-matched" : ""}`} key={row.id}>
                 <div className="quick-add-row-heading">
-                  <strong>{title}{row.pocket ? ` · ${row.pocket}` : ""}{row.scanNote ? <small className="quick-add-card-scan-note"> · {row.scanNote}</small> : null}</strong>
+                  <strong>{title}{copiesOf(row) > 1 ? ` ×${copiesOf(row)}` : ""}{row.pocket ? ` · ${row.pocket}` : ""}{row.scanNote ? <small className="quick-add-card-scan-note"> · {row.scanNote}</small> : null}</strong>
                   <div className="quick-add-row-actions">
                     <button type="button" className="secondary-button" onClick={() => openCardScanRowReview(row)}>{isMatched ? "Change" : "Pick the card"}</button>
                     <button type="button" className="ghost-button" onClick={() => removeCardScanRow(row.id)}>Remove</button>
                   </div>
                 </div>
                 {row.matchedFor === `${row.cardName}|${row.cardNumber}` && row.matchState === "matched" ? (
-                  <p className="quick-add-card-scan-match">Matched: {row.matchedLabel}{row.matchedValue ? ` · ${money(row.matchedValue)}` : ""}{row.matchedOthers ? ` · ${row.matchedOthers} other printing${row.matchedOthers === 1 ? "" : "s"}: tap Review this card to change it` : ""}</p>
+                  <p className="quick-add-card-scan-match">Matched: {row.matchedLabel}{row.matchedValue ? ` · ${money(row.matchedValue)}` : ""}{row.matchedOthers ? ` · ${row.matchedOthers} other printing${row.matchedOthers === 1 ? "" : "s"}: tap Change to pick another` : ""}</p>
                 ) : row.matchedFor === `${row.cardName}|${row.cardNumber}` && row.matchState === "review" ? (
                   <p className="quick-add-card-scan-match quick-add-card-scan-match--review">Not sure which card this is. Tap Pick the card.</p>
                 ) : null}
@@ -567,6 +570,9 @@ export default function AddAnythingContent({ scope }) {
                   </Field>
                   <Field label="Condition">
                     <input value={row.condition} onChange={(event) => updateCardScanRow(row.id, { condition: event.target.value })} placeholder="Near mint, played..." />
+                  </Field>
+                  <Field label="How many">
+                    <input type="number" min="1" step="1" inputMode="numeric" value={row.quantity ?? 1} onChange={(event) => updateCardScanRow(row.id, { quantity: event.target.value })} />
                   </Field>
                   <Field label="Save to">
                     <select value={row.destination || "vault"} onChange={(event) => updateCardScanRow(row.id, { destination: event.target.value })}>
