@@ -21,6 +21,8 @@ export const CARD_PHOTO_READER = Object.freeze({
   nameBand: [0.025, 0.155],
   numberBand: [0.86, 0.985],
   stripWidth: 1500,
+  cornerWidth: 1200,
+  uprightMaxSide: 2400,
   fullMaxSide: 1600,
 });
 
@@ -265,56 +267,58 @@ export async function prepareCardCrops(file, { framed = false, staged = false } 
   // number corners, which usually give both the name and the number. The slower
   // reads (wide name, whole number strip, whole card) are stage 2 and only run
   // when stage 1 was not enough. A sideways card is read both ways in one stage.
+  // Nov 25 2026 (owner: "it is so slow"): crops are cut and contrast-stretched
+  // only when their stage is read, so a card that stage 1 settles never pays for
+  // the wide name, number strip and whole-card crops. Upright copies are kept
+  // until release() so stage 2 can still be cut from them.
   const entries = [];
   const canvases = [];
+  const S = CARD_PHOTO_READER;
   for (const [index, turn] of turns.entries()) {
-    const upright = uprightCard(image, card, turn, 2400);
+    const upright = uprightCard(image, card, turn, S.uprightMaxSide);
     const cw = upright.width, ch = upright.height;
     const later = found?.sideways ? 1 : 2;
-    const name = crop(upright, 0, ch * nameTop, cw, ch * (nameBottom - nameTop), CARD_PHOTO_READER.stripWidth, true);
-    // A taller second look at the top of the card, for tilted cards and tall name bars.
-    const nameWide = crop(upright, 0, 0, cw, ch * 0.24, CARD_PHOTO_READER.stripWidth, true);
-    const number = crop(upright, 0, ch * numTop, cw, ch * (numBottom - numTop), CARD_PHOTO_READER.stripWidth, true);
     entries.push(
-      { key: `name${index}`, psm: "6", canvas: name, stage: 1 },
-      { key: `nameWide${index}`, psm: "11", canvas: nameWide, stage: later },
-      { key: `number${index}`, psm: "11", canvas: number, stage: later },
+      { key: `name${index}`, psm: "6", stage: 1, make: () => crop(upright, 0, ch * nameTop, cw, ch * (nameBottom - nameTop), S.stripWidth, true) },
+      // A taller second look at the top of the card, for tilted cards and tall name bars.
+      { key: `nameWide${index}`, psm: "11", stage: later, make: () => crop(upright, 0, 0, cw, ch * 0.24, S.stripWidth, true) },
+      { key: `number${index}`, psm: "11", stage: later, make: () => crop(upright, 0, ch * numTop, cw, ch * (numBottom - numTop), S.stripWidth, true) },
     );
     if (index === 0) {
       // Nov 23 2026: the number is tiny and sits in a corner (bottom left on Scarlet &
       // Violet and later, bottom right on older cards). Read each corner as one line,
       // enlarged, with only the characters a card number can have.
       const cornerTop = ch * 0.875, cornerHeight = ch * 0.115;
-      const numberLeft = crop(upright, 0, cornerTop, cw * 0.5, cornerHeight, 1200, true);
-      const numberRight = crop(upright, cw * 0.5, cornerTop, cw * 0.5, cornerHeight, 1200, true);
       entries.push(
-        { key: "numberLeft0", psm: "7", whitelist: NUMBER_CHARACTERS, canvas: numberLeft, stage: 1 },
-        { key: "numberRight0", psm: "7", whitelist: NUMBER_CHARACTERS, canvas: numberRight, stage: 1 },
+        { key: "numberLeft0", psm: "7", whitelist: NUMBER_CHARACTERS, stage: 1, make: () => crop(upright, 0, cornerTop, cw * 0.5, cornerHeight, S.cornerWidth, true) },
+        { key: "numberRight0", psm: "7", whitelist: NUMBER_CHARACTERS, stage: 1, make: () => crop(upright, cw * 0.5, cornerTop, cw * 0.5, cornerHeight, S.cornerWidth, true) },
       );
       // No clear card edge: the card may be small in a wide shot, so read the whole photo larger.
-      const fullSide = found || framed ? CARD_PHOTO_READER.fullMaxSide : 2400;
+      const fullSide = found || framed ? S.fullMaxSide : 2400;
       const fullScale = Math.min(1, fullSide / Math.max(cw, ch));
-      const full = crop(upright, 0, 0, cw, ch, Math.round(cw * fullScale), true);
-      entries.push({ key: "full", psm: "11", canvas: full, stage: later });
+      entries.push({ key: "full", psm: "11", stage: later, make: () => crop(upright, 0, 0, cw, ch, Math.round(cw * fullScale), true) });
     }
     canvases.push(upright);
   }
   image.close?.();
-  for (const canvas of canvases) { canvas.width = 0; canvas.height = 0; }
+  let released = false;
   const encode = async (stage) => {
     const images = [];
     for (const entry of entries) {
-      if (entry.stage !== stage || !entry.canvas.width) continue;
-      images.push({ key: entry.key, psm: entry.psm, ...(entry.whitelist ? { whitelist: entry.whitelist } : {}), image: await toPng(entry.canvas) });
+      if (entry.stage !== stage || released) continue;
+      const canvas = entry.make();
+      try {
+        if (canvas.width) images.push({ key: entry.key, psm: entry.psm, ...(entry.whitelist ? { whitelist: entry.whitelist } : {}), image: await toPng(canvas) });
+      } finally { canvas.width = 0; canvas.height = 0; }
     }
     return images;
   };
-  const release = () => { for (const entry of entries) { entry.canvas.width = 0; entry.canvas.height = 0; } };
+  const release = () => { released = true; for (const canvas of canvases) { canvas.width = 0; canvas.height = 0; } };
   const meta = { foundCard: Boolean(found) || framed, sideways: Boolean(found?.sideways) };
   if (!staged) {
     try { return { images: [...await encode(1), ...await encode(2)], ...meta }; } finally { release(); }
   }
-  // Staged: stage-2 crops are only encoded if more() is called; release() frees them either way.
+  // Staged: stage-2 crops are only cut and encoded if more() is called; release() frees the card copies.
   return { images: await encode(1), more: () => encode(2), release, ...meta };
 }
 
