@@ -217,8 +217,9 @@ const homeKeys = page => page.locator("[data-home-card]").evaluateAll(rows => ro
       await page.screenshot({ path: path.join(output, `${prefix}-adaptive-collection-home.png`), fullPage: true });
 
       step = `${prefix}: adaptive Add choices and manual preferences`;
-      await render("add"); const defaultAdd = await primaryAdd(page).allTextContents(); assert.deepEqual(defaultAdd, ["Add to my collection", "Search cards & products", "Scan with camera", "Type a barcode number", "Sell or trade"]);
-      await render("add", { adaptiveActivity: { collection: records("collection") } }); assert.equal((await primaryAdd(page).allTextContents())[0], "Add to my collection");
+      await render("add"); const defaultAdd = await primaryAdd(page).allTextContents(); assert.deepEqual(defaultAdd, ["Scan cards", "Add to my collection", "Search cards & products", "Other scans", "Sell or trade"]);
+      // Collection activity keeps the collection actions on top; "Scan cards" adds to the collection too (Nov 25 2026).
+      await render("add", { adaptiveActivity: { collection: records("collection") } }); assert.deepEqual((await primaryAdd(page).allTextContents()).slice(0, 2), ["Scan cards", "Add to my collection"]);
       await render("add", { ...seller, adaptiveActivity: { sales: records("sale") } }); assert.equal((await primaryAdd(page).allTextContents())[0], "Record Sale");
       await render("add", { ...seller, adaptiveActivity: { sales: [] } }, { sales: records("native-sale") }); assert.equal((await primaryAdd(page).allTextContents())[0], "Record Sale");
       await render("add", { adaptiveActivity: { sales: records("sale", 4) }, personalizationPreferences: { smartRecommendationsEnabled: false } }); assert.deepEqual(await primaryAdd(page).allTextContents(), defaultAdd);
@@ -237,8 +238,8 @@ const homeKeys = page => page.locator("[data-home-card]").evaluateAll(rows => ro
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, "Add fixture fits viewport");
       await page.screenshot({ path: path.join(output, `${prefix}-adaptive-manual-add.png`) });
       await render("add", { personalizationPreferences: { pagePreferences: { quickAdd: { visibleKeys: ["searchCard", "scanUpc", "scanScreenshot", "scanCards", "requestMissingItem"], updatedAt: now } } } });
-      assert.deepEqual(await primaryAdd(page).allTextContents(), ["Search cards & products", "Type a barcode number", "Review a restock screenshot", "Scan several cards", "Request Missing Item"], "Saved preferences point to their exact working actions");
-      for (const [name, destination] of [[/^Search cards/, "search"], [/^Type a barcode number/, "upc"], [/^Review a restock screenshot/, "scoutScreenshotReview"], [/^Scan several cards/, "cardPageReview"]]) {
+      assert.deepEqual(await primaryAdd(page).allTextContents(), ["Search cards & products", "Type a barcode number", "Review a restock screenshot", "Scan cards", "Request Missing Item"], "Saved preferences point to their exact working actions");
+      for (const [name, destination] of [[/^Search cards/, "search"], [/^Type a barcode number/, "upc"], [/^Review a restock screenshot/, "scoutScreenshotReview"], [/^Scan cards/, "cardPageReview"]]) {
         await page.getByRole("button", { name }).click();
         assert.deepEqual(await page.evaluate(() => window.qaCalls.at(-1)), ["path", destination]);
       }

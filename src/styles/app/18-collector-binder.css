@@ -372,3 +372,14 @@ html:root body .app.app-command-shell[data-theme] .home-glance :is(.home-glance_
 html:root body .app.app-command-shell[data-theme] .home-glance .home-glance__search { color: var(--text-secondary) !important; }
 html:root body .app.app-command-shell[data-theme] .home-glance .home-glance__stat strong { color: var(--text-primary) !important; }
 html:root body .app.app-command-shell[data-theme] .home-glance .home-glance__stat span { color: var(--text-secondary) !important; }
+
+/* Home "Scan cards" button (Nov 25 2026): the main action, above search. */
+html:root body .app.app-command-shell[data-theme] .home-glance .home-glance__scan {
+  display: flex; align-items: center; gap: 14px; width: 100%; min-height: 64px; padding: 12px 18px;
+  border: 0; border-radius: 18px; background: var(--brand-primary, #E8C86B) !important; color: var(--text-on-brand, #1a0f12) !important;
+  text-align: left; cursor: pointer; box-shadow: var(--binder-card-shadow);
+}
+html:root body .app.app-command-shell[data-theme] .home-glance .home-glance__scan svg { flex: none; width: 28px; height: 28px; color: inherit; }
+html:root body .app.app-command-shell[data-theme] .home-glance .home-glance__scan span { display: grid; gap: 3px; }
+html:root body .app.app-command-shell[data-theme] .home-glance .home-glance__scan strong { font: 800 19px/1.1 var(--c3-font-heading, inherit); color: inherit !important; }
+html:root body .app.app-command-shell[data-theme] .home-glance .home-glance__scan small { font-size: 14px; line-height: 1.35; color: inherit !important; opacity: .85; }

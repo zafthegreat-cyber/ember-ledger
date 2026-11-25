@@ -12,9 +12,10 @@ const loadReader = () => import("../utils/cardPhotoReader.mjs");
 //   pocket is read as its own card.
 // Everything is read on the device. Rows still need a printing check and a
 // review before anything is saved.
-export default function MultiCardScanner({ onRows }) {
+// autoStart (Nov 25 2026): open the camera straight away, one less tap.
+export default function MultiCardScanner({ onRows, autoStart = false }) {
   const id = useId();
-  const [mode, setMode] = useState("");
+  const [mode, setMode] = useState(autoStart ? "camera" : "");
   const [layout, setLayout] = useState("3x3");
   const [status, setStatus] = useState("");
   const [count, setCount] = useState(0);
@@ -80,11 +81,11 @@ export default function MultiCardScanner({ onRows }) {
   }
 
   return <section className="multi-card-scanner" aria-labelledby={`${id}-title`}>
-    <h3 id={`${id}-title`}>Scan several cards</h3>
-    {count ? <p className="multi-card-scanner__count" role="status">{count} card{count === 1 ? "" : "s"} added below this session.</p> : null}
+    <h3 id={`${id}-title`}>Scan with your camera</h3>
+    {count ? <p className="multi-card-scanner__count" role="status">{count} card{count === 1 ? "" : "s"} scanned. They are listed below.</p> : null}
     {mode === "camera" ? <Suspense fallback={<p role="status">Opening the camera…</p>}>
       <CardCameraFrame onCapture={readCamera} onCancel={() => { setMode(""); setStatus(""); }} />
-      <p className="multi-card-scanner__status" role="status">{status || "Line up a card in the frame and tap Scan this card. The camera stays open for the next one."}</p>
+      <p className="multi-card-scanner__status" role="status">{status || "Hold a card in the frame. It scans by itself once the card is sharp, then you can show the next card."}</p>
       <button type="button" className="multi-card-scanner__done" onClick={() => { setMode(""); setStatus(""); }}>Done scanning</button>
     </Suspense> : null}
     {mode === "binder" ? <div className="multi-card-scanner__binder">
@@ -102,8 +103,8 @@ export default function MultiCardScanner({ onRows }) {
       {status ? <p className="multi-card-scanner__status" role="status">{status}</p> : null}
     </div> : null}
     {!mode ? <div className="multi-card-scanner__choices">
-      <button type="button" onClick={() => setMode("camera")}><strong>Keep scanning</strong><small>Camera stays open; each card becomes a row</small></button>
-      <button type="button" onClick={() => setMode("binder")}><strong>Binder page</strong><small>One photo of a page; each pocket becomes a row</small></button>
+      <button type="button" className="multi-card-scanner__start" onClick={() => setMode("camera")}><strong>Start scanning</strong><small>Show your cards to the camera one at a time</small></button>
+      <button type="button" onClick={() => setMode("binder")}><strong>Scan a binder page</strong><small>One photo reads every card on the page</small></button>
     </div> : null}
   </section>;
 }

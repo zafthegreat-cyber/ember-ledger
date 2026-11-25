@@ -12,3 +12,8 @@
 .multi-card-scanner__pick { position: relative; display: inline-flex; align-items: center; justify-content: center; flex: 1 1 150px; min-height: 48px; padding: 0 14px; border-radius: 12px; background: var(--action-primary); color: var(--on-primary); font-weight: 700; cursor: pointer; overflow: hidden; }
 .multi-card-scanner__pick input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .app .multi-card-scanner__done { min-height: 48px; border: 1px solid var(--border-strong); border-radius: 12px; background: transparent; color: var(--text-primary); font-weight: 600; cursor: pointer; }
+
+/* Nov 25 2026: the gold button's text inherits its dark color instead of the global light strong/small color. */
+.app .multi-card-scanner__choices button strong, .app .multi-card-scanner__choices button small { color: inherit; }
+.app .multi-card-scanner__choices button small { opacity: 0.85; }
+.app .multi-card-scanner__choices button.multi-card-scanner__start { background: var(--brand-primary, #E8C86B); color: var(--text-on-brand, #1a0f12); border-color: transparent; }

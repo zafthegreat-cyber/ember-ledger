@@ -19185,7 +19185,7 @@ export default function App() {
         const remaining = (current.cardScanRows || [])
           .filter((row) => !savedRowIds.has(row.id))
           .map((row) => (unsure.has(row.id) ? { ...row, scanNote: unsure.get(row.id) } : row));
-        return { ...current, cardScanRows: remaining.length ? remaining : [createQuickAddCardScanRow()], message };
+        return { ...current, cardScanRows: remaining, message };
       });
     } catch (error) {
       updateQuickAddWizard({ message: error?.message ? `The cards could not be saved: ${error.message}` : "The cards could not be saved. Try again." });
@@ -42733,7 +42733,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (activeFlowModal?.type === "addActionSheet") {
       if (["scanAnything", "scoutScreenshotReview", "cardPageReview", "scoutScanSuccess", "search", "upc", "manual", "photo"].includes(quickAddWizard.screen || "")) {
         return {
-          title: "Scan Anything",
+          title: quickAddWizard.screen === "cardPageReview" ? "Scan cards" : "Scan",
           description: "Search, enter UPC/SKU, or add manually.",
           size: "medium",
         };
@@ -44437,8 +44437,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (!modalIsOpen) return undefined;
     function handleModalKeyDown(event) {
       if (event.key === "Tab" && activeFlowModal && flowModalRef.current) {
+        // Nov 25 2026: controls inside a closed fold (<details>) are hidden but still
+        // have an offsetParent; only its summary can take focus.
         const focusable = [...flowModalRef.current.querySelectorAll("button, [href], input, select, textarea, summary, [tabindex]:not([tabindex='-1'])")]
-          .filter((node) => !node.disabled && node.offsetParent !== null);
+          .filter((node) => !node.disabled && node.offsetParent !== null)
+          .filter((node) => { const fold = node.closest("details:not([open])"); return !fold || (node.tagName === "SUMMARY" && node.parentElement === fold); });
         if (focusable.length) {
           const first = focusable[0];
           const last = focusable[focusable.length - 1];
@@ -46713,6 +46716,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     adaptiveActivity,
     personalizationPreferences,
     onReportRestock: (options = {}) => openScoutSubmitFlow({ source: "home-restock", ...options }),
+    onScanCards: () => openQuickAddAction("scanCards"),
     onOpenRestockReports: openCommunityRestockReports,
     onOpenStoreReports: store => openCommunityRestockReports({ storeId: store.id }),
     onOpenFollowedReports: () => openCommunityRestockReports({ followedOnly: true }),

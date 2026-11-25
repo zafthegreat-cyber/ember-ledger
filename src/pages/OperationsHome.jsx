@@ -39,7 +39,7 @@ function SavedItemPreview({ items = [], onOpen }) {
 }
 
 export default function OperationsHome({
-  setActiveTab, isOffline, onOpenBusiness, onOpenFind, onReportRestock, onOpenRestockReports,
+  setActiveTab, isOffline, onOpenBusiness, onOpenFind, onReportRestock, onOpenRestockReports, onScanCards,
   adaptiveActivity = {}, personalizationPreferences = {}, experiencePresentation,
   onOpenSellTrade, onOpenExperienceSettings, activeVaultItems = [], workspaceWatchlist = [],
   scoutSnapshot = {}, isWatchedEmberStore = () => false,
@@ -153,6 +153,8 @@ export default function OperationsHome({
     {isOffline ? <OfflineState action={<SecondaryButton onClick={() => window.location.reload()}>Try again</SecondaryButton>} /> : null}
     {/* Competitor review, Nov 17: open on a search bar and the person's own numbers. */}
     <div className="home-glance">
+      {/* Nov 25 2026 (owner: "more simple"): the one thing most people open the app to do. */}
+      {onScanCards ? <button type="button" className="home-glance__scan" onClick={onScanCards} aria-label="Scan cards. Point your camera at your cards to add them with prices."><AppNavIcon kind="scan" /><span><strong>Scan cards</strong><small>Point your camera at a card to add it with its price</small></span></button> : null}
       <button type="button" className="home-glance__search" onClick={() => setActiveTab("market")} aria-label="Search cards and products"><AppNavIcon kind="search" /><span>Search cards &amp; products</span></button>
       {!kidSafeView && collectionWorth.knownCount > 0 && collectionWorth.total != null ? <button type="button" className="home-glance__value" onClick={() => setActiveTab("collectionWorkspace")} aria-label={`Collection value ${formatCurrency(collectionWorth.total)}. Open collection.`}>
         <span>Collection value</span>
