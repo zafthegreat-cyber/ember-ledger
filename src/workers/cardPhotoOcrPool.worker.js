@@ -51,6 +51,9 @@ self.onmessage = ({ data }) => {
           // Number strips only hold digits, letters, "/" and "-"; a whitelist stops
           // the model from guessing symbols. Empty string means no whitelist.
           tessedit_char_whitelist: String(entry.whitelist || ""),
+          // Nov 25 2026: "2" (Sauvola) adapts the black-and-white cut to each patch; "0" is the default single cut.
+          // Always set, so one crop's setting does not carry over to the next.
+          thresholding_method: ["0", "1", "2"].includes(String(entry.threshold)) ? String(entry.threshold) : "0",
         });
         const { data: result } = await worker.recognize(entry.image);
         texts.push({ key: String(entry.key || ""), text: result.text || "", confidence: result.confidence });

@@ -8,6 +8,7 @@
 // The photo, crops and text never leave the device; only the reviewed search does.
 import { validateProductPhotoFile, PRODUCT_PHOTO_LIMITS } from "./productPhotoLookup.mjs";
 import { parseCardPhotoText } from "./cardPhotoText.mjs";
+import { isKnownCardName } from "./cardNameSnap.mjs";
 import { parseSlabLabel } from "./slabLabelText.mjs";
 
 export const CARD_PHOTO_READER = Object.freeze({
@@ -21,6 +22,7 @@ export const CARD_PHOTO_READER = Object.freeze({
   nameBand: [0.025, 0.155],
   numberBand: [0.86, 0.985],
   stripWidth: 1500,
+  sharpWidth: 1000, // stage-3 adaptive-cut crops: smaller, since they only run on hard cards
   cornerWidth: 1200,
   uprightMaxSide: 2400,
   fullMaxSide: 1600,
@@ -29,6 +31,8 @@ export const CARD_PHOTO_READER = Object.freeze({
 const MODEL_GZIP = import.meta.env?.VITE_NATIVE_BUILD !== "true";
 // Characters a printed card number or set code can contain ("SV1 EN 125/198", "TG05/TG30", "OP01-001").
 const NUMBER_CHARACTERS = "0123456789/-ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+// Tesseract thresholding_method 2 (Sauvola): a black-and-white cut that adapts to each patch of the crop.
+const LOCAL_THRESHOLD = "2";
 const fail = (code) => Object.assign(new Error(code), { code });
 const result = (status, code, message, extra = {}) => ({ status, code, message, text: "", suggestions: [], query: "", ...extra });
 
@@ -219,13 +223,14 @@ function crop(source, sx, sy, sw, sh, targetWidth, enhance) {
 const toPng = (canvas) => new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(fail("invalid_image")), "image/png"))
   .then((blob) => blob.arrayBuffer()).then((buffer) => new Uint8Array(buffer));
 
-// Copies the card out of the photo, turned upright (rotate is 0, 90 or -90 degrees).
+// Copies the card out of the photo, turned upright (rotate is 0, 90, -90 or 180 degrees).
 function uprightCard(image, card, rotate, maxSide) {
   const scale = Math.min(1, maxSide / Math.max(card.w, card.h));
   const w = Math.max(1, Math.round(card.w * scale)), h = Math.max(1, Math.round(card.h * scale));
   const canvas = document.createElement("canvas");
-  canvas.width = rotate ? h : w;
-  canvas.height = rotate ? w : h;
+  const quarter = Math.abs(rotate) === 90;
+  canvas.width = quarter ? h : w;
+  canvas.height = quarter ? w : h;
   const context = canvas.getContext("2d");
   if (!context) throw fail("unsupported");
   context.fillStyle = "#ffffff";
@@ -283,6 +288,13 @@ export async function prepareCardCrops(file, { framed = false, staged = false } 
       // A taller second look at the top of the card, for tilted cards and tall name bars.
       { key: `nameWide${index}`, psm: "11", stage: later, make: () => crop(upright, 0, 0, cw, ch * 0.24, S.stripWidth, true) },
       { key: `number${index}`, psm: "11", stage: later, make: () => crop(upright, 0, ch * numTop, cw, ch * (numBottom - numTop), S.stripWidth, true) },
+      // Nov 25 2026 (owner's 63 test photos): the text model's own black-and-white
+      // cut is one level for the whole strip, and a shaded name bar or bright border
+      // can wipe out the name. Stage 3 reads the strips again with a cut that adapts
+      // to each patch (Sauvola); it only runs when the first reads found no real name.
+      { key: `nameSharp${index}`, psm: "6", threshold: LOCAL_THRESHOLD, stage: 3, make: () => crop(upright, 0, ch * nameTop, cw, ch * (nameBottom - nameTop), S.sharpWidth, true) },
+      { key: `nameWideSharp${index}`, psm: "11", threshold: LOCAL_THRESHOLD, stage: 3, make: () => crop(upright, 0, 0, cw, ch * 0.24, S.sharpWidth, true) },
+      { key: `numberSharp${index}`, psm: "11", threshold: LOCAL_THRESHOLD, stage: 3, make: () => crop(upright, 0, ch * numTop, cw, ch * (numBottom - numTop), S.sharpWidth, true) },
     );
     if (index === 0) {
       // Nov 23 2026: the number is tiny and sits in a corner (bottom left on Scarlet &
@@ -293,6 +305,21 @@ export async function prepareCardCrops(file, { framed = false, staged = false } 
         { key: "numberLeft0", psm: "7", whitelist: NUMBER_CHARACTERS, stage: 1, make: () => crop(upright, 0, cornerTop, cw * 0.5, cornerHeight, S.cornerWidth, true) },
         { key: "numberRight0", psm: "7", whitelist: NUMBER_CHARACTERS, stage: 1, make: () => crop(upright, cw * 0.5, cornerTop, cw * 0.5, cornerHeight, S.cornerWidth, true) },
       );
+      // Nov 25 2026 (owner's 63 test photos): a card held upside down reads as
+      // gibberish. Stage 3 reads the name strip and number corners of the card
+      // turned around; it only runs when the first reads found no real card name.
+      if (!found?.sideways) {
+        let turned = null;
+        const flipped = () => {
+          if (!turned) { turned = turnAround(upright); canvases.push(turned); }
+          return turned;
+        };
+        entries.push(
+          { key: "nameFlip", psm: "6", threshold: LOCAL_THRESHOLD, stage: 3, make: () => crop(flipped(), 0, ch * nameTop, cw, ch * (nameBottom - nameTop), S.stripWidth, true) },
+          { key: "numberLeftFlip", psm: "7", whitelist: NUMBER_CHARACTERS, stage: 3, make: () => crop(flipped(), 0, cornerTop, cw * 0.5, cornerHeight, S.cornerWidth, true) },
+          { key: "numberRightFlip", psm: "7", whitelist: NUMBER_CHARACTERS, stage: 3, make: () => crop(flipped(), cw * 0.5, cornerTop, cw * 0.5, cornerHeight, S.cornerWidth, true) },
+        );
+      }
       // No clear card edge: the card may be small in a wide shot, so read the whole photo larger.
       const fullSide = found || framed ? S.fullMaxSide : 2400;
       const fullScale = Math.min(1, fullSide / Math.max(cw, ch));
@@ -308,18 +335,32 @@ export async function prepareCardCrops(file, { framed = false, staged = false } 
       if (entry.stage !== stage || released) continue;
       const canvas = entry.make();
       try {
-        if (canvas.width) images.push({ key: entry.key, psm: entry.psm, ...(entry.whitelist ? { whitelist: entry.whitelist } : {}), image: await toPng(canvas) });
+        if (canvas.width) images.push({ key: entry.key, psm: entry.psm, ...(entry.whitelist ? { whitelist: entry.whitelist } : {}), ...(entry.threshold ? { threshold: entry.threshold } : {}), image: await toPng(canvas) });
       } finally { canvas.width = 0; canvas.height = 0; }
     }
     return images;
   };
   const release = () => { released = true; for (const canvas of canvases) { canvas.width = 0; canvas.height = 0; } };
+  const lastTry = () => encode(3);
   const meta = { foundCard: Boolean(found) || framed, sideways: Boolean(found?.sideways) };
   if (!staged) {
     try { return { images: [...await encode(1), ...await encode(2)], ...meta }; } finally { release(); }
   }
   // Staged: stage-2 crops are only cut and encoded if more() is called; release() frees the card copies.
-  return { images: await encode(1), more: () => encode(2), release, ...meta };
+  return { images: await encode(1), more: () => encode(2), lastTry, release, ...meta };
+}
+
+/** A copy of the upright card turned 180 degrees. */
+function turnAround(source) {
+  const canvas = document.createElement("canvas");
+  canvas.width = source.width;
+  canvas.height = source.height;
+  const context = canvas.getContext("2d");
+  if (!context) throw fail("unsupported");
+  context.translate(canvas.width, canvas.height);
+  context.rotate(Math.PI);
+  context.drawImage(source, 0, 0);
+  return canvas;
 }
 
 /** Stage 1 is enough when it found a number and a name that looks like a real word. */
@@ -388,6 +429,25 @@ export async function readCardPhoto(file, { signal, onProgress, timeoutMs = read
         if (more.length) {
           await read(more, "Taking a closer look", 0.5, 0.5);
           parsed = parse();
+        }
+      }
+      // Still no real card name: read the strips again with the adaptive cut, and
+      // the card turned around in case it is upside down. A new read is kept only
+      // when it gives a real card name (short names like "Dan" are too easy to get
+      // from noise to trust here).
+      const trusted = (name) => isKnownCardName(name, nameIndex) && String(name).replace(/[^A-Za-zÀ-ž]/g, "").length >= 5 && !/^pok[eé]mon$/i.test(name);
+      if (nameIndex && !isKnownCardName(parsed.name, nameIndex) && prepared.lastTry) {
+        if (stopped) throw fail("cancelled");
+        const last = await prepared.lastTry();
+        if (stopped) throw fail("cancelled");
+        if (last.length) {
+          await read(last, "Taking one more look", 0.9, 0.1);
+          const numberTexts = [byKey.numberLeft0, byKey.numberRight0, byKey.number0, byKey.number1, byKey.numberSharp0, byKey.numberSharp1];
+          const sharper = parseCardPhotoText({ nameIndex, nameText: byKey.nameSharp0, extraNameTexts: [byKey.nameWideSharp0, byKey.nameSharp1, byKey.nameWideSharp1].filter(Boolean), numberText: numberTexts.filter(Boolean).join("\n"), fullText: byKey.full });
+          const flippedRead = parseCardPhotoText({ nameIndex, nameText: byKey.nameFlip, numberText: [byKey.numberLeftFlip, byKey.numberRightFlip].filter(Boolean).join("\n") });
+          if (trusted(sharper.name)) parsed = sharper;
+          else if (trusted(flippedRead.name)) parsed = flippedRead;
+          else if (!parsed.number && sharper.number && sharper.certainty !== "name-only") parsed = parseCardPhotoText({ nameIndex, nameText: byKey.name0, extraNameTexts: [byKey.nameWide0, byKey.name1, byKey.nameWide1].filter(Boolean), numberText: numberTexts.filter(Boolean).join("\n"), fullText: byKey.full });
         }
       }
       const message = parsed.certainty === "name-and-number"
