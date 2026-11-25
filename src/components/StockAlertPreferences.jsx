@@ -13,15 +13,14 @@ function deviceZone(){
 const columns="enabled,retailers,signal_types,product_keys,quiet_hours_enabled,quiet_start,quiet_end,time_zone";
 export default function StockAlertPreferences({targets=[]}){
   const [account,setAccount]=useState("");
-  const [phase,setPhase]=useState("loading");
+  const [phase,setPhase]=useState(()=>supabase?"loading":"unavailable");
   const [settings,setSettings]=useState(()=>defaultStockAlertPreferences(deviceZone()));
   const [saving,setSaving]=useState(false);
   const [notice,setNotice]=useState("");
   useEffect(()=>{
-    if(!supabase){setPhase("unavailable");return undefined;}
+    if(!supabase)return undefined;
     let active=true;
     async function load(){
-      setPhase("loading");
       try{
         const auth=await supabase.auth.getSession();
         if(!auth.data?.session?.access_token){
