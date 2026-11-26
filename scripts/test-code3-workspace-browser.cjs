@@ -336,6 +336,13 @@ async function assertMobileTargets(page, label) {
   ok(boxes.every((box) => box.width >= 44 && box.height >= 44), `${label} mobile navigation targets should be at least 44px`);
 }
 
+// Since the Nov 23 2026 bottom bar, the bar ("Primary navigation") holds the app's
+// areas (Collect, Find, Add, Sell). The pages inside the current area (Collection,
+// Sets, Wants; Inventory, Sales) are the pill row at the top of the page.
+function areaPage(page, name) {
+  return page.getByRole("navigation", { name: "Pages in this area" }).getByRole("button", { name, exact: true });
+}
+
 async function assertSwitcherContext(page, expected) {
   const summary = page.getByTestId("workspace-switcher").locator("summary");
   match(await summary.getAttribute("aria-label"), new RegExp(`^${expected}\\. Switch Code 3 workspace$`, "i"), `route should expose ${expected} workspace context`);
@@ -363,10 +370,9 @@ async function verifyFixture(page, fixture) {
       await page.getByRole("button", { name: "Sets", exact: true }).first().click();
       await page.getByTestId("collection-workspace").getByRole("heading", { level: 1, name: "Card sets", exact: true }).waitFor();
       equal(new URL(page.url()).pathname, "/collection/sets", "Collect Sets action should update the visible route");
-      // Nested Collection pages use the area-level pill navigation on phones; the fixed dock switches workspaces.
-      await page.getByRole("navigation", { name: "Pages in this area" }).getByRole("button", { name: "Collection", exact: true }).click();
+      await areaPage(page, "Collection").click();
       await page.getByLabel("Search collection", { exact: true }).waitFor();
-      equal(new URL(page.url()).pathname, "/collection", "Collection dock action should update the visible view and URL");
+      equal(new URL(page.url()).pathname, "/collection", "Collection page pill should update the visible view and URL");
       await page.goBack();
       await page.getByTestId("collection-workspace").getByRole("heading", { level: 1, name: "Card sets", exact: true }).waitFor();
       equal(new URL(page.url()).pathname, "/collection/sets", "browser Back should restore the Sets view");
@@ -397,12 +403,12 @@ async function verifyFixture(page, fixture) {
     case "sell-populated":
       await page.getByTestId("sell-workspace-home").waitFor();
       match(await body(), /Ready to list\s*1[\s\S]*Listed\s*1/i, "Sell populated state should derive resale workload");
-      await page.getByRole("navigation", { name: "Primary navigation" }).getByRole("button", { name: "Inventory", exact: true }).click();
+      await areaPage(page, "Inventory").click();
       await page.getByRole("region", { name: "Current inventory", exact: true }).waitFor();
-      equal(new URL(page.url()).pathname, "/business/inventory", "Sell Inventory dock action should update the visible Business view and URL");
-      await page.getByRole("navigation", { name: "Primary navigation" }).getByRole("button", { name: "Sales", exact: true }).click();
+      equal(new URL(page.url()).pathname, "/business/inventory", "Sell Inventory page pill should update the visible Business view and URL");
+      await areaPage(page, "Sales").click();
       await page.getByRole("heading", { name: "Sales history", exact: true }).waitFor();
-      equal(new URL(page.url()).pathname, "/business/sales", "Sell Sales dock action should update the visible Business view and URL");
+      equal(new URL(page.url()).pathname, "/business/sales", "Sell Sales page pill should update the visible Business view and URL");
       await page.goBack();
       await page.getByRole("region", { name: "Current inventory", exact: true }).waitFor();
       equal(new URL(page.url()).pathname, "/business/inventory", "browser Back should restore the Inventory view");
