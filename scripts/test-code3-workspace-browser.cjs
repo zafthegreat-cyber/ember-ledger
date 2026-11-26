@@ -363,7 +363,8 @@ async function verifyFixture(page, fixture) {
       await page.getByRole("button", { name: "Sets", exact: true }).first().click();
       await page.getByTestId("collection-workspace").getByRole("heading", { level: 1, name: "Card sets", exact: true }).waitFor();
       equal(new URL(page.url()).pathname, "/collection/sets", "Collect Sets action should update the visible route");
-      await page.getByRole("navigation", { name: "Primary navigation" }).getByRole("button", { name: "Collection", exact: true }).click();
+      // Nested Collection pages use the area-level pill navigation on phones; the fixed dock switches workspaces.
+      await page.getByRole("navigation", { name: "Pages in this area" }).getByRole("button", { name: "Collection", exact: true }).click();
       await page.getByLabel("Search collection", { exact: true }).waitFor();
       equal(new URL(page.url()).pathname, "/collection", "Collection dock action should update the visible view and URL");
       await page.goBack();
