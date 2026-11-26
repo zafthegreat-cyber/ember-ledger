@@ -16,6 +16,9 @@ const shardMatch = /^(\d+)\/(\d+)$/.exec(process.env.SHARD || "");
 const [shardIndex, shardCount] = shardMatch ? [Number(shardMatch[1]), Number(shardMatch[2])] : [1, 1];
 if (shardIndex < 1 || shardIndex > shardCount) throw new Error(`Invalid SHARD "${process.env.SHARD}"`);
 const files = only.length ? only : suite.passing.filter((_, index) => index % shardCount === shardIndex - 1);
+// Keep real layout and navigation assertions; allow slow CI browser setups to finish.
+// This mirrors main's 8-minute per-test budget and reports actual timeouts.
+const TEST_TIMEOUT_MS = 480000;
 const failed = [];
 let executed=0;
 for (const file of files) {
@@ -23,7 +26,7 @@ for (const file of files) {
   const result = spawnSync(process.execPath, ["--no-warnings", `scripts/${file}`], {
     env: { ...process.env, APP_URL: appUrl },
     encoding: "utf8",
-    timeout: 300000,
+    timeout: TEST_TIMEOUT_MS,
     maxBuffer: 64 * 1024 * 1024,
   });
   const seconds = Math.round((Date.now() - started) / 1000);
@@ -32,8 +35,10 @@ for (const file of files) {
     console.log(`PASS ${file} (${seconds}s)`);
   } else {
     failed.push(file);
-    console.log(`FAIL ${file} (${seconds}s)`);
-    const lines = `${result.stdout || ""}\n${result.stderr || ""}`.trim().split("\n");
+    const timedOut = result.error?.code === "ETIMEDOUT";
+    const stopped = timedOut ? `Stopped at the ${TEST_TIMEOUT_MS / 60000}-minute time limit before it finished.` : "";
+    console.log(`FAIL ${file} (${seconds}s)${timedOut ? " - time limit" : ""}`);
+    const lines = `${result.stdout || ""}\n${result.stderr || ""}\n${stopped}`.trim().split("\n");
     const roots = lines.filter(line => /^(?:Error:|[a-z]+\/(?:mobile|tablet|desktop):|(?:mobile|tablet|desktop):|AssertionError|TimeoutError|locator\.|Call log:|\s+- waiting for|\s+- element is|\s+at (?:verifyFixture|validateLayout))/.test(line)).slice(0, 10);
     const tail = [...roots, ...lines.slice(-25)].join("\n");
     console.log(tail);
