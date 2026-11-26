@@ -1,0 +1,379 @@
+import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import pg from "pg";
+
+// New sets reach the catalog on their own (supabase/migrations/20261126213000_catalog_new_sets.sql).
+// Runs the real migrations in a disposable loopback database and plays TCGCSV's part: the daily
+// job asks for the set list, product lists and price files through a stand-in for pg_net, and this
+// test answers with small copies of what TCGCSV sends. Needs Postgres on 127.0.0.1:55439 (user
+// code3qa, trust), the same one scripts/test-account-sessions-postgres.mjs uses. Creates and
+// removes only its own uniquely named database.
+const database = `code3_test_catalog_${randomUUID().replaceAll("-", "")}`;
+const connection = { host: "127.0.0.1", port: Number(process.env.CODE3_TEST_PG_PORT || 55439), user: process.env.CODE3_TEST_PG_USER || "code3qa", database: "postgres" };
+const admin = new pg.Client(connection);
+await admin.connect();
+await admin.query(`create database ${database}`);
+const db = new pg.Client({ ...connection, database });
+let checks = 0;
+const ok = (value, message) => { assert.ok(value, message); checks++; };
+const equal = (actual, expected, message) => { assert.deepEqual(actual, expected, message); checks++; };
+
+// ---- What TCGCSV serves. Real products, trimmed to the fields the catalog reads. ----
+const ext = (fields) => Object.entries(fields).map(([name, value]) => ({ name, displayName: name, value }));
+const product = (groupId, productId, name, fields = {}) => ({
+  productId, name, cleanName: name.replace(/[^A-Za-z0-9 ]/g, ""), groupId, categoryId: 3,
+  url: `https://www.tcgplayer.com/product/${productId}`,
+  imageUrl: `https://tcgplayer-cdn.tcgplayer.com/product/${productId}_200w.jpg`,
+  extendedData: ext(fields),
+});
+const price = (productId, subTypeName, marketPrice, lowPrice = marketPrice, midPrice = marketPrice, highPrice = marketPrice) =>
+  ({ productId, subTypeName, marketPrice, lowPrice, midPrice, highPrice, directLowPrice: null });
+const card = (number, rarity, more = {}) => ({ Number: number, Rarity: rarity, "Card Type": "Colorless", HP: "70", Stage: "Basic", ...more });
+
+// Dates are relative to today: a set under a year old is re-read daily, an older one weekly.
+const daysAgo = (days) => `${new Date(Date.now() - days * 864e5).toISOString().slice(0, 10)}T00:00:00`;
+const PERFECT_ORDER = 24587; // in the catalog already, nothing new
+const PITCH_BLACK = 24688; // in the catalog with sealed pre-orders only, filed under the code ME05
+const DELTA_REIGN = 24831; // not in the catalog
+const MCDONALDS_2026 = 24938; // not in the catalog
+const tcgcsv = {
+  groups: [
+    { groupId: PERFECT_ORDER, name: "ME03: Perfect Order", abbreviation: "POR", isSupplemental: false, publishedOn: daysAgo(240), modifiedOn: "2026-11-23T10:00:00.1", categoryId: 3 },
+    { groupId: PITCH_BLACK, name: "ME05: Pitch Black", abbreviation: "PBL", isSupplemental: false, publishedOn: daysAgo(130), modifiedOn: "2026-11-20T10:00:00.1", categoryId: 3 },
+    { groupId: DELTA_REIGN, name: "ME06: Delta Reign", abbreviation: "DLR", isSupplemental: false, publishedOn: daysAgo(20), modifiedOn: "2026-11-11T10:00:00.1", categoryId: 3 },
+    { groupId: MCDONALDS_2026, name: "McDonald's Promos 2026", abbreviation: "M26", isSupplemental: true, publishedOn: daysAgo(-30), modifiedOn: "2026-11-18T10:00:00.1", categoryId: 3 },
+  ],
+  products: {
+    [PERFECT_ORDER]: [product(PERFECT_ORDER, 684397, "Spinarak (renamed by the source)", card("001/088", "Common"))],
+    [PITCH_BLACK]: [
+      product(PITCH_BLACK, 700001, "Pitch Black Booster Bundle", { UPC: "196214120001" }),
+      product(PITCH_BLACK, 704814, "Maschiff", card("057/084", "Common")),
+      product(PITCH_BLACK, 704900, "Pitch Black 3-Pack Blister [Binacle]"),
+      product(PITCH_BLACK, 704901, "Code Card - Pitch Black Booster Pack", { Rarity: "Code Card" }),
+      product(PITCH_BLACK, 704902, "Pitch Black Booster Box Case"),
+      product(PITCH_BLACK, 704903, "Pitch Black Booster Box", { UPC: "196214129999" }),
+      product(PITCH_BLACK, 704904, "Pitch Black Pokemon Center Elite Trainer Box"),
+    ],
+    [DELTA_REIGN]: [
+      // Names that hold "tin" and "box": single cards all the same.
+      product(DELTA_REIGN, 726500, "Giratina", card("061/103", "Rare")),
+      product(DELTA_REIGN, 726501, "Mantine", card("029/103", "Uncommon")),
+      product(DELTA_REIGN, 726566, "Azurill - 115/103", card("115/103", "Illustration Rare")),
+      // No rarity worth the name and no number, but card stats: still a card.
+      product(DELTA_REIGN, 726600, "Secret Box - 2026 (Championship Deck)", { Rarity: "None", "Card Type": "Trainer" }),
+      product(DELTA_REIGN, 726601, "Delta Reign Mini Tin [Azurill]"),
+      // Listed with no price row at all.
+      product(DELTA_REIGN, 726602, "Delta Reign Elite Trainer Box"),
+    ],
+    [MCDONALDS_2026]: [product(MCDONALDS_2026, 730004, "Pikachu", card("004/015", "Promo"))],
+  },
+  prices: {
+    [PERFECT_ORDER]: [price(684397, "Normal", 0.08), price(684397, "Reverse Holofoil", 0.18)],
+    [PITCH_BLACK]: [
+      price(700001, "Normal", 31.5), price(704814, "Normal", 0.07, 0.01, 0.1, 5), price(704814, "Reverse Holofoil", 0.21),
+      price(704900, "Normal", 14.25), price(704901, "Normal", 0.05), price(704902, "Normal", null), price(704903, "Normal", 160),
+      price(704904, "Normal", 95),
+    ],
+    [DELTA_REIGN]: [
+      price(726500, "Holofoil", 1.4), price(726500, "Reverse Holofoil", 1.9), price(726501, "Normal", 0.1),
+      price(726566, "Holofoil", 12), price(726600, "Normal", 0.5), price(726601, "Normal", 11),
+    ],
+    [MCDONALDS_2026]: [price(730004, "Holofoil", 1.25)],
+  },
+};
+
+// Answers every request the job has made and not yet had an answer to.
+const requested = [];
+async function serve() {
+  const { rows } = await db.query("select r.id, r.url from net.requests r where not exists (select 1 from net._http_response h where h.id = r.id) order by r.id");
+  for (const row of rows) {
+    requested.push(row.url);
+    const groups = /\/tcgplayer\/3\/groups$/.test(row.url);
+    const match = /\/tcgplayer\/3\/(\d+)\/(products|prices)$/.exec(row.url);
+    const results = groups ? tcgcsv.groups : match ? tcgcsv[match[2]][match[1]] : null;
+    if (!results) {
+      await db.query("insert into net._http_response(id, status_code, content) values($1, 404, 'not found')", [row.id]);
+    } else {
+      await db.query("insert into net._http_response(id, status_code, content) values($1, 200, $2)",
+        [row.id, JSON.stringify({ success: true, errors: [], totalItems: results.length, results })]);
+    }
+  }
+  return rows.length;
+}
+// One daily run from start to finish: a tick of the every-minute job, then TCGCSV's answers.
+async function run(startSql) {
+  const runId = (await db.query(`select ${startSql} as id`)).rows[0].id;
+  for (let tick = 0; tick < 40; tick++) {
+    await db.query("select * from public.catalog_price_apply()");
+    const finished = (await db.query("select finished_at from public.catalog_price_refresh_runs where id = $1", [runId])).rows[0].finished_at;
+    if (finished) return (await db.query("select * from public.catalog_price_refresh_runs where id = $1", [runId])).rows[0];
+    await serve();
+  }
+  const queue = (await db.query("select source, group_id, attempts, request_id, done_at is not null as done, error from public.catalog_price_refresh_queue where run_id = $1 order by source, group_id", [runId])).rows;
+  assert.fail(`run ${runId} did not finish: ${JSON.stringify(queue)}`);
+}
+const one = async (sql, parameters) => (await db.query(sql, parameters)).rows[0];
+const all = async (sql, parameters) => (await db.query(sql, parameters)).rows;
+const item = (productId) => one(`
+  select pc.*, m.id as master_id, m.catalog_item_type, m.set_code as master_set_code, m.product_type as master_product_type,
+    m.card_number as master_card_number, m.name as master_name, ms.recommended_market_value
+  from public.product_catalog pc
+  left join public.master_catalog_items m on m.legacy_product_catalog_id = pc.id
+  left join public.master_market_summaries ms on ms.catalog_item_id = m.id
+  where pc.market_source = 'TCGCSV' and pc.external_product_id = $1`, [String(productId)]);
+
+try {
+  await db.connect();
+  // The tables the catalog job writes, with the columns, defaults and unique rules it relies on.
+  await db.query(`
+    do $$ begin create role anon; exception when duplicate_object then null; end $$;
+    do $$ begin create role authenticated; exception when duplicate_object then null; end $$;
+    create schema extensions;
+    create schema cron;
+    create function cron.schedule(text, text, text) returns bigint language sql as 'select 1::bigint';
+    create schema net;
+    create sequence net.request_ids;
+    create table net.requests(id bigint primary key, url text not null);
+    create table net._http_response(id bigint primary key, status_code integer, content text, error_msg text, timed_out boolean default false);
+    create function net.http_get(url text, timeout_milliseconds integer default 5000) returns bigint language plpgsql as $$
+      declare v_id bigint := nextval('net.request_ids');
+      begin insert into net.requests values (v_id, url); return v_id; end $$;
+
+    create table public.product_catalog(
+      id uuid primary key default gen_random_uuid(), user_id uuid not null, name text not null, category text default 'Pokemon',
+      set_name text, product_type text, barcode text, market_source text default 'Manual', external_product_id text,
+      tcgplayer_product_id text, market_url text, image_url text, market_price numeric default 0, low_price numeric default 0,
+      mid_price numeric default 0, high_price numeric default 0, last_price_checked timestamptz, created_at timestamptz default now(),
+      updated_at timestamptz default now(), msrp_price numeric default 0, set_code text default '', expansion text default '',
+      product_line text default '', pack_count numeric default 0, source_group_id integer, source_group_name text, price_subtype text,
+      is_sealed boolean default false, card_number text, rarity text, raw_source jsonb, card_number_sort integer,
+      card_number_prefix text, card_number_suffix text, printed_total integer,
+      product_kind text not null default 'unknown' check (product_kind in ('single_card','sealed_product','code_card','accessory','bundle','promo','unknown')),
+      sealed_product_type text check (sealed_product_type is null or sealed_product_type in ('elite_trainer_box','pokemon_center_elite_trainer_box','booster_pack','sleeved_booster_pack','booster_bundle','booster_display_box','build_and_battle_box','build_and_battle_stadium','collection_box','premium_collection','poster_collection','tin','mini_tin','blister_pack','league_battle_deck','battle_deck','starter_deck','other')),
+      region text not null default 'US', language text not null default 'English',
+      is_pokemon_center_exclusive boolean not null default false, contents jsonb not null default '{}');
+    create unique index on public.product_catalog(market_source, external_product_id);
+    create index on public.product_catalog(tcgplayer_product_id);
+    create table public.master_catalog_items(
+      id uuid primary key default gen_random_uuid(), legacy_product_catalog_id uuid unique references public.product_catalog(id),
+      catalog_item_type text not null check (catalog_item_type in ('card','sealed','slab','accessory')), name text not null,
+      set_name text, set_code text, product_type text, product_line text, card_number text, rarity text, image_url text, msrp numeric,
+      tcgplayer_product_id text, external_links jsonb not null default '{}', last_verified_at timestamptz,
+      data_confidence_score numeric not null default 0.5, source text not null default 'legacy_product_catalog',
+      raw_source jsonb not null default '{}', created_at timestamptz not null default now(), updated_at timestamptz not null default now(),
+      product_name text, series text, duplicate_of uuid, archived_at timestamptz);
+    create table public.master_catalog_identifiers(
+      id uuid primary key default gen_random_uuid(), catalog_item_id uuid not null references public.master_catalog_items(id),
+      identifier_type text not null check (identifier_type in ('UPC','EAN','GTIN','SKU','RETAILER_SKU','TCGPLAYER_PRODUCT_ID','TCGPLAYER_SKU_ID','CARD_NUMBER','SET_CODE','OTHER')),
+      identifier_value text not null, retailer text, source text, source_url text,
+      status text not null default 'source_imported', confidence_score numeric);
+    create unique index on public.master_catalog_identifiers(catalog_item_id, identifier_type, lower(identifier_value), coalesce(retailer, ''));
+    create table public.master_catalog_variants(
+      id uuid primary key default gen_random_uuid(), catalog_item_id uuid not null references public.master_catalog_items(id),
+      variant_type text not null default 'standard' check (variant_type in ('normal','holo','reverse_holo','first_edition','unlimited','sealed','standard','other')),
+      variant_name text not null, finish text, printing text, language text not null default 'English',
+      condition_name text not null default '', is_default boolean not null default false, external_ids jsonb not null default '{}',
+      unique (catalog_item_id, variant_name, language, condition_name));
+    create table public.master_market_price_sources(
+      id uuid primary key default gen_random_uuid(), catalog_item_id uuid not null references public.master_catalog_items(id),
+      source text not null, source_item_id text, source_group_id integer, price_type text, market_price numeric, low_price numeric,
+      mid_price numeric, high_price numeric, currency text not null default 'USD', source_url text, last_updated_at timestamptz,
+      confidence_score numeric not null default 0.5, status text not null default 'cached', raw_payload jsonb not null default '{}',
+      created_at timestamptz not null default now());
+    create table public.master_market_summaries(
+      id uuid primary key default gen_random_uuid(), catalog_item_id uuid not null unique references public.master_catalog_items(id),
+      recommended_market_value numeric, msrp numeric, price_confidence text not null default 'unknown',
+      source_count integer not null default 0, sample_size integer, last_updated_at timestamptz, computed_at timestamptz not null default now());
+    create table public.product_market_price_current(
+      id uuid primary key default gen_random_uuid(), catalog_product_id uuid references public.product_catalog(id),
+      source text not null default 'TCGCSV', source_product_id text not null, source_group_id integer,
+      price_subtype text not null default 'Default', low_price numeric, mid_price numeric, high_price numeric, market_price numeric,
+      direct_low_price numeric, currency text not null default 'USD', raw_source jsonb, checked_at timestamptz not null default now(),
+      created_at timestamptz default now(), updated_at timestamptz default now(), unique (source, source_product_id, price_subtype));
+    create table public.product_identifiers(
+      id uuid primary key default gen_random_uuid(), catalog_product_id uuid not null references public.product_catalog(id),
+      identifier_type text not null check (identifier_type in ('UPC','EAN','GTIN','RETAILER_SKU','TCGPLAYER_PRODUCT_ID','TCGPLAYER_SKU_ID','POKEMONTCG_IO_ID','OTHER')),
+      identifier_value text not null, source text, source_url text,
+      confidence text not null default 'unverified', status text not null default 'needs_review', unique (identifier_type, identifier_value));
+    create table public.catalog_product_variants(
+      id uuid primary key default gen_random_uuid(), catalog_product_id uuid not null references public.product_catalog(id),
+      variant_name text not null, printing text, finish text, language text not null default 'English', condition_name text,
+      is_default boolean not null default false, unique (catalog_product_id, variant_name, language, condition_name));
+  `);
+  for (const file of [
+    "20261125090000_catalog_price_refresh.sql",
+    "20261125093000_catalog_price_refresh_pokemontcg.sql",
+    "20261126090000_catalog_single_cards_not_sealed.sql",
+    "20261126213000_catalog_new_sets.sql",
+  ]) {
+    await db.query(await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), "utf8"));
+  }
+
+  // ---- The single-card rule: what the product carries decides, never its name. ----
+  const isCard = async (fields) => (await one("select public.catalog_tcgcsv_is_card(public.catalog_tcgcsv_extended_data($1::jsonb)) as v", [JSON.stringify({ extendedData: ext(fields) })])).v;
+  equal(await isCard({ Number: "061/103", Rarity: "Rare" }), true, "a rarity and a number make a card");
+  equal(await isCard({ Rarity: "None", "Card Type": "Trainer" }), true, "card stats make a card when the rarity says nothing");
+  equal(await isCard({ Rarity: "None", Number: "007" }), true, "a numbered energy with no rarity is a card");
+  equal(await isCard({ Rarity: "Code Card" }), false, "a code card is not a single card");
+  equal(await isCard({ UPC: "196214120001" }), false, "a barcode alone is a sealed product");
+  equal(await isCard({}), false, "nothing to go on: not a single card");
+  const sealedType = async (name) => (await one("select public.catalog_tcgcsv_sealed_type($1) as v", [name])).v;
+  equal(await sealedType("Pitch Black Pokémon Center Elite Trainer Box"), "pokemon_center_elite_trainer_box");
+  equal(await sealedType("Delta Reign Mini Tin [Azurill]"), "mini_tin");
+  equal(await sealedType("Code Card - Pitch Black Booster Box"), "other", "a code card is not the box it came from");
+  equal(await sealedType("Chaos Rising Build & Battle Stadium"), "build_and_battle_stadium");
+  const packs = async (name) => (await one("select public.catalog_tcgcsv_pack_count($1, public.catalog_tcgcsv_sealed_type($1)) as v", [name])).v;
+  equal([await packs("Pitch Black Booster Box"), await packs("Pitch Black Booster Box Case"), await packs("Pitch Black 3-Pack Blister [Binacle]"),
+    await packs("Scarlet & Violet 151 Booster Bundle"), await packs("Code Card - Pitch Black Booster Pack"), await packs("Delta Reign Mini Tin")],
+    [36, 0, 3, 6, 0, 0], "pack counts come from the name or the kind, and stay 0 when neither settles it");
+
+  // ---- The catalog as the one-time import left it. ----
+  const owner = randomUUID();
+  const seed = async (row, masterType, variants = []) => {
+    const pc = await one(`insert into public.product_catalog(user_id, name, set_name, product_type, market_source, external_product_id,
+        tcgplayer_product_id, market_price, set_code, source_group_id, source_group_name, price_subtype, is_sealed, card_number, rarity, product_kind)
+      values($1,$2,$3,$4,'TCGCSV',$5,$5,$6,$7,$8,$3,$9,$10,$11,$12,$13) returning id`,
+      [owner, row.name, row.setName, masterType === "card" ? "Card" : "Sealed Product", String(row.productId), row.marketPrice ?? null,
+        row.setCode, row.groupId, row.subtype ?? null, masterType !== "card", row.number ?? null, row.rarity ?? null,
+        masterType === "card" ? "single_card" : "sealed_product"]);
+    const master = await one(`insert into public.master_catalog_items(legacy_product_catalog_id, catalog_item_type, name, set_name, set_code, card_number, rarity, tcgplayer_product_id, source)
+      values($1,$2,$3,$4,$5,$6,$7,$8,'TCGCSV') returning id`, [pc.id, masterType, row.name, row.setName, row.setCode, row.number ?? null, row.rarity ?? null, String(row.productId)]);
+    await db.query("insert into public.master_catalog_identifiers(catalog_item_id, identifier_type, identifier_value, source) values($1,'SET_CODE',$2,'legacy_product_catalog')", [master.id, row.setCode]);
+    for (const name of variants) {
+      await db.query("insert into public.catalog_product_variants(catalog_product_id, variant_name, condition_name, is_default) values($1,$2,'',true)", [pc.id, name]);
+      await db.query("insert into public.master_catalog_variants(catalog_item_id, variant_name, is_default) values($1,$2,true)", [master.id, name]);
+    }
+  };
+  await seed({ productId: 684397, name: "Spinarak", setName: "ME03: Perfect Order", setCode: "POR", groupId: PERFECT_ORDER, subtype: "Normal", number: "001/088", rarity: "Common", marketPrice: 0.09 }, "card", ["Normal"]);
+  await seed({ productId: 700001, name: "Pitch Black Booster Bundle", setName: "ME05: Pitch Black", setCode: "ME05", groupId: PITCH_BLACK, subtype: "Normal", marketPrice: 30 }, "sealed", ["Normal"]);
+
+  // ---- Run 1: a check for new sets only (no price refresh for sets already in the catalog). ----
+  const first = await run("public.catalog_price_refresh(0, false)");
+  equal(first.sets_added, 2, "Delta Reign and McDonald's Promos 2026 are new to the catalog");
+  equal(first.products_added, 13, "every product the catalog lacked was added");
+  equal(first.groups_failed, 0);
+  ok(requested[0].endsWith("/tcgplayer/3/groups"), "the run reads TCGCSV's set list first");
+  for (const groupId of [PERFECT_ORDER, PITCH_BLACK, DELTA_REIGN, MCDONALDS_2026]) {
+    ok(requested.includes(`https://tcgcsv.com/tcgplayer/3/${groupId}/products`), `product list read for set ${groupId}`);
+  }
+  ok(!requested.includes(`https://tcgcsv.com/tcgplayer/3/${PERFECT_ORDER}/prices`), "a set with nothing new is not re-priced by a new-sets check");
+  equal((await one("select count(*)::int n from public.catalog_tcgcsv_groups")).n, 4, "the set list is recorded");
+
+  // A new set: its cards arrive as cards, with set code, number, rarity, printings and prices.
+  const pikachu = await item(730004);
+  equal([pikachu.set_code, pikachu.set_name, pikachu.card_number, pikachu.card_number_sort, pikachu.printed_total, pikachu.rarity, pikachu.source_group_id],
+    ["M26", "McDonald's Promos 2026", "004/015", 4, 15, "Promo", MCDONALDS_2026]);
+  equal([pikachu.is_sealed, pikachu.product_type, pikachu.product_kind, pikachu.catalog_item_type, pikachu.master_set_code, pikachu.master_card_number],
+    [false, "Card", "single_card", "card", "M26", "004/015"]);
+  equal([pikachu.user_id, pikachu.price_subtype, Number(pikachu.market_price), Number(pikachu.recommended_market_value)], [owner, "Holofoil", 1.25, 1.25],
+    "the new card is owned like the rest of the catalog and priced from the same run");
+  equal(pikachu.raw_source.group.abbreviation, "M26", "the source record is kept");
+  equal(pikachu.raw_source.extendedData.card_type, "Colorless");
+
+  // Giratina, Mantine and a trainer called Secret Box are cards, whatever their names hold.
+  for (const [productId, number] of [[726500, "061/103"], [726501, "029/103"], [726566, "115/103"], [726600, null]]) {
+    const row = await item(productId);
+    equal([row.is_sealed, row.product_type, row.product_kind, row.sealed_product_type, row.catalog_item_type, row.card_number, Number(row.pack_count)],
+      [false, "Card", "single_card", null, "card", number, 0], `${row.name} is a single card`);
+  }
+  equal((await item(726566)).printed_total, 103);
+  const tin = await item(726601);
+  equal([tin.is_sealed, tin.product_type, tin.product_kind, tin.sealed_product_type, tin.catalog_item_type, tin.card_number], [true, "Sealed Product", "sealed_product", "mini_tin", "sealed", null]);
+
+  // Printings: every printing in the product page table, the item's own in the master catalog.
+  const maschiff = await item(704814);
+  equal([maschiff.set_code, maschiff.card_number, maschiff.price_subtype, Number(maschiff.market_price), Number(maschiff.low_price), Number(maschiff.high_price)],
+    ["PBL", "057/084", "Normal", 0.07, 0.01, 5]);
+  equal(await all("select variant_name, finish, is_default from public.catalog_product_variants where catalog_product_id = $1 order by variant_name", [maschiff.id]),
+    [{ variant_name: "Normal", finish: "Normal", is_default: true }, { variant_name: "Reverse Holofoil", finish: "Reverse Holofoil", is_default: false }]);
+  equal(await all("select variant_name, variant_type, is_default from public.master_catalog_variants where catalog_item_id = $1", [maschiff.master_id]),
+    [{ variant_name: "Normal", variant_type: "standard", is_default: true }]);
+  equal((await all("select price_subtype, market_price::float8 as market_price from public.product_market_price_current where catalog_product_id = $1 order by price_subtype", [maschiff.id])),
+    [{ price_subtype: "Normal", market_price: 0.07 }, { price_subtype: "Reverse Holofoil", market_price: 0.21 }], "each printing has a current price");
+  equal((await all("select price_type, confidence_score::float8 as confidence_score from public.master_market_price_sources where catalog_item_id = $1 order by price_type", [maschiff.master_id])),
+    [{ price_type: "Normal", confidence_score: 0.9 }, { price_type: "Reverse Holofoil", confidence_score: 0.8 }]);
+  equal((await all("select identifier_type, identifier_value from public.master_catalog_identifiers where catalog_item_id = $1 order by identifier_type", [maschiff.master_id])),
+    [{ identifier_type: "CARD_NUMBER", identifier_value: "057/084" }, { identifier_type: "SET_CODE", identifier_value: "PBL" }, { identifier_type: "TCGPLAYER_PRODUCT_ID", identifier_value: "704814" }]);
+  equal((await all("select identifier_type, identifier_value, confidence from public.product_identifiers where catalog_product_id = $1", [maschiff.id])),
+    [{ identifier_type: "TCGPLAYER_PRODUCT_ID", identifier_value: "704814", confidence: "imported" }]);
+  const giratina = await item(726500);
+  equal([giratina.price_subtype, (await one("select variant_type from public.master_catalog_variants where catalog_item_id = $1", [giratina.master_id])).variant_type], ["Holofoil", "holo"]);
+
+  // Sealed products of a set that was already there.
+  const box = await item(704903);
+  equal([box.is_sealed, box.sealed_product_type, Number(box.pack_count), box.contents, box.barcode, box.catalog_item_type],
+    [true, "booster_display_box", 36, { pack_count_source: "sealed_product_type_default", pack_count_confidence: "unverified_default" }, "196214129999", "sealed"]);
+  ok((await one("select 1 as found from public.master_catalog_identifiers where catalog_item_id = $1 and identifier_type = 'UPC' and identifier_value = '196214129999'", [box.master_id]))?.found, "a barcode is searchable");
+  const blister = await item(704900);
+  equal([blister.sealed_product_type, Number(blister.pack_count), blister.contents.pack_count_source], ["blister_pack", 3, "name"]);
+  const pcEtb = await item(704904);
+  equal([pcEtb.sealed_product_type, pcEtb.is_pokemon_center_exclusive, Number(pcEtb.pack_count)], ["pokemon_center_elite_trainer_box", true, 11]);
+  const codeCard = await item(704901);
+  equal([codeCard.is_sealed, codeCard.sealed_product_type, Number(codeCard.pack_count), codeCard.rarity, codeCard.catalog_item_type], [true, "other", 0, "Code Card", "sealed"]);
+  const boxCase = await item(704902);
+  equal([Number(boxCase.pack_count), boxCase.market_price, boxCase.price_subtype], [0, null, null], "listed with a price row but no price yet: no price is invented");
+  const unpriced = await item(726602);
+  equal([unpriced.market_price, unpriced.price_subtype, unpriced.sealed_product_type, (await one("select count(*)::int n from public.product_market_price_current where catalog_product_id = $1", [unpriced.id])).n],
+    [null, null, "elite_trainer_box", 0], "a product with no price row is in the catalog, unpriced");
+
+  // The set's code changed (ME05 -> PBL): the items already there follow, and are otherwise untouched.
+  const bundle = await item(700001);
+  equal([bundle.set_code, bundle.master_set_code, bundle.name, bundle.barcode], ["PBL", "PBL", "Pitch Black Booster Bundle", null]);
+  equal((await all("select identifier_value from public.master_catalog_identifiers where catalog_item_id = $1 and identifier_type = 'SET_CODE' order by 1", [bundle.master_id])).map((row) => row.identifier_value),
+    ["ME05", "PBL"], "the old code still finds the item");
+  equal(Number(bundle.market_price), 31.5, "its set gained products, so its prices were refreshed too");
+  equal((await all("select distinct set_code from public.product_catalog where source_group_id = $1", [PITCH_BLACK])).map((row) => row.set_code), ["PBL"], "one set, one code");
+
+  // A product already in the catalog is not rewritten, and gains no extra printings.
+  const spinarak = await item(684397);
+  equal([spinarak.name, spinarak.master_name, Number(spinarak.market_price)], ["Spinarak", "Spinarak", 0.09]);
+  equal((await one("select count(*)::int n from public.catalog_product_variants where catalog_product_id = $1", [spinarak.id])).n, 1);
+
+  // ---- Run 2: the same answers again. Nothing is added twice. ----
+  const before = await one("select (select count(*) from public.product_catalog)::int pc, (select count(*) from public.master_catalog_items)::int m, (select count(*) from public.master_catalog_variants)::int mv, (select count(*) from public.catalog_product_variants)::int cv, (select count(*) from public.product_market_price_current)::int prices, (select count(*) from public.master_market_price_sources)::int sources, (select count(*) from public.master_catalog_identifiers)::int ids, (select count(*) from public.product_identifiers)::int pids");
+  equal(before.pc, 15);
+  const second = await run("public.catalog_price_refresh(0, false)");
+  equal([second.sets_added, second.products_added, second.groups_failed], [0, 0, 0]);
+  equal(await one("select (select count(*) from public.product_catalog)::int pc, (select count(*) from public.master_catalog_items)::int m, (select count(*) from public.master_catalog_variants)::int mv, (select count(*) from public.catalog_product_variants)::int cv, (select count(*) from public.product_market_price_current)::int prices, (select count(*) from public.master_market_price_sources)::int sources, (select count(*) from public.master_catalog_identifiers)::int ids, (select count(*) from public.product_identifiers)::int pids"), before, "a second run changes no counts");
+  equal((await one("select count(*)::int n from (select tcgplayer_product_id from public.product_catalog group by 1 having count(*) > 1) d")).n, 0, "one row per TCGplayer product");
+  equal((await one("select count(*)::int n from public.master_catalog_items m join public.product_catalog pc on pc.id = m.legacy_product_catalog_id where m.catalog_item_type = 'sealed' and (pc.card_number is not null or public.catalog_is_single_card(m.card_number, m.rarity))")).n, 0, "no single card is filed as sealed");
+
+  // ---- Run 3: the daily run. An older set gains a card; its price file gives it away. ----
+  // An older set is only re-read on its weekly turn, so pick an id whose turn is not today.
+  const weekday = (await one("select extract(dow from now())::int d")).d;
+  const OLDER_SET = 2800 + ((weekday + 3) % 7);
+  tcgcsv.groups.push({ groupId: OLDER_SET, name: "SWSH: Older Set", abbreviation: "OLD", isSupplemental: false, publishedOn: daysAgo(1900), modifiedOn: "2026-01-05T10:00:00.1", categoryId: 3 });
+  tcgcsv.products[OLDER_SET] = [product(OLDER_SET, 250001, "Dratini", card("055/203", "Common"))];
+  tcgcsv.prices[OLDER_SET] = [price(250001, "Normal", 0.2)];
+  const third = await run("public.catalog_price_refresh(null, false)");
+  equal([third.sets_added, third.products_added], [1, 1], "a set TCGCSV starts listing is picked up by the daily run");
+  equal([(await item(250001)).catalog_item_type, Number((await item(250001)).market_price)], ["card", 0.2]);
+  ok(requested.includes(`https://tcgcsv.com/tcgplayer/3/${PERFECT_ORDER}/prices`), "the daily run still refreshes prices for every set in the catalog");
+  equal(Number((await item(684397)).market_price), 0.08, "and applies them");
+
+  requested.length = 0;
+  tcgcsv.products[OLDER_SET].push(product(OLDER_SET, 250002, "Dragonair", card("056/203", "Uncommon")));
+  tcgcsv.products[MCDONALDS_2026].push(product(MCDONALDS_2026, 730015, "Wooloo", card("015/015", "Promo")));
+  tcgcsv.prices[MCDONALDS_2026].push(price(730015, "Normal", 0.4));
+  const quiet = await run("public.catalog_price_refresh(null, false)");
+  ok(!requested.includes(`https://tcgcsv.com/tcgplayer/3/${OLDER_SET}/products`), "an older set with no new price is left for its weekly turn");
+  equal([quiet.products_added, Number((await item(730015)).market_price), (await item(730015)).set_code], [1, 0.4, "M26"], "a recent set is re-read every day, so a late card arrives the next run");
+  equal(await item(250002), undefined);
+
+  requested.length = 0;
+  tcgcsv.prices[OLDER_SET].push(price(250002, "Normal", 0.3), price(250002, "Reverse Holofoil", 0.6));
+  const fourth = await run("public.catalog_price_refresh(null, false)");
+  ok(requested.includes(`https://tcgcsv.com/tcgplayer/3/${OLDER_SET}/products`), "a price for a product the catalog lacks gets that set's product list read the same run");
+  equal(requested.filter((url) => url === `https://tcgcsv.com/tcgplayer/3/${OLDER_SET}/prices`).length, 2, "and its prices asked for again, to price the new card");
+  const dragonair = await item(250002);
+  equal([fourth.products_added, dragonair.set_code, dragonair.card_number, Number(dragonair.market_price), dragonair.catalog_item_type], [1, "OLD", "056/203", 0.3, "card"]);
+  equal((await one("select count(*)::int n from public.product_market_price_current where catalog_product_id = $1", [dragonair.id])).n, 2);
+
+  equal((await one("select count(*)::int n from (select tcgplayer_product_id from public.product_catalog group by 1 having count(*) > 1) d")).n, 0);
+  console.log(`catalog new sets: ${checks} checks passed`);
+} finally {
+  await db.end().catch(() => {});
+  await admin.query(`drop database if exists ${database} with (force)`).catch(() => {});
+  await admin.end().catch(() => {});
+}
