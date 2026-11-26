@@ -11,6 +11,10 @@ const storageKey = "code3.bot-ops.v1";
 const providerKeys = ["HAYHA", "STELLAR", "SHIKARI", "VALOR", "REFRACT", "POLAR", "SNIPED", "SWOOPER"];
 const cases = [320, 390, 1440].flatMap(width => ["light", "dark"].map(theme => ({ width, height: width === 320 ? 720 : 900, theme })));
 const fixtureFile = path.join(output, "fixture.html");
+// The first check after a whole page load (goto or reload) waits for the app to start
+// again, which takes 3 to 5 seconds on a quiet machine, so it gets 30 seconds instead of the
+// 5 second default meant for changes within a page.
+const pageLoad = { timeout: 30000 };
 const preservedRecords = JSON.stringify({
   userType: "collector", dashboardPreset: "simple",
   profile: { userId: "local-beta", email: "bot-setup@example.test", displayName: "Synthetic owner", appRole: "owner", app_role: "owner", userRole: "owner", appAccess: "approved" },
@@ -156,7 +160,7 @@ async function componentCase(browser, testCase, fixture) {
     const fixturePath = path.relative(process.cwd(), fixtureFile).replaceAll(path.sep, "/");
     await page.goto(`${base}/${fixturePath}?theme=${testCase.theme}`);
     const setup = page.getByTestId("bot-provider-setup");
-    await expect(setup).toBeVisible();
+    await expect(setup).toBeVisible(pageLoad);
     assert.deepEqual((await setup.getByLabel("Bot provider", { exact: true }).locator("option").evaluateAll(nodes => nodes.map(node => node.value))).sort(), [...providerKeys].sort());
     const before = await botState(page);
     await assertLayout(page, setup);
@@ -170,7 +174,7 @@ async function componentCase(browser, testCase, fixture) {
       const row = await saveProvider(page, provider, label);
       assert.ok(row?.id); assert.equal(row.provider, provider);
       await editProvider(page, row, `${label} reviewed`);
-      await page.reload(); await expect(setup).toBeVisible();
+      await page.reload(); await expect(setup).toBeVisible(pageLoad);
       await expect(setup.getByRole("button", { name: `Edit ${label} reviewed`, exact: true })).toBeVisible();
       await assertProtectedRecords(page, before);
       await assertManualOnly(page, before.installations.length);
@@ -197,7 +201,7 @@ async function componentCase(browser, testCase, fixture) {
     await expect(setup.getByRole("alert")).toBeVisible();
     assert.equal(await rawBotState(page), savedState);
     await page.evaluate(() => { window.__qaBlockBotWrites = false; });
-    await page.reload(); await expect(setup).toBeVisible();
+    await page.reload(); await expect(setup).toBeVisible(pageLoad);
     await setup.getByLabel("Bot provider", { exact: true }).selectOption("POLAR");
     await assertLayout(page, setup);
     await page.screenshot({ path: path.join(output, `${id}-provider-setup.png`), fullPage: true });
@@ -234,7 +238,7 @@ async function actualAppCase(browser, fixture, testCase) {
     const initializedAppRecords = await page.evaluate(() => localStorage.getItem("et-tcg-beta-data"));
     const row = await saveProvider(page, "POLAR", "POLAR actual app synthetic");
     await editProvider(page, row, "POLAR actual app reviewed");
-    await page.reload(); await expect(setup).toBeVisible();
+    await page.reload(); await expect(setup).toBeVisible(pageLoad);
     await expect(setup.getByRole("button", { name: "Edit POLAR actual app reviewed", exact: true })).toBeVisible();
     await assertManualOnly(page, before.installations.length);
     await assertLayout(page, setup);
@@ -280,7 +284,7 @@ async function corruptedStorageCase(browser, fixture) {
     step = "damaged storage: initial valid state";
     const fixturePath = path.relative(process.cwd(), fixtureFile).replaceAll(path.sep, "/");
     await page.goto(`${base}/${fixturePath}?theme=dark`);
-    const setup = page.getByTestId("bot-provider-setup"); await expect(setup).toBeVisible();
+    const setup = page.getByTestId("bot-provider-setup"); await expect(setup).toBeVisible(pageLoad);
     const original = await rawBotState(page);
     const unsupported = structuredClone(fixture); unsupported.schemaVersion = 999;
     const unknownProvider = structuredClone(fixture); unknownProvider.installations[0].provider = "UNKNOWN_PROVIDER";
@@ -288,21 +292,21 @@ async function corruptedStorageCase(browser, fixture) {
       step = `damaged storage: ${kind} must remain intact`;
       await page.evaluate(({ key, raw }) => localStorage.setItem(key, raw), { key: storageKey, raw });
       await page.reload();
-      await expect(page.getByRole("heading", { name: "Bot Operations unavailable", exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Bot Operations unavailable", exact: true })).toBeVisible(pageLoad);
       await expect(page.getByText(/Existing data has been kept/)).toBeVisible();
       await expect(setup).toHaveCount(0);
       assert.equal(await rawBotState(page), raw, `${kind} original bytes preserved`);
       await page.evaluate(({ key, raw }) => localStorage.setItem(key, raw), { key: storageKey, raw: original });
-      await page.reload(); await expect(setup).toBeVisible();
+      await page.reload(); await expect(setup).toBeVisible(pageLoad);
     }
     step = "damaged storage: read exception does not expose empty setup";
     await page.evaluate(() => sessionStorage.setItem("__qa_block_bot_reads", "true"));
     await page.reload();
-    await expect(page.getByRole("heading", { name: "Bot Operations unavailable", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Bot Operations unavailable", exact: true })).toBeVisible(pageLoad);
     await expect(setup).toHaveCount(0);
     await page.evaluate(() => sessionStorage.removeItem("__qa_block_bot_reads"));
     assert.equal(await rawBotState(page), original);
-    await page.reload(); await expect(setup).toBeVisible();
+    await page.reload(); await expect(setup).toBeVisible(pageLoad);
     step = "damaged storage: corrupted after load cannot be overwritten by save";
     const lateCorruption = '{"preserve-this-original":';
     await page.evaluate(({ key, raw }) => localStorage.setItem(key, raw), { key: storageKey, raw: lateCorruption });
@@ -311,7 +315,7 @@ async function corruptedStorageCase(browser, fixture) {
     await expect(setup.getByRole("alert")).toBeVisible();
     assert.equal(await rawBotState(page), lateCorruption);
     await page.evaluate(({ key, raw }) => localStorage.setItem(key, raw), { key: storageKey, raw: original });
-    await page.reload(); await expect(setup).toBeVisible();
+    await page.reload(); await expect(setup).toBeVisible(pageLoad);
     await assertProtectedRecords(page, fixture);
     assert.equal(await rawBotState(page), original);
     assert.deepEqual(errors, []); assert.deepEqual(external, []); assert.deepEqual(writes, []);
@@ -332,21 +336,21 @@ async function concurrencyCase(browser, fixture) {
   try {
     step = "two tabs: simultaneous creates";
     await Promise.all([first.goto(url), second.goto(url)]);
-    await Promise.all([expect(first.getByTestId("bot-provider-setup")).toBeVisible(), expect(second.getByTestId("bot-provider-setup")).toBeVisible()]);
+    await Promise.all([expect(first.getByTestId("bot-provider-setup")).toBeVisible(pageLoad), expect(second.getByTestId("bot-provider-setup")).toBeVisible(pageLoad)]);
     const before = await botState(first);
     const rows = await Promise.all([saveProvider(first, "POLAR", "Concurrent first installation"), saveProvider(second, "SNIPED", "Concurrent second installation")]);
     let state = await botState(first);
     assert.equal(state.installations.length, before.installations.length + 2);
     assert.ok(rows.every(row => state.installations.some(entry => entry.id === row.id)));
     await Promise.all([first.reload(), second.reload()]);
-    await Promise.all([expect(first.getByTestId("bot-provider-setup")).toBeVisible(), expect(second.getByTestId("bot-provider-setup")).toBeVisible()]);
+    await Promise.all([expect(first.getByTestId("bot-provider-setup")).toBeVisible(pageLoad), expect(second.getByTestId("bot-provider-setup")).toBeVisible(pageLoad)]);
     step = "two tabs: simultaneous different-record edits";
     await Promise.all([editProvider(first, rows[0], "Concurrent first updated"), editProvider(second, rows[1], "Concurrent second updated")]);
     state = await botState(first);
     assert.equal(state.installations.find(row => row.id === rows[0].id).friendlyName, "Concurrent first updated");
     assert.equal(state.installations.find(row => row.id === rows[1].id).friendlyName, "Concurrent second updated");
     await Promise.all([first.reload(), second.reload()]);
-    await Promise.all([expect(first.getByTestId("bot-provider-setup")).toBeVisible(), expect(second.getByTestId("bot-provider-setup")).toBeVisible()]);
+    await Promise.all([expect(first.getByTestId("bot-provider-setup")).toBeVisible(pageLoad), expect(second.getByTestId("bot-provider-setup")).toBeVisible(pageLoad)]);
     step = "two tabs: same-record conflict preserves one version";
     const contested = (await botState(first)).installations.find(row => row.id === rows[0].id);
     for (const [page, name] of [[first, "Concurrent winner A"], [second, "Concurrent winner B"]]) {
@@ -361,7 +365,7 @@ async function concurrencyCase(browser, fixture) {
     assert.equal(winner.recordVersion, contested.recordVersion + 1);
     for (const page of [first, second]) if (await page.getByTestId("bot-provider-setup").getByRole("alert").count()) await expect(page.getByTestId("bot-provider-setup").getByRole("alert")).toContainText(/changed|reload|version|conflict/i);
     await Promise.all([first.reload(), second.reload()]);
-    await Promise.all([expect(first.getByTestId("bot-provider-setup")).toBeVisible(), expect(second.getByTestId("bot-provider-setup")).toBeVisible()]);
+    await Promise.all([expect(first.getByTestId("bot-provider-setup")).toBeVisible(pageLoad), expect(second.getByTestId("bot-provider-setup")).toBeVisible(pageLoad)]);
     step = "queued save: signout cancels before acquiring lock";
     const beforeQueuedSave = await rawBotState(first);
     await first.evaluate(() => {

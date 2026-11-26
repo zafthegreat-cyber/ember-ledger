@@ -64,7 +64,7 @@ async function fixtureChecks(browser) {
     try {
       await page.goto(`${fixtureUrl}?theme=${item.theme}`);
       const preferences = page.getByRole("region", { name: "Make it yours" });
-      await expect(preferences).toBeVisible();
+      await expect(preferences).toBeVisible({ timeout: 30000 });
       await expect(preferences.getByRole("radio", { name: /^Collector/ })).toBeChecked();
       for (const checkbox of await preferences.getByRole("checkbox").all()) await expect(checkbox).not.toBeChecked();
       const targets = await checkLayout(page, page.locator("main"));

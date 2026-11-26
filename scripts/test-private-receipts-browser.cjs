@@ -38,7 +38,9 @@ export const supabase={supabaseUrl:'https://synthetic-project.supabase.co',auth:
       const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));
       await page.clock.install();
       await page.goto(`${base}/artifacts/qa/mobile-beta/private-receipts/fixture.html?theme=${theme}`);
-      await expect(page.getByRole('img',{name:'Synthetic receipt'})).toBeVisible();
+      // A whole page load takes 3 to 5 seconds on a quiet machine, so the first check after it
+      // gets 30 seconds instead of the 5 second default meant for changes within a page.
+      await expect(page.getByRole('img',{name:'Synthetic receipt'})).toBeVisible({timeout:30000});
       await expect(page.getByRole('img',{name:'Legacy product artwork'})).toBeVisible();
       await expect(page.getByRole('img',{name:'Shared report artwork'})).toBeVisible();
       const canonicalProof = page.getByRole('img',{name:'Private saved proof',exact:true});

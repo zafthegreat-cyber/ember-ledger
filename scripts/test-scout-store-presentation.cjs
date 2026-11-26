@@ -127,7 +127,7 @@ async function main() {
         assert.equal(await page.evaluate((storageKey) => localStorage.getItem(storageKey), key), before, "Read-only UI actions must leave all Scout records byte-for-byte unchanged");
         await page.evaluate((storageKey) => { const data = JSON.parse(localStorage.getItem(storageKey)); data.reports = []; data.items = []; localStorage.setItem(storageKey, JSON.stringify(data)); }, key);
         await page.reload();
-        await expect(record.getByText("No tracked Restocks items yet.", { exact: true })).toBeVisible();
+        await expect(record.getByText("No tracked Restocks items yet.", { exact: true })).toBeVisible({ timeout: 30000 });
         await expect(record.getByRole("button", { name: "Submit First Report", exact: true })).toBeVisible();
         await assertControls(record); await assertNoOverflow(page);
         const emptyHelperStyles = await record.locator(".scout-store-record-section > p, .scout-store-record-reports > div > p").evaluateAll((elements) => {

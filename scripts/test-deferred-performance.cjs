@@ -83,7 +83,9 @@ const results = [];
         await expect(page.locator(".app[data-theme]")).toHaveAttribute("data-theme", theme);
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
         await page.screenshot({ path: path.join(output, `${chunk}-${theme}-${width}.png`) });
-        await page.goBack(); await expect(page.getByRole("heading", { name: /^Welcome( back| to Code 3 TCG).$/ })).toBeVisible();
+        // Back returns to a page that was loaded separately, so the whole app starts again (3 to 5
+        // seconds on a quiet machine); this check gets 30 seconds instead of the 5 second default.
+        await page.goBack(); await expect(page.getByRole("heading", { name: /^Welcome( back| to Code 3 TCG).$/ })).toBeVisible({ timeout: 30000 });
         record(`${chunk} direct load, Back, theme and record preservation`);
       }
       if (width === 360) {

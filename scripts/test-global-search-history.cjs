@@ -31,7 +31,9 @@ const { chromium, expect } = require("@playwright/test");
         settingsUrl.hash = "history-origin";
         await page.goto(settingsUrl.href, { waitUntil: "domcontentloaded" });
         const settings = page.locator(".settings-layout");
-        await expect(settings).toBeVisible();
+        // A whole page load takes 3 to 5 seconds on a quiet machine, so the first check after it
+        // gets 30 seconds instead of the 5 second default meant for changes within a page.
+        await expect(settings).toBeVisible({ timeout: 30000 });
         const initial = await page.evaluate((key) => ({ length: history.length, url: location.href, route: JSON.parse(localStorage.getItem(key)) }), APP_ROUTE_STORAGE_KEY);
         assert.equal(initial.route.activeTab, "settings");
 

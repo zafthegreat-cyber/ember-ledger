@@ -26,7 +26,9 @@ function App(){const [selected,setSelected]=useState(null);const [query,setQuery
       const page = await context.newPage(); page.on("pageerror", error => errors.push(error.message));
       try {
         await page.goto(`${base}/artifacts/qa/operations-workspace/fixture.html?theme=${theme}`);
-        const rows = page.locator('.ops-record-browser__row'); await expect(rows).toHaveCount(2);
+        // A whole page load takes 3 to 5 seconds on a quiet machine, so the first check after it
+        // gets 30 seconds instead of the 5 second default meant for changes within a page.
+        const rows = page.locator('.ops-record-browser__row'); await expect(rows).toHaveCount(2, { timeout: 30000 });
         if (width < 1100) {
           await expect(page.getByRole('combobox', { name: 'Section' })).toBeVisible();
           await expect(page.getByRole('navigation', { name: 'Operations navigation' })).toBeHidden();
