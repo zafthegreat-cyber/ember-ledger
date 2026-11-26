@@ -372,3 +372,42 @@ html:root body .app.app-command-shell[data-theme] .home-glance :is(.home-glance_
 html:root body .app.app-command-shell[data-theme] .home-glance .home-glance__search { color: var(--text-secondary) !important; }
 html:root body .app.app-command-shell[data-theme] .home-glance .home-glance__stat strong { color: var(--text-primary) !important; }
 html:root body .app.app-command-shell[data-theme] .home-glance .home-glance__stat span { color: var(--text-secondary) !important; }
+
+/* Home "Scan cards" button (Nov 25 2026): the main action, above search. */
+html:root body .app.app-command-shell[data-theme] .home-glance .home-glance__scan {
+  display: flex; align-items: center; gap: 14px; width: 100%; min-height: 64px; padding: 12px 18px;
+  border: 0; border-radius: 18px; background: var(--brand-primary, #E8C86B) !important; color: var(--text-on-brand, #1a0f12) !important;
+  text-align: left; cursor: pointer; box-shadow: var(--binder-card-shadow);
+}
+html:root body .app.app-command-shell[data-theme] .home-glance .home-glance__scan svg { flex: none; width: 28px; height: 28px; color: inherit; }
+html:root body .app.app-command-shell[data-theme] .home-glance .home-glance__scan span { display: grid; gap: 3px; }
+html:root body .app.app-command-shell[data-theme] .home-glance .home-glance__scan strong { font: 800 19px/1.1 var(--c3-font-heading, inherit); color: inherit !important; }
+html:root body .app.app-command-shell[data-theme] .home-glance .home-glance__scan small { font-size: 14px; line-height: 1.35; color: inherit !important; opacity: .85; }
+
+/* Home choices (Nov 25 2026): a handful of big buttons, two per row on phones. */
+html:root body .app.app-command-shell[data-theme] .home-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0 0 20px; }
+html:root body .app.app-command-shell[data-theme] .home-choices .home-choice {
+  display: grid; align-content: start; gap: 10px; min-height: 112px; padding: 16px;
+  border: 1px solid var(--c3-border); border-radius: 18px; background: var(--c3-surface) !important; color: var(--text-primary) !important;
+  text-align: left; cursor: pointer; box-shadow: var(--binder-card-shadow);
+}
+html:root body .app.app-command-shell[data-theme] .home-choices .home-choice svg { width: 28px; height: 28px; color: var(--c3-gold-ink); }
+html:root body .app.app-command-shell[data-theme] .home-choices .home-choice span { display: grid; gap: 4px; }
+html:root body .app.app-command-shell[data-theme] .home-choices .home-choice strong { font: 800 18px/1.15 var(--c3-font-heading, inherit); color: inherit !important; }
+html:root body .app.app-command-shell[data-theme] .home-choices .home-choice small { font-size: 14px; line-height: 1.35; color: var(--text-secondary) !important; }
+html:root body .app.app-command-shell[data-theme] .home-choices .home-choice--scan { grid-column: 1 / -1; min-height: 80px; grid-template-columns: auto 1fr; align-items: center; border: 0; background: var(--brand-primary, #E8C86B) !important; color: var(--text-on-brand, #1a0f12) !important; }
+html:root body .app.app-command-shell[data-theme] .home-choices .home-choice--scan svg { color: inherit; }
+html:root body .app.app-command-shell[data-theme] .home-choices .home-choice--scan small { color: inherit !important; opacity: .85; }
+html:root body .app.app-command-shell[data-theme] .home-more { margin: 4px 0 20px; }
+html:root body .app.app-command-shell[data-theme] .home-more > summary { min-height: 48px; display: flex; align-items: center; padding: 0 16px; border: 1px solid var(--c3-border); border-radius: 14px; font-weight: 800; cursor: pointer; color: var(--text-primary); }
+html:root body .app.app-command-shell[data-theme] .home-more[open] > summary { margin-bottom: 16px; }
+
+/* One-screen add (Nov 25 2026): find it, how many, Save. */
+html:root body .app.app-command-shell[data-theme] .quick-save-panel { display: grid; gap: 14px; margin-top: 16px; padding: 16px; border: 1px solid var(--c3-border); border-radius: 18px; background: var(--c3-surface); }
+html:root body .app.app-command-shell[data-theme] .quick-save-quantity { display: grid; gap: 8px; }
+html:root body .app.app-command-shell[data-theme] .quick-save-quantity > span:first-child { font-weight: 800; font-size: 16px; color: var(--text-primary); }
+html:root body .app.app-command-shell[data-theme] .quick-save-stepper { display: grid; grid-template-columns: 56px minmax(0, 120px) 56px; gap: 8px; align-items: center; }
+html:root body .app.app-command-shell[data-theme] .quick-save-stepper button { min-height: 52px; min-width: 52px; padding: 0; border-radius: 999px; font-size: 26px; font-weight: 800; line-height: 1; }
+html:root body .app.app-command-shell[data-theme] .quick-save-stepper input { min-height: 52px; text-align: center; font-size: 22px; font-weight: 800; }
+html:root body .app.app-command-shell[data-theme] .quick-save-banner strong { font-size: 18px; }
+html:root body .app.app-command-shell[data-theme] .flow-modal-footer [data-quick-save] { flex: 1 1 auto; min-width: 120px; }

@@ -69,3 +69,9 @@ html body .app[data-theme] .flow-modal[data-flow="addActionSheet"] .scan-anythin
 .quick-add-card-scan-match::before { content: "✓ "; color: var(--gold, #E8C86B); }
 .quick-add-card-scan-match--review { color: var(--text-secondary); }
 .quick-add-card-scan-match--review::before { content: "• "; color: var(--text-secondary); }
+
+/* Scan cards, simpler list (Nov 25 2026) */
+.quick-add-card-scan-empty { margin: 8px 0; padding: 14px; border: 1px dashed var(--border-strong, #6b5a5e); border-radius: 14px; font-size: 15px; line-height: 1.45; color: var(--text-secondary, inherit); }
+.quick-add-card-scan-edit > summary { min-height: 44px; display: flex; align-items: center; font-weight: 700; cursor: pointer; color: var(--text-primary, inherit); }
+.quick-add-card-scan-row.is-matched .quick-add-card-scan-match { font-weight: 600; }
+.quick-add-card-scan-more > summary { min-height: 44px; display: flex; align-items: center; font-weight: 700; cursor: pointer; }

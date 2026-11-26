@@ -1,4 +1,4 @@
-import { lazy, Suspense, useId, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import { BINDER_LAYOUTS, binderCells, pocketLabel } from "../utils/binderPage.mjs";
 import "./multi-card-scanner.css";
 
@@ -12,14 +12,39 @@ const loadReader = () => import("../utils/cardPhotoReader.mjs");
 //   pocket is read as its own card.
 // Everything is read on the device. Rows still need a printing check and a
 // review before anything is saved.
-export default function MultiCardScanner({ onRows }) {
+// autoStart (Nov 25 2026): open the camera straight away, one less tap.
+// Nov 25 2026 (owner: "continuous scanner improvement"): the camera no longer waits
+// for a card to be read. Each picture joins a line and is read in the background, so
+// the next card can be shown at once. A card that could not be read adds nothing and
+// gets one more automatic try. The last card shows right under the camera with its
+// price and an Undo button. rows: the list below (to show the last card's match).
+function buzz(pattern) {
+  try { navigator.vibrate?.(pattern); } catch { /* Optional feedback. */ }
+}
+const scanKey = (name, number) => `${String(name || "").trim().toLowerCase()}|${String(number || "").trim().toLowerCase()}`;
+
+export default function MultiCardScanner({ onRows, autoStart = false, rows = [], onUndo, money }) {
   const id = useId();
-  const [mode, setMode] = useState("");
+  const [mode, setMode] = useState(autoStart ? "camera" : "");
   const [layout, setLayout] = useState("3x3");
   const [status, setStatus] = useState("");
   const [count, setCount] = useState(0);
   const [busy, setBusy] = useState(false);
   const stopRef = useRef(false);
+  const [pending, setPending] = useState(0);
+  const [retryKey, setRetryKey] = useState(0);
+  const [last, setLast] = useState(null); // { cardName, cardNumber } of the newest card
+  const queueRef = useRef([]);
+  const runningRef = useRef(false);
+  const seqRef = useRef(0);
+  const retryNextRef = useRef(false);
+  const lastKeyRef = useRef(""); // the newest card read, to tell a drifted card from a new one
+  const aliveRef = useRef(true);
+  const onRowsRef = useRef(onRows);
+  useEffect(() => { onRowsRef.current = onRows; });
+  useEffect(() => { aliveRef.current = true; return () => { aliveRef.current = false; queueRef.current = []; }; }, []);
+  // Load the reader while the first card is being lined up, so the first read is not the slow one.
+  useEffect(() => { if (mode === "camera") loadReader().then((module) => module.warmCardReader?.()).catch(() => {}); }, [mode]);
 
   const rowFrom = (read, extra = {}) => ({
     cardName: read.name || "",
@@ -28,19 +53,78 @@ export default function MultiCardScanner({ onRows }) {
     ...extra,
   });
 
-  async function readCamera(file) {
-    setStatus("Reading the card…");
+  // The camera hands over the picture and is free again straight away.
+  function readCamera(file, { sameCardGuard = false } = {}) {
+    seqRef.current += 1;
+    queueRef.current.push({ file, seq: seqRef.current, isRetry: retryNextRef.current, sameCardGuard });
+    retryNextRef.current = false;
+    setPending(queueRef.current.length + (runningRef.current ? 1 : 0));
+    setStatus("");
+    void readQueue();
+  }
+
+  async function readQueue() {
+    if (runningRef.current) return;
+    runningRef.current = true;
     try {
       const { readCardPhoto } = await loadReader();
-      const read = await readCardPhoto(file, { framed: true });
-      onRows?.([rowFrom(read)]);
-      setCount((value) => value + 1);
-      setStatus(read.query ? `Added: ${read.query}. Line up the next card.` : "Could not read that card; a blank row was added. Line up the next card.");
+      while (queueRef.current.length && aliveRef.current) {
+        const job = queueRef.current.shift();
+        let read = null;
+        try { read = await readCardPhoto(job.file, { framed: true }); } catch { read = null; }
+        if (!aliveRef.current) return;
+        setPending(queueRef.current.length);
+        if (read?.certainty && read.certainty !== "none") {
+          const row = rowFrom(read, { scanned: true });
+          const key = scanKey(row.cardName, row.cardNumber);
+          // The picture followed only a small change in view and reads as the card
+          // just added: it is that card again (the hand drifted), not another copy.
+          if (job.sameCardGuard && key === lastKeyRef.current) { setStatus("That's the same card. Have another copy? Tap One more."); continue; }
+          lastKeyRef.current = key;
+          onRowsRef.current?.([row]);
+          setLast({ cardName: row.cardName, cardNumber: row.cardNumber });
+          setCount((value) => value + 1);
+          buzz([30, 50, 30]);
+          setStatus("");
+        } else {
+          buzz(220);
+          // Only the newest picture is tried again, and only once, so a card that
+          // cannot be read does not loop.
+          const canRetry = job.seq === seqRef.current && !job.isRetry;
+          if (canRetry) { retryNextRef.current = true; setRetryKey((value) => value + 1); }
+          setStatus(canRetry
+            ? "Couldn't read that one. Hold it still, a little closer: trying once more."
+            : "Still couldn't read that card. Try brighter light, or add it by hand below.");
+        }
+      }
     } catch {
-      // Nov 24 2026: a failed read no longer leaves "Reading the card…" on screen.
-      setStatus("That card could not be read. Line it up again and tap Scan this card.");
+      queueRef.current = [];
+      if (aliveRef.current) { setPending(0); setStatus("The card reader could not start. Check your connection and try again."); }
+    } finally {
+      runningRef.current = false;
     }
   }
+
+  const lastRow = last ? [...rows].reverse().find((row) => scanKey(row.cardName, row.cardNumber) === scanKey(last.cardName, last.cardNumber)) : null;
+  const lastMatched = Boolean(lastRow && lastRow.matchState === "matched" && lastRow.matchedFor === `${lastRow.cardName}|${lastRow.cardNumber}`);
+  const lastQuantity = Math.max(1, Number(lastRow?.quantity) || 1);
+  const lastDetail = !lastRow ? ""
+    : lastMatched ? String(lastRow.matchedProduct?.setName || lastRow.matchedProduct?.expansion || lastRow.matchedLabel || "Matched")
+      : lastRow.scanNote ? `${lastRow.scanNote}. Check it in the list below.`
+        : lastRow.matchState === "review" && lastRow.matchedFor === `${lastRow.cardName}|${lastRow.cardNumber}` ? "Not sure which card this is. Check it in the list below."
+          : "Finding its price…";
+  const reading = pending > 0 ? <p className="multi-card-scanner__pending" role="status">Reading {pending === 1 ? "1 card" : `${pending} cards`}…</p> : null;
+  const lastCard = lastRow ? <div className="multi-card-scanner__last" role="status">
+    <div>
+      <small>{lastQuantity > 1 ? `Same card again: you now have ${lastQuantity}` : "Just scanned"}</small>
+      <strong>{[lastRow.cardName, lastRow.cardNumber].map((value) => String(value || "").trim()).filter(Boolean).join(" · ")}{lastQuantity > 1 ? ` ×${lastQuantity}` : ""}</strong>
+      <span>{lastDetail}{lastMatched && lastRow.matchedValue && money ? <b className="multi-card-scanner__price"> · {money(lastRow.matchedValue)}{lastQuantity > 1 ? " each" : ""}</b> : null}</span>
+    </div>
+    <div className="multi-card-scanner__last-actions">
+      <button type="button" aria-label={`One more copy of ${lastRow.cardName || "this card"}`} onClick={() => { onRowsRef.current?.([{ cardName: lastRow.cardName, cardNumber: lastRow.cardNumber, scanNote: "", scanned: true }]); setCount((value) => value + 1); setStatus(""); }}>One more</button>
+      {onUndo ? <button type="button" onClick={() => { onUndo(last); if (lastQuantity <= 1) setLast(null); setCount((value) => Math.max(0, value - 1)); setStatus("Removed that scan."); }}>Undo</button> : null}
+    </div>
+  </div> : null;
 
   async function readBinder(event) {
     const file = event.target.files?.[0];
@@ -80,13 +164,14 @@ export default function MultiCardScanner({ onRows }) {
   }
 
   return <section className="multi-card-scanner" aria-labelledby={`${id}-title`}>
-    <h3 id={`${id}-title`}>Scan several cards</h3>
-    {count ? <p className="multi-card-scanner__count" role="status">{count} card{count === 1 ? "" : "s"} added below this session.</p> : null}
+    <h3 id={`${id}-title`}>Scan with your camera</h3>
+    {count ? <p className="multi-card-scanner__count" role="status">{count} card{count === 1 ? "" : "s"} scanned. They are listed below.</p> : null}
     {mode === "camera" ? <Suspense fallback={<p role="status">Opening the camera…</p>}>
-      <CardCameraFrame onCapture={readCamera} onCancel={() => { setMode(""); setStatus(""); }} />
-      <p className="multi-card-scanner__status" role="status">{status || "Line up a card in the frame and tap Scan this card. The camera stays open for the next one."}</p>
+      <CardCameraFrame continuous retryKey={retryKey} onCapture={readCamera} onCancel={() => { setMode(""); setStatus(""); }} below={lastCard || reading ? <>{lastCard}{reading}</> : null} />
+      {status ? <p className="multi-card-scanner__status" role="status">{status}</p> : null}
       <button type="button" className="multi-card-scanner__done" onClick={() => { setMode(""); setStatus(""); }}>Done scanning</button>
     </Suspense> : null}
+    {mode !== "camera" ? reading : null}
     {mode === "binder" ? <div className="multi-card-scanner__binder">
       <label htmlFor={`${id}-layout`}>Page layout
         <select id={`${id}-layout`} value={layout} disabled={busy} onChange={(event) => setLayout(event.target.value)}>
@@ -102,8 +187,8 @@ export default function MultiCardScanner({ onRows }) {
       {status ? <p className="multi-card-scanner__status" role="status">{status}</p> : null}
     </div> : null}
     {!mode ? <div className="multi-card-scanner__choices">
-      <button type="button" onClick={() => setMode("camera")}><strong>Keep scanning</strong><small>Camera stays open; each card becomes a row</small></button>
-      <button type="button" onClick={() => setMode("binder")}><strong>Binder page</strong><small>One photo of a page; each pocket becomes a row</small></button>
+      <button type="button" className="multi-card-scanner__start" onClick={() => setMode("camera")}><strong>Start scanning</strong><small>Show your cards to the camera one at a time</small></button>
+      <button type="button" onClick={() => setMode("binder")}><strong>Scan a binder page</strong><small>One photo reads every card on the page</small></button>
     </div> : null}
   </section>;
 }

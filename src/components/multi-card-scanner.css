@@ -12,3 +12,21 @@
 .multi-card-scanner__pick { position: relative; display: inline-flex; align-items: center; justify-content: center; flex: 1 1 150px; min-height: 48px; padding: 0 14px; border-radius: 12px; background: var(--action-primary); color: var(--on-primary); font-weight: 700; cursor: pointer; overflow: hidden; }
 .multi-card-scanner__pick input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .app .multi-card-scanner__done { min-height: 48px; border: 1px solid var(--border-strong); border-radius: 12px; background: transparent; color: var(--text-primary); font-weight: 600; cursor: pointer; }
+
+/* Nov 25 2026: the gold button's text inherits its dark color instead of the global light strong/small color. */
+.app .multi-card-scanner__choices button strong, .app .multi-card-scanner__choices button small { color: inherit; }
+.app .multi-card-scanner__choices button small { opacity: 0.85; }
+.app .multi-card-scanner__choices button.multi-card-scanner__start { background: var(--brand-primary, #E8C86B); color: var(--text-on-brand, #1a0f12); border-color: transparent; }
+
+/* Nov 25 2026: the last card scanned, right under the camera, with Undo. */
+.multi-card-scanner__last { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 14px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface-secondary); }
+.multi-card-scanner__last > div { display: grid; gap: 2px; min-width: 0; }
+.multi-card-scanner__last small { font-size: 13px; color: var(--text-secondary); }
+.multi-card-scanner__last strong { font-size: 16px; color: var(--text-primary); overflow-wrap: anywhere; }
+.multi-card-scanner__last span { font-size: 14px; line-height: 1.4; color: var(--text-primary); overflow-wrap: anywhere; }
+.app .multi-card-scanner__last button { min-height: 44px; min-width: 64px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; color: var(--text-primary); font-weight: 700; cursor: pointer; }
+.multi-card-scanner__pending { margin: 0; font-size: 14px; font-weight: 600; color: var(--text-secondary); }
+.multi-card-scanner__last-actions { display: grid; gap: 8px; }
+/* Quiet buttons: gold is kept for the main action. */
+html:root body .app.app-command-shell[data-theme] .multi-card-scanner__last button { min-height: 44px; min-width: 96px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: 999px; background: transparent !important; background-image: none !important; color: var(--text-primary) !important; font-weight: 700; box-shadow: none; }
+.multi-card-scanner__price { font-weight: 800; color: var(--c3-gold-ink, var(--text-primary)); }
