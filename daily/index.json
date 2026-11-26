@@ -22,12 +22,13 @@
   "2026-11-21",
   "2026-11-22",
   "2026-11-23",
-  "2026-11-24"
+  "2026-11-24",
+  "2026-11-25"
  ],
  "groups": [
   {
    "groupId": 604,
-   "products": 13
+   "products": 15
   },
   {
    "groupId": 605,
@@ -35,7 +36,7 @@
   },
   {
    "groupId": 630,
-   "products": 14
+   "products": 15
   },
   {
    "groupId": 635,
@@ -43,7 +44,7 @@
   },
   {
    "groupId": 648,
-   "products": 4
+   "products": 5
   },
   {
    "groupId": 1367,
@@ -55,7 +56,7 @@
   },
   {
    "groupId": 1369,
-   "products": 15
+   "products": 16
   },
   {
    "groupId": 1370,
@@ -71,7 +72,7 @@
   },
   {
    "groupId": 1374,
-   "products": 47
+   "products": 48
   },
   {
    "groupId": 1375,
@@ -87,11 +88,11 @@
   },
   {
    "groupId": 1378,
-   "products": 12
+   "products": 13
   },
   {
    "groupId": 1379,
-   "products": 26
+   "products": 32
   },
   {
    "groupId": 1380,
@@ -111,7 +112,7 @@
   },
   {
    "groupId": 1384,
-   "products": 27
+   "products": 29
   },
   {
    "groupId": 1385,
@@ -123,7 +124,7 @@
   },
   {
    "groupId": 1387,
-   "products": 8
+   "products": 9
   },
   {
    "groupId": 1389,
@@ -163,7 +164,7 @@
   },
   {
    "groupId": 1398,
-   "products": 27
+   "products": 28
   },
   {
    "groupId": 1399,
@@ -187,7 +188,7 @@
   },
   {
    "groupId": 1404,
-   "products": 36
+   "products": 38
   },
   {
    "groupId": 1405,
@@ -195,7 +196,7 @@
   },
   {
    "groupId": 1406,
-   "products": 15
+   "products": 17
   },
   {
    "groupId": 1407,
@@ -223,7 +224,7 @@
   },
   {
    "groupId": 1413,
-   "products": 9
+   "products": 12
   },
   {
    "groupId": 1414,
@@ -235,11 +236,11 @@
   },
   {
    "groupId": 1416,
-   "products": 13
+   "products": 14
   },
   {
    "groupId": 1417,
-   "products": 23
+   "products": 24
   },
   {
    "groupId": 1418,
@@ -271,7 +272,7 @@
   },
   {
    "groupId": 1428,
-   "products": 39
+   "products": 40
   },
   {
    "groupId": 1429,
@@ -299,7 +300,7 @@
   },
   {
    "groupId": 1440,
-   "products": 20
+   "products": 21
   },
   {
    "groupId": 1441,
@@ -311,7 +312,7 @@
   },
   {
    "groupId": 1444,
-   "products": 37
+   "products": 38
   },
   {
    "groupId": 1446,
@@ -319,11 +320,11 @@
   },
   {
    "groupId": 1451,
-   "products": 27
+   "products": 28
   },
   {
    "groupId": 1452,
-   "products": 5
+   "products": 6
   },
   {
    "groupId": 1453,
@@ -371,7 +372,7 @@
   },
   {
    "groupId": 1533,
-   "products": 1
+   "products": 2
   },
   {
    "groupId": 1534,
@@ -379,7 +380,7 @@
   },
   {
    "groupId": 1539,
-   "products": 64
+   "products": 68
   },
   {
    "groupId": 1540,
@@ -411,7 +412,7 @@
   },
   {
    "groupId": 1780,
-   "products": 10
+   "products": 11
   },
   {
    "groupId": 1796,
@@ -423,7 +424,7 @@
   },
   {
    "groupId": 1840,
-   "products": 21
+   "products": 23
   },
   {
    "groupId": 1842,
@@ -439,7 +440,7 @@
   },
   {
    "groupId": 1863,
-   "products": 12
+   "products": 13
   },
   {
    "groupId": 1919,
@@ -471,11 +472,11 @@
   },
   {
    "groupId": 2175,
-   "products": 1
+   "products": 2
   },
   {
    "groupId": 2178,
-   "products": 11
+   "products": 13
   },
   {
    "groupId": 2205,
@@ -491,11 +492,11 @@
   },
   {
    "groupId": 2282,
-   "products": 41
+   "products": 43
   },
   {
    "groupId": 2289,
-   "products": 18
+   "products": 19
   },
   {
    "groupId": 2295,
@@ -507,7 +508,7 @@
   },
   {
    "groupId": 2332,
-   "products": 15
+   "products": 16
   },
   {
    "groupId": 2364,
@@ -515,7 +516,7 @@
   },
   {
    "groupId": 2374,
-   "products": 171
+   "products": 173
   },
   {
    "groupId": 2377,
@@ -539,7 +540,7 @@
   },
   {
    "groupId": 2534,
-   "products": 13
+   "products": 14
   },
   {
    "groupId": 2545,
@@ -587,7 +588,7 @@
   },
   {
    "groupId": 2807,
-   "products": 12
+   "products": 13
   },
   {
    "groupId": 2848,
@@ -651,7 +652,7 @@
   },
   {
    "groupId": 17688,
-   "products": 24
+   "products": 25
   },
   {
    "groupId": 17689,
@@ -787,7 +788,7 @@
   },
   {
    "groupId": 24864,
-   "products": 21
+   "products": 22
   },
   {
    "groupId": 24938,
@@ -798,6 +799,6 @@
    "products": 17
   }
  ],
- "builtAt": "2026-11-25T04:29:23.384Z",
+ "builtAt": "2026-11-26T03:42:58.386Z",
  "source": "TCGCSV daily TCGplayer price archives"
 }
