@@ -46,9 +46,11 @@ jobs:
           scripts/test-debounced-save.mjs
           scripts/test-age-confirmation.mjs
           scripts/test-restock-map.mjs
+          scripts/test-slippy-map.mjs
           scripts/test-card-photo-text.mjs
           scripts/test-card-name-snap.mjs
           scripts/test-catalog-result-identity.mjs
+          scripts/test-card-scan-rows.mjs
           scripts/test-card-printings.mjs
           scripts/test-slab-label.mjs
           scripts/test-listing-screenshot.mjs
@@ -81,9 +83,9 @@ jobs:
           node --no-warnings scripts/test-shared-device-signout.mjs
           node --no-warnings scripts/test-community-server.mjs
           node --no-warnings scripts/test-restock-alerts.mjs
-          node --no-warnings --test scripts/test-stock-source-intake.mjs
-          node --no-warnings --test scripts/test-stock-intelligence.mjs
           node --no-warnings --test scripts/test-stock-alert-preferences.mjs
+          node --no-warnings --test scripts/test-stock-intelligence.mjs
+          node --no-warnings --test scripts/test-stock-source-intake.mjs
           node --no-warnings scripts/test-easy-nationwide-ui.mjs
           node --no-warnings scripts/test-catalog-barcode-evidence.mjs
           node --no-warnings scripts/test-market-search-presentation.mjs
@@ -139,7 +141,6 @@ jobs:
         env:
           APP_URL: http://127.0.0.1:5217
           SHARD: ${{ matrix.shard }}
-          BROWSER_FAIL_FAST: '1'
         run: node scripts/run-browser-suite.mjs
       - name: App server log
         if: failure()
