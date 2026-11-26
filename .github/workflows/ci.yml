@@ -144,3 +144,38 @@ jobs:
       - name: App server log
         if: failure()
         run: tail -n 200 vite.log
+
+  stock-preferences-db:
+    name: Isolated stock opt-in database / RLS
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:16.6
+        env:
+          POSTGRES_PASSWORD: ci_fixture_password
+          POSTGRES_DB: stock_pref_staging
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d stock_pref_staging"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Validate migration, private defaults and session-scoped RLS
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: 5432
+          PGUSER: postgres
+          PGPASSWORD: ci_fixture_password
+          PGDATABASE: stock_pref_staging
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql-client
+          fi
+          psql -X -v ON_ERROR_STOP=1 -f scripts/qa/stock_preferences_fixture.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/20261124221500_stock_alert_preferences.sql
+          psql -X -v ON_ERROR_STOP=1 -f scripts/qa/stock_preferences_rls.sql
