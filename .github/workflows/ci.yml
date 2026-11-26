@@ -63,6 +63,7 @@ jobs:
           scripts/test-card-camera-assist.mjs
           scripts/test-market-history.mjs
           scripts/test-market-history-points.mjs
+          scripts/test-catalog-single-card-rule.mjs
       - name: Domain suites (plain node)
         run: |
           node --no-warnings scripts/test-empty-states.mjs
