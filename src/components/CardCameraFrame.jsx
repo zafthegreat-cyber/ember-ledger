@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import "./card-camera-frame.css";
-import { frameToVideoRect } from "../utils/cardCameraFrame.mjs";
+import { frameToVideoRect, videoToBoxRect } from "../utils/cardCameraFrame.mjs";
 import { createNextCardWatcher, createSteadyTracker, frameDetail } from "../utils/scannerExtras.mjs";
-import { assessCardView, CAMERA_ASSIST, captureRect, cardThumb, createSharpnessGate, edgeSharpness, padRect, sameCardBox, toGray } from "../utils/cardCameraAssist.mjs";
+import { assessCardView, CAMERA_ASSIST, captureRect, cardThumb, coachTip, createFocusCoach, createSharpnessGate, edgeSharpness, padRect, sameCardBox, sharpestOf, textStripRows, toGray } from "../utils/cardCameraAssist.mjs";
 
 // Live camera with a card-shaped frame (Nov 17 2026). Lining the card up in the
 // frame gives the card reader an upright, full-size card, which is what makes
@@ -23,6 +23,9 @@ import { assessCardView, CAMERA_ASSIST, captureRect, cardThumb, createSharpnessG
 // Nov 25 2026 (owner: "continuous scanner improvement"): continuous shows "Got it.
 // Show the next card." as soon as the picture is taken; a new retryKey lets the same
 // card be taken once more after it could not be read.
+// Nov 26 2026 (owner: "keep improving the scanner"): each picture is the sharpest of
+// three taken in a row; an outline shows the card the camera has found; and a view
+// that stays blurry says why (too dark, too close) and points at the button that helps.
 
 const AUTO_KEY = "code3.scanner.autoCapture.v1";
 const SAMPLE = 32;
@@ -57,8 +60,14 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false, con
   const torchRef = useRef(false);
   useEffect(() => { torchRef.current = torch; }, [torch]);
   useEffect(() => { autoRef.current = auto; }, [auto]);
+  const torchSupportedRef = useRef(false);
+  useEffect(() => { torchSupportedRef.current = torchSupported; }, [torchSupported]);
+  const zoomRef = useRef({ available: false, zoomed: false });
+  useEffect(() => { zoomRef.current = { available: Boolean(zoomRange), zoomed }; }, [zoomRange, zoomed]);
   const [steady, setSteady] = useState(0);
   const [tip, setTip] = useState("");
+  const [suggest, setSuggest] = useState(""); // the button the tip points at: "torch", "zoom" or ""
+  const [found, setFound] = useState(null); // where the found card shows on screen: { x, y, width, height, ready }
   const [waiting, setWaiting] = useState(false); // a picture was taken; waiting for the next card
   const retryRef = useRef(retryKey);
   useEffect(() => { retryRef.current = retryKey; }, [retryKey]);
@@ -131,7 +140,22 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false, con
     });
   }
 
+  // The found card (fractions of the padded view) as a box on screen, for the outline.
+  function outlineOf(padded, card, isReady) {
+    const video = videoRef.current, box = boxRef.current;
+    if (!video?.videoWidth || !box || !padded || !card) return null;
+    const boxRect = box.getBoundingClientRect();
+    const shown = videoToBoxRect({
+      boxWidth: boxRect.width, boxHeight: boxRect.height, videoWidth: video.videoWidth, videoHeight: video.videoHeight,
+      rect: { x: padded.x + card.x * padded.width, y: padded.y + card.y * padded.height, width: card.w * padded.width, height: card.h * padded.height },
+    });
+    return { x: Math.round(shown.x), y: Math.round(shown.y), width: Math.round(shown.width), height: Math.round(shown.height), ready: Boolean(isReady) };
+  }
+
   // useCard: cut to the card found in the last look (manual and auto), else the frame.
+  // Nov 26 2026: a few pictures in a row, and the one whose name and number are
+  // sharpest is kept. A hand never holds quite still, and a single video frame
+  // caught mid-wobble is a usual reason a lined-up card cannot be read.
   async function capture({ useCard = true, sameCardGuard = false } = {}) {
     const video = videoRef.current;
     const frame = frameArea();
@@ -141,19 +165,34 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false, con
     busyRef.current = true;
     setBusy(true);
     buzz();
+    const shots = [];
     try {
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.round(area.width);
-      canvas.height = Math.round(area.height);
-      canvas.getContext("2d").drawImage(video, area.x, area.y, area.width, area.height, 0, 0, canvas.width, canvas.height);
-      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
-      canvas.width = 0; canvas.height = 0;
+      const width = Math.round(area.width), height = Math.round(area.height);
+      const strips = textStripRows(height, slab);
+      const scores = [];
+      for (let shot = 0; shot < CAMERA_ASSIST.burstFrames; shot += 1) {
+        if (shot) await new Promise((resolve) => { setTimeout(resolve, CAMERA_ASSIST.burstGapMs); });
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext("2d", { willReadFrequently: true });
+        context.drawImage(video, area.x, area.y, area.width, area.height, 0, 0, width, height);
+        shots.push(canvas);
+        let score = 0;
+        try {
+          for (const strip of strips) score += edgeSharpness(toGray(context.getImageData(0, strip.y, width, strip.h).data), width, strip.h);
+        } catch { score = 0; /* A picture that cannot be measured is still a picture. */ }
+        scores.push(score);
+      }
+      const best = shots[Math.max(0, sharpestOf(scores))];
+      const blob = await new Promise((resolve) => best.toBlob(resolve, "image/jpeg", 0.92));
       setCaptureError("");
       if (blob) await onCapture?.(new File([blob], slab ? "slab-scan.jpg" : "card-scan.jpg", { type: "image/jpeg" }), { sameCardGuard });
     } catch {
       // Nov 24 2026: a failed read used to leave the camera stuck on "Reading…" with no word why.
       setCaptureError(`That picture could not be read. Hold the ${slab ? "slab" : "card"} in the frame and try again.`);
     } finally {
+      for (const canvas of shots) { canvas.width = 0; canvas.height = 0; }
       busyRef.current = false;
       setBusy(false);
     }
@@ -169,6 +208,7 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false, con
     if (!ready) return undefined;
     const tracker = createSteadyTracker({ holdFrames: 4, threshold: CAMERA_ASSIST.handShake });
     const sharpness = createSharpnessGate();
+    const coach = createFocusCoach();
     const small = document.createElement("canvas");
     small.width = SAMPLE; small.height = SAMPLE;
     const smallContext = small.getContext("2d", { willReadFrequently: true });
@@ -200,8 +240,13 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false, con
       const stableCard = sameCardBox(view.card, previousCard);
       previousCard = view.card;
       viewRef.current = { padded, card: view.card, ready: view.ready };
-      // With the flashlight on, its own reflection is the usual glare.
-      setTip(view.glare && torchRef.current ? "Glare from the flashlight. Turn it off or tilt the card a little." : view.tip);
+      // The tip says what to fix; a view that stays blurry gets a reason and the button that helps.
+      const advice = coachTip(view, coach.push(view), { torchAvailable: torchSupportedRef.current, torchOn: torchRef.current, zoomAvailable: zoomRef.current.available, zoomed: zoomRef.current.zoomed, slab });
+      setTip(advice.tip);
+      setSuggest(advice.suggest);
+      // The outline follows the card once it is found in the same place twice, and steps aside after a picture.
+      const outline = view.card && stableCard && !waitingForChange ? outlineOf(padded, view.card, view.ready) : null;
+      setFound((current) => (current && outline && current.x === outline.x && current.y === outline.y && current.width === outline.width && current.height === outline.height && current.ready === outline.ready ? current : outline));
       if (!autoRef.current) { setSteady(0); return; }
       smallContext.drawImage(video, frame.x, frame.y, frame.width, frame.height, 0, 0, SAMPLE, SAMPLE);
       const sample = toGray(smallContext.getImageData(0, 0, SAMPLE, SAMPLE).data);
@@ -227,6 +272,7 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false, con
         waitingForChange = true;
         setWaiting(true);
         tracker.reset();
+        coach.reset();
         stillWithoutCard = 0;
         usableStill = 0;
         setSteady(0);
@@ -234,7 +280,7 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false, con
         guardNext = false;
       }
     }, 250);
-    return () => { clearInterval(timer); small.width = 0; look.width = 0; setSteady(0); setTip(""); setWaiting(false); viewRef.current = null; };
+    return () => { clearInterval(timer); small.width = 0; look.width = 0; setSteady(0); setTip(""); setSuggest(""); setFound(null); setWaiting(false); viewRef.current = null; };
   }, [ready, slab]);
 
   async function toggleZoom() {
@@ -273,6 +319,7 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false, con
     <div className="card-camera-frame__view" ref={boxRef}>
       <video ref={videoRef} playsInline muted aria-hidden="true" />
       <div className={`card-camera-frame__guide${steady > 0 ? " is-steadying" : ""}`} ref={frameRef} aria-hidden="true" style={steady > 0 ? { "--steady": steady } : undefined}>{slab ? <span className="card-camera-frame__name">Label here</span> : <><span className="card-camera-frame__name">Name here</span><span className="card-camera-frame__number">Number here</span></>}</div>
+      {found && ready && !error ? <div className={`card-camera-frame__found${found.ready ? " is-ready" : ""}`} aria-hidden="true" style={{ left: found.x, top: found.y, width: found.width, height: found.height }} /> : null}
       {continuous && waiting && auto && ready ? <span className="card-camera-frame__got" aria-hidden="true">✓</span> : null}
       {!ready && !error ? <p className="card-camera-frame__status" role="status">Starting the camera…</p> : null}
       {error ? <p className="card-camera-frame__status" role="alert">{error}</p> : null}
@@ -282,8 +329,8 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false, con
     {status ? <p className="card-camera-frame__auto-status" role="status" aria-live="polite">{status}</p> : null}
     <div className="card-camera-frame__toggles">
       <button type="button" className="card-camera-frame__toggle" aria-pressed={auto} onClick={toggleAuto} disabled={!ready}>{auto ? "Auto-scan: on" : "Auto-scan: off"}</button>
-      {zoomRange ? <button type="button" className="card-camera-frame__toggle" aria-pressed={zoomed} onClick={toggleZoom}>{zoomed ? "Zoom: 2x" : "Zoom: 1x"}</button> : null}
-      {torchSupported ? <button type="button" className="card-camera-frame__toggle" aria-pressed={torch} onClick={toggleTorch}>{torch ? "Flashlight: on" : "Flashlight: off"}</button> : null}
+      {zoomRange ? <button type="button" className={`card-camera-frame__toggle${suggest === "zoom" ? " is-suggested" : ""}`} aria-pressed={zoomed} onClick={toggleZoom}>{zoomed ? "Zoom: 2x" : "Zoom: 1x"}</button> : null}
+      {torchSupported ? <button type="button" className={`card-camera-frame__toggle${suggest === "torch" ? " is-suggested" : ""}`} aria-pressed={torch} onClick={toggleTorch}>{torch ? "Flashlight: on" : "Flashlight: off"}</button> : null}
     </div>
     <div className="card-camera-frame__actions">
       <button type="button" className="card-camera-frame__shutter" onClick={() => capture()} disabled={!ready || busy}>{busy ? "Reading…" : slab ? "Scan this slab" : "Scan this card"}</button>

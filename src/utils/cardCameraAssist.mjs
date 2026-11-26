@@ -22,6 +22,12 @@ export const CAMERA_ASSIST = Object.freeze({
   // Nov 24 2026 (auto-scan too strict in the hand): 2.5K video instead of 4K, and a little hand shake still counts as still.
   handShake: 12, // average brightness change per look (0-255) that still counts as held still; was 6
   minFrameDetail: 24, // brightness spread the frame needs before a no-edges picture is taken (not an empty table)
+  // Nov 26 2026 (owner: "keep improving the scanner"):
+  burstFrames: 3, // pictures taken in a row each time; the sharpest is kept (a hand moves a little even when held still)
+  burstGapMs: 60, // wait between them, about two video frames
+  darkLevel: 70, // a soft view where nine tenths of it is darker than this is a dark room, not a focus problem
+  blurryLooks: 12, // looks (about 3 s) of soft focus before the tip says what to change
+  tooCloseFill: 0.9, // a card taller than this share of the view is closer than most phones can focus
 });
 
 const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
@@ -100,8 +106,91 @@ export function assessCardView(gray, width, height, { sharp = true, slab = false
   // The relative gate alone passes a view that is blurry from the start; the card must also show real detail.
   // Measured inside the outline, so the card's edge against the table does not count as detail.
   const inside = { x: found.x + found.w * 0.1, y: found.y + found.h * 0.1, w: found.w * 0.8, h: found.h * 0.8 };
-  if (!sharp || edgeSharpness(gray, width, height, inside) < CAMERA_ASSIST.cardSharpFloor) return { card: found, tip: "Hold steady while it focuses.", ready: false, usable: true };
+  // soft: the only thing wrong is focus. dark (Nov 26 2026): and the room is why, so the tip can say so.
+  if (!sharp || edgeSharpness(gray, width, height, inside) < CAMERA_ASSIST.cardSharpFloor) return { card: found, soft: true, dark: brightLevel(gray) < CAMERA_ASSIST.darkLevel, tip: "Hold steady while it focuses.", ready: false, usable: true };
   return { card: found, tip: "Hold still…", ready: true, usable: true };
+}
+
+/** The brightness that `share` of the view sits at or below (0-255). A lit card lifts it even on a dark table. */
+export function brightLevel(gray, share = 0.9) {
+  if (!gray?.length) return 0;
+  const histogram = new Uint32Array(256);
+  for (let index = 0; index < gray.length; index += 1) histogram[gray[index]] += 1;
+  const target = gray.length * share;
+  let seen = 0;
+  for (let level = 0; level < 256; level += 1) {
+    seen += histogram[level];
+    if (seen >= target) return level;
+  }
+  return 255;
+}
+
+/**
+ * Counts how long a found, close, upright card has stayed out of focus. After
+ * about three seconds it names what to change: "back" when the card is closer
+ * than a phone can focus, otherwise "light". "" until then, and again as soon
+ * as the view is anything other than soft.
+ */
+export function createFocusCoach({ looks = CAMERA_ASSIST.blurryLooks, tooClose = CAMERA_ASSIST.tooCloseFill } = {}) {
+  let soft = 0;
+  return {
+    push(view) {
+      soft = view?.soft ? soft + 1 : 0;
+      if (soft < looks) return "";
+      return view.card?.h >= tooClose ? "back" : "light";
+    },
+    reset() { soft = 0; },
+  };
+}
+
+/**
+ * The tip shown under the camera, in plain words, and which button it points at
+ * ("torch", "zoom" or ""). stuck comes from createFocusCoach.
+ */
+export function coachTip(view, stuck = "", { torchAvailable = false, torchOn = false, zoomAvailable = false, zoomed = false, slab = false } = {}) {
+  const what = slab ? "slab" : "card";
+  if (!view) return { tip: "", suggest: "" };
+  // With the flashlight on, its own reflection is the usual glare.
+  if (view.glare && torchOn) return { tip: `Glare from the flashlight. Turn it off or tilt the ${what} a little.`, suggest: "torch" };
+  if (view.soft && view.dark) {
+    return torchAvailable && !torchOn
+      ? { tip: `It's too dark to read the ${what}. Turn on the flashlight.`, suggest: "torch" }
+      : { tip: `It's too dark to read the ${what}. Move to better light.`, suggest: "" };
+  }
+  if (view.soft && stuck === "back") {
+    return zoomAvailable && !zoomed
+      ? { tip: "Still blurry. Move back a little, then tap Zoom.", suggest: "zoom" }
+      : { tip: "Still blurry. Move back a little so the camera can focus.", suggest: "" };
+  }
+  if (view.soft && stuck === "light") {
+    return torchAvailable && !torchOn
+      ? { tip: "Still blurry. Try the flashlight or brighter light.", suggest: "torch" }
+      : { tip: "Still blurry. Try brighter light.", suggest: "" };
+  }
+  return { tip: view.tip || "", suggest: "" };
+}
+
+/**
+ * Pixel rows of a card picture the reader needs sharp: the name strip and the
+ * number strip (a slab: its label). Used to compare pictures taken in a row.
+ */
+export function textStripRows(height, slab = false) {
+  const rows = Math.max(0, Math.floor(height));
+  if (rows < 8) return [];
+  const strip = (from, share) => {
+    const y = Math.min(rows - 3, Math.max(0, Math.floor(rows * from)));
+    return { y, h: Math.max(3, Math.min(rows - y, Math.round(rows * share))) };
+  };
+  return slab ? [strip(0, 0.25)] : [strip(0, 0.16), strip(0.87, 0.13)];
+}
+
+/** Which of several pictures is sharpest (index of the highest score; the first wins a tie). -1 for none. */
+export function sharpestOf(scores = []) {
+  let best = -1;
+  for (let index = 0; index < scores.length; index += 1) {
+    if (Number.isFinite(scores[index]) && (best < 0 || scores[index] > scores[best])) best = index;
+  }
+  return best;
 }
 
 /**

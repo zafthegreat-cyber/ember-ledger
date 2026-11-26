@@ -92,7 +92,8 @@
     "test-private-beta-journeys.cjs",
     "test-scout-store-presentation.cjs",
     "test-semantic-theme.cjs",
-    "test-stock-screenshot-import-browser.cjs"
+    "test-stock-screenshot-import-browser.cjs",
+    "test-scan-picture-quality-browser.cjs"
   ],
   "knownFailing": []
 }

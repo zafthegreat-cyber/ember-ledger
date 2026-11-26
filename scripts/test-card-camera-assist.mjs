@@ -93,3 +93,76 @@ test("the same card in the same place is recognised between looks", () => {
   assert.equal(sameCardBox(box, { x: 0.2, y: 0.08, w: 0.8, h: 0.84 }), false);
   assert.equal(sameCardBox(box, null), false);
 });
+
+// Nov 26 2026 (owner: "keep improving the scanner").
+test("a view that stays blurry says why: too dark, too close, or more light", async () => {
+  const { brightLevel, coachTip, createFocusCoach, CAMERA_ASSIST } = await import("../src/utils/cardCameraAssist.mjs");
+  // A lit card on a dark table is bright where it counts; a dim room is not.
+  assert.ok(brightLevel(scene()) > 140);
+  const dimRoom = new Uint8Array(W * H).fill(14);
+  for (let row = Math.round(0.08 * H); row < Math.round(0.92 * H); row += 1) for (let col = Math.round(0.1 * W); col < Math.round(0.9 * W); col += 1) dimRoom[row * W + col] = 56;
+  assert.ok(brightLevel(dimRoom) < CAMERA_ASSIST.darkLevel);
+  const dark = assessCardView(dimRoom, W, H);
+  assert.equal(dark.soft, true);
+  assert.equal(dark.dark, true);
+  assert.equal(dark.usable, true, "a dark card held still is still taken in the end");
+  assert.equal(coachTip(dark).tip, "It's too dark to read the card. Move to better light.");
+  assert.deepEqual(coachTip(dark, "", { torchAvailable: true }), { tip: "It's too dark to read the card. Turn on the flashlight.", suggest: "torch" });
+  assert.equal(coachTip(dark, "", { torchAvailable: true, torchOn: true }).suggest, "", "the flashlight is already on");
+  // Soft focus in good light: the usual tip first, advice after about three seconds.
+  const soft = assessCardView(scene({ blur: true }), W, H);
+  assert.equal(soft.soft, true);
+  assert.equal(soft.dark, false);
+  const coach = createFocusCoach();
+  for (let look = 1; look < CAMERA_ASSIST.blurryLooks; look += 1) assert.equal(coach.push(soft), "", `look ${look}`);
+  assert.equal(coachTip(soft, "").tip, "Hold steady while it focuses.");
+  assert.equal(coach.push(soft), "light");
+  assert.equal(coachTip(soft, "light").tip, "Still blurry. Try brighter light.");
+  assert.deepEqual(coachTip(soft, "light", { torchAvailable: true }), { tip: "Still blurry. Try the flashlight or brighter light.", suggest: "torch" });
+  // A sharp look in between starts the count again.
+  assert.equal(coach.push(assessCardView(scene(), W, H)), "");
+  assert.equal(coach.push(soft), "");
+  // A card filling the whole view is closer than a phone can focus.
+  const close = { ...soft, card: { ...soft.card, h: 0.95 } };
+  const closeCoach = createFocusCoach({ looks: 2 });
+  closeCoach.push(close);
+  assert.equal(closeCoach.push(close), "back");
+  assert.deepEqual(coachTip(close, "back", { zoomAvailable: true }), { tip: "Still blurry. Move back a little, then tap Zoom.", suggest: "zoom" });
+  assert.equal(coachTip(close, "back", { zoomAvailable: true, zoomed: true }).tip, "Still blurry. Move back a little so the camera can focus.");
+  closeCoach.reset();
+  assert.equal(closeCoach.push(close), "");
+  // Other tips pass through untouched; flashlight glare names the flashlight.
+  const ready = assessCardView(scene(), W, H);
+  assert.deepEqual(coachTip(ready, "light"), { tip: ready.tip, suggest: "" });
+  const glare = assessCardView(scene({ glare: 0.2 }), W, H);
+  assert.match(coachTip(glare).tip, /^Glare on the name or number/);
+  assert.equal(coachTip(glare, "", { torchAvailable: true, torchOn: true, slab: true }).tip, "Glare from the flashlight. Turn it off or tilt the slab a little.");
+  assert.deepEqual(coachTip(null), { tip: "", suggest: "" });
+});
+
+test("the sharpest of the pictures taken in a row is the one kept", async () => {
+  const { sharpestOf, textStripRows } = await import("../src/utils/cardCameraAssist.mjs");
+  assert.equal(sharpestOf([4.1, 9.6, 7]), 1);
+  assert.equal(sharpestOf([5, 5, 5]), 0, "the first wins a tie");
+  assert.equal(sharpestOf([Number.NaN, 2]), 1);
+  assert.equal(sharpestOf([]), -1);
+  // The strips compared are the ones the reader needs: name at the top, number at the bottom.
+  assert.deepEqual(textStripRows(1200), [{ y: 0, h: 192 }, { y: 1044, h: 156 }]);
+  assert.deepEqual(textStripRows(1200, true), [{ y: 0, h: 300 }], "a slab: its label");
+  for (const height of [9, 40, 333, 2001]) for (const strip of textStripRows(height)) assert.ok(strip.y >= 0 && strip.h >= 3 && strip.y + strip.h <= height, `strip inside a ${height}px picture`);
+  assert.deepEqual(textStripRows(4), []);
+  // The measure itself tells a sharp name strip from a smeared one.
+  const sharp = scene(), smeared = scene({ blur: true });
+  const [name] = textStripRows(H);
+  const strip = (gray) => edgeSharpness(gray.subarray(Math.round(0.08 * H) * W, (Math.round(0.08 * H) + name.h) * W), W, name.h);
+  assert.equal(sharpestOf([strip(smeared), strip(sharp), strip(smeared)]), 1);
+});
+
+test("the outline lands on the card: screen box to video and back", async () => {
+  const { frameToVideoRect, videoToBoxRect } = await import("../src/utils/cardCameraFrame.mjs");
+  for (const size of [{ boxWidth: 300, boxHeight: 400, videoWidth: 1440, videoHeight: 2560 }, { boxWidth: 358, boxHeight: 477, videoWidth: 1920, videoHeight: 1080 }, { boxWidth: 600, boxHeight: 800, videoWidth: 1080, videoHeight: 1440 }]) {
+    const frame = { x: size.boxWidth * 0.22, y: size.boxHeight * 0.13, width: size.boxWidth * 0.56, height: size.boxHeight * 0.74 };
+    const back = videoToBoxRect({ ...size, rect: frameToVideoRect({ ...size, frame }) });
+    for (const key of ["x", "y", "width", "height"]) assert.ok(Math.abs(back[key] - frame[key]) < 0.001, `${key} for a ${size.videoWidth}x${size.videoHeight} camera`);
+  }
+});
