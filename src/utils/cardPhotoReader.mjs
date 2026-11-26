@@ -395,8 +395,6 @@ export async function prepareCardCrops(file, { framed = false, staged = false } 
       entries.push(
         { key: "numberLeft0", psm: "7", whitelist: NUMBER_CHARACTERS, stage: 1, make: () => crop(upright, 0, cornerTop, cw * 0.5, cornerHeight, S.cornerWidth, true) },
         { key: "numberRight0", psm: "7", whitelist: NUMBER_CHARACTERS, stage: 1, make: () => crop(upright, cw * 0.5, cornerTop, cw * 0.5, cornerHeight, S.cornerWidth, true) },
-        { key: "numberLeftInk0", psm: "7", whitelist: NUMBER_CHARACTERS, stage: 3, make: () => crop(upright, 0, cornerTop, cw * 0.5, cornerHeight, S.cornerWidth, "ink") },
-        { key: "numberRightInk0", psm: "7", whitelist: NUMBER_CHARACTERS, stage: 3, make: () => crop(upright, cw * 0.5, cornerTop, cw * 0.5, cornerHeight, S.cornerWidth, "ink") },
         // The bottom strip as free text: the copyright year and part of a hidden number are clues.
         { key: "numberInk0", psm: "11", stage: 3, make: () => crop(upright, 0, ch * numTop, cw, ch * (numBottom - numTop), S.stripWidth, "ink") },
         // The bottom band as lines of text, cut patch by patch: on foil cards this is
@@ -417,7 +415,6 @@ export async function prepareCardCrops(file, { framed = false, staged = false } 
           { key: "numberLeftFlip", psm: "7", whitelist: NUMBER_CHARACTERS, stage: 3, make: () => crop(flipped(), 0, cornerTop, cw * 0.5, cornerHeight, S.cornerWidth, true) },
           { key: "numberRightFlip", psm: "7", whitelist: NUMBER_CHARACTERS, stage: 3, make: () => crop(flipped(), cw * 0.5, cornerTop, cw * 0.5, cornerHeight, S.cornerWidth, true) },
           { key: "nameInkFlip", psm: "6", stage: 3, make: () => crop(flipped(), 0, ch * nameTop, cw, ch * (nameBottom - nameTop), S.stripWidth, "ink") },
-          { key: "numberInkFlip", psm: "11", stage: 3, make: () => crop(flipped(), 0, ch * numTop, cw, ch * (numBottom - numTop), S.stripWidth, "ink") },
           // Stage 4 runs only for a card that turned out to be upside down, or that still
           // has no name: the whole card and its bottom band the right way up, for the
           // year, HP, attack names and number pieces that tell printings apart.
@@ -434,10 +431,10 @@ export async function prepareCardCrops(file, { framed = false, staged = false } 
   }
   image.close?.();
   let released = false;
-  const encode = async (stage) => {
+  const encode = async (stage, only = null) => {
     const images = [];
     for (const entry of entries) {
-      if (entry.stage !== stage || released) continue;
+      if (entry.stage !== stage || released || (only && !only(entry.key))) continue;
       const canvas = entry.make();
       try {
         if (canvas.width) images.push({ key: entry.key, psm: entry.psm, ...(entry.whitelist ? { whitelist: entry.whitelist } : {}), ...(entry.threshold ? { threshold: entry.threshold } : {}), image: await toPng(canvas) });
@@ -446,7 +443,7 @@ export async function prepareCardCrops(file, { framed = false, staged = false } 
     return images;
   };
   const release = () => { released = true; for (const canvas of canvases) { canvas.width = 0; canvas.height = 0; } };
-  const lastTry = () => encode(3);
+  const lastTry = (only = null) => encode(3, only);
   const flipTry = () => encode(4);
   const meta = { foundCard: Boolean(found) || framed || Boolean(jam), sideways: Boolean(found?.sideways), partial: Boolean(jam) };
   if (!staged) {
@@ -547,12 +544,17 @@ export async function readCardPhoto(file, { signal, onProgress, timeoutMs = read
       let lookedAgain = false;
       if (nameIndex && prepared.lastTry && (!nameKnown() || !parsed.number)) {
         if (stopped) throw fail("cancelled");
-        const last = await prepared.lastTry();
+        // Nov 26 2026: a name that two reads already agree on is settled; only the number
+        // is missing, so only the number reads are made (and the bottom band turned
+        // around, where a number sometimes reads upside down). Everything else in the
+        // last look is for finding a name, and costs about two seconds a card.
+        const settledName = nameKnown() && trusted(parsed.name) && (parsed.nameAgreement || 0) >= 2;
+        const last = await prepared.lastTry(settledName ? (key) => /^number(?:Sharp|Lines)/.test(key) || key === "nameFlip" : null);
         if (stopped) throw fail("cancelled");
         if (last.length) {
           await read(last, "Taking one more look", 0.9, 0.1);
           lookedAgain = true;
-          const numberTexts = [byKey.numberLeft0, byKey.numberRight0, byKey.number0, byKey.number1, byKey.numberSharp0, byKey.numberSharp1, byKey.numberLeftInk0, byKey.numberRightInk0, byKey.numberInk0, byKey.numberLines0];
+          const numberTexts = [byKey.numberLeft0, byKey.numberRight0, byKey.number0, byKey.number1, byKey.numberSharp0, byKey.numberSharp1, byKey.numberInk0, byKey.numberLines0];
           const everyNumber = numberTexts.filter(Boolean).join("\n");
           // Nov 26 2026: every upright read of the name is weighed together, so the name
           // that several reads agree on wins over one stray word read from the pattern
@@ -567,8 +569,8 @@ export async function readCardPhoto(file, { signal, onProgress, timeoutMs = read
           else if (!parsed.number && together.number && together.certainty !== "name-only") parsed = withEveryNumber();
         }
       }
-      // Stage 4: the card is upside down, or still has no name. Read it turned around for clues.
-      if (nameIndex && lookedAgain && prepared.flipTry && !prepared.partial && (upsideDown || !nameKnown())) {
+      // Stage 4: the card is upside down. Read it turned around for its clues.
+      if (nameIndex && lookedAgain && prepared.flipTry && !prepared.partial && upsideDown) {
         if (stopped) throw fail("cancelled");
         const turned = await prepared.flipTry();
         if (stopped) throw fail("cancelled");
@@ -585,6 +587,7 @@ export async function readCardPhoto(file, { signal, onProgress, timeoutMs = read
         nameStripText: textOf((key) => /^name/.test(key) && isTurned(key) === turned),
         numberStripText: textOf((key) => /^number/.test(key) && isTurned(key) === turned),
         turnedText: textOf((key) => /^name/.test(key) && isTurned(key) !== turned),
+        bodyText: textOf((key) => !/^name/.test(key) && isTurned(key) === turned),
         readName: nameKnown() ? parsed.name : "",
       });
       let clues = cluesFor(upsideDown);
@@ -600,9 +603,12 @@ export async function readCardPhoto(file, { signal, onProgress, timeoutMs = read
       let nameSource = "name-bar";
       if (nameIndex && clues.namesInText.length && (prepared.partial || !nameKnown())) {
         const strips = textOf((key) => /^name/.test(key) && isTurned(key) === upsideDown).toLowerCase();
+        // A name bar that already holds the whole name and more ("Ethan's Pikachu") is the fuller name: kept.
+        const lettersIn = (value) => String(value || "").toLowerCase().replace(/[^a-zà-ž]/g, "");
         const fromText = clues.namesInText.find((candidate) => {
           const first = candidate.split(" ")[0].toLowerCase();
-          return prepared.partial || (first.length >= 5 && strips.includes(first));
+          if (prepared.partial) return true;
+          return first.length >= 5 && strips.includes(first) && !lettersIn(parsed.name).includes(lettersIn(candidate));
         });
         if (fromText) {
           const numberKept = parsed.certainty === "name-and-number" || parsed.certainty === "number-only" ? parsed.number : "";

@@ -158,8 +158,10 @@ export function rankCardNames(candidateLists = []) {
  * nameStripText is what was read from the top of the card: a bare "70" or "130" there is the HP.
  * numberStripText is what was read from the bottom of the card. turnedText is what was read with
  * the card turned around: a number in it is upside down, so it is turned back ("861/821" is 128/198).
+ * bodyText, when given, is where names are looked for: the card's text without its name bar, so a
+ * stray word read from the name bar cannot vouch for itself.
  */
-export function findCardClues(text = "", { nameIndex = null, nameStripText = "", numberStripText = "", turnedText = "", readName = "" } = {}) {
+export function findCardClues(text = "", { nameIndex = null, nameStripText = "", numberStripText = "", turnedText = "", bodyText = null, readName = "" } = {}) {
   const body = clean(text);
   const years = new Set();
   const addYears = (first, second) => {
@@ -229,7 +231,7 @@ export function findCardClues(text = "", { nameIndex = null, nameStripText = "",
   // Known card names anywhere on the card ("...except any Abomasnow"), for when the name bar is unreadable.
   const namesInText = [];
   if (nameIndex) {
-    const words = body.replace(/[^A-Za-zÀ-ž'’ \n-]/g, " ").split(/\s+/).map((word) => word.replace(/^-+|-+$/g, "")).filter(Boolean);
+    const words = (bodyText === null ? body : clean(bodyText)).replace(/[^A-Za-zÀ-ž'’ \n-]/g, " ").split(/\s+/).map((word) => word.replace(/^-+|-+$/g, "")).filter(Boolean);
     const counts = new Map();
     const skip = new Set([evolvesFrom.toLowerCase(), String(readName || "").toLowerCase(), "pokemon", "pokémon"]);
     for (let i = 0; i < words.length; i += 1) {
@@ -243,7 +245,8 @@ export function findCardClues(text = "", { nameIndex = null, nameStripText = "",
         // One name split by a stray space ("Ab OMasnoy" for Abomasnow): the two pieces together are the name.
         else if (snapped && !snapped.includes(" ") && snapped.length >= 8 && words[i].length >= 2 && words[i + 1].length >= 3 && closeWord(snapped, pair.replace(/ /g, ""))) found = snapped;
       }
-      if (!found && /^[A-ZÀ-Ž]/.test(words[i]) && words[i].replace(/[^A-Za-zÀ-ž]/g, "").length >= 5 && isKnownCardName(words[i], nameIndex)) found = words[i];
+      // One word: six letters or more, and not all capitals ("LARRY" read from a border is not the card Larry).
+      if (!found && /^[A-ZÀ-Ž]/.test(words[i]) && !/^[A-ZÀ-Ž'’-]+$/.test(words[i]) && words[i].replace(/[^A-Za-zÀ-ž]/g, "").length >= 6 && isKnownCardName(words[i], nameIndex)) found = words[i];
       if (!found || skip.has(found.toLowerCase())) continue;
       counts.set(found, (counts.get(found) || 0) + 1);
     }
@@ -282,7 +285,8 @@ export function parseCardPhotoText({ nameText = "", numberText = "", fullText = 
   // Nov 26 2026: "Pokémon", "Basic" and "Energy" are printed on every card and are in the
   // catalog's name list (product rows); read alone they are never this card's name.
   const real = (list) => list.filter((name) => !GENERIC_NAME.test(name));
-  let names = rankCardNames([findCardName(nameText), ...extraNameTexts.map((text) => findCardName(text)), findCardName(fullText).slice(0, 4)].map(snapList).map(real));
+  const lists = [findCardName(nameText), ...extraNameTexts.map((text) => findCardName(text)), findCardName(fullText).slice(0, 4)].map(snapList).map(real);
+  let names = rankCardNames(lists);
   if (nameIndex) {
     const known = names.findIndex((name) => isKnownCardName(name, nameIndex));
     if (known > 0) names = [names[known], ...names.slice(0, known), ...names.slice(known + 1)];
@@ -299,6 +303,9 @@ export function parseCardPhotoText({ nameText = "", numberText = "", fullText = 
   for (const number of numbers.slice(0, 3)) add("card-number", number.value, "Card number");
   for (const name of names.slice(0, 3)) add("text", name, "Card name");
   const name = names[0] || "";
+  const nameKey = (value) => String(value).toLowerCase().replace(/[^a-z0-9à-ž]/g, "");
+  // How many separate reads gave this name: two agreeing reads make it settled.
+  const nameAgreement = name ? lists.filter((list) => list.some((item) => nameKey(item) === nameKey(name))).length : 0;
   const number = numbers[0]?.value || "";
   const query = squash([name, number].filter(Boolean).join(" ")).slice(0, CARD_PHOTO_LIMITS.maxQueryLength);
   // Nov 24 2026: when the number strip was read but held no number, a number found
@@ -309,6 +316,7 @@ export function parseCardPhotoText({ nameText = "", numberText = "", fullText = 
   return {
     query,
     name,
+    nameAgreement,
     number,
     suggestions: suggestions.slice(0, 6),
     certainty: found === 2 ? "name-and-number" : number && !numberIsGuess ? "number-only" : name ? "name-only" : number ? "number-only" : "none",

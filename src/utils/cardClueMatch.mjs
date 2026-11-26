@@ -118,11 +118,16 @@ const VARIANT_SET = /\(shadowless\)|shadowless|1st edition/i;
  *               an attack name or a number piece to agree, because a card's text also names other cards.
  *   candidates  catalog rows (mapped or raw) for those names
  *   factsById   Map of catalog id -> cardFactsFromDetails()
- * Returns { card, others, why, choices, nameFromText }. card is null when no printing
+ * Returns { card, sure, others, why, choices, nameFromText }. card is null when no printing
  * stands out; choices then lists up to four printings that fit equally well.
+ * sure is true when a piece of the number agrees, or two different kinds of clue do.
+ * A pick resting on one kind alone (only the year, say) is right when the catalog has
+ * every printing of the card, and the catalog does not: it is offered, not filed.
+ * A printing the catalog has no facts for (a new set) cannot be ruled out by year, HP
+ * or attacks, so it stays level with the best fit on those and only a number piece separates them.
  */
 export function pickCardByClues({ name = "", otherNames = [], number = "", clues = {}, text = "" } = {}, candidates = [], factsById = new Map()) {
-  const none = { card: null, others: 0, why: [], choices: [], nameFromText: false };
+  const none = { card: null, sure: false, others: 0, why: [], choices: [], nameFromText: false };
   const mainKey = catalogCardNameKey(name);
   const textKeys = new Set((otherNames || []).map((other) => catalogCardNameKey(other)).filter((key) => key && key !== mainKey));
   if (!mainKey && !textKeys.size) return none;
@@ -146,7 +151,7 @@ export function pickCardByClues({ name = "", otherNames = [], number = "", clues
   }
   if (!byPrinting.size) return none;
 
-  const scored = [...byPrinting.values()].map((entry) => {
+  const scoredAll = [...byPrinting.values()].map((entry) => {
     const why = new Set();
     let score = 0, conflicts = 0;
     const numberPoints = numberPieceScore(catalogRowNumber(entry.row), parts, digitRuns);
@@ -168,8 +173,11 @@ export function pickCardByClues({ name = "", otherNames = [], number = "", clues
     }
     const attackHits = (facts?.attacks || []).filter((attack) => attackIsInText(attack, textLetters, textWords)).length;
     if (attackHits) { score += Math.min(2, attackHits) * 3; why.add("attack"); }
-    return { ...entry, score, conflicts, why };
-  }).filter((entry) => !entry.fromText || ((entry.why.has("attack") || entry.why.has("number")) && entry.score >= 5));
+    const blind = !facts || (!facts.year && !facts.hp && !(facts.attacks || []).length);
+    return { ...entry, score, conflicts, why, numberPoints, blind };
+  });
+  const bestOther = Math.max(0, ...scoredAll.filter((entry) => !entry.blind && !entry.fromText).map((entry) => entry.score - entry.numberPoints));
+  const scored = scoredAll.map((entry) => (entry.blind && !entry.fromText && bestOther > 0 ? { ...entry, score: entry.numberPoints + bestOther } : entry)).filter((entry) => !entry.fromText || ((entry.why.has("attack") || entry.why.has("number")) && entry.score >= 5));
   if (!scored.length) return none;
 
   const top = Math.max(...scored.map((entry) => entry.score));
@@ -188,5 +196,6 @@ export function pickCardByClues({ name = "", otherNames = [], number = "", clues
   if (list.length !== 1 || list[0].conflicts) return { ...none, choices: list.length > 1 ? choices : [] };
   const picked = list[0];
   const others = new Set(close.filter((entry) => entry !== picked).map((entry) => catalogPrintingKey(entry.row))).size;
-  return { card: picked.row, others, why: [...picked.why], choices: [], nameFromText: picked.fromText };
+  const sure = picked.why.has("number") || picked.why.size >= 2;
+  return { card: picked.row, sure, others, why: [...picked.why], choices: [], nameFromText: picked.fromText };
 }

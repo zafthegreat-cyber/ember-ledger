@@ -56,6 +56,9 @@ Abomasnow|SWSH06: Chilling Reign|010/198|2021|140|Toughness Boost;Mega Punch
 Abomasnow|SWSH10: Astral Radiance Trainer Gallery|TG01/TG30|2022|140|Toughness Boost;Mega Punch
 Abomasnow|SWSH11: Lost Origin|043/196|2022|140|Icicle Punch;Double-Edge
 Snover|SWSH06: Chilling Reign|009/198|2021|80|Whap Down
+Shuppet|SWSH06: Chilling Reign|062/198|2021|50|Will-O-Wisp
+Shuppet|ME: Ascended Heroes|090/217|2026|60|Spooky Shot
+Shuppet|ME05: Pitch Black|033/084|0|0|
 `.trim().split("\n").map((line, at) => {
   const [name, setName, cardNumber, year, hp, attacks] = line.split("|");
   return { row: { id: `card-${at}`, name, setName, cardNumber }, facts: { year: Number(year), hp: Number(hp), attacks: attacks ? attacks.split(";") : [] } };
@@ -111,6 +114,24 @@ test("the year alone settles a card printed once that year", () => {
   assert.equal(labelOf(golurk), "SWSH06: Chilling Reign 066/198");
   assert.deepEqual(golurk.why, ["year"]);
   assert.equal(labelOf(pick({ name: "Zangoose", clues: { years: [2021], hp: 110 } })), "SWSH06: Chilling Reign 120/198");
+});
+
+test("one kind of clue alone is offered, not filed; two kinds or a number piece are sure", () => {
+  assert.equal(pick({ name: "Golurk", clues: { years: [2021] } }).sure, false, "the year alone: right only if the catalog has every printing");
+  assert.equal(pick({ name: "Zangoose", clues: { years: [2021], hp: 110 } }).sure, true);
+  assert.equal(pick({ name: "Sliggoo", clues: { numberParts: ["73/1"] } }).sure, true);
+  assert.equal(pick({ name: "Golurk", clues: { years: [2021] }, text: "reinforced punch megaton fall" }).sure, true);
+});
+
+test("a printing the catalog knows nothing about cannot be ruled out by year or HP", () => {
+  // Pitch Black's Shuppet has no facts yet. A 2026 Shuppet could be that one or Ascended Heroes'.
+  const unsure = pick({ name: "Shuppet", clues: { years: [2026], hp: 60 } });
+  assert.equal(unsure.card, null);
+  assert.deepEqual(unsure.choices.map((card) => card.cardNumber).sort(), ["033/084", "090/217"]);
+  assert.equal(labelOf(pick({ name: "Shuppet", clues: { years: [2026], hp: 60, numberParts: ["90/217"] } })), "ME: Ascended Heroes 090/217");
+  assert.equal(labelOf(pick({ name: "Shuppet", clues: { numberParts: ["33/084"] } })), "ME05: Pitch Black 033/084", "a number piece still finds it");
+  // A 2021 Shuppet with the set total read: the unknown printing's total does not fit.
+  assert.equal(labelOf(pick({ name: "Shuppet", clues: { years: [2021], hp: 50, digitRuns: ["198"] } })), "SWSH06: Chilling Reign 062/198");
 });
 
 test("a card with the same name but another kind is never picked", () => {
@@ -184,6 +205,19 @@ test("stray letters after a name do not hide it", () => {
   assert.equal(snapCardName("Charizarb ex", index), "Charizard ex");
   const read = parseCardPhotoText({ nameIndex: index, nameText: " Greedentxk | ~_| 4120 *", extraNameTexts: ["Greedenty IA] 4120 x", "STAGE ]   Gre"], fullText: "ey Pokémor" });
   assert.equal(read.name, "Greedent");
+});
+
+test("two reads that agree settle the name", () => {
+  assert.equal(parseCardPhotoText({ nameIndex: index, nameText: "Golurk 150", extraNameTexts: ["STAGE 1\nGolurk"] }).nameAgreement, 2);
+  assert.equal(parseCardPhotoText({ nameIndex: index, nameText: "Ether", extraNameTexts: ["|| _"] }).nameAgreement, 1);
+  assert.equal(parseCardPhotoText({ nameIndex: index, nameText: "" }).nameAgreement, 0);
+});
+
+test("a stray word in the name bar cannot become the name", () => {
+  // Owner's photo of a sideways Metang: "LARRY" read from the border is not the card Larry.
+  assert.deepEqual(findCardClues("N  fo ie   LARRY CR Tk", { nameIndex: index }).namesInText, []);
+  assert.deepEqual(findCardClues("Slowpoke 70 HP", { nameIndex: index, bodyText: "weakness resistance retreat" }).namesInText, [], "a word from the name bar cannot vouch for itself");
+  assert.deepEqual(findCardClues("Slo 70", { nameIndex: index, bodyText: "Galarian Slowpoke eat the seeds" }).namesInText, ["Galarian Slowpoke"]);
 });
 
 test("words printed on every card are never the card's name", () => {

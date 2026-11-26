@@ -19141,6 +19141,8 @@ export default function App() {
       const typedSet = String(row.setName || "").trim().toLowerCase();
       const cards = (rows || []).map(mapCatalog).filter((card) => !typedSet || String(card.setName || card.expansion || "").toLowerCase().includes(typedSet));
       const picked = pickCardByClues({ name, otherNames: clues.namesInText, number, clues, text: row.scanText }, cards, factsById);
+      // A pick resting on one kind of clue alone is offered as a choice, not filed.
+      if (picked.card && !picked.sure) return { card: null, others: 0, choices: [picked.card] };
       return { card: picked.card, others: picked.others, byClues: Boolean(picked.card), choices: picked.choices || [] };
     } catch {
       return none;
@@ -19191,7 +19193,7 @@ export default function App() {
           expansion: known.setName || product.setName || row.setName || "",
           cardNumber: product.cardNumber || row.cardNumber || "",
           variant: row.variant || "",
-          notes: "Added from Scan several cards (Save all).",
+          notes: row.matchedBy === "clues" ? "Added from Scan several cards (Save all). The card number was hard to read, so the card was matched from its name, year and other details." : "Added from Scan several cards (Save all).",
           sourceType: "TideTradr",
           conditionName: row.condition || "Near Mint",
           language: "English",
@@ -20010,9 +20012,10 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       try { ({ card: product, others, byClues = false, choices = [] } = await matchScannedCardRow(row)); } catch { product = null; }
       const marketValue = product ? Number(getTideTradrMarketInfo(product).currentMarketValue || product.marketPrice || product.midPrice || 0) : 0;
       const labelOf = (card) => [catalogTitle(card), card.setName || card.expansion, card.cardNumber].filter(Boolean).join(" · ");
+      const valueOf = (card) => { const value = Number(getTideTradrMarketInfo(card).currentMarketValue || card.marketPrice || card.midPrice || 0); return Number.isFinite(value) && value > 0 ? value : 0; };
       const patch = product
         ? { matchedProduct: product, matchState: "matched", matchedBy: byClues ? "clues" : "number", matchedChoices: [], matchedOthers: others || 0, matchedLabel: labelOf(product), matchedValue: Number.isFinite(marketValue) && marketValue > 0 ? marketValue : 0, matchedFor: `${row.cardName}|${row.cardNumber}` }
-        : { matchedProduct: null, matchState: "review", matchedBy: "", matchedChoices: (choices || []).slice(0, 3).map((card) => [card.setName || card.expansion, card.cardNumber].filter(Boolean).join(" ")).filter(Boolean), matchedLabel: "", matchedValue: 0, matchedFor: `${row.cardName}|${row.cardNumber}` };
+        : { matchedProduct: null, matchState: "review", matchedBy: "", matchedChoices: (choices || []).slice(0, 4).map((card) => ({ product: card, label: labelOf(card), short: [card.setName || card.expansion, card.cardNumber].filter(Boolean).join(" · "), value: valueOf(card) })), matchedLabel: "", matchedValue: 0, matchedFor: `${row.cardName}|${row.cardNumber}` };
       setQuickAddWizard((current) => ({
         ...current,
         cardScanRows: (current.cardScanRows || []).map((candidate) => (candidate.id === row.id && `${candidate.cardName}|${candidate.cardNumber}` === patch.matchedFor ? { ...candidate, ...patch } : candidate)),

@@ -551,7 +551,18 @@ export default function AddAnythingContent({ scope }) {
                 {row.matchedFor === `${row.cardName}|${row.cardNumber}` && row.matchState === "matched" ? (
                   <p className="quick-add-card-scan-match">Matched: {row.matchedLabel}{row.matchedValue ? ` · ${money(row.matchedValue)}` : ""}{row.matchedBy === "clues" ? " · The number was hard to read, so check this is your card" : ""}{row.matchedOthers ? ` · ${row.matchedOthers} other printing${row.matchedOthers === 1 ? "" : "s"}: tap Change to pick another` : ""}</p>
                 ) : row.matchedFor === `${row.cardName}|${row.cardNumber}` && row.matchState === "review" ? (
-                  <p className="quick-add-card-scan-match quick-add-card-scan-match--review">{Array.isArray(row.matchedChoices) && row.matchedChoices.length > 1 ? `It could be ${row.matchedChoices.slice(0, -1).join(", ")} or ${row.matchedChoices[row.matchedChoices.length - 1]}. Tap Pick the card.` : "Not sure which card this is. Tap Pick the card."}</p>
+                  Array.isArray(row.matchedChoices) && row.matchedChoices.some((choice) => choice?.product) ? (
+                    <div className="quick-add-card-scan-choices">
+                      <p className="quick-add-card-scan-match quick-add-card-scan-match--review">{row.matchedChoices.length === 1 ? "The number was hard to read. Is this your card?" : "The number was hard to read. Which one is your card?"}</p>
+                      {row.matchedChoices.filter((choice) => choice?.product).map((choice) => (
+                        <button type="button" className="secondary-button" key={String(choice.product.id)} onClick={() => updateCardScanRow(row.id, { matchedProduct: choice.product, matchState: "matched", matchedBy: "picked", matchedOthers: 0, matchedLabel: choice.label, matchedValue: choice.value || 0, matchedChoices: [], matchedFor: `${row.cardName}|${row.cardNumber}` })}>
+                          {choice.short}{choice.value ? ` · ${money(choice.value)}` : ""}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="quick-add-card-scan-match quick-add-card-scan-match--review">Not sure which card this is. Tap Pick the card.</p>
+                  )
                 ) : null}
                 <details className="quick-add-card-scan-edit" open={!isMatched && !String(row.cardName || "").trim()}>
                 <summary>Edit details</summary>
