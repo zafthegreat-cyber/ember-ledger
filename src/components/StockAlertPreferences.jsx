@@ -1,4 +1,4 @@
-import {useEffect,useState} from "react";
+import {useEffect,useRef,useState} from "react";
 import {supabase} from "../supabaseClient.js";
 import {
   STOCK_ALERT_RETAILERS,STOCK_ALERT_SIGNAL_OPTIONS,
@@ -17,43 +17,50 @@ export default function StockAlertPreferences({targets=[]}){
   const [settings,setSettings]=useState(()=>defaultStockAlertPreferences(deviceZone()));
   const [saving,setSaving]=useState(false);
   const [notice,setNotice]=useState("");
+  const currentUser=useRef("");
   useEffect(()=>{
     if(!supabase)return undefined;
-    let active=true;
+    let stopped=false,sequence=0;
+    function clear(nextPhase){
+      currentUser.current="";
+      setAccount("");
+      setSettings(defaultStockAlertPreferences(deviceZone()));
+      setNotice("");
+      setSaving(false);
+      setPhase(nextPhase);
+    }
     async function load(){
+      const requestId=++sequence;
       try{
         const auth=await supabase.auth.getSession();
-        if(!auth.data?.session?.access_token){
-          if(active){setAccount("");setPhase("guest");}
-          return;
-        }
+        if(stopped||requestId!==sequence)return;
+        if(!auth.data?.session?.access_token){clear("guest");return;}
         const verified=await supabase.auth.getUser(auth.data.session.access_token);
+        if(stopped||requestId!==sequence)return;
         const user=verified.data?.user;
-        if(verified.error||!user?.id||user.is_anonymous){
-          if(active){setAccount("");setPhase("guest");}
-          return;
-        }
+        if(verified.error||!user?.id||user.is_anonymous){clear("guest");return;}
         const res=await supabase.from("stock_alert_preferences")
           .select(columns).eq("user_id",user.id).maybeSingle();
+        if(stopped||requestId!==sequence)return;
         if(res.error)throw new Error("Watch preferences are not available in this preview.");
-        if(active){
-          setAccount(user.id);
-          setSettings(res.data?{...defaultStockAlertPreferences(deviceZone()),...res.data}:defaultStockAlertPreferences(deviceZone()));
-          setPhase("ready");
-        }
+        currentUser.current=user.id;
+        setAccount(user.id);
+        setSettings(res.data?{...defaultStockAlertPreferences(deviceZone()),...res.data}:defaultStockAlertPreferences(deviceZone()));
+        setPhase("ready");
       }catch{
-        if(active){setAccount("");setPhase("unavailable");}
+        if(!stopped&&requestId===sequence)clear("unavailable");
       }
     }
-    load();
+    void load();
     const {data:{subscription}={}}=supabase.auth.onAuthStateChange(event=>{
-      if(!active)return;
-      if(event==="SIGNED_OUT"){
-        setAccount("");setSettings(defaultStockAlertPreferences(deviceZone()));
-        setNotice("");setPhase("guest");
-      }
+      if(stopped)return;
+      ++sequence;
+      // Remove another account's private choices before any new Auth/network call.
+      clear(event==="SIGNED_OUT"?"guest":"loading");
+      // Never await a Supabase request from inside its Auth callback.
+      if(event!=="SIGNED_OUT")queueMicrotask(()=>{if(!stopped)void load();});
     });
-    return ()=>{active=false;subscription?.unsubscribe();};
+    return ()=>{stopped=true;++sequence;subscription?.unsubscribe();};
   },[]);
   function setField(name,value){setSettings(current=>({...current,[name]:value}));setNotice("");}
   function toggleArray(name,value){
@@ -67,38 +74,48 @@ export default function StockAlertPreferences({targets=[]}){
     setNotice("");
   }
   async function validSession(){
-    if(!supabase||!account)throw new Error("Sign in to save preferences.");
+    if(!supabase||!account||currentUser.current!==account)throw new Error("Sign in to save preferences.");
     const {data:{session}={}}=await supabase.auth.getSession();
     if(!session?.access_token||session.user?.id!==account)throw new Error("Your session changed. Please sign in again.");
     const verified=await supabase.auth.getUser(session.access_token);
-    if(verified.error||verified.data?.user?.id!==account||verified.data.user.is_anonymous)
+    if(verified.error||verified.data?.user?.id!==account||verified.data.user.is_anonymous||currentUser.current!==account)
       throw new Error("Your session could not be verified.");
     return account;
   }
   async function save(event){
     event.preventDefault();
     setSaving(true);setNotice("");
+    let user_id="";
     try{
       const next=normalizeStockAlertPreferences(settings,{targets,timeZone:deviceZone()});
-      const user_id=await validSession();
+      user_id=await validSession();
       const result=await supabase.from("stock_alert_preferences")
         .upsert({user_id,...next,updated_at:new Date().toISOString()},{onConflict:"user_id"});
+      if(currentUser.current!==user_id)return;
       if(result.error)throw new Error("Preferences could not be saved. No alerts were enabled.");
       setSettings(next);
       setNotice("Saved to your account. Alert delivery is NOT active yet; this only prepares your preferences.");
-    }catch(error){setNotice(error.message||"Couldn't save preferences.");}
-    finally{setSaving(false);}
+    }catch(error){
+      if(!user_id||currentUser.current===user_id)setNotice(error.message||"Couldn't save preferences.");
+    }finally{
+      if(!user_id||currentUser.current===user_id)setSaving(false);
+    }
   }
   async function remove(){
     setSaving(true);setNotice("");
+    let user_id="";
     try{
-      const user_id=await validSession();
+      user_id=await validSession();
       const result=await supabase.from("stock_alert_preferences").delete().eq("user_id",user_id);
+      if(currentUser.current!==user_id)return;
       if(result.error)throw new Error("Could not remove your preferences.");
       setSettings(defaultStockAlertPreferences(deviceZone()));
       setNotice("Your saved watch preferences have been cleared.");
-    }catch(error){setNotice(error.message||"Couldn't clear preferences.");}
-    finally{setSaving(false);}
+    }catch(error){
+      if(!user_id||currentUser.current===user_id)setNotice(error.message||"Couldn't clear preferences.");
+    }finally{
+      if(!user_id||currentUser.current===user_id)setSaving(false);
+    }
   }
   const products=targets.filter(item=>settings.retailers.includes(item.retailer));
   return <section className="stock-alert-preferences" aria-label="Stock alert preferences">
