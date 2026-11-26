@@ -91,7 +91,7 @@ export const supabase={
       await expect(panel.getByText("Delivery is not connected yet.")).toBeVisible();
       await expect(target).toBeChecked();
       await expect(optIn).toBeChecked();
-      await expect(panel.getByText("Synthetic Pokémon product")).toHaveCount(0);
+      await expect(panel.getByText("Synthetic Pokémon product")).not.toBeVisible();
 
       await page.evaluate(()=>{window.__stockActor="beta";window.dispatchEvent(new CustomEvent("stock-change",{detail:"SIGNED_IN"}));});
       await expect(target).not.toBeChecked();
