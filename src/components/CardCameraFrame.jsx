@@ -268,9 +268,13 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false, con
       smallContext.drawImage(video, frame.x, frame.y, frame.width, frame.height, 0, 0, SAMPLE, SAMPLE);
       const sample = toGray(smallContext.getImageData(0, 0, SAMPLE, SAMPLE).data);
       if (waitingForChange) {
+        // Nov 26 2026: stillness is counted while waiting as well. Swapping cards moves the view, which
+        // starts the count again by itself, so a next card that is already being held still is taken on
+        // the following look instead of a second later (about 1 s a card instead of 2).
+        tracker.push(sample);
         const settledCard = view.card && !view.card.sideways && stableCard ? cardThumb(gray, width, height, view.card) : null;
         const change = nextCard.push(sample, settledCard, { cardFound: Boolean(view.card) });
-        if (change) { waitingForChange = false; guardNext = change === "maybe-same"; setWaiting(false); tracker.reset(); stillWithoutCard = 0; usableStill = 0; }
+        if (change) { waitingForChange = false; guardNext = change === "maybe-same"; setWaiting(false); stillWithoutCard = 0; usableStill = 0; }
         setSteady(0);
         return;
       }
