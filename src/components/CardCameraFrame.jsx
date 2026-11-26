@@ -26,6 +26,8 @@ import { assessCardView, CAMERA_ASSIST, captureRect, cardThumb, coachTip, create
 // Nov 26 2026 (owner: "keep improving the scanner"): each picture is the sharpest of
 // three taken in a row; an outline shows the card the camera has found; and a view
 // that stays blurry says why (too dark, too close) and points at the button that helps.
+// The card is also found when it is held at a slant (up to about 10 degrees), on pale and
+// patterned tables as well as dark ones, and a slanted card's picture is turned upright.
 
 const AUTO_KEY = "code3.scanner.autoCapture.v1";
 const SAMPLE = 32;
@@ -149,7 +151,7 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false, con
       boxWidth: boxRect.width, boxHeight: boxRect.height, videoWidth: video.videoWidth, videoHeight: video.videoHeight,
       rect: { x: padded.x + card.x * padded.width, y: padded.y + card.y * padded.height, width: card.w * padded.width, height: card.h * padded.height },
     });
-    return { x: Math.round(shown.x), y: Math.round(shown.y), width: Math.round(shown.width), height: Math.round(shown.height), ready: Boolean(isReady) };
+    return { x: Math.round(shown.x), y: Math.round(shown.y), width: Math.round(shown.width), height: Math.round(shown.height), tilt: card.tilt || 0, ready: Boolean(isReady) };
   }
 
   // useCard: cut to the card found in the last look (manual and auto), else the frame.
@@ -176,7 +178,22 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false, con
         canvas.width = width;
         canvas.height = height;
         const context = canvas.getContext("2d", { willReadFrequently: true });
-        context.drawImage(video, area.x, area.y, area.width, area.height, 0, 0, width, height);
+        if (area.tilt) {
+          // A card held at a slant: the picture is turned so the card reaches the reader upright.
+          // What is drawn is the upright box that holds the whole slanted card, turned back about its centre.
+          const angle = (-area.tilt * Math.PI) / 180, cos = Math.abs(Math.cos(angle)), sin = Math.abs(Math.sin(angle));
+          const boxWidth = area.width * cos + area.height * sin, boxHeight = area.width * sin + area.height * cos;
+          const centreX = area.x + area.width / 2, centreY = area.y + area.height / 2;
+          context.fillStyle = "#808080";
+          context.fillRect(0, 0, width, height);
+          context.translate(width / 2, height / 2);
+          context.rotate(angle);
+          context.imageSmoothingQuality = "high";
+          context.drawImage(video, centreX - boxWidth / 2, centreY - boxHeight / 2, boxWidth, boxHeight, -boxWidth / 2, -boxHeight / 2, boxWidth, boxHeight);
+          context.setTransform(1, 0, 0, 1, 0, 0);
+        } else {
+          context.drawImage(video, area.x, area.y, area.width, area.height, 0, 0, width, height);
+        }
         shots.push(canvas);
         let score = 0;
         try {
@@ -246,7 +263,7 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false, con
       setSuggest(advice.suggest);
       // The outline follows the card once it is found in the same place twice, and steps aside after a picture.
       const outline = view.card && stableCard && !waitingForChange ? outlineOf(padded, view.card, view.ready) : null;
-      setFound((current) => (current && outline && current.x === outline.x && current.y === outline.y && current.width === outline.width && current.height === outline.height && current.ready === outline.ready ? current : outline));
+      setFound((current) => (current && outline && current.x === outline.x && current.y === outline.y && current.width === outline.width && current.height === outline.height && current.tilt === outline.tilt && current.ready === outline.ready ? current : outline));
       if (!autoRef.current) { setSteady(0); return; }
       smallContext.drawImage(video, frame.x, frame.y, frame.width, frame.height, 0, 0, SAMPLE, SAMPLE);
       const sample = toGray(smallContext.getImageData(0, 0, SAMPLE, SAMPLE).data);
@@ -319,7 +336,7 @@ export default function CardCameraFrame({ onCapture, onCancel, slab = false, con
     <div className="card-camera-frame__view" ref={boxRef}>
       <video ref={videoRef} playsInline muted aria-hidden="true" />
       <div className={`card-camera-frame__guide${steady > 0 ? " is-steadying" : ""}`} ref={frameRef} aria-hidden="true" style={steady > 0 ? { "--steady": steady } : undefined}>{slab ? <span className="card-camera-frame__name">Label here</span> : <><span className="card-camera-frame__name">Name here</span><span className="card-camera-frame__number">Number here</span></>}</div>
-      {found && ready && !error ? <div className={`card-camera-frame__found${found.ready ? " is-ready" : ""}`} aria-hidden="true" style={{ left: found.x, top: found.y, width: found.width, height: found.height }} /> : null}
+      {found && ready && !error ? <div className={`card-camera-frame__found${found.ready ? " is-ready" : ""}`} aria-hidden="true" style={{ left: found.x, top: found.y, width: found.width, height: found.height, transform: found.tilt ? `rotate(${found.tilt}deg)` : undefined }} /> : null}
       {continuous && waiting && auto && ready ? <span className="card-camera-frame__got" aria-hidden="true">✓</span> : null}
       {!ready && !error ? <p className="card-camera-frame__status" role="status">Starting the camera…</p> : null}
       {error ? <p className="card-camera-frame__status" role="alert">{error}</p> : null}

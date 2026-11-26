@@ -166,3 +166,120 @@ test("the outline lands on the card: screen box to video and back", async () => 
     for (const key of ["x", "y", "width", "height"]) assert.ok(Math.abs(back[key] - frame[key]) < 0.001, `${key} for a ${size.videoWidth}x${size.videoHeight} camera`);
   }
 });
+
+// Nov 26 2026: the camera's own card finder (findCardInView). Measured on the owner's 2,756
+// scanned cards drawn into this same small view: the finder it replaces put the cut in the
+// right place for 92% of cards held straight on a dark table, 21% at a 5 degree slant and
+// none at 8; on a pale table 34% straight. These tests pin the behaviour that fixed that.
+// A card drawn at a slant: border, a panel of print, on a table of one shade (plus stripes or grain).
+function slanted({ degrees = 0, cx = 0.5, cy = 0.5, w = 0.74, h = 0.74, table = 40, border = 215, stripes = 0, grain = 0, seed = 7 } = {}) {
+  const gray = new Uint8Array(W * H);
+  let state = seed;
+  const random = () => { state = (state * 1664525 + 1013904223) >>> 0; return state / 4294967296; };
+  const angle = (degrees * Math.PI) / 180, cos = Math.cos(angle), sin = Math.sin(angle);
+  const cardWidth = w * W, cardHeight = h * H, rim = cardWidth * 0.045;
+  for (let y = 0; y < H; y += 1) {
+    for (let x = 0; x < W; x += 1) {
+      const dx = x + 0.5 - cx * W, dy = y + 0.5 - cy * H;
+      // Where this spot falls on the card's own sides.
+      const u = dx * cos + dy * sin, v = -dx * sin + dy * cos;
+      let value = table + (stripes && y % 7 < 2 ? -stripes : 0);
+      if (Math.abs(u) <= cardWidth / 2 && Math.abs(v) <= cardHeight / 2) {
+        const inRim = Math.abs(u) > cardWidth / 2 - rim || Math.abs(v) > cardHeight / 2 - rim;
+        value = inRim ? border : ((Math.floor((u + 500) / 6) + Math.floor((v + 500) / 6)) % 2 ? 120 : 190);
+      }
+      gray[y * W + x] = Math.max(0, Math.min(255, value + (random() - 0.5) * grain));
+    }
+  }
+  return gray;
+}
+const cardWide = 0.74 * H * (63 / 88) / W; // a card 74% of the view tall is this wide
+
+test("a card held at a slant is found, with its slant (Nov 26 2026)", async () => {
+  const { findCardInView } = await import("../src/utils/cardCameraAssist.mjs");
+  for (const degrees of [-9, -4, 0, 3, 7]) {
+    const found = findCardInView(slanted({ degrees, w: cardWide, grain: 6 }), W, H);
+    assert.ok(found, `found at ${degrees} degrees`);
+    assert.equal(found.sideways, false);
+    assert.ok(Math.abs(found.tilt - degrees) <= 1, `slant ${found.tilt} for a card at ${degrees}`);
+    assert.ok(Math.abs(found.x + found.w / 2 - 0.5) < 0.02 && Math.abs(found.y + found.h / 2 - 0.5) < 0.02, `centred at ${degrees} degrees`);
+    assert.ok(Math.abs(found.w - cardWide) < 0.05 && Math.abs(found.h - 0.74) < 0.05, `the card's own size at ${degrees} degrees (${found.w.toFixed(2)} x ${found.h.toFixed(2)})`);
+  }
+  // Off centre and slanted still works, and the tips treat it as an upright card.
+  const off = slanted({ degrees: 5, cx: 0.46, cy: 0.54, w: cardWide });
+  const view = assessCardView(off, W, H);
+  assert.equal(view.ready, true);
+  assert.equal(view.card.tilt, 5);
+});
+
+test("a pale card on a pale table is found by where the table stops being blank", async () => {
+  const { findCardInView } = await import("../src/utils/cardCameraAssist.mjs");
+  for (const degrees of [0, 6]) {
+    const found = findCardInView(slanted({ degrees, w: cardWide, table: 222, border: 208, grain: 4 }), W, H);
+    assert.ok(found, `found at ${degrees} degrees`);
+    assert.ok(Math.abs(found.tilt - degrees) <= 1);
+    // The whole card, give or take its border: never cut at the print.
+    assert.ok(found.h > 0.74 * 0.9 && found.h < 0.74 * 1.05, `height ${found.h.toFixed(3)}`);
+    assert.ok(found.w > cardWide * 0.9 && found.w < cardWide * 1.05, `width ${found.w.toFixed(3)}`);
+  }
+});
+
+test("table lines that run off the view are not the card's edges", async () => {
+  const { findCardInView } = await import("../src/utils/cardCameraAssist.mjs");
+  for (const degrees of [0, -5]) {
+    const found = findCardInView(slanted({ degrees, w: cardWide, table: 130, stripes: 28, grain: 4 }), W, H);
+    assert.ok(found, `found on a striped table at ${degrees} degrees`);
+    assert.ok(Math.abs(found.y + found.h / 2 - 0.5) < 0.03 && Math.abs(found.h - 0.74) < 0.05, `the card, not the stripes (${found.y.toFixed(2)} + ${found.h.toFixed(2)})`);
+  }
+});
+
+test("what is not a card is not found", async () => {
+  const { findCardInView } = await import("../src/utils/cardCameraAssist.mjs");
+  // An empty table, with camera grain.
+  assert.equal(findCardInView(slanted({ w: 0, h: 0, grain: 8 }), W, H), null);
+  assert.equal(findCardInView(slanted({ w: 0, h: 0, table: 220, grain: 8 }), W, H), null);
+  // A striped table with nothing on it.
+  assert.equal(findCardInView(slanted({ w: 0, h: 0, table: 130, stripes: 28, grain: 4 }), W, H), null);
+  // Something long and thin (a phone, a remote), straight or slanted.
+  assert.equal(findCardInView(slanted({ w: 0.48, h: 0.74 }), W, H, { shape: "card" }), null);
+  assert.equal(findCardInView(slanted({ degrees: 4, w: 0.48, h: 0.74 }), W, H, { shape: "card" }), null);
+  // A flat view.
+  assert.equal(findCardInView(new Uint8Array(W * H).fill(128), W, H), null);
+  assert.equal(findCardInView(null, W, H), null);
+});
+
+test("a slanted card's picture is cut to the card and turned upright", async () => {
+  const { CAMERA_ASSIST } = await import("../src/utils/cardCameraAssist.mjs");
+  const padded = { x: 100, y: 50, width: 800, height: 1100 };
+  const frame = { x: 180, y: 160, width: 640, height: 880 };
+  const card = { x: 0.2, y: 0.15, w: 0.6, h: 0.7, sideways: false, tilt: 6 };
+  const cut = captureRect({ padded, frame, card });
+  const margin = CAMERA_ASSIST.captureMargin;
+  assert.equal(cut.tilt, 6);
+  assert.ok(Math.abs(cut.width - (0.6 + 2 * margin) * 800) < 0.001 && Math.abs(cut.height - (0.7 + 2 * margin) * 1100) < 0.001);
+  assert.ok(Math.abs(cut.x + cut.width / 2 - (100 + 0.5 * 800)) < 0.001 && Math.abs(cut.y + cut.height / 2 - (50 + 0.5 * 1100)) < 0.001, "centred on the card");
+  // A degree of slant is left alone: turning a picture softens it a little.
+  assert.equal(captureRect({ padded, frame, card: { ...card, tilt: 1 } }).tilt, undefined);
+  assert.equal(captureRect({ padded, frame, card: { ...card, tilt: 0 } }).tilt, undefined);
+});
+
+test("the same card looks the same whether it is held straight or at a slant", async () => {
+  const { cardThumb, findCardInView } = await import("../src/utils/cardCameraAssist.mjs");
+  const { thumbDifference } = await import("../src/utils/scannerExtras.mjs");
+  const thumbOf = (gray) => { const found = findCardInView(gray, W, H); return found ? cardThumb(gray, W, H, found) : null; };
+  // A card with its art in the upper half, and another with it lower down.
+  const draw = (degrees, artRow, cx = 0.5) => {
+    const gray = slanted({ degrees, cx, w: cardWide, grain: 4 });
+    const angle = (degrees * Math.PI) / 180, cos = Math.cos(angle), sin = Math.sin(angle);
+    for (let y = 0; y < H; y += 1) for (let x = 0; x < W; x += 1) {
+      const dx = x + 0.5 - cx * W, dy = y + 0.5 - 0.5 * H, u = dx * cos + dy * sin, v = -dx * sin + dy * cos;
+      if (Math.abs(u) < cardWide * W * 0.38 && v > (artRow - 0.5) * 0.74 * H && v < (artRow - 0.5 + 0.3) * 0.74 * H) gray[y * W + x] = 60;
+    }
+    return gray;
+  };
+  const straight = thumbOf(draw(0, 0.15)), turned = thumbOf(draw(6, 0.15)), turnedBack = thumbOf(draw(-7, 0.15, 0.53)), other = thumbOf(draw(0, 0.5));
+  assert.ok(straight && turned && turnedBack && other);
+  assert.ok(thumbDifference(straight, turned) < 8, `held at 6 degrees: ${thumbDifference(straight, turned).toFixed(1)}`);
+  assert.ok(thumbDifference(straight, turnedBack) < 8, `held at -7 degrees and moved: ${thumbDifference(straight, turnedBack).toFixed(1)}`);
+  assert.ok(thumbDifference(straight, other) > 20, `a different card: ${thumbDifference(straight, other).toFixed(1)}`);
+});
