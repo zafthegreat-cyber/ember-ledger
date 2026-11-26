@@ -16,13 +16,17 @@ const shardMatch = /^(\d+)\/(\d+)$/.exec(process.env.SHARD || "");
 const [shardIndex, shardCount] = shardMatch ? [Number(shardMatch[1]), Number(shardMatch[2])] : [1, 1];
 if (shardIndex < 1 || shardIndex > shardCount) throw new Error(`Invalid SHARD "${process.env.SHARD}"`);
 const files = only.length ? only : suite.passing.filter((_, index) => index % shardCount === shardIndex - 1);
+// Each test gets 8 minutes. The slowest ones (Deal Finder, shared feedback) take
+// close to 4 on a normal CI machine; on a slow one (Nov 26 2026) Deal Finder went
+// past the old 5-minute limit and failed the run with every check passing.
+const TEST_TIMEOUT_MS = 480000;
 const failed = [];
 for (const file of files) {
   const started = Date.now();
   const result = spawnSync(process.execPath, ["--no-warnings", `scripts/${file}`], {
     env: { ...process.env, APP_URL: appUrl },
     encoding: "utf8",
-    timeout: 300000,
+    timeout: TEST_TIMEOUT_MS,
     maxBuffer: 64 * 1024 * 1024,
   });
   const seconds = Math.round((Date.now() - started) / 1000);
@@ -30,8 +34,11 @@ for (const file of files) {
     console.log(`PASS ${file} (${seconds}s)`);
   } else {
     failed.push(file);
-    console.log(`FAIL ${file} (${seconds}s)`);
-    const tail = `${result.stdout || ""}\n${result.stderr || ""}`.trim().split("\n").slice(-25).join("\n");
+    // A test stopped at the time limit prints no error of its own, so say so.
+    const timedOut = result.error?.code === "ETIMEDOUT";
+    const stopped = timedOut ? `Stopped at the ${TEST_TIMEOUT_MS / 60000}-minute time limit before it finished.` : "";
+    console.log(`FAIL ${file} (${seconds}s)${timedOut ? " - time limit" : ""}`);
+    const tail = `${result.stdout || ""}\n${result.stderr || ""}\n${stopped}`.trim().split("\n").slice(-25).join("\n");
     console.log(tail);
     // Annotations show on the run page without signing in, unlike the full log.
     if (process.env.GITHUB_ACTIONS) {
