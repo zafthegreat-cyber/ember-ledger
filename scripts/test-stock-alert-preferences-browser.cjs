@@ -8,7 +8,7 @@ assert(["127.0.0.1","localhost","[::1]"].includes(base.hostname),"Synthetic loca
 const testFile=path.join(process.cwd(),".stock-alert-prefs-qa.html");
 const userA="11111111-1111-4111-8111-111111111111";
 const userB="22222222-2222-4222-8222-222222222222";
-const mockModule=String.raw\`const alpha="11111111-1111-4111-8111-111111111111";
+const mockModule=String.raw`const alpha="11111111-1111-4111-8111-111111111111";
 const beta="22222222-2222-4222-8222-222222222222";
 const current=()=>window.__stockActor==="alpha"?alpha:window.__stockActor==="beta"?beta:null;
 const listeners=new Set();
@@ -47,7 +47,7 @@ export const supabase={
       })
     };
   }
-};\`;
+};`;
 (async()=>{
   fs.writeFileSync(testFile,
     '<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><div id="root"></div>'+
