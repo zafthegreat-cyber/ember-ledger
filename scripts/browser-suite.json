@@ -2,6 +2,7 @@
   "note": "Browser tests run by CI against the dev server (scripts/run-browser-suite.mjs). knownFailing were failing on Nov 15, 2026 (stale selectors/copy or need seeded data); fix one and move it to passing.",
   "passing": [
     "test-stock-intelligence-browser.cjs",
+    "test-stock-alert-preferences-browser.cjs",
     "test-account-deletion-browser.cjs",
     "test-account-ops-two-tab-stress.cjs",
     "test-app-effect-events.cjs",
