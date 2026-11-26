@@ -549,9 +549,9 @@ export default function AddAnythingContent({ scope }) {
                   </div>
                 </div>
                 {row.matchedFor === `${row.cardName}|${row.cardNumber}` && row.matchState === "matched" ? (
-                  <p className="quick-add-card-scan-match">Matched: {row.matchedLabel}{row.matchedValue ? ` · ${money(row.matchedValue)}` : ""}{row.matchedOthers ? ` · ${row.matchedOthers} other printing${row.matchedOthers === 1 ? "" : "s"}: tap Change to pick another` : ""}</p>
+                  <p className="quick-add-card-scan-match">Matched: {row.matchedLabel}{row.matchedValue ? ` · ${money(row.matchedValue)}` : ""}{row.matchedBy === "clues" ? " · The number was hard to read, so check this is your card" : ""}{row.matchedOthers ? ` · ${row.matchedOthers} other printing${row.matchedOthers === 1 ? "" : "s"}: tap Change to pick another` : ""}</p>
                 ) : row.matchedFor === `${row.cardName}|${row.cardNumber}` && row.matchState === "review" ? (
-                  <p className="quick-add-card-scan-match quick-add-card-scan-match--review">Not sure which card this is. Tap Pick the card.</p>
+                  <p className="quick-add-card-scan-match quick-add-card-scan-match--review">{Array.isArray(row.matchedChoices) && row.matchedChoices.length > 1 ? `It could be ${row.matchedChoices.slice(0, -1).join(", ")} or ${row.matchedChoices[row.matchedChoices.length - 1]}. Tap Pick the card.` : "Not sure which card this is. Tap Pick the card."}</p>
                 ) : null}
                 <details className="quick-add-card-scan-edit" open={!isMatched && !String(row.cardName || "").trim()}>
                 <summary>Edit details</summary>

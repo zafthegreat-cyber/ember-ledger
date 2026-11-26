@@ -192,3 +192,8 @@ export function pickScannedCard({ name = "", number = "", setName = "" } = {}, c
   const others = new Set(sameNumber.map(printingKeyOf).filter(key => key !== picked)).size;
   return { card: list[0], others };
 }
+
+// Shared with cardClueMatch.mjs (Nov 26 2026) so a card picked from clues follows the
+// same name, set and number rules as a card picked from its name and number.
+export { nameKeyOf as catalogCardNameKey, rowNameOf as catalogRowName, rowSetOf as catalogRowSet, rowNumberOf as catalogRowNumber, printingKeyOf as catalogPrintingKey };
+export const isSpecialPrintSet = (row) => SPECIAL_PRINT_SETS.test(rowSetOf(row));
