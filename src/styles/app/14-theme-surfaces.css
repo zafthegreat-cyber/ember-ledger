@@ -603,6 +603,25 @@ html body .app[data-theme] .help-utility-page .settings-feedback-option strong {
 html body .app[data-theme] .help-utility-page .settings-feedback-option span { color: var(--text-secondary); font-size: 13px; font-weight: 400; line-height: 1.5; }
 html body .app[data-theme] .help-utility-page .settings-feedback-option:hover { background: var(--selection-background); border-color: var(--action-primary); }
 
+/* The other pages built on the same header-only board (You, Workspaces, System
+   map, Roadmap, Parent Center, Moderator): the board holds just the page header
+   and the page itself follows it. It kept the full-screen minimum height meant
+   for boards that hold the whole page, so on phones and tablets the first screen
+   was an empty panel and the page began below it. Size it to its header there,
+   as Account and Help already are above. */
+@media (max-width: 1179px) {
+  html body .app[data-theme] .utility-page-command-board,
+  html body .app[data-theme] .utility-page-command-board :is(.command-board-v4-frame, .command-board-v4-stage) {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    padding-bottom: 0 !important;
+  }
+  /* A little air before the page, so its first card does not touch the header
+     (Account and Help space their own content above). */
+  html body .app[data-theme] .utility-page:not(.account-utility-page):not(.help-utility-page) > .utility-page-command-board { margin-bottom: 16px; }
+}
+
 html body .app[data-theme] .topbar:has(.notification-center-panel) { z-index: 1250; }
 html body .app.app-command-shell.ops-app-shell[data-theme]:has(.command-board-v4) > .topbar:has(.notification-center-panel),
 html body .app.app-command-shell.ops-app-shell[data-theme]:has(.command-board-v4) > .topbar:has(.notification-center-panel) > .topbar-command-actions,
