@@ -454,6 +454,7 @@ export function CollectionWorkspace({ items = [], catalogProducts = EMPTY_CATALO
   const presentation = experiencePresentation || resolveExperiencePresentation();
   const valueLabel = presentation.showBusinessTools || presentation.showAdminTools ? "Projected resale" : "Estimated value";
   const { state, error, saveRecord, removeRecord, confirmation, repository } = useBusinessRepository();
+  const { confirm: confirmSell, confirmation: sellConfirmation } = useRecordConfirmation();
   const authorized = ownerSession?.status === OWNER_SESSION_STATES.AUTHORIZED;
   const authorizationIdentity = JSON.stringify([ownerSession?.provider, ownerSession?.identityKey || ownerSession?.userId || ownerSession?.user?.id || ownerSession?.displayIdentity || "owner"]);
   const authorizationLifetime = useMemo(() => createAuthorizationLifetime(authorizationIdentity), [authorizationIdentity]);
@@ -582,6 +583,18 @@ export function CollectionWorkspace({ items = [], catalogProducts = EMPTY_CATALO
   };
   const changePurpose = async (item, nextPurpose) => {
     if (item.provenanceManaged === true) return;
+    // An item moves between Collect and Sell; no duplicate inventory or listing is created.
+    // Require explicit review before changing the purpose of a personal record.
+    if (nextPurpose === OWNED_ITEM_PURPOSES.FOR_RESALE &&
+        inferOwnedItemPurpose(item) !== OWNED_ITEM_PURPOSES.FOR_RESALE) {
+      const approved = await confirmSell({
+        title: "Move this item to Sell?",
+        message: `${recordTitle(item)} will keep its identity, quantity, condition, and saved acquisition cost. Nothing is listed or sold automatically.`,
+        confirmLabel: "Move to Sell",
+        tone: "primary",
+      });
+      if (!approved) return;
+    }
     if (item._recordOrigin === "repository") {
       const changed = changeOwnedItemPurpose(item, nextPurpose, { changedBy: "owner", reason: nextPurpose === OWNED_ITEM_PURPOSES.FOR_RESALE ? "Sell This Item from Collection" : "Purpose assigned in Collection" });
       const saved = await saveRecord("inventory", changed, "Item purpose changed");
@@ -609,7 +622,7 @@ export function CollectionWorkspace({ items = [], catalogProducts = EMPTY_CATALO
   };
   if (gradingEdit) return <GradedCopyEditor key={gradingEdit.id} record={gradingEdit} onCancel={() => setGradingEdit(null)} onSave={async draft => { const saved = await saveRecord('inventory', draft, 'Graded copy updated', {gradingBaseline:gradingEdit,gradingRecords:allItems}); if(saved){ if(selected?.id===saved.id) setSelected({...saved,_recordOrigin:'repository'}); setGradingEdit(null); } return saved; }} />;
   if (form) return <RecordForm initialStep={form.initialStep || 0} key={`${form.type}-${form.seed?.id || form.draftScope || "new"}-${form.draftScope || ""}`} type={form.type} seed={form.seed} draftScope={form.draftScope} state={state} onSave={async (collection, record, message) => { const saved = await saveRecord(collection, record, message, { catalogMatchBaseline: form.catalogMatchBaseline, gradingRecords: allItems }); if (saved) setSelected(view === "sets" && setBrowserState.selectedId && !form.seed?.id ? null : { ...saved, _recordOrigin: "repository" }); return saved; }} onCancel={() => setForm(null)} />;
-  if (selected) return <div className="manual-lifecycle-detail">{confirmation}<CollectionItemDetail resolveItemImage={resolveItemImage} item={selected} backLabel={selectedProduct ? "Back to copies" : view === "sets" ? "Back to set" : "Back to Collection"} valueLabel={valueLabel} showValues={!portfolioViewState.hidden} onBack={() => { if (view === "sets") setNavigationRef.current?.back({ setId: setBrowserState.selectedId }); else { if (selectedProduct) collectionNavigationRef.current = { kind: "copies-return" }; setSelected(null); } }} onPurpose={changePurpose} onEdit={selected._recordOrigin !== "legacy" || onEditLegacyItem ? editCollectionRecord : null} onDelete={async (item) => { if (await removeRecord("inventory", item)) { if (selectedProduct) collectionNavigationRef.current = { kind: "copies-return" }; setSelected(null); } }} />{selected._recordOrigin === "repository" ? <ManualLifecycles ownerSession={ownerSession} key={selected.id} types={featureControls.grading !== false ? ["assignment", "grading"] : ["assignment"]} title="Item organization" itemId={selected.id} /> : null}</div>;
+  if (selected) return <div className="manual-lifecycle-detail">{confirmation}{sellConfirmation}<CollectionItemDetail resolveItemImage={resolveItemImage} item={selected} backLabel={selectedProduct ? "Back to copies" : view === "sets" ? "Back to set" : "Back to Collection"} valueLabel={valueLabel} showValues={!portfolioViewState.hidden} onBack={() => { if (view === "sets") setNavigationRef.current?.back({ setId: setBrowserState.selectedId }); else { if (selectedProduct) collectionNavigationRef.current = { kind: "copies-return" }; setSelected(null); } }} onPurpose={changePurpose} onEdit={selected._recordOrigin !== "legacy" || onEditLegacyItem ? editCollectionRecord : null} onDelete={async (item) => { if (await removeRecord("inventory", item)) { if (selectedProduct) collectionNavigationRef.current = { kind: "copies-return" }; setSelected(null); } }} />{selected._recordOrigin === "repository" ? <ManualLifecycles ownerSession={ownerSession} key={selected.id} types={featureControls.grading !== false ? ["assignment", "grading"] : ["assignment"]} title="Item organization" itemId={selected.id} /> : null}</div>;
   if (selectedProductGroup) return <CollectionProductDetail allRecords={collectionPortfolioItems} onAddGradedCopy={product => setForm({type:"collection",draftScope:`graded-copy.${portfolioScope}.${product.id || product.catalogProductId || "card"}`,seed:gradedCopySeed(product)})} onEditRecord={editCollectionRecord} canEditRecord={record => record.provenanceManaged !== true && (record._recordOrigin !== "legacy" || Boolean(onEditLegacyItem))} group={selectedProductGroup} onBack={() => { collectionNavigationRef.current = { kind: "grid-return" }; setSelectedProduct(null); }} onOpenRecord={(item, opener) => { copyOpenerRef.current = collectionNavigationPosition(opener); collectionNavigationRef.current = { kind: "copy" }; setSelected(item); }} resolveItemImage={resolveItemImage} getAcquisitionCost={acquisitionCost} activeTab={productDetailTab} onTabChange={setProductDetailTab} hiddenValues={portfolioViewState.hidden} />;
   const cardsFor = (records) => records.map((item) => <RecordListCard key={item.id} resolveItemImage={resolveItemImage} record={item} eyebrow={[item.setName, item.productClassification].filter(Boolean).join(" · ") || "Owned item"} status={item.ownedItemPurpose === OWNED_ITEM_PURPOSES.UNASSIGNED ? "Needs purpose" : ""} statusTone="warning" facts={[{ label: item.condition ? "Condition" : "Quantity", value: item.condition || item.quantity || 1 }, { label: "Estimated value", value: portfolioViewState.hidden ? VALUE_HIDDEN : item.projectedResaleMid !== "" && item.projectedResaleMid != null ? money(item.projectedResaleMid) : "" }]} onOpen={setSelected} />);
   return <main className="everyday-workspace" data-testid="collection-workspace">
