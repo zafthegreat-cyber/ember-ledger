@@ -23,7 +23,7 @@ import { NATIVE_BUILD, isHiddenInNativeApp } from "./config/nativeLaunchScope.js
 import {nearbyCoordinatesForText} from './utils/nearbyPreference.mjs';
 import { compactSavedStores } from "./utils/storeDirectoryPersistence.js";
 import { isBlockedAuthor, useBlockedUsers } from "./utils/blockedUsers.js";
-import { catalogCardQueryMatchesRow, getCatalogCollectorQuery, getCatalogPageProducts, pickScannedCard, settleScanMatch } from "./utils/catalogResultIdentity.mjs";
+import { cardNameForChoice, catalogCardQueryMatchesRow, getCatalogCollectorQuery, getCatalogPageProducts, pickScannedCard, settleScanMatch } from "./utils/catalogResultIdentity.mjs";
 import { mergeScannedCardRows, undoScannedCardRow } from "./utils/cardScanRows.mjs";
 import SocialSignInButtons, { ConnectedSignIns } from "./features/auth/SocialSignIn.jsx";
 import EmailConfirmationHelp, { SignupFieldPrivacy } from "./features/auth/EmailConfirmationHelp.jsx";
@@ -20090,7 +20090,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       const valueOf = (card) => { const value = Number(getTideTradrMarketInfo(card).currentMarketValue || card.marketPrice || card.midPrice || 0); return Number.isFinite(value) && value > 0 ? value : 0; };
       const patch = product
         ? { matchedProduct: product, matchState: "matched", matchedBy: byClues ? "clues" : byNumber ? "numberOnly" : "number", matchedChoices: [], matchedOthers: others || 0, matchedLabel: labelOf(product), matchedValue: Number.isFinite(marketValue) && marketValue > 0 ? marketValue : 0, matchedFor: `${row.cardName}|${row.cardNumber}` }
-        : { matchedProduct: null, matchState: "review", matchedBy: "", matchedChoicesBy: choicesBy === "number" || choicesBy === "either" ? choicesBy : "", matchedChoices: (choices || []).slice(0, 4).map((card) => ({ product: card, label: labelOf(card), short: [card.setName || card.expansion, card.cardNumber].filter(Boolean).join(" · "), value: valueOf(card) })), matchedLabel: "", matchedValue: 0, matchedFor: `${row.cardName}|${row.cardNumber}` };
+        : { matchedProduct: null, matchState: "review", matchedBy: "", matchedChoicesBy: choicesBy === "number" || choicesBy === "either" ? choicesBy : "", matchedChoices: (choices || []).slice(0, 4).map((card) => ({ product: card, label: labelOf(card), name: cardNameForChoice(catalogTitle(card)), short: [card.setName || card.expansion, card.cardNumber].filter(Boolean).join(" · "), value: valueOf(card) })), matchedLabel: "", matchedValue: 0, matchedFor: `${row.cardName}|${row.cardNumber}` };
       setQuickAddWizard((current) => ({
         ...current,
         cardScanRows: (current.cardScanRows || []).map((candidate) => (candidate.id === row.id && `${candidate.cardName}|${candidate.cardNumber}` === patch.matchedFor ? { ...candidate, ...patch } : candidate)),

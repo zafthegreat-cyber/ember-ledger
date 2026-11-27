@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { readFileSync } from "node:fs";
 import { nameIsInText, pickCardByNumber } from "../src/utils/cardClueMatch.mjs";
-import { exactNumberSpellings } from "../src/utils/catalogResultIdentity.mjs";
+import { cardNameForChoice, exactNumberSpellings } from "../src/utils/catalogResultIdentity.mjs";
 
 // name | set | number | year | hp | attacks
 const CATALOG = `
@@ -144,6 +144,24 @@ test("wiring: the app tries the number before the clues, and says the name was h
   has(screen, "The name was hard to read, so check this is your card", "matched row wording");
   has(screen, "The name was hard to read. Is this your card?", "one choice wording");
   has(screen, "This card was hard to read. Which one is your card?", "choices from both ways wording");
+  // On the live site (Nov 27 2026) an offered card read "SV09: Journey Together · 100/159 · $0.11":
+  // no name, the one thing the person needed to answer "Is this your card?".
+  has(app, "name: cardNameForChoice(catalogTitle(card)),", "each offered card carries its name");
+  has(screen, '{(row.matchedChoicesBy === "number" || row.matchedChoicesBy === "either") && choice.name ? `${choice.name} · ` : ""}{choice.short}', "an offered card shows its name when the name was hard to read");
+});
+
+test("an offered card is named without the number some catalog rows put in the name", () => {
+  assert.equal(cardNameForChoice("Lokix"), "Lokix");
+  assert.equal(cardNameForChoice("Iono - 080/091"), "Iono");
+  assert.equal(cardNameForChoice("Rayquaza V 100/159"), "Rayquaza V");
+  assert.equal(cardNameForChoice("Pikachu - TG10/TG30"), "Pikachu");
+  assert.equal(cardNameForChoice("Mew ex #151/165"), "Mew ex");
+  assert.equal(cardNameForChoice("Porygon2"), "Porygon2", "a digit in the name stays");
+  assert.equal(cardNameForChoice("Charizard V 4"), "Charizard V 4", "only a full number is dropped");
+  assert.equal(cardNameForChoice("  Nidoran   F  "), "Nidoran F");
+  assert.equal(cardNameForChoice("080/091"), "080/091", "a name that is only a number is kept");
+  assert.equal(cardNameForChoice(""), "");
+  assert.equal(cardNameForChoice(null), "");
 });
 
 test("a card found by number never overrides a good match on the name that was read", async () => {

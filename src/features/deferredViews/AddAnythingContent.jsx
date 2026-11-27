@@ -561,7 +561,8 @@ export default function AddAnythingContent({ scope }) {
                         : (row.matchedChoices.length === 1 ? "The number was hard to read. Is this your card?" : "The number was hard to read. Which one is your card?")}</p>
                       {row.matchedChoices.filter((choice) => choice?.product).map((choice) => (
                         <button type="button" className="secondary-button" key={String(choice.product.id)} onClick={() => updateCardScanRow(row.id, { matchedProduct: choice.product, matchState: "matched", matchedBy: "picked", matchedOthers: 0, matchedLabel: choice.label, matchedValue: choice.value || 0, matchedChoices: [], matchedFor: `${row.cardName}|${row.cardNumber}` })}>
-                          {choice.short}{choice.value ? ` · ${money(choice.value)}` : ""}
+                          {/* Nov 27 2026: the name is the part the person needs when the name was hard to read. */}
+                          {(row.matchedChoicesBy === "number" || row.matchedChoicesBy === "either") && choice.name ? `${choice.name} · ` : ""}{choice.short}{choice.value ? ` · ${money(choice.value)}` : ""}
                         </button>
                       ))}
                     </div>

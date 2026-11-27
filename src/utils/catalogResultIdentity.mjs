@@ -229,6 +229,17 @@ export function exactNumberSpellings(number = "") {
 }
 
 /**
+ * The name to show for a card the scanner offers. Some catalog rows carry the number in
+ * the name ("Iono - 080/091", "Rayquaza V 100/159"); the number is shown beside the name,
+ * so it is dropped from the end. A name that is nothing but a number is kept as it is.
+ */
+export function cardNameForChoice(name = "") {
+  const text = String(name || "").replace(/\s+/g, " ").trim();
+  const short = text.replace(/(?:^|\s)(?:-\s*)?#?[a-z]{0,4}\d{1,4}[a-z]?\/[a-z]{0,4}\d{1,4}$/i, "").trim();
+  return short || text;
+}
+
+/**
  * Which match a scanned row takes when both ways of finding its card were tried:
  * byNumber (the printed number, then what else was read) and byClues (the name that
  * was read, then pieces of the number, year, HP, attacks). Each is { card, choices, ... }.
