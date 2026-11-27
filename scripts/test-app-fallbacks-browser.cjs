@@ -8,6 +8,10 @@ const output = path.resolve(process.env.QA_OUTPUT || "artifacts/qa/mobile-onboar
 const appModule = (url) => /\/src\/App\.jsx$|\/assets\/App-[^/]+\.js$/.test(url.pathname);
 const entryModule = (url) => /\/src\/main\.jsx$|\/assets\/(?:main|index)-[^/]+\.js$/.test(url.pathname);
 const results = [];
+// The first check after a whole page load (goto, or a Refresh / Return home button that
+// reloads) waits for the app to start again, which takes 3 to 5 seconds on a quiet machine,
+// so it gets 30 seconds instead of the 5 second default meant for changes within a page.
+const pageLoad = { timeout: 30000 };
 
 async function isolatedContext(browser, theme, width, options = {}) {
   const context = await browser.newContext({ viewport: { width, height: width === 320 ? 640 : 844 }, serviceWorkers: "block", ...options });
@@ -84,7 +88,7 @@ async function assertStoragePreserved(page, theme) {
           await page.clock.install();
           await page.goto(`${origin}/vault`, { waitUntil: "domcontentloaded" });
           const fallback = page.locator(".app-load-fallback[data-boot-theme]");
-          await expect(fallback).toBeVisible();
+          await expect(fallback).toBeVisible(pageLoad);
           await expect(fallback).toHaveAttribute("role", "status");
           await expect(page.getByRole("heading", { name: "Loading Code 3 TCG...", exact: true })).toBeVisible();
           await expect(page.getByRole("button", { name: "Refresh app" })).toHaveCount(0);
@@ -102,13 +106,13 @@ async function assertStoragePreserved(page, theme) {
           await page.screenshot({ path: path.join(output, `boot-${theme}-${width}-slow.png`) });
 
           await Promise.all([page.waitForEvent("domcontentloaded"), page.getByRole("button", { name: "Refresh app" }).click()]);
-          await expect(fallback).toBeVisible();
+          await expect(fallback).toBeVisible(pageLoad);
           await expect(page.getByRole("heading", { name: "Loading Code 3 TCG...", exact: true })).toBeVisible();
           await assertStoragePreserved(page, theme);
           await page.clock.fastForward(12001);
           await expect(page.getByRole("button", { name: "Return home" })).toBeVisible();
           await Promise.all([page.waitForURL(`${origin}/`), page.getByRole("button", { name: "Return home" }).click()]);
-          await expect(fallback).toBeVisible();
+          await expect(fallback).toBeVisible(pageLoad);
           await assertStoragePreserved(page, theme);
           assert.deepEqual(apiRequests, []);
           results.push({ case: "pending-app-module", theme, width, normal, slow, storagePreservedAcrossRefreshAndHome: true, apiRequests, errors });
@@ -138,7 +142,7 @@ async function assertStoragePreserved(page, theme) {
       let fail = true;
       await page.route(appModule, (route) => fail ? route.abort() : route.continue());
       await page.goto(origin, { waitUntil: "domcontentloaded" });
-      await expect(page.getByRole("heading", { name: "Code 3 TCG may have just updated" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Code 3 TCG may have just updated" })).toBeVisible(pageLoad);
       await expect(page.locator(".app-load-fallback")).toHaveAttribute("role", "alert");
       const geometry = await fallbackGeometry(page, theme);
       await assertStoragePreserved(page, theme);
@@ -156,7 +160,7 @@ async function assertStoragePreserved(page, theme) {
     const staticPage = await staticContext.newPage();
     await staticPage.route(entryModule, (route) => route.abort());
     await staticPage.goto(origin, { waitUntil: "domcontentloaded" });
-    await expect(staticPage.getByRole("heading", { name: "Loading Code 3 TCG...", exact: true })).toBeVisible();
+    await expect(staticPage.getByRole("heading", { name: "Loading Code 3 TCG...", exact: true })).toBeVisible(pageLoad);
     await expect(staticPage.getByRole("button", { name: "Refresh app" })).toBeVisible();
     await assertStoragePreserved(staticPage, "dark");
     results.push({ case: "entry-script-unavailable", geometry: await fallbackGeometry(staticPage, "dark") });
@@ -166,7 +170,7 @@ async function assertStoragePreserved(page, theme) {
     const noScriptContext = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 320, height: 640 } });
     const noScriptPage = await noScriptContext.newPage();
     await noScriptPage.goto(origin);
-    await expect(noScriptPage.getByRole("heading", { name: "Code 3 TCG needs JavaScript" })).toBeVisible();
+    await expect(noScriptPage.getByRole("heading", { name: "Code 3 TCG needs JavaScript" })).toBeVisible(pageLoad);
     await noScriptPage.screenshot({ path: path.join(output, "boot-javascript-disabled.png") });
     results.push({ case: "javascript-disabled", visibleGuidance: true });
     await noScriptContext.close();

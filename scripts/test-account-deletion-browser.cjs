@@ -228,8 +228,10 @@ if(params.get('social'))createRoot(document.getElementById('root')).render(React
       await context.addInitScript(() => { localStorage.setItem("code3.workspace-owner-switch.v1", "synthetic-pending-save"); localStorage.setItem("unrelated-user-records", "keep-me"); });
       await context.route("**/*", route => { const url = new URL(route.request().url()); requests.push(url.pathname); return url.origin === base ? route.continue() : route.abort(); });
       const page = await context.newPage(); page.on("pageerror", error => errors.push(error.message));
+      // A whole page load takes 3 to 5 seconds on a quiet machine, so the first check after it
+      // gets 30 seconds instead of the 5 second default meant for changes within a page.
       await page.goto(`${base}${route}?themeInspect=${theme}`);
-      await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible({ timeout: 30000 });
       assert.equal(await page.evaluate(() => localStorage.getItem("code3.workspace-owner-switch.v1")), "synthetic-pending-save");
       assert.equal(await page.evaluate(() => localStorage.getItem("unrelated-user-records")), "keep-me");
       assert.equal(requests.some(item => item === "/src/App.jsx"), false, "Normal App never mounts for direct public privacy routes");

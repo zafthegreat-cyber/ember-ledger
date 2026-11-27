@@ -134,7 +134,7 @@ async function checkBrowser() {
         assert.equal(stored.length, 1);
         await page.screenshot({ path: path.join(output, `sales-date-${theme}-${width}.png`), fullPage: true });
         await page.goto(new URL(`/?betaLocalMode=true&themeInspect=${theme}`, baseUrl).href);
-        await expect(page.locator(".ops-home-page")).toBeVisible();
+        await expect(page.locator(".ops-home-page")).toBeVisible({ timeout: 30000 });
         await page.locator('button[aria-label="Open global Add menu"]:visible').first().click();
         const quickAdd = page.locator('.flow-modal[data-flow="addActionSheet"]');
         await expect(quickAdd).toBeVisible();

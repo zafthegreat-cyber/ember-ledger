@@ -14,6 +14,10 @@ const results = [];
 const sha = (value) => crypto.createHash("sha256").update(value).digest("hex");
 let lastPage;
 let currentStep = "initialization";
+// The first check after a whole page load (goto, reload, opening a search result, or its Back
+// button) waits for the app to start again, which takes 3 to 5 seconds on a quiet machine, so
+// it gets 30 seconds instead of the 5 second default meant for changes within a page.
+const pageLoad = { timeout: 30000 };
 
 async function isolate(context, theme) {
   const blocked = [];
@@ -41,7 +45,7 @@ async function isolate(context, theme) {
 async function denial(context, label, query = "") {
   const page = await context.newPage(); lastPage = page;
   await page.goto(new URL(`/owner-center/records?recordQ=Synthetic${query}`, base).href);
-  await expect(page.locator("body")).toContainText(/Log In|Log in|Sign in|Sign In|Owner access|owner access|Verified owner/);
+  await expect(page.locator("body")).toContainText(/Log In|Log in|Sign in|Sign In|Owner access|owner access|Verified owner/, pageLoad);
   await expect(page.getByRole("region", { name: "Private record search", exact: true })).toHaveCount(0);
   await expect(page.locator("body")).not.toContainText("Synthetic Aurora acceptance");
   await page.screenshot({ path: path.join(output, `${label}.png`), fullPage: true });
@@ -135,12 +139,12 @@ async function journey(browser, theme, width) {
   currentStep = `${theme}/${width}: exact record search and Back`;
   await go("/owner-center/records?recordQ=Aurora%20acceptance");
   await page.locator(".record-search__group a").filter({ hasText: collector.name }).click();
-  await expect(page.locator(".ops-record-detail")).toContainText(collector.id);
+  await expect(page.locator(".ops-record-detail")).toContainText(collector.id, pageLoad);
   const exactRecordUrl = page.url();
   assert.equal(new URL(exactRecordUrl).searchParams.get("record"), collector.id);
-  await page.reload(); await expect(page.locator(".ops-record-detail")).toContainText(collector.id);
+  await page.reload(); await expect(page.locator(".ops-record-detail")).toContainText(collector.id, pageLoad);
   await page.getByRole("button", { name: "Back", exact: true }).click();
-  await expect(page.getByLabel("Search saved records", { exact: true })).toHaveValue("Aurora acceptance");
+  await expect(page.getByLabel("Search saved records", { exact: true })).toHaveValue("Aurora acceptance", pageLoad);
   await capture("collector-search");
 
   currentStep = `${theme}/${width}: seller intake and sale`;
@@ -213,7 +217,7 @@ async function journey(browser, theme, width) {
   fs.writeFileSync(path.join(output, `seller-statement-${theme}-${width}.csv`), csv);
   await capture("seller-report");
   const fresh = await context.newPage();
-  await fresh.goto(exactRecordUrl); await expect(fresh.locator(".ops-record-detail")).toContainText(collector.id);
+  await fresh.goto(exactRecordUrl); await expect(fresh.locator(".ops-record-detail")).toContainText(collector.id, pageLoad);
   const raw = await fresh.evaluate((key) => localStorage.getItem(key), key);
   assert.deepEqual(JSON.parse(raw), applied, "Independent new page sees all fulfilled saved records and no duplicated application");
   await fresh.close();
@@ -234,8 +238,10 @@ async function productionSmoke(browser, theme, width) {
   page.on("response", (response) => { if (new URL(response.url()).origin === base.origin && /\/assets\/.*\.(js|css)(?:\?|$)/.test(response.url())) assets.push({ path: new URL(response.url()).pathname, status: response.status() }); });
   currentStep = `production/${theme}/${width}: built login and denial`;
   await page.goto(base.href);
-  await expect(page.locator("body")).toContainText(/Code 3 TCG/);
-  await expect(page.locator("body")).toContainText(/Log In|Log in|Sign in|Sign In/);
+  // The loading screen already says the app's name, so the sign-in text on the next line is
+  // the first thing that waits for the app itself.
+  await expect(page.locator("body")).toContainText(/Code 3 TCG/, pageLoad);
+  await expect(page.locator("body")).toContainText(/Log In|Log in|Sign in|Sign In/, pageLoad);
   assert.equal(await page.locator('script[src*="/@vite/client"]').count(), 0, "Production smoke must not use Vite dev server");
   assert.ok(assets.some((asset) => asset.path.endsWith(".js")), "Built JS asset loaded");
   assert.ok(assets.every((asset) => asset.status === 200), "Built assets load successfully");

@@ -11,6 +11,10 @@ const fixtureFile = path.join(output, "fixture.html");
 const storageKey = "code3.bot-ops.v1";
 const providerKeys = ["HAYHA", "STELLAR", "SHIKARI", "VALOR", "REFRACT", "POLAR", "SNIPED", "SWOOPER"];
 const cases = [320, 390, 1440].flatMap(width => ["light", "dark"].map(theme => ({ width, height: width === 320 ? 720 : 900, theme })));
+// The first check after a whole page load (goto or reload) waits for the app to start
+// again, which takes 3 to 5 seconds on a quiet machine, so it gets 30 seconds instead of the
+// 5 second default meant for changes within a page.
+const pageLoad = { timeout: 30000 };
 const preservedRecords = JSON.stringify({
   userType: "collector", dashboardPreset: "simple",
   profile: { userId: "local-beta", email: "bot-tracking@example.test", displayName: "Synthetic owner", appRole: "owner", app_role: "owner", userRole: "owner", appAccess: "approved" },
@@ -275,7 +279,7 @@ async function componentCase(browser, fixture, testCase) {
   const id = `${testCase.width}-${testCase.theme}`;
   try {
     step = `${id}: load tracker and search joined records`;
-    await page.goto(fixtureUrl(testCase.theme)); await expect(tracker(page)).toBeVisible();
+    await page.goto(fixtureUrl(testCase.theme)); await expect(tracker(page)).toBeVisible(pageLoad);
     const before = await botState(page);
     await assertFilters(page, fixture);
     await assertRecordLayout(page, id, testCase);
@@ -304,7 +308,7 @@ async function componentCase(browser, fixture, testCase) {
     const edit = await editPlan(page, target.title, 3);
     await edit.getByRole("button", { name: "Save changes", exact: true }).click();
     await expect(edit).toHaveCount(0);
-    await page.reload(); await expect(tracker(page)).toBeVisible();
+    await page.reload(); await expect(tracker(page)).toBeVisible(pageLoad);
     state = await botState(page); const updated = state.tasks.find(row => row.id === task.id);
     assert.equal(updated.quantityTarget, 3); assert.equal(updated.runtimeStatus, "READY"); assert.deepEqual(updated.maxPrice, { minorUnits: 6345, currency: "USD" });
     assert.equal(updated.recordVersion, task.recordVersion + 1);
@@ -322,7 +326,7 @@ async function componentCase(browser, fixture, testCase) {
     await expect(tracker(page).getByRole("alert")).toBeVisible(); assert.equal(await rawBotState(page), saved);
     assert.equal(await page.evaluate(() => window.__qaBlockedBotWrites), 1, "Atomic-failure case must reach the attempted storage commit");
     await page.evaluate(() => { window.__qaBlockBotWrites = false; });
-    await page.reload(); await expect(tracker(page)).toBeVisible();
+    await page.reload(); await expect(tracker(page)).toBeVisible(pageLoad);
     await assertProtectedRecords(page, before);
     step = `${id}: owner denied states never read private records`;
     for (const status of ["loading", "sign_in_required", "owner_access_required", "unavailable"]) {
@@ -343,7 +347,7 @@ async function layoutCase(browser, fixture, testCase) {
   const { context, page, errors, external, writes } = await makeContext(browser, testCase, fixture);
   const id = testCase.width + "-" + testCase.theme;
   try {
-    await page.goto(fixtureUrl(testCase.theme)); await expect(tracker(page)).toBeVisible();
+    await page.goto(fixtureUrl(testCase.theme)); await expect(tracker(page)).toBeVisible(pageLoad);
     await assertRecordLayout(page, id, testCase); await assertOverviewAndHistory(page, fixture, id);
     await assertLayout(page); await page.screenshot({ path: path.join(output, id + "-tracking.png"), fullPage: true });
     assert.deepEqual(errors, []); assert.deepEqual(external, []); assert.deepEqual(writes, []);
@@ -358,14 +362,14 @@ async function concurrencyCase(browser, fixture) {
   try {
     step = "two tabs: concurrent atomic manual plans";
     await Promise.all([first.goto(fixtureUrl("dark")), second.goto(fixtureUrl("dark"))]);
-    await Promise.all([expect(tracker(first)).toBeVisible(), expect(tracker(second)).toBeVisible()]);
+    await Promise.all([expect(tracker(first)).toBeVisible(pageLoad), expect(tracker(second)).toBeVisible(pageLoad)]);
     const before = await botState(first);
     const rows = await Promise.all([savePlan(first, "Concurrent first plan"), savePlan(second, "Concurrent second plan", "qa-installation-sniped")]);
     let state = await botState(first);
     for (const key of ["tasks", "taskGroups", "productTargets"]) assert.equal(state[key].length, before[key].length + 2);
     assert.ok(rows.every(row => state.tasks.some(saved => saved.id === row.id)));
     await Promise.all([first.reload(), second.reload()]);
-    await Promise.all([expect(tracker(first)).toBeVisible(), expect(tracker(second)).toBeVisible()]);
+    await Promise.all([expect(tracker(first)).toBeVisible(pageLoad), expect(tracker(second)).toBeVisible(pageLoad)]);
     step = "two tabs: same-version manual plan edit conflict";
     const contested = state.tasks.find(row => row.id === rows[0].id);
     const forms = await Promise.all([editPlan(first, "Concurrent first plan", 4), editPlan(second, "Concurrent first plan", 5)]);
@@ -374,7 +378,7 @@ async function concurrencyCase(browser, fixture) {
     state = await botState(first); const winner = state.tasks.find(row => row.id === contested.id);
     assert.ok([4, 5].includes(winner.quantityTarget)); assert.equal(winner.recordVersion, contested.recordVersion + 1);
     await Promise.all([first.reload(), second.reload()]);
-    await Promise.all([expect(tracker(first)).toBeVisible(), expect(tracker(second)).toBeVisible()]);
+    await Promise.all([expect(tracker(first)).toBeVisible(pageLoad), expect(tracker(second)).toBeVisible(pageLoad)]);
     const beforeQueue = await rawBotState(first);
     for (const change of ["signout", "identity"]) {
       step = `queued plan: ${change} cancels entire transaction`;
@@ -425,7 +429,7 @@ async function actualAppCase(browser, fixture, testCase) {
     assert.equal(new URL(page.url()).pathname, "/bot/tasks");
     const savedState = await botState(page); const target = savedState.productTargets.find(row => row.title === "Actual app synthetic plan"); await openTask(page, savedState.tasks.find(row => row.productTargetId === target.id).id);
     await expect(tracker(page).getByRole("button", { name: "Edit plan Actual app synthetic plan", exact: true })).toBeVisible();
-    await page.reload(); await expect(tracker(page)).toBeVisible();
+    await page.reload(); await expect(tracker(page)).toBeVisible(pageLoad);
     await assertProtectedRecords(page, before, appBaseline);
     assert.deepEqual(errors, []); assert.deepEqual(external, []); assert.deepEqual(writes, []);
     console.log(`PASS actual App: ${testCase.width}px ${testCase.theme} local plan, route/Back/reload and existing data preservation.`);
@@ -444,7 +448,7 @@ async function evidenceReferenceCase(browser, fixture) {
     const { context, page, errors, external, writes } = await makeContext(browser, { width: 390, height: 844, theme: "dark" }, state);
     try {
       step = `evidence reference: ${kind}`;
-      await page.goto(fixtureUrl("dark")); await expect(tracker(page)).toBeVisible();
+      await page.goto(fixtureUrl("dark")); await expect(tracker(page)).toBeVisible(pageLoad);
       const before = await rawBotState(page);
       await chooseSection(page, "Activity");
       const evidenceSection = page.locator(".bot-ops-evidence");

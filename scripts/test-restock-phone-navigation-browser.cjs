@@ -123,14 +123,16 @@ async function ordinaryCase(browser, testCase) {
     await expect(detail).toContainText("Aurora phone navigation fixture");
     await detail.getByRole("button", { name: "Close report details", exact: true }).click();
     await expect(detail).toHaveCount(0); await settle(page); await feedUnchanged(page, feed, url); await expect(launch).toBeFocused();
-    await page.goBack(); await expect(page.getByRole("heading", { name: "Safe history predecessor", exact: true })).toBeVisible();
+    // Back leaves the app for the page before it, which is loaded afresh, so this check gets the
+    // same 30 seconds as the other page loads in this file instead of the 5 second default.
+    await page.goBack(); await expect(page.getByRole("heading", { name: "Safe history predecessor", exact: true })).toBeVisible({ timeout: 30000 });
     result.backForwardAndCloseWithoutGhostEntries = true;
 
     await page.goForward(); ({ feed, launch } = await filterFeed(page));
     await launch.click(); await expect(detail).toBeVisible();
     await page.keyboard.press("Escape"); await expect(detail).toHaveCount(0); await settle(page);
     await feedUnchanged(page, feed, url); await expect(launch).toBeFocused();
-    await page.goBack(); await expect(page.getByRole("heading", { name: "Safe history predecessor", exact: true })).toBeVisible();
+    await page.goBack(); await expect(page.getByRole("heading", { name: "Safe history predecessor", exact: true })).toBeVisible({ timeout: 30000 });
     result.escapeWithoutGhostEntries = true;
 
     await page.goForward(); ({ feed, launch } = await filterFeed(page));

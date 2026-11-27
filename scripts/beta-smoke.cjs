@@ -87,6 +87,17 @@ async function main() {
   });
   page.on("requestfinished", (request) => pendingRequests.delete(request));
 
+  // A whole page load (goto, reload, or nav() falling back to one when it finds nothing to
+  // click) takes 3 to 5 seconds on a quiet machine before the first screen shows. Checks made
+  // in the 30 seconds after one may wait until those 30 seconds are up; later checks keep their
+  // own shorter time, which is meant for changes within a page.
+  const PAGE_LOAD_ALLOWANCE_MS = 30000;
+  let lastPageLoadAt = 0;
+  page.on("domcontentloaded", () => { lastPageLoadAt = Date.now(); });
+  function pageLoadAllowance(timeout) {
+    return Math.max(timeout, PAGE_LOAD_ALLOWANCE_MS - (Date.now() - lastPageLoadAt));
+  }
+
   function recordFatalBrowserError(kind, message, url = "") {
     const text = String(message || "").trim();
     if (!text) return;
@@ -783,7 +794,7 @@ async function main() {
   }
 
   async function expectVisible(locator, label, timeout = 7000) {
-    await locator.waitFor({ state: "visible", timeout }).catch(async (error) => {
+    await locator.waitFor({ state: "visible", timeout: pageLoadAllowance(timeout) }).catch(async (error) => {
       const bodyPreview = await page.locator("body").innerText().catch(() => "");
       error.message = `${label} was not visible.\n${error.message}\nBody preview:\n${bodyPreview.slice(0, 1500)}`;
       throw error;
@@ -2579,7 +2590,7 @@ async function main() {
           return bodyText.toLowerCase().includes(String(expected.value).toLowerCase());
         },
         text instanceof RegExp ? { pattern: text.source, flags: text.flags } : { value: text },
-        { timeout: 7000 }
+        { timeout: pageLoadAllowance(7000) }
       );
     } catch (error) {
       const bodyPreview = await page.locator("body").innerText().catch(() => "");

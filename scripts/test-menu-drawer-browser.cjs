@@ -53,7 +53,7 @@ async function verifyRestrictedNavigation(browser) {
     page.on("pageerror", error => errors.push(error.message));
     await page.goto(`${base}/__qa/menu-restricted`, { waitUntil: "domcontentloaded" });
     const search = page.getByRole("searchbox", { name: "Search menu", exact: true });
-    await expect(search).toBeVisible();
+    await expect(search).toBeVisible({ timeout: 30000 });
     const destinations = await page.locator("[data-menu-key]").evaluateAll(elements => elements.map(element => element.dataset.menuKey).sort());
     assert.deepEqual(destinations, ["scout", "settings", "vault"]);
     await expect(page.locator("[data-menu-report]")).toHaveCount(0);

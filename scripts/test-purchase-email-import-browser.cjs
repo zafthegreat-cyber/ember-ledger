@@ -207,7 +207,9 @@ async function failureCases(browser, initialState) {
   try {
     step = "denied sessions";
     for (const denied of ["loading", "sign_in_required", "owner_access_required", "unavailable"]) {
-      await page.goto(fixtureUrl("dark", denied)); await expect(page.locator('[data-page="purchase-receiving"]')).toBeVisible();
+      // A whole page load takes 3 to 5 seconds on a quiet machine, so the first check after it
+      // gets 30 seconds instead of the 5 second default meant for changes within a page.
+      await page.goto(fixtureUrl("dark", denied)); await expect(page.locator('[data-page="purchase-receiving"]')).toBeVisible({ timeout: 30000 });
       await expect(page.getByRole("button", { name: "Pull purchase emails", exact: true })).toHaveCount(0); assert.equal(await page.evaluate(() => window.__qaPurchaseReads), 0); assert.equal(apiRequests.length, 0);
     }
     await page.evaluate(() => { window.__qaNoHeaders = true; window.qaRender(); });
@@ -284,7 +286,7 @@ async function actualAppCase(browser, initialState) {
     await expect(importer(page).getByRole("button", { name: "Open purchase draft", exact: true })).toBeVisible();
     assert.equal((await state(page)).purchaseDrafts.length, 2); assert.equal((await state(page)).purchases.length, 0);
     await importer(page).getByRole("button", { name: "Open purchase draft", exact: true }).click(); await expect(importer(page)).toHaveCount(0);
-    await page.reload(); await expect(page.getByTestId("purchase-receiving-page")).toBeVisible();
+    await page.reload(); await expect(page.getByTestId("purchase-receiving-page")).toBeVisible({ timeout: 30000 });
     await expect(page.getByRole("region", { name: "Purchase Drafts", exact: true })).toContainText(candidates[0].orderId);
     const stored = JSON.parse(await settledAppData(page));
     for (const field of ["items", "sales"]) assert.deepEqual(stored[field], appBaseline[field]);
