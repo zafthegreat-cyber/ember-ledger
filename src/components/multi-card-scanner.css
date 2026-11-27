@@ -30,3 +30,5 @@
 /* Quiet buttons: gold is kept for the main action. */
 html:root body .app.app-command-shell[data-theme] .multi-card-scanner__last button { min-height: 44px; min-width: 96px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: 999px; background: transparent !important; background-image: none !important; color: var(--text-primary) !important; font-weight: 700; box-shadow: none; }
 .multi-card-scanner__price { font-weight: 800; color: var(--c3-gold-ink, var(--text-primary)); }
+/* Nov 27 2026: "Is this your card?" asked under the camera. Yes is the main action here, so it is the filled one. */
+html:root body .app.app-command-shell[data-theme] .multi-card-scanner__last button.multi-card-scanner__yes { background: var(--brand-primary, #E8C86B) !important; color: var(--text-on-brand, #1a0f12) !important; border-color: transparent; }

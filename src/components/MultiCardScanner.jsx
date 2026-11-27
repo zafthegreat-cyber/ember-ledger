@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import { BINDER_LAYOUTS, binderCells, pocketLabel } from "../utils/binderPage.mjs";
+import { lastScanSummary } from "../utils/cardScanRows.mjs";
 import "./multi-card-scanner.css";
 
 const CardCameraFrame = lazy(() => import("./CardCameraFrame.jsx"));
@@ -18,12 +19,15 @@ const loadReader = () => import("../utils/cardPhotoReader.mjs");
 // the next card can be shown at once. A card that could not be read adds nothing and
 // gets one more automatic try. The last card shows right under the camera with its
 // price and an Undo button. rows: the list below (to show the last card's match).
+// Nov 27 2026: when the list offers one card for the last scan ("Is this your card?"),
+// the question and a Yes button show here too, so nobody has to scroll down mid-scan.
+// onPick(row, choice) files that card, the same as tapping it in the list.
 function buzz(pattern) {
   try { navigator.vibrate?.(pattern); } catch { /* Optional feedback. */ }
 }
 const scanKey = (name, number) => `${String(name || "").trim().toLowerCase()}|${String(number || "").trim().toLowerCase()}`;
 
-export default function MultiCardScanner({ onRows, autoStart = false, rows = [], onUndo, money }) {
+export default function MultiCardScanner({ onRows, autoStart = false, rows = [], onUndo, onPick, money }) {
   const id = useId();
   const [mode, setMode] = useState(autoStart ? "camera" : "");
   const [layout, setLayout] = useState("3x3");
@@ -110,22 +114,21 @@ export default function MultiCardScanner({ onRows, autoStart = false, rows = [],
   }
 
   const lastRow = last ? [...rows].reverse().find((row) => scanKey(row.cardName, row.cardNumber) === scanKey(last.cardName, last.cardNumber)) : null;
-  const lastMatched = Boolean(lastRow && lastRow.matchState === "matched" && lastRow.matchedFor === `${lastRow.cardName}|${lastRow.cardNumber}`);
   const lastQuantity = Math.max(1, Number(lastRow?.quantity) || 1);
-  const lastDetail = !lastRow ? ""
-    : lastMatched ? String(lastRow.matchedProduct?.setName || lastRow.matchedProduct?.expansion || lastRow.matchedLabel || "Matched")
-      : lastRow.scanNote ? `${lastRow.scanNote}. Check it in the list below.`
-        : lastRow.matchState === "review" && lastRow.matchedFor === `${lastRow.cardName}|${lastRow.cardNumber}` ? "Not sure which card this is. Check it in the list below."
-          : "Finding its price…";
+  // One card offered: the question and Yes show here. Two or more are picked in the list.
+  const { matched: lastMatched, offer: lastOffer, detail: lastDetail } = lastScanSummary(lastRow, { canPick: Boolean(onPick) });
   const reading = pending > 0 ? <p className="multi-card-scanner__pending" role="status">Reading {pending === 1 ? "1 card" : `${pending} cards`}…</p> : null;
   const lastCard = lastRow ? <div className="multi-card-scanner__last" role="status">
     <div>
       <small>{lastQuantity > 1 ? `Same card again: you now have ${lastQuantity}` : "Just scanned"}</small>
       <strong>{[lastRow.cardName, lastRow.cardNumber].map((value) => String(value || "").trim()).filter(Boolean).join(" · ")}{lastQuantity > 1 ? ` ×${lastQuantity}` : ""}</strong>
-      <span>{lastDetail}{lastMatched && lastRow.matchedValue && money ? <b className="multi-card-scanner__price"> · {money(lastRow.matchedValue)}{lastQuantity > 1 ? " each" : ""}</b> : null}</span>
+      <span>{lastDetail}{lastMatched && lastRow.matchedValue && money ? <b className="multi-card-scanner__price"> · {money(lastRow.matchedValue)}{lastQuantity > 1 ? " each" : ""}</b> : null}{lastOffer?.value && money ? <b className="multi-card-scanner__price"> · {money(lastOffer.value)}</b> : null}</span>
     </div>
     <div className="multi-card-scanner__last-actions">
-      <button type="button" aria-label={`One more copy of ${lastRow.cardName || "this card"}`} onClick={() => { onRowsRef.current?.([{ cardName: lastRow.cardName, cardNumber: lastRow.cardNumber, scanNote: "", scanned: true }]); setCount((value) => value + 1); setStatus(""); }}>One more</button>
+      {/* While the card is in question, Yes takes the place of One more: a copy is added once the card is known. */}
+      {lastOffer
+        ? <button type="button" className="multi-card-scanner__yes" aria-label={`Yes, this is ${lastOffer.name || "my card"}`} onClick={() => { onPick(lastRow, lastOffer); buzz(30); setStatus(""); }}>Yes</button>
+        : <button type="button" aria-label={`One more copy of ${lastRow.cardName || "this card"}`} onClick={() => { onRowsRef.current?.([{ cardName: lastRow.cardName, cardNumber: lastRow.cardNumber, scanNote: "", scanned: true }]); setCount((value) => value + 1); setStatus(""); }}>One more</button>}
       {onUndo ? <button type="button" onClick={() => { onUndo(last); if (lastQuantity <= 1) setLast(null); setCount((value) => Math.max(0, value - 1)); setStatus("Removed that scan."); }}>Undo</button> : null}
     </div>
   </div> : null;

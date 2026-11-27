@@ -55,3 +55,28 @@ export function undoScannedCardRow(rows = [], read = {}) {
     ? list.map((row, position) => (position === index ? { ...row, quantity: copies - 1 } : row))
     : list.filter((_, position) => position !== index);
 }
+
+/**
+ * What the strip under the camera says about the newest scanned row (Nov 27 2026).
+ *   matched: the row has its card; detail is its set.
+ *   offer: the one card the list offers for the row ("Is this your card?"), when there is
+ *     exactly one and the strip is able to file it (canPick). detail asks the question by
+ *     name. Two or more cards are picked in the list, where there is room for them.
+ * The screen adds the prices.
+ */
+export function lastScanSummary(row, { canPick = false } = {}) {
+  if (!row) return { matched: false, offer: null, detail: "" };
+  const current = row.matchedFor === `${row.cardName}|${row.cardNumber}`;
+  if (current && row.matchState === "matched") {
+    return { matched: true, offer: null, detail: String(row.matchedProduct?.setName || row.matchedProduct?.expansion || row.matchedLabel || "Matched") };
+  }
+  const inReview = current && row.matchState === "review";
+  const choices = inReview && Array.isArray(row.matchedChoices) ? row.matchedChoices.filter((choice) => choice?.product) : [];
+  if (canPick && choices.length === 1) {
+    const [offer] = choices;
+    return { matched: false, offer, detail: `Is this ${String(offer.name || "").trim() || "your card"}? ${String(offer.short || "").trim()}`.trim() };
+  }
+  if (choices.length > 1) return { matched: false, offer: null, detail: "Not sure which card this is. Pick it in the list below." };
+  if (row.scanNote) return { matched: false, offer: null, detail: `${row.scanNote}. Check it in the list below.` };
+  return { matched: false, offer: null, detail: inReview ? "Not sure which card this is. Check it in the list below." : "Finding its price…" };
+}
