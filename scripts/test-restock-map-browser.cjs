@@ -35,8 +35,19 @@ const cases = [{ width: 390, height: 844, theme: "dark" }, { width: 320, height:
       const map = card.locator(".restock-slippy");
       const canvas = card.locator(".restock-slippy__canvas");
       await expect(canvas).toBeVisible();
-      await canvas.evaluate((element) => element.scrollIntoView({ block: "center" }));
       await expect(card.locator(".restock-pin").first()).toBeVisible({ timeout: 30000 });
+      // Nov 27 2026: on a phone the map starts on the first screen. The Find header, a one-tab bar and two
+      // titles used to push it down: 42% of it showed on a 390px phone, none on a 320px one.
+      step = `${prefix}: the map starts on the first screen`;
+      const firstScreen = await canvas.evaluate((element) => {
+        scrollTo(0, 0);
+        const rect = element.getBoundingClientRect();
+        const nav = [...document.querySelectorAll(".ops-mobile-nav")].find((bar) => getComputedStyle(bar).display !== "none");
+        const bottom = nav ? nav.getBoundingClientRect().top : innerHeight;
+        return { top: Math.round(rect.top), height: Math.round(rect.height), shown: Math.round(Math.min(rect.bottom, bottom) - Math.max(rect.top, 0)) };
+      });
+      assert.ok(firstScreen.shown >= firstScreen.height / 2, `At least half the map shows before scrolling (${firstScreen.shown}px of ${firstScreen.height}px, map top ${firstScreen.top}px)`);
+      await canvas.evaluate((element) => element.scrollIntoView({ block: "center" }));
       const zoom = async () => Number(await map.getAttribute("data-zoom"));
       const center = async () => (await map.getAttribute("data-center")).split(",").map(Number);
       // Pins near the edge are drawn half outside the map; a tap goes to one whose middle is well inside.
