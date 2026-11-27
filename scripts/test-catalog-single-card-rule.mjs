@@ -19,7 +19,7 @@ const sync = require("./sync-catalog-prices-stores.cjs");
 const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 
 // TCGCSV product shape: extendedData is a list of { name, value }.
-const tcgcsv = (productId, name, { number, rarity } = {}) => ({
+const tcgcsv = (productId, name, { number, rarity, cardType } = {}) => ({
   productId,
   name,
   cleanName: name,
@@ -28,6 +28,7 @@ const tcgcsv = (productId, name, { number, rarity } = {}) => ({
   extendedData: [
     ...(number ? [{ name: "Number", value: number }] : []),
     ...(rarity ? [{ name: "Rarity", value: rarity }] : []),
+    ...(cardType ? [{ name: "Card Type", value: cardType }] : []),
   ],
 });
 // The importer flattens extendedData to lower-case keys before classifying.
@@ -49,6 +50,10 @@ const SINGLE_CARDS = [
   tcgcsv(283400, "Giratina VSTAR (Secret)", { number: "GG69/GG70", rarity: "Secret Rare" }),
   // Energy cards often carry no number at all; the rarity alone is the evidence.
   tcgcsv(210001, "Fighting Energy (2022 Unnumbered)", { rarity: "Common" }),
+  // World Championship deck cards: rarity "None", no number, only a card type.
+  tcgcsv(690499, "Brock's Scouting - 2025 (Jose Cruz Galindo-Resendiz)", { rarity: "None", cardType: "Trainer - Supporter" }),
+  tcgcsv(690268, "Brock's Scouting - 2025 (Liao Fu Guan)", { rarity: "None", cardType: "Trainer - Supporter" }),
+  tcgcsv(696742, "Basic Fighting Energy - 2025 (Yuya Okita)", { rarity: "None", cardType: "Basic Fighting Energy" }),
 ];
 
 const SEALED_PRODUCTS = [
@@ -78,6 +83,20 @@ test("the shared rule reads card evidence, not names", () => {
   assert.equal(rule.isSingleCard({ cardNumber: "", rarity: "" }), false, "a tin or box carries neither");
   assert.equal(rule.isSingleCard({ cardNumber: "", rarity: "Code Card" }), false, "code cards are not decided here");
   assert.equal(rule.isSingleCard(), false);
+
+  // A card type is printed on cards only.
+  for (const cardType of ["Pokemon", "Trainer - Supporter", "Basic Fighting Energy", "Special Energy"]) {
+    assert.equal(rule.hasCardType(cardType), true, cardType);
+  }
+  for (const cardType of ["", "  ", null, undefined, "Code Card", "Sealed Product"]) {
+    assert.equal(rule.hasCardType(cardType), false, String(cardType));
+  }
+  assert.equal(rule.isSingleCard({ rarity: "None", cardType: "Trainer - Supporter" }), true, "a World Championship deck card");
+  assert.equal(rule.isSingleCard({ rarity: "", cardType: "Pokemon" }), true, "a card with only its type on file");
+  assert.equal(rule.isSingleCard({ rarity: "Code Card", cardType: "Pokemon" }), false, "a code card stays outside the rule");
+  assert.equal(rule.isSingleCard({ rarity: "None", cardType: "" }), false, "rarity None alone is no evidence");
+  const deckCard = SINGLE_CARDS.find((product) => product.productId === 690499);
+  assert.deepEqual(rule.singleCardEvidence(deckCard, { rarity: "None", card_type: "Trainer - Supporter" }), { cardNumber: "", rarity: "None", cardType: "Trainer - Supporter" });
 });
 
 test("the Supabase importer files Dratini, Mantine, Victini and Nemona's Backpack as cards", () => {
@@ -174,6 +193,32 @@ test("the daily refresh moves cards already stored as sealed, keeping their reco
   assert.equal(unpriced.marketPrices.find((row) => row.tcgplayerProductId === "503313").catalogType, "sealed");
 });
 
+test("the daily refresh moves World Championship deck cards stored as tins: their card type is the evidence", () => {
+  // Until Nov 27, 2026 the bundled sealed file held Brock's Scouting (2) and Basic Fighting
+  // Energy from the 2025 decks as tins: rarity "None", no number, and "tin" in the name.
+  const group = { groupId: 2282, name: "World Championship Decks", abbreviation: "WCD", modifiedOn: "2026-11-01T00:00:00.000Z" };
+  const deckCards = SINGLE_CARDS.filter((product) => product.extendedData.some((entry) => entry.name === "Card Type"));
+  const quote = (product, marketPrice) => ({ productId: product.productId, marketPrice, midPrice: 1, lowPrice: 0.5, highPrice: 3, subTypeName: "Normal" });
+  const oldCheck = "2026-11-26T09:17:00.000Z";
+  const newCheck = "2026-11-27T09:17:00.000Z";
+  const before = {
+    sealed: deckCards.map((product) => sync.normalizeTcgCsvSealed(product, group, quote(product, 2.06), oldCheck)),
+    cards: [],
+    marketPrices: deckCards.map((product) => sync.normalizeMarketPrice(product, group, quote(product, 2.06), "sealed", oldCheck)),
+  };
+  assert.deepEqual(before.sealed.map((row) => row.productType), ["Tin", "Tin", "Tin"], "the stored rows were tins");
+  const fresh = sync.normalizeTcgCsvGroup({ results: deckCards }, { results: deckCards.map((product) => quote(product, 0.76)) }, group, newCheck);
+  assert.deepEqual(fresh.sealedProducts, [], "the feed files them as cards");
+  assert.deepEqual(fresh.cards.map((row) => row.cardType), ["Trainer - Supporter", "Trainer - Supporter", "Basic Fighting Energy"]);
+  const result = sync.preserveLastGoodCatalog(before, { ...fresh, groups: [group], syncedGroups: [group], failedGroups: [] });
+  assert.deepEqual(result.sealedProducts, []);
+  assert.deepEqual(result.cards.map((row) => [row.id, row.catalogType, row.rarity]), [
+    ["tcgcsv-690499", "card", "None"], ["tcgcsv-690268", "card", "None"], ["tcgcsv-696742", "card", "None"],
+  ], "each keeps its stored record ID");
+  for (const card of result.cards) assert.equal(Object.hasOwn(card, "sealedSubtype"), false, `${card.name} drops the tin fields`);
+  assert.deepEqual(result.marketPrices.map((row) => row.catalogType), ["card", "card", "card"]);
+});
+
 test("the scanner's name list knows the cards that were filed as sealed, and the daily job keeps it in step", () => {
   // The list is built from the bundled card file. While Dratini, Mantine, Victini and Giratina sat
   // in the sealed file, the scanner could not correct a misread to any of those names.
@@ -186,6 +231,10 @@ test("the scanner's name list knows the cards that were filed as sealed, and the
   assert.ok(cards.some((row) => row.name === "Dratini" && row.setName === "Base Set" && row.cardNumber === "026/102"), "Dratini 026/102 is in the card file");
   for (const name of ["Dratini", "Mantine", "Victini", "Giratina"]) {
     assert.equal(sealed.filter((row) => row.name === name).length, 0, `${name} is not in the sealed file`);
+  }
+  for (const id of ["690499", "690268", "696742"]) {
+    assert.equal(sealed.filter((row) => row.tcgplayerProductId === id).length, 0, `World Championship deck card ${id} is not in the sealed file`);
+    assert.equal(cards.filter((row) => row.tcgplayerProductId === id && row.catalogType === "card").length, 1, `and is in the card file`);
   }
   assert.ok(sealed.some((row) => row.productType === "Mini Tin"), "real tins stay in the sealed file");
   assert.ok(sealed.some((row) => row.productType === "Booster Box"), "real booster boxes stay in the sealed file");
@@ -210,8 +259,12 @@ test("a card whose name holds a product word is on the scanner's name list; a li
     card("Bisharp Darkrai Deck"), card("Fire Energy Prize Pack Series 1"), card("Iron Bundle Holiday Calendar"),
     // No rarity and no number: a sealed product, whatever the file it came from.
     card("Surging Sparks Booster Box", {}), card("Mystery Tin", { cardNumber: "", rarity: "" }), card("Code Card Booster Pack", { rarity: "Code Card" }),
+    // Code cards are redemption codes, not cards to scan, with or without a product word.
+    card("Code Card Paradox Rift", { rarity: "Code Card" }), card("Code Card", { rarity: "Code Card" }), card("Code Card Team Up Season", { rarity: "" }),
+    // A World Championship deck card: rarity "None" and its card type.
+    card("Brocks Scouting 2025 Liao Fu Guan", { cardNumber: "", rarity: "None", cardType: "Trainer - Supporter" }),
   ]);
-  assert.deepEqual(list, ["Ancient Booster Energy Capsule", "Bisharp", "Fire Energy", "Iron Bundle", "Secret Box", "Tool Box"]);
+  assert.deepEqual(list, ["Ancient Booster Energy Capsule", "Bisharp", "Brocks Scouting", "Fire Energy", "Iron Bundle", "Secret Box", "Tool Box"]);
 
   const names = new Set(JSON.parse(read("../src/data/generated/cardNames.json")).map((name) => name.toLowerCase()));
   for (const name of ["Iron Bundle", "Secret Box", "Tool Box", "Legend Box", "Surprise Box", "Box of Disaster", "Suspicious Food Tin", "Aarons Collection",
@@ -222,6 +275,7 @@ test("a card whose name holds a product word is on the scanner's name list; a li
     assert.equal(names.has(name.toLowerCase()), false, `${name} is a listing, not a printed name`);
   }
   assert.deepEqual([...names].filter((name) => /\b(?:elite trainer box|booster box|booster pack|booster bundle|mini tin)\b/.test(name)), [], "no sealed product is on the list");
+  assert.deepEqual([...names].filter((name) => /\bcode card\b/.test(name)), [], "no code card is on the list");
 });
 
 test("the SQL rule matches the JavaScript rule and runs before the name words", () => {

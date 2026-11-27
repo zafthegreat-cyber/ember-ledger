@@ -9,8 +9,10 @@ Initially merged main `dabed6311f4fc243cd9fa0162266401d94a627df` into feature he
 `5a16a19bf845491b026ad1f0b7862757be07d5a1` with both parents retained.
 During validation main advanced by four more commits. A second reviewed merge
 includes `1781bb2c9f5fac1e32a7ef50f80c051a6a7577b5`. A third merge preserves the
-later scanner stale-page recovery at `0cc4296ff1ae2530a5469610190e35802159deba`,
-bringing the total to 32 newer main commits. Catalog data, camera/scanner changes,
+later scanner stale-page recovery at `0cc4296ff1ae2530a5469610190e35802159deba`.
+The captured validation base is `a0fcf9a4383d0d59ceac4e69a22c27006c7ebe96`,
+including its catalog classification/name-list corrections and refreshed bundled
+data (33 newer main commits in total). Catalog data, camera/scanner changes,
 card printing prices, reviewed card backs and App.jsx match this main snapshot. The later scanner
 confirmation/save fixes and card-number prefix-index migration are preserved;
 no hosted migration was run by this work.
@@ -84,6 +86,8 @@ real Supabase JWT/session behavior, gateway CORS, or the deployed staff function
 - Focused stock/consent/intake/project-isolation tests: 60 passed, zero skipped.
 - After the later main reconciliations, the 60 stock tests plus 27 affected
   scanner/card-identity tests pass (87 total); source lint and build pass again.
+- The captured catalog snapshot adds classification/card-back coverage: all 111
+  focused tests pass, with lint, build and the chunk budget passing again.
 - Connected sign-in regression tests: 41 passed.
 - National-launch checks: 7 passed. Synthetic browser tests passed at 390px and
   1440px for warehouse visibility, sign-out, consent save/delete, account switching

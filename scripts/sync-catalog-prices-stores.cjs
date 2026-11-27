@@ -331,9 +331,9 @@ function inferProductType(name = "") {
 }
 
 function isSealedOrAccessory(product = {}) {
-  // A card rarity or collector number means a single card, whatever the name
-  // contains: "Dratini", "Fighting Energy" and "Nemona's Backpack" all hold a
-  // sealed word (tin, pack). Only rows with neither are decided by name.
+  // A card rarity, collector number or card type means a single card, whatever
+  // the name contains: "Dratini", "Fighting Energy" and "Nemona's Backpack" all
+  // hold a sealed word (tin, pack). Only rows with none of them are decided by name.
   if (isSingleCard(singleCardEvidence(product, extendedDataObject(product)))) return false;
   const text = normalizeSearch(product.name || product.cleanName);
   return Boolean(inferProductType(text)) || SEALED_KEYWORDS.some((keyword) => text.includes(keyword));
@@ -464,6 +464,9 @@ function normalizeTcgCsvCard(product = {}, group = {}, price = {}, checkedAt = S
     cardNumber: ext.number || ext.card_number || "",
     setNumber: ext.number || ext.card_number || "",
     rarity: ext.rarity || "",
+    // Pokemon, Trainer - Supporter, Basic Fighting Energy. Proof of a single card
+    // when the rarity says "None" (World Championship deck cards).
+    cardType: ext.card_type || "",
     imageSmall: product.imageUrl || "",
     imageLarge: product.imageUrl || "",
     imageUrl: product.imageUrl || "",
@@ -667,13 +670,14 @@ function mergeQuote(previous, incoming) {
   return merged;
 }
 
-// A stored row that was filed as sealed only because of its name (Dratini and
-// Fighting Energy hold "tin") becomes the feed's card row. Its record ID and
-// last good quote are kept; the sealed-only fields (product type "Tin", pack
-// count) go. Returns null when the feed row is not such a correction.
+// A stored row that was filed as sealed only because of its name (Dratini,
+// Fighting Energy and Brock's Scouting hold "tin") becomes the feed's card row.
+// Its record ID and last good quote are kept; the sealed-only fields (product
+// type "Tin", pack count) go. Returns null when the feed row is not such a
+// correction.
 function refiledAsSingleCard(previous = {}, incoming = {}) {
   if (previous.catalogType === "card" || incoming.catalogType !== "card") return null;
-  if (!isSingleCard({ cardNumber: incoming.cardNumber, rarity: incoming.rarity })) return null;
+  if (!isSingleCard({ cardNumber: incoming.cardNumber, rarity: incoming.rarity, cardType: incoming.cardType })) return null;
   const keepQuote = keepsPreviousQuote(previous, incoming);
   const merged = mergeQuote(previous, incoming);
   for (const field of Object.keys(previous)) {

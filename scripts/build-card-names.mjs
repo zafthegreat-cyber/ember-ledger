@@ -11,6 +11,7 @@ const { isSingleCard } = singleCardRule;
 // Catalog names carry variant and listing words after the printed name.
 const VARIANT_TAIL = /\s+(?:secret|full art|alternate(?: full)? art|alt art|non holo|reverse holo|cosmos holo|cracked ice holo|holo|shiny|staff|prerelease|league promo|promo|black star promo|master ball pattern|poke ball pattern|pokeball pattern|jumbo|oversized|error|stamped|1st edition|shadowless|unlimited|delta species|gold|rainbow|special illustration rare|illustration rare|hyper rare|ultra rare|double rare|ace spec|radiant|trainer gallery|galarian gallery)$/i;
 const SEALED = /\b(?:box|pack|packs|case|bundle|collection|tin|deck|binder|sleeves|set of|blister|booster|display|portfolio|kit)\b/i;
+const CODE_CARD = /\bcode card\b/i;
 
 export function printedCardName(raw = "") {
   let name = String(raw)
@@ -30,12 +31,15 @@ export function buildCardNameList(cards = []) {
   const names = new Map();
   const withProductWord = new Map();
   for (const card of cards) {
+    // A code card is an online redemption code, not a card anyone scans; the card file
+    // holds 149 of them ("Code Card Paradox Rift").
+    if (/^code card$/i.test(String(card.rarity || "").trim()) || CODE_CARD.test(card.cardName || card.name || "")) continue;
     const name = printedCardName(card.cardName || card.name);
     if (name.length < 3 || !/[a-z]/i.test(name) || name.split(" ").length > 6) continue;
     const key = name.toLowerCase();
     if (SEALED.test(name)) {
-      // A sealed product, unless the row is a single card (it carries a card rarity or number).
-      if (isSingleCard({ cardNumber: card.cardNumber, rarity: card.rarity }) && !withProductWord.has(key)) withProductWord.set(key, name);
+      // A sealed product, unless the row is a single card (it carries a card rarity, number or type).
+      if (isSingleCard({ cardNumber: card.cardNumber, rarity: card.rarity, cardType: card.cardType }) && !withProductWord.has(key)) withProductWord.set(key, name);
       continue;
     }
     if (!names.has(key)) names.set(key, name);
