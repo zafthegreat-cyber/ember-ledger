@@ -109,4 +109,3 @@ alter table public.inventory_items
   add column if not exists item_image_last_updated timestamptz,
   add column if not exists item_image_needs_review boolean default false;
 commit;
-

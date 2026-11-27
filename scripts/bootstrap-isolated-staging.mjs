@@ -24,7 +24,7 @@ try{
   const applied=identity.history?(await db.query("select version,name from supabase_migrations.schema_migrations order by version")).rows:[];
   const plan=migrationPlan(files,applied);
   const bundle=buildStagingSql(await readFile(new URL("bootstrap/legacy_database_foundation.sql",root),"utf8"),plan);
-  const manifest={project:ref,mode:args[0],historicalPrefix:applied.length,migrations:bundle.manifest};
+  const manifest={project:ref,mode:args[0],historicalPrefix:applied.length,foundationSha256:bundle.foundationSha256,migrations:bundle.manifest};
   if(args[0]==="--apply"){
     try{await db.query(bundle.sql);}catch{await db.query("rollback").catch(()=>{});throw new Error("Staging bootstrap rolled back. Inspect database logs; no credentials are included here.");}
     const {rows:[state]}=await db.query("select (select count(*)::int from cron.job where active) as active_jobs,(select count(*)::int from public.retailer_intel_sources where connected) as connected_sources");

@@ -76,5 +76,5 @@ export function buildStagingSql(foundation,files){
     "grant usage on schema code3_private to service_role;",
     "grant execute on function public.code3_current_session_valid(),code3_private.current_session_id() to service_role;",
     "notify pgrst,'reload schema';","commit;"].join("\n");
-  return {sql,manifest};
+  return {sql,manifest,foundationSha256:createHash("sha256").update(foundation).digest("hex")};
 }
