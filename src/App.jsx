@@ -51913,6 +51913,17 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                               onClick={() => setCatalogVariantSelection((current) => ({ ...current, [selectedCatalogDetailProduct.id]: variant.id }))}
                             >
                               {variant.variantName}
+                              {(() => {
+                                // Show the printing's own price only; no price of its own means no number on the button.
+                                if (selectedCatalogDetailVariants.length < 2) return null;
+                                const ownPrice = variant.sourceProduct
+                                  ? Number(variant.sourceProduct.marketPrice || 0)
+                                  : (() => {
+                                      const priced = withCatalogVariantPricing(selectedCatalogDetailProduct, variant, selectedCatalogDetailVariants.length);
+                                      return priced === selectedCatalogDetailProduct ? 0 : Number(priced.marketPrice || 0);
+                                    })();
+                                return ownPrice > 0 ? <span className="catalog-version-price"> · {money(ownPrice)}</span> : null;
+                              })()}
                             </button>
                           ))}
                         </div>
