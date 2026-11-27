@@ -1,12 +1,10 @@
 // The You page and the pages that share its header (Collections, Coming Soon, Account,
 // Help & Support) are a short header followed by the page itself.
 //
-// On phones and tablets the header on You, Collections and Coming Soon used to be a full
-// screen tall: the page opened on an empty panel and its first card was below the fold
-// (fixed Nov 26 2026). Account and Help were already right and are here so they stay that way.
-//
-// Checked at phone and tablet widths only. At 1180px and wider the You page still opens on
-// the tall header; when that is fixed, add a desktop width to `viewports`.
+// The header on You, Collections and Coming Soon used to be a full screen tall: the page
+// opened on an empty panel and its first card was below the fold. On wide screens the page
+// under it also started behind the sidebar. Both were fixed on Nov 26 2026. Account and Help
+// were already right and are here so they stay that way.
 const fs = require("node:fs");
 const path = require("node:path");
 const { chromium } = require("@playwright/test");
@@ -20,6 +18,8 @@ const viewports = [
   { name: "phone", width: 390, height: 844 },
   { name: "tablet", width: 768, height: 1024 },
   { name: "tablet-wide", width: 1024, height: 768 },
+  { name: "laptop", width: 1180, height: 800 }, // the narrowest width that shows the sidebar
+  { name: "desktop", width: 1440, height: 900 },
 ];
 
 // `header` is the header's accessible name, so the check never runs against the page before.
@@ -52,6 +52,15 @@ function headerProblems(target) {
   if (headerHeight > window.innerHeight / 2) problems.push(`the header is ${headerHeight}px tall, more than half of the ${window.innerHeight}px screen`);
   // 44px, one touch target, of the page has to be in view above the bottom bar.
   if (pageTop + 44 > screenEnd) problems.push(`the page starts ${pageTop}px down, off the first screen (the bottom bar starts at ${screenEnd}px)`);
+  // Wide screens have a sidebar fixed on the left; nothing of the page may sit behind it.
+  const sidebar = document.querySelector(".app > .ops-desktop-sidebar");
+  if (showing(sidebar)) {
+    const sidebarEnd = Math.round(sidebar.getBoundingClientRect().right);
+    for (const [what, element] of [["header", header], ["page", pageStart]]) {
+      const left = Math.round(element.getBoundingClientRect().left);
+      if (left < sidebarEnd) problems.push(`the ${what} starts ${left}px from the left, behind the sidebar (which ends at ${sidebarEnd}px)`);
+    }
+  }
   if (document.documentElement.scrollWidth - window.innerWidth > 1) problems.push("the page scrolls sideways");
   return problems;
 }
