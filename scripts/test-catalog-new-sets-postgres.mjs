@@ -174,6 +174,7 @@ try {
       variant_type text not null default 'standard' check (variant_type in ('normal','holo','reverse_holo','first_edition','unlimited','sealed','standard','other')),
       variant_name text not null, finish text, printing text, language text not null default 'English',
       condition_name text not null default '', is_default boolean not null default false, external_ids jsonb not null default '{}',
+      market_price numeric, display_order integer not null default 0, updated_at timestamptz not null default now(),
       unique (catalog_item_id, variant_name, language, condition_name));
     create table public.master_market_price_sources(
       id uuid primary key default gen_random_uuid(), catalog_item_id uuid not null references public.master_catalog_items(id),
@@ -206,6 +207,10 @@ try {
     "20261125093000_catalog_price_refresh_pokemontcg.sql",
     "20261126090000_catalog_single_cards_not_sealed.sql",
     "20261126213000_catalog_new_sets.sql",
+    // Later changes edit the same functions in place; the new-set path must hold with them applied.
+    "20261127010000_catalog_add_missing_printings.sql",
+    "20261127020000_catalog_default_printings_named.sql",
+    "20261127030000_catalog_price_pokemontcg_only_unmatched.sql",
   ]) {
     await db.query(await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), "utf8"));
   }
@@ -281,14 +286,16 @@ try {
   const tin = await item(726601);
   equal([tin.is_sealed, tin.product_type, tin.product_kind, tin.sealed_product_type, tin.catalog_item_type, tin.card_number], [true, "Sealed Product", "sealed_product", "mini_tin", "sealed", null]);
 
-  // Printings: every printing in the product page table, the item's own in the master catalog.
+  // Printings: every printing TCGplayer sells, in both tables, the item's own marked as the default
+  // (the master catalog gets the others from catalog_add_missing_printings, 20261127010000).
   const maschiff = await item(704814);
   equal([maschiff.set_code, maschiff.card_number, maschiff.price_subtype, Number(maschiff.market_price), Number(maschiff.low_price), Number(maschiff.high_price)],
     ["PBL", "057/084", "Normal", 0.07, 0.01, 5]);
   equal(await all("select variant_name, finish, is_default from public.catalog_product_variants where catalog_product_id = $1 order by variant_name", [maschiff.id]),
     [{ variant_name: "Normal", finish: "Normal", is_default: true }, { variant_name: "Reverse Holofoil", finish: "Reverse Holofoil", is_default: false }]);
-  equal(await all("select variant_name, variant_type, is_default from public.master_catalog_variants where catalog_item_id = $1", [maschiff.master_id]),
-    [{ variant_name: "Normal", variant_type: "standard", is_default: true }]);
+  equal(await all("select variant_name, variant_type, is_default, market_price::float8 as market_price from public.master_catalog_variants where catalog_item_id = $1 order by variant_name", [maschiff.master_id]),
+    [{ variant_name: "Normal", variant_type: "standard", is_default: true, market_price: 0.07 },
+      { variant_name: "Reverse Holofoil", variant_type: "reverse_holo", is_default: false, market_price: 0.21 }]);
   equal((await all("select price_subtype, market_price::float8 as market_price from public.product_market_price_current where catalog_product_id = $1 order by price_subtype", [maschiff.id])),
     [{ price_subtype: "Normal", market_price: 0.07 }, { price_subtype: "Reverse Holofoil", market_price: 0.21 }], "each printing has a current price");
   equal((await all("select price_type, confidence_score::float8 as confidence_score from public.master_market_price_sources where catalog_item_id = $1 order by price_type", [maschiff.master_id])),
@@ -298,7 +305,7 @@ try {
   equal((await all("select identifier_type, identifier_value, confidence from public.product_identifiers where catalog_product_id = $1", [maschiff.id])),
     [{ identifier_type: "TCGPLAYER_PRODUCT_ID", identifier_value: "704814", confidence: "imported" }]);
   const giratina = await item(726500);
-  equal([giratina.price_subtype, (await one("select variant_type from public.master_catalog_variants where catalog_item_id = $1", [giratina.master_id])).variant_type], ["Holofoil", "holo"]);
+  equal([giratina.price_subtype, (await one("select variant_type from public.master_catalog_variants where catalog_item_id = $1 and is_default", [giratina.master_id])).variant_type], ["Holofoil", "holo"]);
 
   // Sealed products of a set that was already there.
   const box = await item(704903);
