@@ -1,10 +1,11 @@
 import { PrivateStorageImage } from "./PrivateReceipt.jsx";
 import { useMemo, useRef, useState } from "react";
 import { getRowCoordinates, inferAreaCoordinates, toFiniteNumber } from "../utils/storeMapCoordinates.mjs";
+// Tiles and credit follow OpenStreetMap's tile policy (Nov 27 2026): see src/config/mapTiles.js.
+import { MAP_TILE_CREDIT, MAP_TILE_CREDIT_URL, mapTileUrl } from "../config/mapTiles.js";
 
 const TILE_SIZE = 256;
 const PAN_DRAG_THRESHOLD = 4;
-const DEFAULT_TILE_BASE_URL = "https://tile.openstreetmap.org";
 function latLngToWorld({ lat, lng }, zoom) {
   const scale = TILE_SIZE * 2 ** zoom;
   const safeLat = Math.max(-85.05112878, Math.min(85.05112878, lat));
@@ -66,7 +67,7 @@ export default function ScoutTileMap({
   onPinSelect,
   selectedId = "",
   focusFirstPin = false,
-  tileBaseUrl = DEFAULT_TILE_BASE_URL,
+  tileBaseUrl = "",
   tileColumnCount,
   tileRowCount,
   showFacts = true,
@@ -136,7 +137,7 @@ export default function ScoutTileMap({
         const tileY = clamp(startY + y, 0, tileLimit - 1);
         tileRows.push({
           key: `${zoom}-${tileX}-${tileY}-${x}-${y}`,
-          url: `${tileBaseUrl}/${zoom}/${tileX}/${tileY}.png`,
+          url: tileBaseUrl ? `${tileBaseUrl}/${zoom}/${tileX}/${tileY}.png` : mapTileUrl(zoom, tileX, tileY),
           left: `${(x / columns) * 100}%`,
           top: `${(y / rowsCount) * 100}%`,
           width: `${100 / columns}%`,
@@ -338,7 +339,6 @@ export default function ScoutTileMap({
               draggable="false"
               key={tile.key}
               loading="eager"
-              referrerPolicy="no-referrer"
               src={tile.url}
               style={{ left: tile.left, top: tile.top, width: tile.width, height: tile.height }}
               onError={() => setTileErrorKeys((current) => {
@@ -429,9 +429,9 @@ export default function ScoutTileMap({
         ) : null}
         <span className="scout-tile-map-attribution">
           {showAttributionLink ? (
-            <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">Map data OpenStreetMap</a>
+            <a href={MAP_TILE_CREDIT_URL} target="_blank" rel="noreferrer">{MAP_TILE_CREDIT}</a>
           ) : (
-            <span>Map data OpenStreetMap</span>
+            <span>{MAP_TILE_CREDIT}</span>
           )}
         </span>
       </div>

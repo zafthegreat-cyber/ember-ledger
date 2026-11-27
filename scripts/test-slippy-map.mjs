@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
+import { mapTileSettings, mapTileUrl, OSM_CREDIT, OSM_CREDIT_URL, OSM_TILE_URL } from "../src/config/mapTiles.js";
 import { busiestPoints, clampZoom, clusterPins, fitView, focusPoints, fromScreen, groupLabel, MAX_ZOOM, milesBetween, MIN_ZOOM, onScreen, panBy, project, storeMapLabel, toScreen, unproject, visibleTiles, zoomAt, zoomForRadius, zoomTo } from "../src/features/restocks/slippyMap.mjs";
 
 const size = { width: 320, height: 360 };
@@ -164,8 +165,39 @@ test("wiring: the restock page uses the draggable map and keeps the safety rules
   const map = read("src/features/restocks/RestockSlippyMap.jsx");
   assert.match(map, /aria-label="Zoom in"/);
   assert.match(map, /aria-label="Show stores near me"/);
-  assert.match(map, /© OpenStreetMap/);
+  // OpenStreetMap's tile policy (Nov 27 2026): the browser's normal Referer and a linked credit, in both maps.
+  for (const file of ["src/features/restocks/RestockSlippyMap.jsx", "src/components/ScoutTileMap.jsx"]) {
+    const source = read(file);
+    assert.doesNotMatch(source, /referrerPolicy="no-referrer"[^>]*\bsrc=\{[^}]*tile/i, `${file}: tiles send the browser's normal Referer`);
+    assert.doesNotMatch(source.replace(/^\s*\/\/.*$/gm, ""), /tile\.openstreetmap\.org/, `${file}: the tile URL comes from src/config/mapTiles.js`);
+    assert.match(source, /href=\{MAP_TILE_CREDIT_URL\}/, `${file}: the credit links to the copyright page`);
+    assert.match(source, /\{MAP_TILE_CREDIT\}/, `${file}: the credit shows the provider's credit text`);
+  }
+  assert.doesNotMatch(map, /referrerPolicy/, "Restock map tiles keep the browser's normal Referer");
   const css = read("src/features/restocks/restock-map-card.css");
   assert.match(css, /touch-action: none/, "One finger drags the map instead of the page");
   assert.doesNotMatch(css, /\b(blue|teal|cyan)\b|#0[0-9a-f]{2}[89a-f][0-9a-f]{2}\b/i, "No blue or teal");
+});
+
+// Map tiles (src/config/mapTiles.js), Nov 27 2026: OpenStreetMap by default, exactly as its tile policy
+// asks; another provider can be set in the hosting settings without an app update.
+test("map tiles default to OpenStreetMap's exact URL and credit", () => {
+  assert.equal(OSM_TILE_URL, "https://tile.openstreetmap.org/{z}/{x}/{y}.png");
+  assert.deepEqual(mapTileSettings({}), { url: OSM_TILE_URL, credit: "© OpenStreetMap contributors", creditUrl: "https://www.openstreetmap.org/copyright" });
+  assert.equal(mapTileUrl(12, 1165, 1574), "https://tile.openstreetmap.org/12/1165/1574.png");
+});
+
+test("another tile provider can be set, but only a safe https template", () => {
+  const custom = mapTileSettings({ VITE_MAP_TILE_URL: " https://tiles.example.com/v1/{z}/{x}/{y}.png?key=public ", VITE_MAP_TILE_CREDIT: "© Example Maps © OpenStreetMap contributors", VITE_MAP_TILE_CREDIT_URL: "https://example.com/copyright" });
+  assert.equal(custom.url, "https://tiles.example.com/v1/{z}/{x}/{y}.png?key=public");
+  assert.equal(custom.credit, "© Example Maps © OpenStreetMap contributors");
+  assert.equal(custom.creditUrl, "https://example.com/copyright");
+  assert.equal(mapTileUrl(3, 2, 1, custom.url), "https://tiles.example.com/v1/3/2/1.png?key=public");
+  // Without its own credit, the OpenStreetMap credit stays.
+  assert.deepEqual(mapTileSettings({ VITE_MAP_TILE_URL: "https://tiles.example.com/{z}/{x}/{y}.png" }), { url: "https://tiles.example.com/{z}/{x}/{y}.png", credit: OSM_CREDIT, creditUrl: OSM_CREDIT_URL });
+  // Plain http, a missing {z}/{x}/{y}, or a credit with no provider fall back to OpenStreetMap.
+  for (const env of [{ VITE_MAP_TILE_URL: "http://tiles.example.com/{z}/{x}/{y}.png" }, { VITE_MAP_TILE_URL: "https://tiles.example.com/{z}/{x}.png" }, { VITE_MAP_TILE_URL: "javascript:alert(1)//{z}{x}{y}" }, { VITE_MAP_TILE_CREDIT: "Someone else", VITE_MAP_TILE_CREDIT_URL: "https://example.com" }]) {
+    assert.deepEqual(mapTileSettings(env), { url: OSM_TILE_URL, credit: OSM_CREDIT, creditUrl: OSM_CREDIT_URL }, JSON.stringify(env));
+  }
+  assert.equal(mapTileSettings({ VITE_MAP_TILE_URL: "https://tiles.example.com/{z}/{x}/{y}.png", VITE_MAP_TILE_CREDIT_URL: "javascript:alert(1)" }).creditUrl, OSM_CREDIT_URL, "the credit link must be https");
 });

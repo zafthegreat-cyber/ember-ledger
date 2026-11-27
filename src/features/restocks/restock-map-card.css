@@ -13,7 +13,12 @@
 .restock-slippy__tile { position: absolute; max-width: none; pointer-events: none; filter: grayscale(1) sepia(.22) contrast(.95) brightness(1.04); }
 html body .app[data-theme="dark"] .restock-slippy__tile { filter: grayscale(1) invert(1) sepia(.18) brightness(.82) contrast(.92); }
 .restock-slippy__offline { position: absolute; left: 12px; right: 12px; top: 12px; margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--surface-elevated, #fff); color: var(--text-primary); font-size: 14px; line-height: 1.4; box-shadow: 0 4px 14px rgb(0 0 0 / 30%); z-index: 5; }
-.restock-slippy__credit { position: absolute; left: 6px; bottom: 6px; padding: 2px 6px; border-radius: 6px; background: rgb(0 0 0 / 55%); color: #fff; font-size: 10px; pointer-events: none; z-index: 4; }
+/* OpenStreetMap's tile policy: the credit is clearly on the map, links to the copyright page and is never under a pin or button (Nov 27 2026). */
+html body .app .restock-slippy__credit { position: absolute; left: 6px; bottom: 6px; padding: 3px 7px; border-radius: 6px; background: rgb(0 0 0 / 62%); color: #fff !important; font-size: 12px; line-height: 1.2; text-decoration: none; z-index: 5; }
+html body .app .restock-slippy__credit:hover { text-decoration: underline; }
+html body .app .restock-slippy__credit:focus-visible { outline: 2px solid var(--focus-ring, #fff); outline-offset: 2px; }
+/* A 44px-tall tap area, mostly above the label so the map's edge does not clip it. */
+.restock-slippy__credit::after { content: ""; position: absolute; inset: -22px -4px -6px; }
 .restock-slippy__you { position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; background: #FFF8EC; border: 4px solid #7A0F1E; box-shadow: 0 0 0 6px rgb(122 15 30 / 22%); z-index: 2; pointer-events: none; }
 
 html body .app .restock-slippy__controls { position: absolute; right: 10px; top: 10px; display: grid; gap: 8px; z-index: 6; }
@@ -21,7 +26,8 @@ html body .app .restock-slippy__controls button { display: grid; place-items: ce
 html body .app .restock-slippy__controls button:disabled { opacity: .45; cursor: default; }
 
 /* Nov 27 2026: "Near me" in words, at the bottom right where a thumb reaches it. */
-html body .app .restock-slippy__near { position: absolute; right: 10px; bottom: 10px; z-index: 6; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px 0 13px; border: 1px solid var(--border-strong) !important; border-radius: 999px; background: var(--surface-elevated, #fff) !important; background-image: none !important; color: var(--text-primary) !important; font: 700 14px/1 var(--font-ui, inherit); box-shadow: 0 3px 10px rgb(0 0 0 / 30%); cursor: pointer; }
+/* Sits above the map credit's row, so on a narrow phone it never covers "© OpenStreetMap contributors". */
+html body .app .restock-slippy__near { position: absolute; right: 10px; bottom: 36px; z-index: 6; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px 0 13px; border: 1px solid var(--border-strong) !important; border-radius: 999px; background: var(--surface-elevated, #fff) !important; background-image: none !important; color: var(--text-primary) !important; font: 700 14px/1 var(--font-ui, inherit); box-shadow: 0 3px 10px rgb(0 0 0 / 30%); cursor: pointer; }
 html body .app .restock-slippy__near:disabled { opacity: .7; cursor: progress; }
 html body .app .restock-slippy__near svg { flex: none; }
 .restock-slippy__loading { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; padding: 10px 16px; border-radius: 999px; background: var(--surface-elevated, #fff); color: var(--text-primary); font-size: 14px; font-weight: 700; box-shadow: 0 4px 14px rgb(0 0 0 / 30%); z-index: 5; }

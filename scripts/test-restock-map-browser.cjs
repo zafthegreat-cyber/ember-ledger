@@ -25,8 +25,8 @@ const cases = [{ width: 390, height: 844, theme: "dark" }, { width: 320, height:
     for (const item of cases) {
       const prefix = `${item.width}-${item.theme}`;
       const context = await browser.newContext({ viewport: { width: item.width, height: item.height }, colorScheme: item.theme, reducedMotion: "reduce", serviceWorkers: "block", hasTouch: false, geolocation: { latitude: 38.3032, longitude: -77.4605 }, permissions: ["geolocation"] });
-      let tileRequests = 0;
-      await context.route("https://tile.openstreetmap.org/**", (route) => { tileRequests += 1; route.fulfill({ status: 200, contentType: "image/png", body: PIXEL }); });
+      let tileRequests = 0; const tileReferers = new Set();
+      await context.route("https://tile.openstreetmap.org/**", (route) => { tileRequests += 1; tileReferers.add(route.request().headers().referer || ""); route.fulfill({ status: 200, contentType: "image/png", body: PIXEL }); });
       page = await context.newPage();
       step = `${prefix}: open the restock map`;
       await page.goto(`${appUrl.origin}/find/restocks?betaLocalMode=true`, { waitUntil: "domcontentloaded" });
@@ -72,6 +72,19 @@ const cases = [{ width: 390, height: 844, theme: "dark" }, { width: 320, height:
       const openingZoom = await zoom();
       assert.ok(openingZoom >= 9, `Opens on the stores' own area, not on a whole state (zoom ${openingZoom})`);
       assert.ok(tileRequests > 0, "Map pictures are requested");
+      // OpenStreetMap's tile policy (Nov 27 2026): browsers send a Referer with every tile, and the map shows
+      // "© OpenStreetMap contributors", linked to the copyright page, where nothing covers it.
+      assert.deepEqual([...tileReferers], [`${appUrl.origin}/`], `Every tile request sends the site as its Referer (${[...tileReferers].join(", ")})`);
+      const credit = card.getByRole("link", { name: /^© OpenStreetMap contributors/ });
+      await expect(credit).toBeVisible();
+      assert.equal(await credit.getAttribute("href"), "https://www.openstreetmap.org/copyright");
+      assert.ok(await credit.evaluate((link) => {
+        const rect = link.getBoundingClientRect();
+        const points = [[rect.left + 3, rect.top + rect.height / 2], [rect.left + rect.width / 2, rect.top + rect.height / 2], [rect.right - 3, rect.top + rect.height / 2]];
+        return points.every(([x, y]) => { const hit = document.elementFromPoint(x, y); return Boolean(hit && link.contains(hit)); });
+      }), "Nothing covers the map credit, end to end");
+      const creditFont = await credit.evaluate((link) => parseFloat(getComputedStyle(link).fontSize));
+      assert.ok(creditFont >= 12, `The map credit is readable (${creditFont}px)`);
       // Nov 27 2026: Find > Restocks loads the state's store directory. Before, a fresh visit
       // showed only the five hand-typed Virginia Beach stores, at guessed spots.
       const opened = await storesInView();

@@ -8,10 +8,12 @@
 // of jumping a whole step, the buttons glide, a whole state's stores can be on the
 // map (only the ones in view are drawn), pins placed by city only are dashed, and
 // "Near me" says so in words.
+// Tiles follow OpenStreetMap's tile policy (src/config/mapTiles.js): the browser's normal Referer,
+// and a "© OpenStreetMap contributors" credit that links to the copyright page.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { MAP_TILE_CREDIT, MAP_TILE_CREDIT_URL, mapTileUrl } from "../../config/mapTiles.js";
 import { clampZoom, clusterPins, fitView, groupLabel, MAX_ZOOM, MIN_ZOOM, onScreen, panBy, project, toScreen, visibleTiles, zoomTo } from "./slippyMap.mjs";
 
-const TILE_BASE = "https://tile.openstreetmap.org";
 const DRAG_START = 5; // pixels before a touch counts as a drag, not a tap
 const START_VIEW = { center: { lat: 39.5, lng: -98.35 }, zoom: MIN_ZOOM };
 const GLIDE_MS = 200;
@@ -259,8 +261,7 @@ export default function RestockSlippyMap({ pins = [], selectedId = "", onSelect,
             aria-hidden="true"
             draggable="false"
             decoding="async"
-            referrerPolicy="no-referrer"
-            src={`${TILE_BASE}/${tile.z}/${tile.x}/${tile.y}.png`}
+            src={mapTileUrl(tile.z, tile.x, tile.y)}
             style={{ left: tile.left, top: tile.top, width: tile.size, height: tile.height }}
             onError={() => setFailedTiles((count) => count + 1)}
             onLoad={() => setFailedTiles(0)}
@@ -313,7 +314,7 @@ export default function RestockSlippyMap({ pins = [], selectedId = "", onSelect,
             <span aria-hidden="true">{locating ? "Finding you…" : "Near me"}</span>
           </button>
         ) : null}
-        <span className="restock-slippy__credit">© OpenStreetMap</span>
+        <a className="restock-slippy__credit" href={MAP_TILE_CREDIT_URL} target="_blank" rel="noopener noreferrer">{MAP_TILE_CREDIT}<span className="sr-only"> (opens a new tab)</span></a>
       </div>
     </div>
   );
