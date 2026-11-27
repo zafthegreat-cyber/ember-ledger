@@ -174,6 +174,30 @@ test("the daily refresh moves cards already stored as sealed, keeping their reco
   assert.equal(unpriced.marketPrices.find((row) => row.tcgplayerProductId === "503313").catalogType, "sealed");
 });
 
+test("the scanner's name list knows the cards that were filed as sealed, and the daily job keeps it in step", () => {
+  // The list is built from the bundled card file. While Dratini, Mantine, Victini and Giratina sat
+  // in the sealed file, the scanner could not correct a misread to any of those names.
+  const names = new Set(JSON.parse(read("../src/data/generated/cardNames.json")).map((name) => name.toLowerCase()));
+  for (const name of ["Dratini", "Mantine", "Victini", "Giratina", "Tinkatink", "Tinkatuff", "Tinkaton", "Ting Lu", "Fighting Energy", "Collapsed Stadium"]) {
+    assert.ok(names.has(name.toLowerCase()), `${name} is a card name the scanner should know`);
+  }
+  const cards = JSON.parse(read("../src/data/generated/pokemonTcgCards.json"));
+  const sealed = JSON.parse(read("../src/data/generated/sealedProducts.json"));
+  assert.ok(cards.some((row) => row.name === "Dratini" && row.setName === "Base Set" && row.cardNumber === "026/102"), "Dratini 026/102 is in the card file");
+  for (const name of ["Dratini", "Mantine", "Victini", "Giratina"]) {
+    assert.equal(sealed.filter((row) => row.name === name).length, 0, `${name} is not in the sealed file`);
+  }
+  assert.ok(sealed.some((row) => row.productType === "Mini Tin"), "real tins stay in the sealed file");
+  assert.ok(sealed.some((row) => row.productType === "Booster Box"), "real booster boxes stay in the sealed file");
+
+  const job = read("../.github/workflows/market-price-refresh.yml");
+  const refresh = job.indexOf("sync:market-prices");
+  const rebuild = job.indexOf("node scripts/build-card-names.mjs");
+  const commit = job.indexOf("git add ");
+  assert.ok(refresh > 0 && rebuild > refresh && commit > rebuild, "the name list is rebuilt after the refresh and before the commit");
+  assert.match(job.slice(commit, job.indexOf("\n", commit)), /src\/data\/generated\/cardNames\.json/, "and committed with the rest");
+});
+
 test("the SQL rule matches the JavaScript rule and runs before the name words", () => {
   const sqlPattern = (regex) => regex.source.replaceAll("\\/", "/");
   const migration = read("../supabase/migrations/20261126090000_catalog_single_cards_not_sealed.sql");
