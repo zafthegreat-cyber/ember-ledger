@@ -107,17 +107,26 @@ the entire branch must also be deleted afterward, including synthetic reports.
 
 ## Approved branch procedure
 
-1. Get approval for the new quoted hourly rate plus usage; create a data-less
-   temporary branch. Verify its returned project reference differs from production.
+1. For native baseline acceptance, first obtain approval for the preview-only
+   GitHub connection described above. Get approval for the new quoted hourly rate
+   plus usage; create a data-less temporary branch associated with the feature
+   branch. Verify its returned project reference differs from production.
 2. Inspect branch status, logs, migration prefix, Auth hooks and outbound triggers.
    Branches can inherit settings/functions: reject active external hooks before
    creating test accounts. No Auth users or connected sources may be present.
-3. Set only the public `CODE3_STAGING_PROJECT_REF` in the local process. Run:
+3. Wait for Supabase's native migration workflow to succeed. Inspect its actual
+   migration ledger: all 90 repository versions must be present, including `001`.
+   Set only the public `CODE3_STAGING_PROJECT_REF` in the local process. Run the
+   read-only preflight and require **zero pending migrations**:
 
    ```text
    node scripts/bootstrap-isolated-staging.mjs --plan --branch-id <approved UUID>
-   node scripts/bootstrap-isolated-staging.mjs --apply --branch-id <approved UUID>
    ```
+
+   Do not run `--apply` or the foundation as part of native baseline acceptance.
+   A failed or incomplete provider replay is a failed native test; inspect its
+   logs rather than masking it with the recovery bundle. The separate `--apply`
+   recovery mode is retained only for explicitly chosen historical failed branches.
 
    If CLI credentials are unavailable, stop for normal CLI authentication. Do not
    substitute production keys, disable TLS, or deploy a credential-returning helper.
