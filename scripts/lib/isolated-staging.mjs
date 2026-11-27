@@ -61,11 +61,20 @@ export function transactionBody(sql){
 }
 export function migrationPlan(files,applied=[]){
   const sorted=[...files].sort((a,b)=>a.name.localeCompare(b.name));
+  const versions=new Set();
+  for(const file of sorted){
+    const match=file.name.match(/^(\d+)_(.+)\.sql$/u);
+    if(!match||versions.has(match[1]))throw new Error("Migration filenames require distinct numeric versions.");
+    versions.add(match[1]);
+  }
+  // A failed pre-baseline branch has the original 002..012 prefix. Only the
+  // newly restored 001 may be absent before that recognized prefix.
+  const baseline=sorted[0]?.name==="001_legacy_database_baseline.sql"&&applied.length&&applied[0].version!=="001"?sorted.shift():null;
   for(let i=0;i<applied.length;i++){
     const file=sorted[i],match=file?.name.match(/^([^_]+)_(.+)\.sql$/u);
     if(!match||match[1]!==applied[i].version||match[2]!==applied[i].name)throw new Error("Staging history is not a recognized migration prefix; inspect it before proceeding.");
   }
-  return sorted.slice(applied.length);
+  return [...(baseline?[baseline]:[]),...sorted.slice(applied.length)];
 }
 export function buildStagingSql(foundation,files){
   const manifest=files.map(file=>({name:file.name,sha256:createHash("sha256").update(file.sql).digest("hex")}));

@@ -20,10 +20,11 @@ try{
       await db.query("set search_path=public,extensions");
       await db.query(await readFile(new URL("qa/supabase_platform_fixture.sql",import.meta.url),"utf8"));
       // Match the actual failed hosted branch: migrations through 012, no base catalog.
-      if(partial)for(const file of files.slice(0,10))await db.query(file.sql);
+      const legacyPrefix=files.filter(file=>/^(?:002|003|004|005|006|008|009|010|011|012)_/u.test(file.name));
+      if(partial)for(const file of legacyPrefix)await db.query(file.sql);
       await assert.rejects(db.query("select id from public.product_catalog"),/does not exist/);checks++;
       await assert.rejects(db.query(foundation),/isolated staging bootstrap runner/);await db.query("rollback");checks++;
-      const applied=partial?files.slice(0,10).map(f=>{const [,version,name]=f.name.match(/^([^_]+)_(.+)\.sql$/);return {version,name};}):[];
+      const applied=partial?legacyPrefix.map(f=>{const [,version,name]=f.name.match(/^([^_]+)_(.+)\.sql$/);return {version,name};}):[];
       const plan=migrationPlan(files,applied);
       const bundle=buildStagingSql(foundation,plan);
       // Native Postgres has no hosted extensions. The fixture supplies inert APIs.

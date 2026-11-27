@@ -1,0 +1,13 @@
+{
+  "$schema": "https://supabase.com/schemas/config/v1.json",
+  "project_id": "ember-ledger",
+  "db": {
+    "major_version": 17,
+    "migrations": {
+      "enabled": true
+    },
+    "seed": {
+      "enabled": false
+    }
+  }
+}

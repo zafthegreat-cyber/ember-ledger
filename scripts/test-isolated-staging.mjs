@@ -27,6 +27,10 @@ test("only an exact known migration prefix can be resumed",()=>{
   assert.deepEqual(migrationPlan(files,[{version:"002",name:"first"}]).map(f=>f.name),["003_second.sql"]);
   assert.throws(()=>migrationPlan(files,[{version:"002",name:"unexpected"}]));
   assert.throws(()=>migrationPlan(files,[{version:"003",name:"second"}]));
+  assert.throws(()=>migrationPlan([...files,{name:"002_duplicate.sql",sql:"select 3;"}]));
+  const baseline={name:"001_legacy_database_baseline.sql",sql:"select 0;"};
+  assert.deepEqual(migrationPlan([baseline,...files],[{version:"002",name:"first"}]).map(f=>f.name),[baseline.name,"003_second.sql"]);
+  assert.throws(()=>migrationPlan([baseline,...files],[{version:"003",name:"second"}]));
 });
 test("every scheduler is disabled within the one committing transaction",()=>{
   const bundle=buildStagingSql("begin;create table x(id int);commit;",[{name:"x.sql",sql:"begin;select cron.schedule('x','* * * * *','select 1');commit;"}]);

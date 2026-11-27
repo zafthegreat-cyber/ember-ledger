@@ -390,8 +390,10 @@ exception when others then
 end;
 $function$;
 
-commit;
-
 -- Daily at 21:00 UTC, after TCGCSV publishes the day's prices (~20:00 UTC).
 select cron.schedule('catalog-price-refresh', '0 21 * * *', 'select public.catalog_price_refresh()');
 select cron.schedule('catalog-price-apply', '* * * * *', 'select public.catalog_price_apply()');
+-- Disable both before this migration commits; fresh branches make no requests.
+select cron.alter_job((select jobid from cron.job where jobname='catalog-price-refresh'),active:=false);
+select cron.alter_job((select jobid from cron.job where jobname='catalog-price-apply'),active:=false);
+commit;

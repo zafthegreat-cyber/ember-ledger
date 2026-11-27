@@ -92,6 +92,14 @@ real Supabase JWT/session behavior, gateway CORS, or the deployed staff function
 
 ## Validation
 
+- Repository migration replay now has its missing `001` baseline, distinct
+  versions and disabled scheduler defaults. Official CLI 3.4.0 clean replay
+  passed 26 local checks over 90 migrations, with a genuine no-op rerun and no
+  manual recovery prelude. The legacy recovery path still passes 29 checks
+  over 90/80 migrations. Hosted dashboard-only creation remains tied to unchanged
+  production history; the project has no GitHub repository selected. A preview
+  connection and any new paid branch require separate approval. See the secure
+  staging runbook for the production-disabled connection plan and native CI gate.
 - Final browser CI exposed competing deferred-modal/search autofocus: typed text
   could land in the search box instead of the chosen item-name field. The modal
   now preserves a visible chosen control and owns the nested search's focus.

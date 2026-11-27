@@ -7,21 +7,41 @@ before creating another temporary branch. Delete that branch after validation.
 
 ## Database failure and repair
 
-The historical migration chain starts at `002` and never creates the original
+The historical migration chain started at `002` and never created the original
 `product_catalog`, `inventory_items` or `sales_records` tables. The first failing
 hosted migration, `20260508203900_pokemon_market_ingestion_schema.sql`, alters
 `product_catalog` and therefore cannot run on an empty branch.
 
-`supabase/bootstrap/legacy_database_foundation.sql` provides the missing minimal
-tables, owner-only policies and explicit grants. It is an isolated bootstrap
-prelude, outside normal production migrations, and refuses direct execution
-without the staging runner's transaction setting. Existing historical migration
-files are unchanged. Do not rewrite production history to make this branch work.
+The normal repository chain now starts with
+`supabase/migrations/001_legacy_database_baseline.sql`. It creates only missing
+legacy tables, with owner-only policies and explicit grants. When a table already
+exists, its records, policies, grants and columns are untouched. The CLI generated
+the file before it was ordered ahead of the existing legacy `002` migration.
+
+The duplicate `20261127030000` version was fixed by moving the promo-copy cleanup
+to `20261127200510`, its existing identifier in production history. No production
+history was edited. `20261127211846_fresh_replay_access.sql` adds the narrow
+profile/helper grants previously needed by manual staging recovery.
+
+Three historical job-creation files now create jobs disabled, in the same
+transaction as scheduling. Push dispatch, market history and catalog refresh can
+never become active at a fresh replay's file commit. The catalog scheduler's old
+mid-file COMMIT was moved after containment. Already-applied production migrations
+and existing production jobs were not executed or changed.
+
+`supabase/config.jsonc` explicitly enables migrations and disables seeding. It
+declares no remote production override and no function deployments. It does not
+connect GitHub or enable automatic creation of paid branches.
+
+`supabase/bootstrap/legacy_database_foundation.sql` remains available only for
+older failed branches. It refuses execution without the isolated runner's
+transaction setting. Normal fresh repository replay needs no recovery prelude.
 
 `scripts/bootstrap-isolated-staging.mjs` inspects the target before applying SQL.
 It refuses the production project, mismatched connection identities, unsafe TLS
 overrides, databases containing Auth users, connected sources, and migration
-histories that are not an exact recognized prefix. It then wraps the foundation
+histories that are not a recognized prefix (only the restored `001` may be missing
+ahead of the original prefix). It then wraps the foundation
 and remaining migrations in **one transaction**. Dollar-quoted function bodies
 are preserved while top-level BEGIN/COMMIT wrappers are removed.
 
@@ -34,8 +54,28 @@ explicit narrow grants. Application private tables retain their own grants/RLS.
 The custom recovery does not rewrite `supabase_migrations.schema_migrations`.
 It saves a local digest manifest instead. The platform branch status may continue
 to say MIGRATIONS_FAILED even though this controlled validation schema is usable.
-Native branch creation/replay is **not** repaired on the base project; that would
-require a separately reviewed migration-history baseline change in production.
+This recovery mode is separate from the standard migration runner, which now
+records all 90 repository migrations normally on a clean database.
+
+## Hosted branch source and approval boundary
+
+Supabase has two different schema sources. [GitHub-backed branches](https://supabase.com/docs/guides/deployment/branching/github-integration#migrations)
+replay the repository migration directory. [Dashboard-only branches](https://supabase.com/docs/guides/deployment/branching/dashboard#where-a-dashboard-branch-gets-its-schema)
+replay production's stored migration history, which this PR does not modify.
+
+A read-only dashboard inspection found that Code 3 TCG — Production has no GitHub
+repository selected. Pushing this fix does not connect it or create a paid branch.
+Automatic hosted replay from PR #50 therefore still requires a repository
+connection; a dashboard-only branch cannot read this fix while production's
+stored history remains unchanged.
+
+The reviewable hosted validation setup is: connect `zafthegreat-cyber/ember-ledger`
+with working directory `.`, keep **Deploy to production OFF** and **Automatic
+branching OFF**, and manually create only a separately approved, data-less preview
+associated with `feature/stock-intelligence-20261115`. Require the provider's
+native workflow and migration ledger to pass without running a recovery prelude.
+Delete the branch after verification. Changing the project's integration settings
+and any paid branch creation require explicit approval; neither was done here.
 
 ## Secure credentials and test-account setup
 
@@ -102,14 +142,27 @@ the entire branch must also be deleted afterward, including synthetic reports.
 
 ## Local verification and limits
 
-`test-isolated-staging-postgres.mjs` now replays all 88 migrations on a fresh local
-PostgreSQL database and the remaining 78 from the observed failed-branch prefix,
-including the catalog-only main migration added after the hosted branch run.
+`test-isolated-staging-postgres.mjs` now replays all 90 migrations on a fresh local
+PostgreSQL database and the remaining 80 from the observed failed-branch prefix.
 Its 29 checks cover containment, RLS/grants, missing-table recovery, catalog column
 parity, preservation of existing records and rollback.
 Auth/Storage platform structure and inert cron/net/Vault APIs are fixtures; this
 does not establish hosted platform-extension or real Auth behavior. Network fixture
 functions raise if called. The test deletes only its uniquely named local databases.
+
+`test-native-migration-baseline.mjs --fixture` additionally runs the **official
+Supabase CLI 3.4.0** against a fresh local database. Its 26 checks verify all 90
+distinct recorded versions, a second CLI run with zero applied files, preserved
+existing records/policies/grants, RLS and permissions, and no active jobs at any
+file commit (enforced by a deferred constraint trigger). Only pg_cron/pg_net
+extension declarations are replaced by inert local fixtures; no foundation or
+custom recovery bundle is prepended.
+
+`Native Supabase migration replay` CI uses the actual local Supabase PostgreSQL
+image and standard CLI startup, without those extension substitutions. Database
+containers use an internal Docker network, seeds are disabled, and the job has
+no hosted credentials, production target or cloud provisioning step. It verifies
+the native ledger and inactive jobs, then confirms another migration run is a no-op.
 
 `test-staging-browser-runner.mjs` rehearses the new runner with the real frontend
 Auth client/components and offline transport responses. It runs the same UI actions
@@ -150,7 +203,7 @@ table, and unchanged stock function versions (feed v4/review v3/inbound v2).
 
 This was a local browser fixture using real PR modules and hosted staging APIs.
 The shared Vercel preview was not retargeted. Social OAuth, email delivery and
-anonymous end-user sign-up were not exercised. The native parent migration
-baseline remains unchanged; standard empty-branch replay still requires a
-separately reviewed baseline repair. Inherited project-wide advisor warnings are
+anonymous end-user sign-up were not exercised. This historical browser run
+preceded the normal repository baseline fix above. The parent's stored migration
+history remains unchanged. Inherited project-wide advisor warnings are
 not a clean whole-project security audit.
