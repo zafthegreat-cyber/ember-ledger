@@ -3,7 +3,8 @@ import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import pg from "pg";
 
-// New sets reach the catalog on their own (supabase/migrations/20261126213000_catalog_new_sets.sql).
+// New sets reach the catalog on their own (supabase/migrations/20261126213000_catalog_new_sets.sql),
+// and each single card arrives with its card facts row (20261127040000_catalog_card_details_for_new_cards.sql).
 // Runs the real migrations in a disposable loopback database and plays TCGCSV's part: the daily
 // job asks for the set list, product lists and price files through a stand-in for pg_net, and this
 // test answers with small copies of what TCGCSV sends. Needs Postgres on 127.0.0.1:55439 (user
@@ -45,7 +46,10 @@ const tcgcsv = {
     { groupId: MCDONALDS_2026, name: "McDonald's Promos 2026", abbreviation: "M26", isSupplemental: true, publishedOn: daysAgo(-30), modifiedOn: "2026-11-18T10:00:00.1", categoryId: 3 },
   ],
   products: {
-    [PERFECT_ORDER]: [product(PERFECT_ORDER, 684397, "Spinarak (renamed by the source)", card("001/088", "Common"))],
+    [PERFECT_ORDER]: [
+      product(PERFECT_ORDER, 684397, "Spinarak (renamed by the source)", card("001/088", "Common")),
+      product(PERFECT_ORDER, 684398, "Ariados", card("002/088", "Uncommon", { HP: "110", Stage: "Stage 1" })),
+    ],
     [PITCH_BLACK]: [
       product(PITCH_BLACK, 700001, "Pitch Black Booster Bundle", { UPC: "196214120001" }),
       product(PITCH_BLACK, 704814, "Maschiff", card("057/084", "Common")),
@@ -201,6 +205,14 @@ try {
       id uuid primary key default gen_random_uuid(), catalog_product_id uuid not null references public.product_catalog(id),
       variant_name text not null, printing text, finish text, language text not null default 'English', condition_name text,
       is_default boolean not null default false, unique (catalog_product_id, variant_name, language, condition_name));
+    create table public.tcg_card_details(
+      catalog_product_id uuid primary key references public.product_catalog(id) on delete cascade, card_name text not null,
+      supertype text, subtypes text[], stage text, evolves_from text, hp integer, types text[],
+      abilities jsonb not null default '[]', attacks jsonb not null default '[]', weaknesses jsonb not null default '[]',
+      resistances jsonb not null default '[]', retreat_cost text[], converted_retreat_cost integer, card_number text,
+      printed_total integer, rarity text, artist text, flavor_text text, regulation_mark text, legalities jsonb not null default '{}',
+      national_pokedex_numbers integer[], raw_source jsonb not null default '{}',
+      created_at timestamptz not null default now(), updated_at timestamptz not null default now());
   `);
   for (const file of [
     "20261125090000_catalog_price_refresh.sql",
@@ -211,6 +223,8 @@ try {
     "20261127010000_catalog_add_missing_printings.sql",
     "20261127020000_catalog_default_printings_named.sql",
     "20261127030000_catalog_price_pokemontcg_only_unmatched.sql",
+    // Single cards the job adds get their card facts row (tcg_card_details).
+    "20261127040000_catalog_card_details_for_new_cards.sql",
   ]) {
     await db.query(await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), "utf8"));
   }
@@ -237,11 +251,11 @@ try {
   const owner = randomUUID();
   const seed = async (row, masterType, variants = []) => {
     const pc = await one(`insert into public.product_catalog(user_id, name, set_name, product_type, market_source, external_product_id,
-        tcgplayer_product_id, market_price, set_code, source_group_id, source_group_name, price_subtype, is_sealed, card_number, rarity, product_kind)
-      values($1,$2,$3,$4,'TCGCSV',$5,$5,$6,$7,$8,$3,$9,$10,$11,$12,$13) returning id`,
+        tcgplayer_product_id, market_price, set_code, source_group_id, source_group_name, price_subtype, is_sealed, card_number, rarity, product_kind, raw_source)
+      values($1,$2,$3,$4,'TCGCSV',$5,$5,$6,$7,$8,$3,$9,$10,$11,$12,$13,$14) returning id`,
       [owner, row.name, row.setName, masterType === "card" ? "Card" : "Sealed Product", String(row.productId), row.marketPrice ?? null,
         row.setCode, row.groupId, row.subtype ?? null, masterType !== "card", row.number ?? null, row.rarity ?? null,
-        masterType === "card" ? "single_card" : "sealed_product"]);
+        masterType === "card" ? "single_card" : "sealed_product", row.rawSource ? JSON.stringify(row.rawSource) : null]);
     const master = await one(`insert into public.master_catalog_items(legacy_product_catalog_id, catalog_item_type, name, set_name, set_code, card_number, rarity, tcgplayer_product_id, source)
       values($1,$2,$3,$4,$5,$6,$7,$8,'TCGCSV') returning id`, [pc.id, masterType, row.name, row.setName, row.setCode, row.number ?? null, row.rarity ?? null, String(row.productId)]);
     await db.query("insert into public.master_catalog_identifiers(catalog_item_id, identifier_type, identifier_value, source) values($1,'SET_CODE',$2,'legacy_product_catalog')", [master.id, row.setCode]);
@@ -249,8 +263,25 @@ try {
       await db.query("insert into public.catalog_product_variants(catalog_product_id, variant_name, condition_name, is_default) values($1,$2,'',true)", [pc.id, name]);
       await db.query("insert into public.master_catalog_variants(catalog_item_id, variant_name, is_default) values($1,$2,true)", [master.id, name]);
     }
+    return pc.id;
   };
-  await seed({ productId: 684397, name: "Spinarak", setName: "ME03: Perfect Order", setCode: "POR", groupId: PERFECT_ORDER, subtype: "Normal", number: "001/088", rarity: "Common", marketPrice: 0.09 }, "card", ["Normal"]);
+  // The source record the first import kept on each row, in the shape the job gives new rows.
+  const sourceRecord = (groupId, productId, name, fields) => {
+    const source = product(groupId, productId, name, fields);
+    return { group: tcgcsv.groups.find((group) => group.groupId === groupId), product: source, extendedData: Object.fromEntries(Object.entries(fields).map(([key, value]) => [key.toLowerCase().replace(/[^a-z0-9]+/g, "_"), value])) };
+  };
+  // Spinarak: an older card that has its source record and no card facts row. It stays that way.
+  await seed({ productId: 684397, name: "Spinarak", setName: "ME03: Perfect Order", setCode: "POR", groupId: PERFECT_ORDER, subtype: "Normal", number: "001/088", rarity: "Common", marketPrice: 0.09,
+    rawSource: sourceRecord(PERFECT_ORDER, 684397, "Spinarak", card("001/088", "Common")) }, "card", ["Normal"]);
+  // Ariados: an older card that has a card facts row already. The job never rewrites it.
+  const ariadosId = await seed({ productId: 684398, name: "Ariados", setName: "ME03: Perfect Order", setCode: "POR", groupId: PERFECT_ORDER, subtype: "Normal", number: "002/088", rarity: "Uncommon", marketPrice: 0.12,
+    rawSource: sourceRecord(PERFECT_ORDER, 684398, "Ariados", card("002/088", "Uncommon")) }, "card", ["Normal"]);
+  await db.query("insert into public.tcg_card_details(catalog_product_id, card_name, hp, rarity, raw_source, created_at, updated_at) values($1,'Ariados (first import)',110,'Uncommon',$2,'2026-05-10T12:00:00Z','2026-05-10T12:00:00Z')",
+    [ariadosId, JSON.stringify({ group: { publishedOn: "2026-03-27T00:00:00" }, kept: "as the first import wrote it" })]);
+  const factsRow = async (productId) => one(`select to_jsonb(d) as row from public.tcg_card_details d join public.product_catalog pc on pc.id = d.catalog_product_id
+    where pc.market_source = 'TCGCSV' and pc.external_product_id = $1`, [String(productId)]).then((found) => found?.row);
+  const ariadosFacts = await factsRow(684398);
+  equal([ariadosFacts.card_name, ariadosFacts.hp, await factsRow(684397)], ["Ariados (first import)", 110, undefined], "before any run: one older card has card facts, one has none");
   await seed({ productId: 700001, name: "Pitch Black Booster Bundle", setName: "ME05: Pitch Black", setCode: "ME05", groupId: PITCH_BLACK, subtype: "Normal", marketPrice: 30 }, "sealed", ["Normal"]);
 
   // ---- Run 1: a check for new sets only (no price refresh for sets already in the catalog). ----
@@ -276,11 +307,23 @@ try {
   equal(pikachu.raw_source.group.abbreviation, "M26", "the source record is kept");
   equal(pikachu.raw_source.extendedData.card_type, "Colorless");
 
+  // Card facts (20261127040000): a single card the job adds gets its tcg_card_details row in the
+  // same step, holding what the card scanner reads: the set's release date and the printed stats.
+  const releaseDate = (groupId) => tcgcsv.groups.find((group) => group.groupId === groupId).publishedOn;
+  const pikachuFacts = await factsRow(730004);
+  ok(pikachuFacts, "a card the job adds has a card facts row");
+  equal([pikachuFacts.card_name, pikachuFacts.raw_source.group.publishedOn, pikachuFacts.raw_source.product.extendedData.find((entry) => entry.name === "HP").value],
+    ["Pikachu", releaseDate(MCDONALDS_2026), "70"], "a new card's facts row carries group.publishedOn and product.extendedData");
+  equal(pikachuFacts.raw_source, pikachu.raw_source, "the source record is copied whole");
+  equal([pikachuFacts.hp, pikachuFacts.rarity, pikachuFacts.subtypes, pikachuFacts.attacks, pikachuFacts.legalities], [null, null, null, [], {}],
+    "the other columns are filled the way the first import filled them for TCGCSV cards");
+
   // Giratina, Mantine and a trainer called Secret Box are cards, whatever their names hold.
   for (const [productId, number] of [[726500, "061/103"], [726501, "029/103"], [726566, "115/103"], [726600, null]]) {
     const row = await item(productId);
     equal([row.is_sealed, row.product_type, row.product_kind, row.sealed_product_type, row.catalog_item_type, row.card_number, Number(row.pack_count)],
       [false, "Card", "single_card", null, "card", number, 0], `${row.name} is a single card`);
+    equal((await factsRow(productId)).raw_source.group.publishedOn, releaseDate(DELTA_REIGN), `${row.name} has its card facts`);
   }
   equal((await item(726566)).printed_total, 103);
   const tin = await item(726601);
@@ -324,6 +367,11 @@ try {
   equal([unpriced.market_price, unpriced.price_subtype, unpriced.sealed_product_type, (await one("select count(*)::int n from public.product_market_price_current where catalog_product_id = $1", [unpriced.id])).n],
     [null, null, "elite_trainer_box", 0], "a product with no price row is in the catalog, unpriced");
 
+  // Card facts go to single cards only: the six cards this run added, next to the one row that was there.
+  equal((await all("select pc.name from public.tcg_card_details d join public.product_catalog pc on pc.id = d.catalog_product_id")).map((row) => row.name).sort(),
+    ["Ariados", "Azurill - 115/103", "Giratina", "Mantine", "Maschiff", "Pikachu", "Secret Box - 2026 (Championship Deck)"],
+    "no card facts row for a sealed product or a code card, and none for the older card that had none");
+
   // The set's code changed (ME05 -> PBL): the items already there follow, and are otherwise untouched.
   const bundle = await item(700001);
   equal([bundle.set_code, bundle.master_set_code, bundle.name, bundle.barcode], ["PBL", "PBL", "Pitch Black Booster Bundle", null]);
@@ -338,11 +386,12 @@ try {
   equal((await one("select count(*)::int n from public.catalog_product_variants where catalog_product_id = $1", [spinarak.id])).n, 1);
 
   // ---- Run 2: the same answers again. Nothing is added twice. ----
-  const before = await one("select (select count(*) from public.product_catalog)::int pc, (select count(*) from public.master_catalog_items)::int m, (select count(*) from public.master_catalog_variants)::int mv, (select count(*) from public.catalog_product_variants)::int cv, (select count(*) from public.product_market_price_current)::int prices, (select count(*) from public.master_market_price_sources)::int sources, (select count(*) from public.master_catalog_identifiers)::int ids, (select count(*) from public.product_identifiers)::int pids");
-  equal(before.pc, 15);
+  const before = await one("select (select count(*) from public.product_catalog)::int pc, (select count(*) from public.master_catalog_items)::int m, (select count(*) from public.master_catalog_variants)::int mv, (select count(*) from public.catalog_product_variants)::int cv, (select count(*) from public.product_market_price_current)::int prices, (select count(*) from public.master_market_price_sources)::int sources, (select count(*) from public.master_catalog_identifiers)::int ids, (select count(*) from public.product_identifiers)::int pids, (select count(*) from public.tcg_card_details)::int facts");
+  equal([before.pc, before.facts], [16, 7]);
   const second = await run("public.catalog_price_refresh(0, false)");
   equal([second.sets_added, second.products_added, second.groups_failed], [0, 0, 0]);
-  equal(await one("select (select count(*) from public.product_catalog)::int pc, (select count(*) from public.master_catalog_items)::int m, (select count(*) from public.master_catalog_variants)::int mv, (select count(*) from public.catalog_product_variants)::int cv, (select count(*) from public.product_market_price_current)::int prices, (select count(*) from public.master_market_price_sources)::int sources, (select count(*) from public.master_catalog_identifiers)::int ids, (select count(*) from public.product_identifiers)::int pids"), before, "a second run changes no counts");
+  equal(await one("select (select count(*) from public.product_catalog)::int pc, (select count(*) from public.master_catalog_items)::int m, (select count(*) from public.master_catalog_variants)::int mv, (select count(*) from public.catalog_product_variants)::int cv, (select count(*) from public.product_market_price_current)::int prices, (select count(*) from public.master_market_price_sources)::int sources, (select count(*) from public.master_catalog_identifiers)::int ids, (select count(*) from public.product_identifiers)::int pids, (select count(*) from public.tcg_card_details)::int facts"), before, "a second run changes no counts");
+  equal([await factsRow(730004), await factsRow(684398)], [pikachuFacts, ariadosFacts], "a second run leaves every card facts row as it was");
   equal((await one("select count(*)::int n from (select tcgplayer_product_id from public.product_catalog group by 1 having count(*) > 1) d")).n, 0, "one row per TCGplayer product");
   equal((await one("select count(*)::int n from public.master_catalog_items m join public.product_catalog pc on pc.id = m.legacy_product_catalog_id where m.catalog_item_type = 'sealed' and (pc.card_number is not null or public.catalog_is_single_card(m.card_number, m.rarity))")).n, 0, "no single card is filed as sealed");
 
@@ -378,6 +427,20 @@ try {
   equal((await one("select count(*)::int n from public.product_market_price_current where catalog_product_id = $1", [dragonair.id])).n, 2);
 
   equal((await one("select count(*)::int n from (select tcgplayer_product_id from public.product_catalog group by 1 having count(*) > 1) d")).n, 0);
+
+  // Card facts after the daily runs: each card a run added has its row, whichever way it was found
+  // (a new set, a late card in a recent set, a price for a card the catalog lacked).
+  for (const [productId, groupId] of [[250001, OLDER_SET], [730015, MCDONALDS_2026], [250002, OLDER_SET]]) {
+    const facts = await factsRow(productId);
+    equal([facts.raw_source.group.publishedOn, Array.isArray(facts.raw_source.product.extendedData)], [releaseDate(groupId), true], `card ${productId} has its card facts`);
+  }
+  // Older cards are as they were: a row that existed is untouched, a card without one still has none.
+  equal(await factsRow(684398), ariadosFacts, "a card facts row that was already there is left untouched");
+  equal((await all(`select pc.name from public.product_catalog pc where pc.product_kind = 'single_card' and pc.raw_source is not null
+    and not exists (select 1 from public.tcg_card_details d where d.catalog_product_id = pc.id)`)).map((row) => row.name), ["Spinarak"],
+    "the only card without card facts is the older one that had none: the job fills in what it adds, nothing else");
+  equal((await one("select count(*)::int n from public.tcg_card_details d join public.product_catalog pc on pc.id = d.catalog_product_id where pc.product_kind <> 'single_card'")).n, 0,
+    "sealed products and code cards have no card facts row");
 
   // ---- Older sealed products that the first import filed as cards (20261126223000). ----
   // Their names hold none of the old sealed words, so they sat under Cards. Seeded with no set

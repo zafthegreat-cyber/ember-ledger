@@ -81,6 +81,7 @@ The script above only refreshes the JSON files bundled with the app. The catalog
 - Prices: every set already in the catalog is re-priced from `https://tcgcsv.com/tcgplayer/3/<groupId>/prices` (`supabase/migrations/20261125090000_catalog_price_refresh.sql`).
 - New sets and new products (`supabase/migrations/20261126213000_catalog_new_sets.sql`): each run reads TCGCSV's set list into `catalog_tcgcsv_groups`, then reads a set's product list when the set has never been read, came out within the last year (or is not out yet), is on its weekly turn, or has a price for a product the catalog lacks. Products the catalog does not have are added and priced in the same run. Until November 26, 2026 nothing did this, so the catalog stayed as it was on its one-time load of May 9, 2026.
 - A product is a single card when it carries a card rarity, a collector number or card stats. Its name is never the evidence ("Giratina" holds "tin"). Everything else on a set's product list is a sealed product or a code card.
+- Card facts (`supabase/migrations/20261127040000_catalog_card_details_for_new_cards.sql`): each single card a run adds gets its `tcg_card_details` row in the same step. The card scanner tells printings apart by that row's `raw_source` (the set's release date in `group.publishedOn`, HP and attack names in `product.extendedData`). The step only inserts, and only for cards that run added; it never updates or deletes a row. Before November 27, 2026 that table was written only by the one-time import of May 10, 2026, so cards added later had no facts until they were filled by hand.
 - Products already in the catalog are not rewritten. The one exception is a set's code when TCGCSV changes it (Pitch Black was `ME05` until its cards were listed, then `PBL`).
 - The same rule was applied once to the older rows: 85 sealed products and code cards that the first import had filed as cards because their names held no sealed word (Collector Chests, Prerelease Kits, Holiday Calendars, Trainer's Toolkits) are now sealed (`supabase/migrations/20261126223000_catalog_sealed_products_not_cards.sql`). The bundled JSON files still decide items with no card data by name, so a few (Prerelease Kits, for example) remain under cards there.
 
@@ -97,6 +98,11 @@ from public.catalog_tcgcsv_groups order by group_id desc limit 20;
 
 -- check for new sets now, without a price refresh
 select public.catalog_price_refresh(0, false);
+
+-- single cards the daily job added that have no card facts row (expect 0)
+select count(*) from public.product_catalog pc
+where pc.market_source = 'TCGCSV' and pc.product_kind = 'single_card' and pc.raw_source is not null
+  and not exists (select 1 from public.tcg_card_details d where d.catalog_product_id = pc.id);
 ```
 
 Test: `node scripts/test-catalog-new-sets-postgres.mjs` (needs Postgres on `127.0.0.1:55439`, user `code3qa`, trust; CI starts one).
