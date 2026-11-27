@@ -260,6 +260,7 @@ async function exercise(page, region, testCase, result) {
   await expectNamedSetFallback(detail.locator(".collection-set-detail-header"), "Nebula custom set");
   await detail.getByRole("button", { name: /Back to sets$/ }).click();
   await region.getByRole("button", { name: "Clear search", exact: true }).click();
+  { const organize = region.locator("details.collection-extra-filters"); if (!await organize.evaluate(node => node.open)) await organize.locator(":scope > summary").click(); }
   await region.getByRole("combobox", { name: "Sort sets", exact: true }).selectOption("newest");
   await expect(grid.locator(".collection-sets-card-name")).toHaveText(["Fusion Strike", "Celebrations", "Nebula custom set", "Unknown custom set", "Zero custom set"]);
   await search.fill("does not exist");

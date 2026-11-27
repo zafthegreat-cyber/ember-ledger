@@ -471,7 +471,7 @@ async function verifyFixture(page, fixture) {
     case "legacy-route-redirect":
       await page.getByTestId("business-workspace").waitFor();
       equal(new URL(page.url()).pathname, "/business/sales", "legacy /sell should redirect to the canonical sales route");
-      match(await body(), /Completed sales/i, "legacy redirect should resolve to a real page, not a blank surface");
+      match(await body(), /Sales history/i, "legacy redirect should resolve to a real page, not a blank surface");
       break;
     case "remembered-workspace": {
       const switcher = await openSwitcher(page);

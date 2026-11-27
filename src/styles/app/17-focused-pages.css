@@ -1,0 +1,218 @@
+/* Shared, restrained surfaces. Branding belongs in navigation and primary actions. */
+html body .app.app-command-shell[data-theme] {
+  --lounge-panel: #fffdf9;
+  --lounge-ink: #282329;
+  --lounge-muted: #686169;
+  --lounge-line: #ddd6d1;
+  --lounge-wash: #f0eae6;
+  --c3-page: #f7f4ef;
+  --c3-surface: var(--lounge-panel);
+  --c3-surface-secondary: #f1ece7;
+  --c3-surface-inset: #ebe5df;
+  --c3-surface-elevated: #fffdf9;
+  --c3-text: var(--lounge-ink);
+  --c3-muted: var(--lounge-muted);
+  --c3-border: #ded7d0;
+  --c3-control-border: #91838b;
+  --c3-action: #78081c;
+  --c3-action-hover: #550013;
+  --c3-on-action: #ffffff;
+  --app-brand-photo: #f5f2ed;
+  --app-brand-selected: #f1e2e5;
+  --app-brand-selected-ink: #78081c;
+  --app-brand-selected-border: #b38690;
+  --c3-radius: 14px;
+  --ui-control-radius: 10px;
+}
+html body .app.app-command-shell[data-theme="dark"] {
+  --lounge-panel: #242328;
+  --lounge-ink: #f5f0e8;
+  --lounge-muted: #bdb6be;
+  --lounge-line: #464149;
+  --lounge-wash: #302a30;
+  --c3-page: #19181c;
+  --c3-surface-secondary: #2c2930;
+  --c3-surface-inset: #1e1c21;
+  --c3-surface-elevated: #333037;
+  --c3-border: #47414a;
+  --c3-control-border: #8e818f;
+  --c3-action: #e8c879;
+  --c3-action-hover: #f2dba1;
+  --c3-on-action: #241b13;
+  --app-brand-selected: #3c2930;
+  --app-brand-selected-ink: #f1d9a5;
+  --app-brand-selected-border: #967c61;
+}
+:root:has(.app.app-command-shell[data-theme="dark"]),
+body:has(.app.app-command-shell[data-theme="dark"]) { background: #19181c; }
+:root:has(.app.app-command-shell[data-theme="light"]),
+body:has(.app.app-command-shell[data-theme="light"]) { background: #f7f4ef; }
+html body .app.app-command-shell[data-theme] :is(.ops-page-header,.flip-scout-page > .ops-page-header) {
+  margin-block: 0 16px; padding-block: 0; gap: 6px;
+}
+html body .app.app-command-shell[data-theme] .ops-page-header h1 {
+  font-size: clamp(28px, 3vw, 36px) !important; line-height: 1.15 !important;
+}
+html body .app.app-command-shell[data-theme] .ops-section-header h2 {
+  font: 650 20px/1.3 var(--font-ui) !important; letter-spacing: -.015em;
+}
+html body .app.app-command-shell[data-theme] .ops-button--primary:not(:is(.home-layout,.everyday-workspace) .ops-button--primary) {
+  color: var(--on-primary) !important; background: var(--action-primary) !important;
+  border-color: var(--action-primary) !important; box-shadow: none !important;
+}
+html body .app.app-command-shell[data-theme] :is(.home-layout.home-layout--refined,.code3-workspace-home) {
+  padding-top: 16px; gap: 14px;
+}
+html body .app.app-command-shell[data-theme] .home-layout--refined > .ops-page-header { margin-bottom: 16px; }
+html body .app.app-command-shell[data-theme] .home-layout--refined .ops-home-section { margin-bottom: 20px; }
+html body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .home-restock-hero {
+  padding: 18px; margin-bottom: 20px; min-height: 0;
+  background: var(--surface-primary) !important; border-color: var(--border-subtle) !important;
+}
+html body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .home-restock-hero :is(h2,p,.home-group-label) { color: var(--text-primary) !important; }
+html body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .home-restock-hero p { color: var(--text-secondary) !important; }
+html body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .home-restock-actions .ops-button--primary {
+  background: var(--action-primary) !important; color: var(--on-primary) !important; border-color: var(--action-primary) !important;
+}
+html body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .home-restock-actions .ops-button--secondary {
+  background: transparent !important; color: var(--text-primary) !important; border-color: var(--border-strong) !important;
+}
+html body .app.app-command-shell[data-theme] .home-layout--lounge .home-restock-copy { gap: 8px 20px; }
+html body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .home-restock-copy h2 { font: 650 22px/1.3 var(--font-ui) !important; }
+html body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .home-workspaces {
+  background: transparent !important; border: 0 !important; box-shadow: none !important;
+}
+html body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .ops-section-header h2 {
+  font: 650 20px/1.3 var(--font-ui) !important;
+}
+html body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .home-personal-card { padding-top: 12px; }
+html body .app.app-command-shell[data-theme] .home-shortcut-link {
+  display: grid; grid-template-columns: 24px minmax(0,1fr) 16px; align-items: center; gap: 12px;
+  width: 100%; min-height: 68px; padding: 10px 0; text-align: left;
+  color: var(--text-primary) !important; background: transparent !important; border: 0 !important; box-shadow: none !important;
+}
+.home-shortcut-link > span:nth-child(2) { display: grid; gap: 4px; }
+.home-shortcut-link strong { font: 650 16px/1.3 var(--font-ui); }
+.home-shortcut-link small { font: 400 13px/1.45 var(--font-ui); color: var(--text-secondary); }
+html body .app.app-command-shell[data-theme] .code3-workspace-home__header > span { color: var(--text-secondary); text-transform: none; letter-spacing: 0; }
+html body .app.app-command-shell[data-theme] .code3-workspace-summary dt { font-size: 13px; }
+html body .app.app-command-shell[data-theme] :is(.flip-section,.restock-start__report) { padding: 18px; }
+.feature-availability { display: inline-block; padding: 5px 10px; border-radius: 30px; background: var(--surface-secondary); color: var(--text-secondary); font-size: 13px; font-weight: 650; }
+.auction-coming-soon { max-width: 680px; }
+html body .app.app-command-shell[data-theme] .flip-deal-workspace .flip-section-heading p {
+  display: block !important; max-width: 56ch; margin-top: 8px; color: var(--text-secondary);
+}
+.auction-coming-soon h2 { margin: 12px 0 8px; font-size: 26px; }
+.auction-coming-soon p { max-width: 55ch; line-height: 1.5; }
+.saved-auction-archive,.listing-optional-details,.workspace-more-tools { border-top: 1px solid var(--border-subtle); }
+.saved-auction-archive > summary,.listing-optional-details > summary,.workspace-more-tools > summary,.restock-start__how > summary {
+  min-height: 48px; padding: 12px 0; cursor: pointer; font-weight: 600; color: var(--text-primary);
+}
+.saved-auction-archive > summary span { margin-left: 8px; color: var(--text-secondary); }
+.saved-auction-archive > p { color: var(--text-secondary); }
+.workspace-more-tools .ops-button { margin: 0 8px 8px 0; }
+.listing-optional-details > .flip-form-grid { padding-block: 8px 16px; }
+.listing-price-pair { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; grid-column: 1 / -1; }
+html body .app.app-command-shell[data-theme] .flip-listing-form { gap: 12px; }
+html body .app.app-command-shell[data-theme] .flip-listing-form__group { padding: 14px; }
+html body .app.app-command-shell[data-theme] .flip-form-actions { gap: 10px; }
+html body .app.app-command-shell[data-theme] .home-help-details > summary { min-height: 48px; }
+@media (max-width: 700px) {
+  html body .app.app-command-shell[data-theme] :is(.flip-section,.restock-start__report) { padding: 14px; }
+  html body .app.app-command-shell[data-theme] .flip-filter-bar { gap: 8px; }
+  html body .app.app-command-shell[data-theme] .home-layout--lounge .home-restock-copy { display: block; }
+  html body .app.app-command-shell[data-theme] .home-layout--lounge .home-restock-actions { margin-top: 12px; }
+  html body .app.app-command-shell[data-theme] .restock-start { gap: 12px; }
+  html body .app.app-command-shell[data-theme] .restock-start__actions { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+  html body .app.app-command-shell[data-theme] .restock-start__actions button { min-height: 48px; font-size: 14px; padding: 10px 6px; }
+  html body .app.app-command-shell[data-theme] .home-layout--lounge .home-personal-grid { gap: 0; }
+  html body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .home-personal-card { padding: 4px 0; }
+}
+/* Everyday flow polish: compact choices and predictable editing. */
+html body .app.app-command-shell[data-theme] .quick-restock { padding-top:12px; border-top:1px solid var(--border-subtle); gap:10px; }
+html body .app.app-command-shell[data-theme] .quick-restock__picker { display:grid; gap:6px; font:600 13px/1.4 var(--font-ui); color:var(--text-secondary); }
+html body .app.app-command-shell[data-theme] .quick-restock__picker select { width:100%; min-width:0; min-height:48px; padding:10px 12px; border:1px solid var(--border-strong); border-radius:10px; background:var(--surface-primary); color:var(--text-primary); font:400 16px/1.4 var(--font-ui); }
+html body .app.app-command-shell[data-theme] .quick-restock__statuses { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+html body .app.app-command-shell[data-theme] .quick-restock__status { min-height:44px; border-radius:10px; padding:8px 4px; background:transparent!important; color:var(--text-primary)!important; border-color:var(--border-strong)!important; box-shadow:none!important; font-size:13px; }
+html body .app.app-command-shell[data-theme] .quick-restock__hint { font-size:13px; line-height:1.5; }
+html body .app.app-command-shell[data-theme] .home-shortcut-editor { padding:18px; border:1px solid var(--border-strong); border-radius:14px; background:var(--surface-primary); margin-bottom:16px; }
+html body .app.app-command-shell[data-theme] .home-shortcut-editor h3 { margin:0 0 6px; font:650 19px/1.3 var(--font-ui); }
+html body .app.app-command-shell[data-theme] .home-shortcut-editor > p { color:var(--text-secondary); font-size:14px; }
+html body .app.app-command-shell[data-theme] .home-shortcut-options { display:grid; grid-template-columns:1fr; gap:0; }
+html body .app.app-command-shell[data-theme] .home-shortcut-options label { display:flex; align-items:center; gap:12px; min-height:48px; padding:10px 0; border:0; border-bottom:1px solid var(--border-subtle); border-radius:0; background:transparent; }
+html body .app.app-command-shell[data-theme] .home-shortcut-options input { width:20px; height:20px; flex:0 0 20px; accent-color:var(--action-primary); }
+html body .app.app-command-shell[data-theme] .home-shortcut-preview { background:transparent; padding:0; border:0; margin:8px 0; }
+html body .app.app-command-shell[data-theme] .home-shortcut-preview > summary { min-height:44px; padding:12px 0; cursor:pointer; color:var(--text-secondary); font-size:14px; }
+html body .app.app-command-shell[data-theme] .saved-listings-results { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin:0 0 14px; }
+html body .app.app-command-shell[data-theme] .saved-listings-results p { margin:0; color:var(--text-secondary); font-size:14px; }
+html body .app.app-command-shell[data-theme] .settings-layout__identity-bar > div > span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+html body .app.app-command-shell[data-theme] .home-shortcut-editor button:disabled { opacity:.6; cursor:wait; }
+html body .app.app-command-shell[data-theme] .flip-deal-card__body h3 { display:block; font:650 16px/1.4 var(--font-ui)!important; overflow-wrap:anywhere; }
+html body .app.app-command-shell[data-theme] .flip-deal-card__body :is(.flip-deal-source,time,.flip-deal-signal) { font:400 13px/1.45 var(--font-ui)!important; letter-spacing:0; text-transform:none; }
+html body .app.app-command-shell[data-theme] .flip-deal-summary span { font:400 13px/1.45 var(--font-ui); }
+html body .app.app-command-shell[data-theme] .flip-deal-summary strong { font:650 16px/1.45 var(--font-ui); }
+html body .app.app-command-shell[data-theme] .flip-deal-card__body > .primary-button { background:transparent!important; color:var(--text-primary)!important; border:1px solid var(--border-strong)!important; box-shadow:none!important; min-height:44px; border-radius:10px; }
+html body .app.app-command-shell[data-theme] .home-store-shortcuts > summary { min-height:44px; padding:12px 0; cursor:pointer; color:var(--text-secondary); font:500 13px/1.5 var(--font-ui); }
+html body .app.app-command-shell[data-theme] .home-store-shortcuts .home-followed-stores { margin-top:0; }
+html body .app.app-command-shell[data-theme] .home-layout .home-restock-hero .quick-restock__hint { color:var(--text-secondary)!important; }
+html body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .home-restock-copy { display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-areas:none; gap:12px 20px; align-items:start; }
+html body .app.app-command-shell[data-theme] .home-restock-intro { display:flex; flex-direction:column; align-items:flex-start; gap:6px; }
+html body .app.app-command-shell[data-theme] .home-restock-intro :is(h2,p) { margin:0!important; }
+html body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .home-restock-actions { grid-area:auto; display:flex; flex-direction:row; flex-wrap:wrap; gap:8px; margin:0; }
+html body .app.app-command-shell[data-theme] .home-restock-copy > .quick-restock { grid-column:1 / -1; margin-top:0; }
+@media(max-width:850px){ html body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .home-restock-copy { grid-template-columns:1fr; } }
+
+@media(min-width:851px){html body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .home-restock-actions > button { width:auto; flex:0 1 auto; }}
+html body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .home-personal-card { display:flex; flex-direction:column; align-items:stretch; justify-content:flex-start; }
+html body .app.app-command-shell[data-theme] .home-layout.home-layout--lounge .home-personal-card > .home-shortcut-link { margin:0!important; }
+
+/* The same precise disclosure rows used in Settings, across everyday pages. */
+html body .app.app-command-shell[data-theme] .precise-section { border:1px solid var(--border-subtle); border-radius:14px; background:var(--surface-primary); padding:0; margin-block:0 12px; min-width:0; }
+html body .app.app-command-shell[data-theme] .precise-section > summary { display:flex; align-items:center; gap:12px; min-height:64px; padding:12px 16px; cursor:pointer; list-style:none; color:var(--text-primary); font:600 15px/1.4 var(--font-ui); }
+html body .app.app-command-shell[data-theme] .precise-section > summary::-webkit-details-marker { display:none; }
+html body .app.app-command-shell[data-theme] .precise-section > summary::after { content:'›'; font:400 24px/1 var(--font-ui); color:var(--text-secondary); margin-left:auto; flex:none; transform:rotate(0deg); }
+html body .app.app-command-shell[data-theme] .precise-section[open] > summary::after { transform:rotate(90deg); }
+html body .app.app-command-shell[data-theme] .precise-section > summary > span:first-child { display:grid; gap:3px; min-width:0; color:var(--text-primary); font:inherit; }
+html body .app.app-command-shell[data-theme] .precise-section > summary strong { font:600 15px/1.4 var(--font-ui); }
+html body .app.app-command-shell[data-theme] .precise-section > summary small { color:var(--text-secondary); font:400 13px/1.4 var(--font-ui); }
+html body .app.app-command-shell[data-theme] .precise-section__count { margin-left:auto; font:500 12px/1.4 var(--font-ui); color:var(--text-secondary); white-space:nowrap; }
+html body .app.app-command-shell[data-theme] .precise-section > summary:focus-visible { outline:3px solid var(--focus-ring); outline-offset:3px; border-radius:10px; }
+html body .app.app-command-shell[data-theme] .precise-section[open] > summary { border-bottom:1px solid var(--border-subtle); }
+html body .app.app-command-shell[data-theme] .precise-section__body,
+html body .app.app-command-shell[data-theme] .precise-section > .inventory-browser-controls { padding:16px; }
+html body .app.app-command-shell[data-theme] .precise-section__body > p { color:var(--text-secondary); font-size:14px; line-height:1.5; }
+html body .app.app-command-shell[data-theme] .collection-filter-fields { border:0; padding:0; margin-top:12px; }
+html body .app.app-command-shell[data-theme] .collection-saved-search-section { border-top:1px solid var(--border-subtle); margin-top:14px; }
+html body .app.app-command-shell[data-theme] .collection-saved-search-section > summary { min-height:48px; padding:12px 0; cursor:pointer; font:600 14px/1.5 var(--font-ui); }
+html body .app.app-command-shell[data-theme] .collection-portfolio-filter-row { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); align-items:end; gap:12px; }
+html body .app.app-command-shell[data-theme] .collection-sets-controls { display:block; }
+html body .app.app-command-shell[data-theme] .collection-sets .precise-section .collection-extra-filter-grid { margin-block:12px; }
+html body .app.app-command-shell[data-theme] .inventory-organize .inventory-batch-controls { border:0; padding:16px; }
+html body .app.app-command-shell[data-theme] .inventory-browser-search > button:disabled { display:none; }
+html body .app.app-command-shell[data-theme] .sales-history-filters { grid-template-columns:1fr; }
+html body .app.app-command-shell[data-theme] .precise-section .sales-history-filters { grid-template-columns:repeat(3,minmax(0,1fr)); margin:0; }
+html body .app.app-command-shell[data-theme] .collection-portfolio-heading { padding-block:16px; }
+html body .app.app-command-shell[data-theme] .collection-portfolio-device-note { font-size:12px; }
+@media(max-width:600px) {
+ html body .app.app-command-shell[data-theme] .collection-portfolio-filter-row { grid-template-columns:1fr; }
+ html body .app.app-command-shell[data-theme] .precise-section .sales-history-filters { grid-template-columns:1fr; }
+ html body .app.app-command-shell[data-theme] .precise-section > summary { padding:12px; gap:8px; }
+ html body .app.app-command-shell[data-theme] .precise-section__body { padding:12px; }
+}
+
+html body .app.app-command-shell[data-theme] .precise-section > summary:has(.precise-section__count)::after {margin-left:0;}
+
+html body .app.app-command-shell[data-theme] .inventory-browser {gap:12px;}
+html body .app.app-command-shell[data-theme] .inventory-browser-meta {flex-direction:row; align-items:center; flex-wrap:wrap;}
+html body .app.app-command-shell[data-theme] .inventory-browser-meta > p {flex:1 1 170px;}
+html body .app.app-command-shell[data-theme] .inventory-browser-meta > div {flex:none;}
+
+html body .app.app-command-shell[data-theme] .collection-sets-controls > .collection-sets-tabs {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;}
+html body .app.app-command-shell[data-theme] .collection-sets-controls > .collection-sets-tabs > button {min-width:0;min-height:44px;padding:8px 3px;font-size:13px;white-space:normal;}
+
+html body .app.app-command-shell[data-theme] .everyday-workspace {gap:18px;}
+html body .app.app-command-shell[data-theme] .everyday-workspace > .ops-page-header {display:flex;flex-wrap:wrap;gap:12px;align-items:start;margin:0;padding:0;}
+html body .app.app-command-shell[data-theme] .everyday-workspace > .ops-page-header > div:first-child {flex:1 1 180px;min-width:0;}
+html body .app.app-command-shell[data-theme] .everyday-workspace > .ops-page-header .ops-page-actions {flex:0 0 auto;}
+html body .app.app-command-shell[data-theme] .everyday-back-button {justify-self:start;min-height:44px;margin:0;padding:8px 0;background:transparent!important;color:var(--text-secondary)!important;border:0;box-shadow:none!important;text-align:left;}
+html body .app.app-command-shell[data-theme] .everyday-back-button:hover {color:var(--text-primary)!important;text-decoration:underline;}

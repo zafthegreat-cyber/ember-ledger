@@ -111,8 +111,15 @@ async function warmCatalog(page) {
   await settle(page);
 }
 
+async function openGamePanel(region) {
+  const panel = region.locator('details.precise-section:has(summary[aria-label^="Filter by game:"])').first();
+  if (await panel.count() && !await panel.evaluate(element => element.open)) await panel.locator(":scope > summary").click();
+}
+
 async function chooseGame(region, game) {
   const summary = region.locator('summary[aria-label^="Filter by game:"]');
+  const panel = region.locator('details.precise-section:has(summary[aria-label^="Filter by game:"])').first();
+  if (await panel.count() && !await panel.evaluate(element => element.open)) await panel.locator(":scope > summary").click();
   if (!await summary.evaluate(element => element.parentElement.open)) await summary.click();
   const group = region.getByRole("group", { name: "Trading card game", exact: true });
   await group.getByRole("button", { name: game, exact: true }).click();
@@ -186,6 +193,7 @@ async function runCase(browser, testCase) {
     result.wholePortfolioTotalUnchanged = true;
     await chooseGame(portfolio, "All games");
     const filterSummary = portfolio.locator('summary[aria-label^="Filter by game:"]');
+    { const panel = portfolio.locator('details.precise-section:has(summary[aria-label^="Filter by game:"])').first(); if (await panel.count() && !await panel.evaluate(element => element.open)) await panel.locator(":scope > summary").click(); }
     await filterSummary.click();
     result.collectionMetrics = await geometry(page, portfolio, testCase);
     await page.screenshot({ path: path.join(output, `${name}-game-picker.png`), fullPage: true });
@@ -271,6 +279,8 @@ async function runCase(browser, testCase) {
     await region.getByRole("button", { name: "Clear search", exact: true }).click();
     await region.getByRole("button", { name: "All sets", exact: true }).click();
     const setsSummary = region.locator('summary[aria-label^="Filter by game:"]');
+    const setsPanel = region.locator('details.precise-section:has(summary[aria-label^="Filter by game:"])').first();
+    if (await setsPanel.count() && !await setsPanel.evaluate(element => element.open)) await setsPanel.locator(":scope > summary").click();
     await setsSummary.click();
     result.setMetrics = await geometry(page, region, testCase);
     await page.screenshot({ path: path.join(output, `${name}-sets-game-picker.png`), fullPage: true });
@@ -281,11 +291,13 @@ async function runCase(browser, testCase) {
     await page.screenshot({ path: path.join(output, `${name}-magic-sets.png`), fullPage: true });
     if (testCase.width === 320) {
       await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
+      await openGamePanel(region);
       await setsSummary.click();
       result.textScale200SetMetrics = await geometry(page, region, testCase);
       await page.screenshot({ path: path.join(output, `${name}-text-200.png`), fullPage: true });
       await setsSummary.click();
       await page.getByRole("button", { name: "Back to Collection", exact: true }).click();
+      await openGamePanel(portfolio);
       await filterSummary.click();
       result.textScale200CollectionMetrics = await geometry(page, portfolio, testCase);
       await page.evaluate(() => { document.documentElement.style.fontSize = ""; });

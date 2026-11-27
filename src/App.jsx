@@ -34229,13 +34229,16 @@ function renderForgeBusinessLedgerPanel() {
   });
   const alertPauses = useAlertPauses(`${user?.id || 'local-beta'}:${activeWorkspace?.id || 'personal'}`);
   const notificationUnreadCount = unreadNotificationCount(notificationCenterRows);
-  // A79: estimate local storage use after saves and warn before a save fails.
+  // Read-only size advisory, never a measured capacity or confirmed save result.
   const [storageQuota, setStorageQuota] = useState(() => ({ level: "ok", percent: 0, title: "", message: "" }));
   const [storageQuotaDismissed, setStorageQuotaDismissed] = useState("");
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
-    const handle = window.setTimeout(() => setStorageQuota(storageQuotaStatus()), 1500);
-    return () => window.clearTimeout(handle);
+    const refresh = () => setStorageQuota(storageQuotaStatus());
+    const handle = window.setTimeout(refresh, 1500);
+    window.addEventListener("focus", refresh);
+    window.addEventListener("storage", refresh);
+    return () => { window.clearTimeout(handle); window.removeEventListener("focus", refresh); window.removeEventListener("storage", refresh); };
   }, [items.length, workspaceSales.length, workspaceExpenses.length, scoutReportRows.length]);
   // Device alerts (#12): mirror new unread alert rows to the browser's
   // Notification API when the person has allowed it.
@@ -44766,11 +44769,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     return (
       <div className={`storage-quota-banner is-${storageQuota.level}`} role={storageQuota.level === "critical" ? "alert" : "status"}>
         <div>
-          <strong>{storageQuota.title} ({storageQuota.percent}%)</strong>
+          <strong>{storageQuota.title}</strong>
           <p>{storageQuota.message}</p>
         </div>
         <div className="quick-actions">
-          <button type="button" className="secondary-button" onClick={() => { prepareRouteNavigation(); setActiveTab("settings"); }}>Open Backup</button>
+          <button type="button" className="secondary-button" onClick={() => openUtilityPage("dataBackup")}>Open backups</button>
           <button type="button" className="secondary-button" onClick={() => setStorageQuotaDismissed(storageQuota.level)}>Later</button>
         </div>
       </div>
@@ -45990,22 +45993,23 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     );
   }
 
-  function renderSettingsPreferencesCard() {
+  function renderSettingsPreferencesCard(section = "all") {
+    const show = (name) => section === "all" || section === name;
     return (
       <section className="drawer-info-card settings-preferences-card utility-card utility-card-wide">
-        <ExperiencePreferences experience={experiencePresentation} optionalTools={{ ...optionalExperienceTools, family: showFamilyExperience }} previewActive={experiencePresentation.isPreview} onPersonaChange={(persona) => updateAppSetupPersonalization((current) => ({ ...current, experiencePersona: persona }), "Your experience is updated. Existing records are kept.")} onOptionalToolChange={(key, enabled) => updateAppSetupPersonalization((current) => ({ ...current, optionalTools: { ...current.optionalTools, [key]: enabled }, optionalToolsCustomized: [...new Set([...(current.optionalToolsCustomized || []), key])] }), "Optional tools updated.")} />
-        <div className="compact-card-header">
+        {show("experience") && <ExperiencePreferences experience={experiencePresentation} optionalTools={{ ...optionalExperienceTools, family: showFamilyExperience }} previewActive={experiencePresentation.isPreview} onPersonaChange={(persona) => updateAppSetupPersonalization((current) => ({ ...current, experiencePersona: persona }), "Your experience is updated. Existing records are kept.")} onOptionalToolChange={(key, enabled) => updateAppSetupPersonalization((current) => ({ ...current, optionalTools: { ...current.optionalTools, [key]: enabled }, optionalToolsCustomized: [...new Set([...(current.optionalToolsCustomized || []), key])] }), "Optional tools updated.")} />}
+        {section === "all" && <div className="compact-card-header">
           <div>
             <strong>Preferences</strong>
             <p className="compact-subtitle">Theme, notifications, home area, stores, and display controls stay grouped here.</p>
           </div>
           <span className="status-badge">{settingsAppPreferencePersistenceLabel}</span>
-        </div>
+        </div>}
         <div className="settings-preference-grid">
-          <article className="settings-preference-panel">
+          {show("appearance") && <article className="settings-preference-panel">
             <span>Appearance</span>
             <strong>{resolvedAppTheme === "dark" ? "Dark appearance" : "Light appearance"}</strong>
-            <p>Choose the appearance that feels right for you. Your preference is saved.</p>
+            <p>Choose a theme and card spacing.</p>
             {renderThemeChoiceControl({ compact: true })}
             <p className="compact-subtitle">Current density: {dashboardCardStyle}.</p>
             <div className="drawer-inline-actions">
@@ -46015,8 +46019,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </button>
               ))}
             </div>
-          </article>
-          <article className="settings-preference-panel">
+          </article>}
+          {show("location") && <article className="settings-preference-panel">
             <span>Home area</span>
             <strong>{locationSettings.manualLocation || locationSettings.selectedSavedLocation || "Not set"}</strong>
             <p>Used for nearby watched stores. Exact user location is never shown publicly.</p>
@@ -46025,16 +46029,16 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <button type="button" className="drawer-link" onClick={saveManualLocation}>Save area</button>
               <button type="button" className="secondary-button" onClick={disableLocationTracking}>Turn off device location</button>
             </div>
-          </article>
-          <article className="settings-preference-panel">
+          </article>}
+          {show("location") && <article className="settings-preference-panel">
             <span>Restocks state</span>
             <strong>{storeStateShortName(storeDirectoryState)}</strong>
             <p>{storeDirectoryStateSource === "detected" ? "Matched from your home area. Pick a state to change it." : "Restocks shows stores and reports for this state."}</p>
             <select className="drawer-field" aria-label="Restocks state" value={storeDirectoryState} onChange={(event) => chooseStoreDirectoryState(event.target.value)}>
               {STORE_DIRECTORY_STATES.map((state) => <option key={state.code} value={state.code}>{state.shortName}</option>)}
             </select>
-          </article>
-          <article className="settings-preference-panel">
+          </article>}
+          {show("location") && <article className="settings-preference-panel">
             <span>Favorite stores</span>
             <strong>{settingsFollowedStores.length} followed</strong>
             <p>{settingsStoreAlertPersistenceLabel}. Hide irrelevant stores from Smart Setup when possible.</p>
@@ -46042,8 +46046,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <button type="button" className="drawer-link" onClick={() => { setActiveTab("scout"); setScoutView("stores"); setScoutStoresMode("map"); }}>Manage stores</button>
               <button type="button" className="secondary-button" onClick={() => openSmartSetupFlow({ reset: false })}>Update setup</button>
             </div>
-          </article>
-          <article className="settings-preference-panel">
+          </article>}
+          {show("notifications") && <article className="settings-preference-panel">
             <span>Notifications</span>
             <strong>In-app alerts</strong>
             <p>{nativeAlerts ? NATIVE_ALERT_DISCLOSURE : IN_APP_ALERT_DISCLOSURE}</p>
@@ -46055,7 +46059,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </label>
               ))}
             </div>
-          </article>
+          </article>}
         </div>
       </section>
     );
@@ -46090,6 +46094,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <button type="button" className="secondary-button" onClick={() => setActiveTab("trust")}>Privacy policy</button>
           <button type="button" className="secondary-button" onClick={() => window.location.assign("/delete-account")}>Delete account</button>
         </div>
+        <details className="settings-privacy-explainer"><summary>How your information is protected</summary>
         <div className="settings-section-grid compact">
           {privacyRows.map((row) => (
             <article className="settings-section-card" key={row.title}>
@@ -46099,6 +46104,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </article>
           ))}
         </div>
+        </details>
       </section>
     );
   }

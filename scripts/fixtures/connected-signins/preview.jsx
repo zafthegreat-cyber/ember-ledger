@@ -1,0 +1,10 @@
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import {ConnectedSignIns} from '../../../src/features/auth/SocialSignIn.jsx';
+import {SOCIAL_PROVIDERS} from '../../../src/features/auth/socialAuth.mjs';
+import {withConnectionUpdates} from '../../../src/features/auth/connectionUpdates.mjs';
+import '../../../src/App.css';
+let linked=false;
+const service=withConnectionUpdates({verifiedUser:async()=>({id:'preview',identities:linked?[{provider:'facebook'}]:[]}),start:async()=>{},finish:async()=>{linked=true;return{userId:'preview'};}});
+const loadProviders=async()=>SOCIAL_PROVIDERS;
+createRoot(document.getElementById('root')).render(<main className="app app-command-shell" data-theme="dark" style={{display:'block',minHeight:'100vh',padding:'24px'}}><div style={{width:'100%',maxWidth:540,margin:'auto'}}><h1>Account</h1><p>Preview only · sample account</p><button onClick={()=>service.finish({})}>Simulate verified Facebook return</button><ConnectedSignIns user={{id:'preview'}} service={service} loadProviders={loadProviders} linkingEnabled/></div></main>);

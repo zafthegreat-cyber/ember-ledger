@@ -104,7 +104,7 @@ const tiers = ["free", "collector", "family", "seller", "shop"];
       await page.waitForURL("**/settings*");
       await expect(page.locator(".settings-layout")).toBeVisible();
       const preferences = page.getByRole("region", { name: "Make it yours", exact: true });
-      if (!await preferences.isVisible()) await page.locator("summary").filter({ hasText: "Appearance & preferences" }).click();
+      if (!await preferences.isVisible()) await page.locator("summary").filter({ hasText: "Experience & tools" }).click();
       await expect(preferences).toBeVisible();
       for (const input of await preferences.locator("input").all()) await expect(input).toBeDisabled();
       await page.goBack();

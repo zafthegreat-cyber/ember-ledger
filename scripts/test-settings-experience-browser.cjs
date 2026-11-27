@@ -44,43 +44,54 @@ const cases = [{width:320,height:568},{width:390,height:844},{width:1440,height:
       const render=async props=>{await page.evaluate(value=>window.qaRender(value),{theme:testCase.theme,...props});await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));};
       for(const persona of ["collector","seller","store"]){
         await render({persona});
-        await expect(page.getByRole("heading",{name:"Privacy & safety",exact:true})).toBeVisible();
+        await expect(page.getByRole("heading",{name:"Everyday",exact:true})).toBeVisible();
         await expect(page.getByRole("button",{name:/^Family permissions/})).toHaveCount(0);
         await expect(page.getByRole("button",{name:/^The Spark/})).toHaveCount(0);
         await expect(page.getByRole("button",{name:/^Community/})).toHaveCount(0);
         await expect(page.getByText("Family protection",{exact:true})).toHaveCount(0);
         await expect(page.locator(".settings-layout__note")).toHaveCount(0);
+        await page.getByRole("navigation",{name:"Settings categories"}).getByRole("button",{name:"Account",exact:true}).click();
+        await page.locator("summary").filter({hasText:"Account overview"}).click();
         await expect(page.locator(".settings-layout__account-meta")).toContainText(persona[0].toUpperCase()+persona.slice(1));
-        await expect(page.locator(".ops-page-header")).toContainText(persona==="store"?"Your store workspace":persona==="seller"?"Your selling workspace":"the way you collect");
+        await expect(page.locator(".ops-page-header")).toContainText("Settings");
+        await page.getByRole("button",{name:"Privacy",exact:true}).click();
         await page.getByRole("button",{name:/^Safety center/}).click();assert.deepEqual(await page.evaluate(()=>window.qaCalls.at(-1)),["utility","trust"]);
         const privacy=page.locator("summary").filter({hasText:"Privacy & safeguards"});await privacy.click();await expect(page.getByText("Existing privacy controls",{exact:true})).toBeVisible();
-        for(const [label,destination] of [[/^Open Profile/,"profile"],[/^Account & security/,"account"],[/^Plans & access/,"membership"],[/^Archive & backups/,"dataBackup"],[/^Help & app status/,"help"]]){
+        for(const [label,destination,category] of [[/^Profile/,"profile","Account"],[/^Account & security/,"account","Account"],[/^Plans & access/,"membership","Account"],[/^Archive & backups/,"dataBackup","Everyday"],[/^Help & app status/,"help","Help"]]){
+          await page.getByRole("navigation",{name:"Settings categories"}).getByRole("button",{name:category,exact:true}).click();
           await page.getByRole("button",{name:label}).click();assert.deepEqual(await page.evaluate(()=>window.qaCalls.at(-1)),["utility",destination]);
         }
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,"Settings fit the viewport");
         await page.screenshot({path:path.join(output,`${testCase.width}-${testCase.theme}-${persona}.png`),fullPage:true});
       }
       await render({family:true});
-      await expect(page.getByRole("heading",{name:"Family & safety",exact:true})).toBeVisible();
+      await page.getByRole("button",{name:"Privacy",exact:true}).click();
+      await expect(page.getByRole("heading",{name:"Privacy",exact:true})).toBeVisible();
+      await page.getByRole("navigation",{name:"Settings categories"}).getByRole("button",{name:"Account",exact:true}).click();
+      await page.locator("summary").filter({hasText:"Account overview"}).click();
       await expect(page.getByText("Family protection",{exact:true})).toBeVisible();
-      await expect(page.locator(".settings-layout__note")).toBeVisible();
+      await page.getByRole("button",{name:"Privacy",exact:true}).click();
+      await expect(page.locator("summary").filter({hasText:"Family access support"})).toBeVisible();
       await expect(page.getByRole("button",{name:/^Community/})).toHaveCount(0);
       for(const [label,destination] of [[/^Family permissions/,"parentCenter"],[/^The Spark/,"kidsProgram"]]){await page.getByRole("button",{name:label}).click();assert.deepEqual(await page.evaluate(()=>window.qaCalls.at(-1)),["utility",destination]);}
       await render({community:true});
-      await expect(page.getByRole("heading",{name:"Community & safety",exact:true})).toBeVisible();
+      await page.getByRole("button",{name:"Privacy",exact:true}).click();
+      await expect(page.getByRole("heading",{name:"Privacy",exact:true})).toBeVisible();
       await expect(page.getByRole("button",{name:/^Family permissions/})).toHaveCount(0);
       await page.getByRole("button",{name:/^Community/}).click();assert.deepEqual(await page.evaluate(()=>window.qaCalls.at(-1)),["utility","tidepool"]);
       await render({admin:true});
-      await expect(page.getByRole("heading",{name:"Family, community & safety",exact:true})).toBeVisible();
+      await page.getByRole("button",{name:"Privacy",exact:true}).click();
+      await expect(page.getByRole("heading",{name:"Privacy",exact:true})).toBeVisible();
       await expect(page.getByRole("button",{name:/^Family permissions/})).toBeVisible();
       await expect(page.getByRole("button",{name:/^Community/})).toBeVisible();
       await render({admin:true,preview:true});
-      await expect(page.getByRole("heading",{name:"Privacy & safety",exact:true})).toBeVisible();
+      await expect(page.getByRole("heading",{name:"Everyday",exact:true})).toBeVisible();
       await expect(page.getByRole("button",{name:/^Family permissions/})).toHaveCount(0);
       await expect(page.getByRole("button",{name:/^Community/})).toHaveCount(0);
+      await page.getByRole("button",{name:"Privacy",exact:true}).click();
       const safety=page.getByRole("button",{name:/^Safety center/});await safety.focus();await page.keyboard.press("Shift+Tab");await page.keyboard.press("Tab");await expect(safety).toBeFocused();
       assert.notEqual(await safety.evaluate(node=>getComputedStyle(node).outlineStyle),"none","Keyboard focus remains visible");
-      const targets=await page.locator(".settings-layout__row, .settings-layout__disclosure > summary").evaluateAll(nodes=>nodes.map(node=>node.getBoundingClientRect().height));assert.ok(targets.every(height=>height>=44));
+      const targets=await page.locator(".settings-layout__entry:not([hidden]) .settings-layout__row, .settings-layout__entry:not([hidden]) > .settings-layout__disclosure > summary").evaluateAll(nodes=>nodes.map(node=>node.getBoundingClientRect().height));assert.ok(targets.every(height=>height>=44));
       assert.equal(await page.evaluate(()=>localStorage.getItem("et-tcg-beta-data")),preserved,"Presentation and navigation preserve existing record bytes");
       assert.deepEqual(writes,[]);assert.deepEqual(errors,[]);
       results.push({...testCase,personas:["collector","seller","store"],familyOptIn:true,communityOptIn:true,adminVisibility:true,regularPreviewHidesExtras:true,accountCallbacksPreserved:true,safetyAndPrivacyAlwaysPresent:true,keyboardFocus:true,touchTargets44:true,recordBytesUnchanged:true,writes,errors});

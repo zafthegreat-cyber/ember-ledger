@@ -7,12 +7,15 @@ import {
   PRODUCT_CLASSIFICATIONS,
   SORT_OPTIONS,
 } from "../constants.js";
+import { hasRecordedAmount, savedListingPrice } from "../savedListingPresentation.mjs";
 import { calculateLandedCost } from "../calculations.js";
 import { formatCurrency, formatPercent, sortFlipScoutRecords, timingIndicator } from "../selectors.js";
 import { CheckField, EmptyState, FormActions, MoneyInput, NumberInput, SectionHeading, SelectInput, TextArea, TextInput } from "../components/Fields.jsx";
 import { DealCard, PrimaryButton, QuietButton } from "../../../components/operations/OperationsUI.jsx";
 import { DetailList, RecordDetailPage } from "../../../components/operations/RecordExperience.jsx";
 import { resolveExperiencePresentation } from "../../../utils/experiencePresentation.js";
+
+function recordedCurrency(value) { return hasRecordedAmount(value) ? formatCurrency(value) : "Not entered"; }
 
 function blankDeal() {
   return {
@@ -64,6 +67,7 @@ function listingTiming(deal) {
   if (deal.auctionEndTime && timingIndicator(deal.auctionEndTime)) return timingIndicator(deal.auctionEndTime).label;
   const created = deal.listingCreatedAt || deal.dateDiscovered || deal.createdAt;
   if (!created) return "Age not recorded";
+  if (!Number.isFinite(Date.parse(created))) return "Age not recorded";
   const elapsed = Math.max(0, Date.now() - new Date(created).getTime());
   const hours = Math.floor(elapsed / 3_600_000);
   if (hours < 1) return "Found recently";
@@ -120,7 +124,7 @@ export default function DealsScreen({ deals, initialMode = "", navigation = null
       }
       setForm(blankDeal());
       setFormOpen(false);
-      setMessage("Listing saved to the Deal Inbox.");
+      setMessage("Listing saved to your saved listings.");
     } finally {
       saveInFlightRef.current = false;
       setSaving(false);
@@ -163,17 +167,19 @@ export default function DealsScreen({ deals, initialMode = "", navigation = null
       image={(selectedDeal.imageReferences || [])[0] || ""}
       identity={`${selectedDeal.marketplace || "Manual source"} · ${selectedDeal.productClassification || "Unknown classification"}`}
       summary={[
-        { label: selectedDeal.currentBid ? "Current bid" : "Asking price", value: formatCurrency(selectedDeal.currentBid || selectedDeal.askingPrice), numeric: true },
-        { label: "Estimated landed cost", value: formatCurrency(landedCost), numeric: true },
+        { label: savedListingPrice(selectedDeal).label, value: recordedCurrency(savedListingPrice(selectedDeal).value), numeric: true },
+        { label: "Estimated total cost", value: hasRecordedAmount(selectedDeal.askingPrice) ? recordedCurrency(landedCost) : "Add an asking price", numeric: true },
+        ...(showSellingMetrics ? [
         { label: "Projected profit", value: selectedDeal.projectedProfit || selectedDeal.expectedProfit ? formatCurrency(selectedDeal.projectedProfit || selectedDeal.expectedProfit) : "Not entered", numeric: true },
         { label: "Projected ROI", value: selectedDeal.projectedRoi || selectedDeal.expectedRoi ? formatPercent(selectedDeal.projectedRoi || selectedDeal.expectedRoi) : "Not entered", numeric: true },
+        ] : []),
       ]}
-      primaryAction={<PrimaryButton disabled={saving} onClick={() => onAnalyze({ ...selectedDeal, purchasePrice: selectedDeal.askingPrice, purchaseTax: selectedDeal.estimatedTax })}>Analyze Deal</PrimaryButton>}
+      primaryAction={<PrimaryButton disabled={saving} onClick={() => onAnalyze({ ...selectedDeal, purchasePrice: selectedDeal.askingPrice, purchaseTax: selectedDeal.estimatedTax })}>Compare costs</PrimaryButton>}
       secondaryActions={<>{selectedDeal.listingUrl ? <ExternalWebLink className="ops-button ops-button--secondary" href={selectedDeal.listingUrl}>Open Listing</ExternalWebLink> : null}<QuietButton disabled={saving} onClick={() => { edit(selectedDeal); setSelectedDeal(null); }}>Edit</QuietButton><QuietButton className="ops-button--danger" disabled={saving} onClick={async () => { if (saveInFlightRef.current) return; if (await onDelete("deals", selectedDeal.id, selectedDeal.title)) setSelectedDeal(null); }}>Delete</QuietButton></>}
       sections={[
         { title: "Decision", description: "Update the saved review status.", children: <div className="flip-detail-actions"><QuietButton disabled={saving} onClick={() => updateStatus(selectedDeal, "Watching")}>Save to Watching</QuietButton><QuietButton disabled={saving} onClick={() => updateStatus(selectedDeal, "Passed")}>Pass</QuietButton></div> },
         { title: "Listing", description: "Source-provided and manually entered details.", children: <DetailList items={[{ label: "Source", value: selectedDeal.marketplace }, { label: "External listing ID", value: selectedDeal.externalListingId }, { label: "Seller", value: selectedDeal.sellerName }, { label: "Seller rating", value: selectedDeal.sellerRating }, { label: "Listing type", value: selectedDeal.listingType }, { label: "Location", value: selectedDeal.location }, { label: "Distance", value: selectedDeal.distance ? `${selectedDeal.distance} mi` : "" }, { label: "Description", value: selectedDeal.description }]} /> },
-        { title: "Costs and assumptions", description: "Active prices are not sold comparable records.", children: <DetailList items={[{ label: "Shipping", value: formatCurrency(selectedDeal.purchaseShipping) }, { label: "Estimated tax", value: formatCurrency(selectedDeal.estimatedTax) }, { label: "Buyer premium", value: formatCurrency(selectedDeal.buyerPremium) }, { label: "Pickup / travel", value: formatCurrency(selectedDeal.travelOrPickupCost) }, { label: "Preparation", value: formatCurrency(selectedDeal.preparationCost) }, { label: "Resale range", value: [selectedDeal.expectedResaleLow || selectedDeal.projectedResaleLow, selectedDeal.expectedResaleMid || selectedDeal.projectedResaleMid, selectedDeal.expectedResaleHigh || selectedDeal.projectedResaleHigh].filter(Boolean).map(formatCurrency).join(" / ") }, { label: "Confidence", value: selectedDeal.confidence }, { label: "Risk flags", value: (selectedDeal.riskFlags || []).join(", ") || "None recorded" }]} /> },
+        { title: "Costs and assumptions", description: "Active prices are not sold comparable records.", children: <DetailList items={[{ label: "Shipping", value: recordedCurrency(selectedDeal.purchaseShipping) }, { label: "Estimated tax", value: recordedCurrency(selectedDeal.estimatedTax) }, { label: "Buyer premium", value: recordedCurrency(selectedDeal.buyerPremium) }, { label: "Pickup / travel", value: formatCurrency(selectedDeal.travelOrPickupCost) }, { label: "Preparation", value: formatCurrency(selectedDeal.preparationCost) }, { label: "Resale range", value: [selectedDeal.expectedResaleLow || selectedDeal.projectedResaleLow, selectedDeal.expectedResaleMid || selectedDeal.projectedResaleMid, selectedDeal.expectedResaleHigh || selectedDeal.projectedResaleHigh].filter(Boolean).map(formatCurrency).join(" / ") }, { label: "Confidence", value: selectedDeal.confidence }, { label: "Risk flags", value: (selectedDeal.riskFlags || []).join(", ") || "None recorded" }]} /> },
         { title: "Notes and source", description: "Why this record was surfaced and when it was checked.", children: <DetailList items={[{ label: "Why surfaced", value: selectedDeal.surfacedReason || selectedDeal.explanation }, { label: "Data source", value: selectedDeal.sourceDataExplanation }, { label: "Last checked", value: selectedDeal.lastCheckedAt ? new Date(selectedDeal.lastCheckedAt).toLocaleString() : "" }, { label: "Notes", value: selectedDeal.notes }]} /> },
       ]}
       timeline={[selectedDeal.listingCreatedAt ? { id: "listed", title: "Listing created", date: new Date(selectedDeal.listingCreatedAt).toLocaleString() } : null, selectedDeal.dateDiscovered ? { id: "discovered", title: "Listing discovered", date: new Date(selectedDeal.dateDiscovered).toLocaleDateString() } : null, selectedDeal.updatedAt ? { id: "updated", title: "Record updated", date: new Date(selectedDeal.updatedAt).toLocaleString() } : null].filter(Boolean)}
@@ -184,28 +190,40 @@ export default function DealsScreen({ deals, initialMode = "", navigation = null
   return (
     <div className="flip-screen">
       <section className="flip-section flip-deal-workspace">
-        <div className="flip-filter-bar">
-          <TextInput label="Search listings" value={query} onChange={setQuery} placeholder="Title, source, seller, tag…" />
-          <details className="flip-filter-menu">
-            <summary>Filter</summary>
-            <div><SelectInput label="Status" value={statusFilter} onChange={setStatusFilter} options={["All", ...DEAL_STATUSES]} /><SelectInput label="Sort" value={sort} onChange={setSort} options={SORT_OPTIONS} /></div>
-          </details>
-        </div>
         {navigation}
         <SectionHeading
-          title="Deal Feed"
-          actions={<button type="button" className="primary-button" disabled={saving} onClick={() => { if (saveInFlightRef.current) return; setForm(blankDeal()); setFormOpen((open) => !open); }}>{formOpen ? "Close form" : "Paste Listing"}</button>}
+          title="Saved listings"
+          detail="Listings you save to compare before buying. Prices are saved notes, not live offers or verified discounts."
+          actions={<button type="button" className="primary-button" disabled={saving} onClick={() => { if (saveInFlightRef.current) return; setForm(blankDeal()); setFormOpen((open) => !open); }}>{formOpen ? "Close form" : "Save a listing"}</button>}
         />
+        {deals.length > 0 && !formOpen ? <div className="flip-filter-bar">
+          <TextInput label="Search listings" value={query} onChange={setQuery} placeholder="Title, source, seller, tag…" />
+          <details className="flip-filter-menu">
+            <summary>{statusFilter !== "All" ? "Filters · 1" : "Filter & sort"}</summary>
+            <div><SelectInput label="Status" value={statusFilter} onChange={setStatusFilter} options={["All", ...DEAL_STATUSES]} /><SelectInput label="Sort" value={sort} onChange={setSort} options={SORT_OPTIONS} /></div>
+          </details>
+        </div> : null}
+        {deals.length > 0 && !formOpen ? <div className="saved-listings-results"><p role="status">{visibleDeals.length} of {deals.length} saved listings{statusFilter !== "All" ? " · " + statusFilter : ""}</p>{query.trim() || statusFilter !== "All" ? <QuietButton onClick={() => { setQuery(""); setStatusFilter("All"); }}>Clear filters</QuietButton> : null}</div> : null}
         {formOpen ? (
           <form className="flip-form flip-listing-form" onSubmit={save}>
             <p className="flip-listing-form__intro">A title or listing URL is enough to save. Add the remaining details as you review the listing.</p>
             <fieldset className="flip-listing-form__group">
             <legend><span aria-hidden="true">01</span> Listing details</legend>
             <div className="flip-form-grid">
-              <TextInput label="Marketplace / source" value={form.marketplace} onChange={set("marketplace")} placeholder="eBay, local auction, Facebook Marketplace…" />
-              <TextInput label="External listing ID" value={form.externalListingId} onChange={set("externalListingId")} />
               <TextInput label="Listing URL" type="url" value={form.listingUrl} onChange={set("listingUrl")} placeholder="https://…" />
               <TextInput label="Title" value={form.title} onChange={set("title")} />
+              <div className="listing-price-pair">
+                <MoneyInput label="Asking price" value={form.askingPrice} onChange={set("askingPrice")} />
+                <MoneyInput label="Shipping" value={form.purchaseShipping} onChange={set("purchaseShipping")} />
+              </div>
+            </div>
+            </fieldset>
+            {message ? <p className="flip-form-message" role="status">{message}</p> : null}
+            <FormActions><button type="submit" className="primary-button" disabled={saving}>{saving ? "Saving…" : form.id ? "Update listing" : "Save listing"}</button><button type="button" className="secondary-button" disabled={saving} onClick={() => onAnalyze({ ...form, purchasePrice: form.askingPrice, purchaseTax: form.estimatedTax })}>Compare costs</button></FormActions>
+            <details className="listing-optional-details"><summary>Seller, photos &amp; description</summary>
+            <div className="flip-form-grid">
+              <TextInput label="Marketplace / source" value={form.marketplace} onChange={set("marketplace")} placeholder="eBay, local shop…" />
+              <TextInput label="External listing ID" value={form.externalListingId} onChange={set("externalListingId")} />
               <TextArea label="Description" value={form.description} onChange={set("description")} />
               <TextInput label="Seller name" value={form.sellerName} onChange={set("sellerName")} />
               <TextInput label="Seller rating" helper="Only enter a rating supplied by the source or entered by you." value={form.sellerRating} onChange={set("sellerRating")} />
@@ -213,13 +231,11 @@ export default function DealsScreen({ deals, initialMode = "", navigation = null
               <SelectInput label="Product classification" value={form.productClassification} onChange={set("productClassification")} options={PRODUCT_CLASSIFICATIONS} />
               <TextArea label="Images or image references" helper="One URL or local reference per line. No image files are copied into seed data." value={form.imageReferencesText} onChange={set("imageReferencesText")} />
             </div>
-            </fieldset>
-            <fieldset className="flip-listing-form__group">
-            <legend><span aria-hidden="true">02</span> Price &amp; costs</legend>
+            </details>
+            <details className="listing-optional-details">
+            <summary>Additional costs</summary>
             <p className="flip-listing-form__hint">Include the costs you know. The estimate below updates as you enter amounts.</p>
             <div className="flip-form-grid">
-              <MoneyInput label="Asking price" value={form.askingPrice} onChange={set("askingPrice")} />
-              <MoneyInput label="Purchase shipping" value={form.purchaseShipping} onChange={set("purchaseShipping")} />
               <MoneyInput label="Estimated tax" value={form.estimatedTax} onChange={set("estimatedTax")} />
               <MoneyInput label="Buyer premium" value={form.buyerPremium} onChange={set("buyerPremium")} />
               <MoneyInput label="Fixed buyer fees" value={form.fixedBuyerFees} onChange={set("fixedBuyerFees")} />
@@ -228,9 +244,9 @@ export default function DealsScreen({ deals, initialMode = "", navigation = null
               <MoneyInput label="Other acquisition costs" value={form.otherAcquisitionCosts} onChange={set("otherAcquisitionCosts")} />
             </div>
             <div className="flip-live-total"><span>Current landed-cost estimate</span><strong>{formatCurrency(calculateLandedCost({ ...form, purchasePrice: form.askingPrice, purchaseTax: form.estimatedTax }))}</strong></div>
-            </fieldset>
-            <fieldset className="flip-listing-form__group">
-            <legend><span aria-hidden="true">03</span> Timing &amp; pickup</legend>
+            </details>
+            <details className="listing-optional-details">
+            <summary>Timing &amp; pickup</summary>
             <div className="flip-form-grid">
               <TextInput label="Location" value={form.location} onChange={set("location")} />
               <NumberInput label="Distance (miles)" value={form.distance} onChange={set("distance")} />
@@ -241,9 +257,9 @@ export default function DealsScreen({ deals, initialMode = "", navigation = null
               <NumberInput label="Number of bids" value={form.numberOfBids} onChange={set("numberOfBids")} step="1" />
               <CheckField label="Local pickup available" checked={form.localPickupAvailable} onChange={set("localPickupAvailable")} />
             </div>
-            </fieldset>
-            <fieldset className="flip-listing-form__group">
-            <legend><span aria-hidden="true">04</span> Review &amp; notes</legend>
+            </details>
+            <details className="listing-optional-details">
+            <summary>Review &amp; notes</summary>
             <div className="flip-form-grid">
               <SelectInput label="Status" value={form.status} onChange={set("status")} options={DEAL_STATUSES} />
               <SelectInput label="Confidence" value={form.confidence} onChange={set("confidence")} options={CONFIDENCE_LEVELS} />
@@ -251,27 +267,25 @@ export default function DealsScreen({ deals, initialMode = "", navigation = null
               <TextArea label="Tags" helper="Separate tags with commas." value={form.tagsText} onChange={set("tagsText")} />
               <TextArea label="Notes" value={form.notes} onChange={set("notes")} />
             </div>
-            </fieldset>
-            {message ? <p className="flip-form-message" role="status">{message}</p> : null}
-            <FormActions><button type="submit" className="primary-button" disabled={saving}>{saving ? "Saving…" : form.id ? "Update listing" : "Save listing"}</button><button type="button" className="secondary-button" disabled={saving} onClick={() => onAnalyze({ ...form, purchasePrice: form.askingPrice, purchaseTax: form.estimatedTax })}>Analyze assumptions</button></FormActions>
+            </details>
           </form>
         ) : message ? <p className="flip-form-message" role="status">{message}</p> : null}
-        {visibleDeals.length ? (
+        {!formOpen && visibleDeals.length ? (
           <div className="flip-record-list flip-deal-feed">
             {visibleDeals.map((deal) => (
               <DealCard key={deal.id} image={(deal.imageReferences || [])[0] || ""} imageAlt="">
                 <div className="flip-deal-card__body">
                   <span className="flip-deal-source">{deal.marketplace || "Manual source"}</span>
                   <h3>{deal.title || "Untitled listing"}</h3>
-                  <div className="flip-deal-summary"><span>{deal.currentBid ? "Current bid" : "Price"}<strong>{formatCurrency(deal.currentBid || deal.askingPrice)}</strong></span>{showSellingMetrics ? <span>Projected profit<strong>{deal.projectedProfit || deal.expectedProfit ? formatCurrency(deal.projectedProfit || deal.expectedProfit) : "Needs analysis"}</strong></span> : <span>Saved status<strong>{deal.status || "New"}</strong></span>}</div>
-                  <p className="flip-deal-signal">{deal.confidence || "Unrated"} confidence · {deal.riskLevel || (deal.riskFlags?.length ? "Flagged" : "Unrated")} risk</p>
+                  <div className="flip-deal-summary"><span>{savedListingPrice(deal).label}<strong>{recordedCurrency(savedListingPrice(deal).value)}</strong></span>{showSellingMetrics ? <span>Projected profit<strong>{deal.projectedProfit || deal.expectedProfit ? formatCurrency(deal.projectedProfit || deal.expectedProfit) : "Needs analysis"}</strong></span> : <span>Saved status<strong>{deal.status || "New"}</strong></span>}</div>
+                  {(deal.confidence || deal.riskLevel || deal.riskFlags?.length) ? <p className="flip-deal-signal">{deal.confidence || "Unrated"} confidence · {deal.riskLevel || (deal.riskFlags?.length ? "Flagged" : "Unrated")} risk</p> : null}
                   <time dateTime={deal.auctionEndTime || deal.listingCreatedAt || deal.dateDiscovered || deal.createdAt}>{listingTiming(deal)}</time>
                   <button type="button" className="primary-button" disabled={saving} onClick={() => setSelectedDeal(deal)}>Review</button>
                 </div>
               </DealCard>
             ))}
           </div>
-        ) : <EmptyState title={deals.length ? "No listings match" : "Your next find starts here"}>{deals.length ? "Try another search or adjust the filters to find a saved listing." : "Paste a listing to save its details, compare the price, and decide whether it belongs in your collection."}</EmptyState>}
+        ) : !formOpen ? <EmptyState title={deals.length ? "No listings match" : "No saved listings yet"}>{deals.length ? "Try another search or adjust the filters to find a saved listing." : "Found something worth a second look? Save its link here."}</EmptyState> : null}
       </section>
     </div>
   );

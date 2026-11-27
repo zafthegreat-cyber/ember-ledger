@@ -170,7 +170,7 @@ async function safeVisualCheck(page, screen, theme) {
         await expect(screen.locator("aside")).toContainText("What should you offer?");
         await screen.locator("summary").filter({ hasText: "Costs & offer settings" }).click();
         await expect(screen.getByRole("textbox", { name: "Starting offer percentage", exact: true })).toHaveValue("80");
-        await page.getByRole("button", { name: "Back to Deals", exact: true }).click();
+        await page.getByRole("button", { name: "Back to saved listings", exact: true }).click();
         await expect(page).toHaveURL(/\/find\/deals/);
         await page.goBack(); screen = await ready(page);
         await expect(screen.getByRole("textbox", { name: "Market value (USD)", exact: true })).toHaveValue("100");

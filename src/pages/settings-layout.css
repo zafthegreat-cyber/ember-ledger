@@ -207,3 +207,42 @@ html body .app.app-command-shell .settings-layout__email { color: var(--text-sec
   html body .app.app-command-shell .settings-layout__account-actions { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; }
   html body .app.app-command-shell .settings-layout__account-actions > * { flex: 1 1 140px; }
 }
+
+/* Focused settings: short index, familiar categories, and controls on demand. */
+html body .app.app-command-shell .settings-layout.settings-layout--focused { max-width: 820px; gap: 18px; }
+html body .app.app-command-shell .settings-layout--focused .settings-layout__identity-bar { display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--border-subtle); }
+html body .app.app-command-shell .settings-layout--focused .settings-layout__identity-bar > div { display:grid; flex:1; min-width:0; gap:3px; }
+html body .app.app-command-shell .settings-layout--focused .settings-layout__identity-bar strong { font-size:15px; overflow-wrap:anywhere; }
+html body .app.app-command-shell .settings-layout--focused .settings-layout__identity-bar span:not(.settings-layout__avatar) { font-size:13px; color:var(--text-secondary); overflow-wrap:anywhere; }
+html body .app.app-command-shell .settings-layout--focused .settings-layout__avatar { width:42px; height:42px; flex:0 0 42px; border:0; background:var(--surface-secondary); }
+html body .app.app-command-shell .settings-layout--focused .settings-layout__search { display:grid; gap:7px; }
+html body .app.app-command-shell .settings-layout--focused .settings-layout__search label { font-size:13px; font-weight:600; }
+html body .app.app-command-shell .settings-layout--focused .settings-layout__search > div { display:flex; gap:8px; }
+html body .app.app-command-shell .settings-layout--focused .settings-layout__search input { width:100%; min-width:0; min-height:48px; border:1px solid var(--border-strong); border-radius:10px; padding:12px 14px; background:var(--surface-primary); color:var(--text-primary); font:400 16px/1.4 var(--font-ui); }
+html body .app.app-command-shell .settings-layout--focused .settings-layout__categories { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px; padding:4px; border-radius:12px; background:var(--surface-secondary); }
+html body .app.app-command-shell .settings-layout--focused .settings-layout__categories button { min-height:44px; min-width:0; padding:8px 4px; border:1px solid transparent!important; border-radius:9px; background:transparent!important; color:var(--text-secondary)!important; font:600 14px/1.4 var(--font-ui); box-shadow:none; }
+html body .app.app-command-shell .settings-layout--focused .settings-layout__categories button[aria-pressed="true"] { background:var(--surface-primary)!important; color:var(--text-primary)!important; border-color:var(--border-strong)!important; box-shadow:inset 0 -2px var(--action-primary)!important; }
+html body .app.app-command-shell .settings-layout--focused .settings-layout__entry[hidden] { display:none!important; }
+html body .app.app-command-shell .settings-layout--focused .settings-layout__group-body { border-radius:14px; box-shadow:none; overflow:hidden; }
+html body .app.app-command-shell .settings-layout--focused .settings-layout__entry { border-top:0!important; }
+html body .app.app-command-shell .settings-layout--focused .settings-layout__entry:not([hidden]) ~ .settings-layout__entry:not([hidden]) { border-top:1px solid var(--border-subtle)!important; }
+html body .app.app-command-shell .settings-layout--focused :is(.settings-layout__row,.settings-layout__disclosure > summary) { min-height:70px; padding:12px 14px; }
+html body .app.app-command-shell .settings-layout--focused .settings-layout__row-copy { gap:2px; }
+html body .app.app-command-shell .settings-layout--focused .settings-layout__row-copy strong { font-size:15px; }
+html body .app.app-command-shell .settings-layout--focused .settings-layout__row-copy > span { font-size:13px; }
+html body .app.app-command-shell .settings-layout--focused .settings-layout__row-icon { border:0; background:transparent; color:var(--text-secondary); }
+html body .app.app-command-shell .settings-layout--focused .settings-layout__account-meta { margin:0!important; padding:14px 0; grid-template-columns:1fr; background:transparent; border:0; gap:12px; }
+html body .app.app-command-shell .settings-layout--focused .settings-layout__account-meta > div { display:flex; justify-content:space-between; gap:16px; }
+html body .app.app-command-shell .settings-layout--focused .settings-layout__account-meta dd { margin:0; }
+html body .app.app-command-shell .settings-layout--focused :is(.settings-layout__footer button,.settings-layout__search button) { min-height:44px; padding:8px 12px; border:1px solid var(--border-subtle); border-radius:10px; background:transparent!important; color:var(--text-primary)!important; font:500 13px/1.4 var(--font-ui); }
+html body .app.app-command-shell .settings-layout--focused .settings-layout__footer { align-items:center; padding-top:8px; font:400 12px/1.4 var(--font-ui); }
+html body .app.app-command-shell .settings-layout--focused :is(.settings-layout__search-status,.settings-layout__support-copy) { color:var(--text-secondary); font-size:14px; line-height:1.6; }
+html body .app.app-command-shell .settings-layout--focused .settings-privacy-explainer > summary { min-height:44px; padding:12px 0; cursor:pointer; font-weight:600; }
+html body .app.app-command-shell .settings-layout--focused :is(button,input,summary):focus-visible { outline:2px solid var(--action-primary); outline-offset:3px; }
+@media(max-width:480px) {
+  html body .app.app-command-shell .settings-layout.settings-layout--focused { gap:14px; }
+  html body .app.app-command-shell .settings-layout--focused .settings-layout__categories button { font-size:13px; }
+}
+
+
+html body .app.app-command-shell .settings-layout--focused .settings-layout__detail-content details > summary { min-height:44px; padding:12px 0; cursor:pointer; }
