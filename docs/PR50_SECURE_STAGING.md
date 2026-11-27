@@ -160,7 +160,9 @@ custom recovery bundle is prepended.
 
 `Native Supabase migration replay` CI uses the actual local Supabase PostgreSQL
 image and standard CLI startup, without those extension substitutions. Database
-containers use an internal Docker network, seeds are disabled, and the job has
+containers use a dedicated Docker bridge with outbound forwarding and new
+connections to the runner blocked by firewall rules; the CLI can still connect
+through its published local database port. Seeds are disabled, and the job has
 no hosted credentials, production target or cloud provisioning step. It verifies
 the native ledger and inactive jobs, then confirms another migration run is a no-op.
 
