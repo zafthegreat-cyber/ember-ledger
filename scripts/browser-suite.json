@@ -94,7 +94,8 @@
     "test-semantic-theme.cjs",
     "test-stock-screenshot-import-browser.cjs",
     "test-scan-picture-quality-browser.cjs",
-    "test-guest-preview-bar-browser.cjs"
+    "test-guest-preview-bar-browser.cjs",
+    "test-you-page-header-browser.cjs"
   ],
   "knownFailing": []
 }
