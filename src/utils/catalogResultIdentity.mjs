@@ -181,8 +181,16 @@ export function pickScannedCard({ name = "", number = "", setName = "" } = {}, c
     return { card: list.length === 1 ? list[0] : null, others: 0 };
   }
   if (identity.collectorNumber.includes("/")) list = narrow(list, row => normalizedNumber(rowNumberOf(row)) === identity.collectorNumber);
-  const sameNumber = list; // other printings are counted from these
   const wanted = nameKeyOf(name);
+  // No row carries the full number, so every row left matched on the card's own number
+  // alone ("032" with no set total). Such a row is the card only when the name read is
+  // exactly its name. Nov 27 2026: the owner's Articuno 032/159, its total misread as
+  // "032/250", matched the Nintendo promo "Articuno ex - 032" on its bare number and was
+  // filed at $214.90. "Articuno" is not "Articuno ex".
+  if (identity.collectorNumber.includes("/") && !list.some(row => normalizedNumber(rowNumberOf(row)) === identity.collectorNumber)) {
+    list = list.filter(row => nameKeyOf(rowNameOf(row)) === wanted);
+  }
+  const sameNumber = list; // other printings are counted from these
   if (wanted) list = narrow(list, row => nameKeyOf(rowNameOf(row)) === wanted);
   // "Charizard (Black Dot Error)" is a variant of the plain card, not the card itself.
   if (!String(name).includes("(")) list = narrow(list, row => !String(rowNameOf(row)).includes("("));
