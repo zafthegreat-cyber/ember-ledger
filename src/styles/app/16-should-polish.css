@@ -220,6 +220,22 @@ html body .app[data-theme] .guest-preview-banner .auth-text-button {
 @media (min-width: 900px) {
   html body .app[data-theme] .guest-preview-banner { margin: 12px 24px 0; }
 }
+/* Wide screens: start after the fixed sidebar, which covered the bar's words. */
+@media (min-width: 1180px) {
+  html body .app.ops-app-shell[data-theme]:has(> .ops-desktop-sidebar) > .guest-preview-banner { margin-left: 260px; }
+}
+/* Board-style pages (Find, Market, the Collect dashboard, You, Workspaces) lay
+   the app out as a grid whose first row is the page. The preview bar had no row
+   of its own there, so it dropped into a new row under the page: on a phone that
+   is the very bottom, behind the bottom bar, where a visitor never sees it. Give
+   it the first row, as on every other page, then the page. When the phone pill
+   row is showing, that comes first: see the end of 21-bottom-bar.css. */
+html body .app.app-command-shell[data-theme]:has(.command-board-v4) > .guest-preview-banner { grid-column: 1; grid-row: 1; }
+html body .app.app-command-shell[data-theme]:has(.command-board-v4):has(> .guest-preview-banner) { grid-template-rows: auto minmax(0, 1fr) !important; }
+/* The page keeps a full-screen minimum height on these routes; under the preview
+   bar that would make a short page one bar taller than the screen. The app shell
+   is already at least a screen tall, so the page just fills what is left. */
+html body .app.app-command-shell[data-theme]:has(.command-board-v4):has(> .guest-preview-banner) > .main { grid-row: 2 !important; min-height: 0 !important; }
 
 /* ---------- Quick-add search results (audit 2026-11-14) ---------- */
 /* Each result was a 470px showcase card plus a duplicate row; now one compact row. */
