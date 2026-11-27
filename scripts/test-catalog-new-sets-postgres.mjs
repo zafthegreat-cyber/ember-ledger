@@ -371,6 +371,46 @@ try {
   equal((await one("select count(*)::int n from public.product_market_price_current where catalog_product_id = $1", [dragonair.id])).n, 2);
 
   equal((await one("select count(*)::int n from (select tcgplayer_product_id from public.product_catalog group by 1 having count(*) > 1) d")).n, 0);
+
+  // ---- Older sealed products that the first import filed as cards (20261126223000). ----
+  // Their names hold none of the old sealed words, so they sat under Cards. Seeded with no set
+  // id, the way the runs above would never have met them.
+  const misfiled = async (productId, name, fields, { number = null, subtype = null, marketPrice = null, kind = "single_card" } = {}) => {
+    const pc = await one(`insert into public.product_catalog(user_id, name, set_name, product_type, market_source, external_product_id,
+        tcgplayer_product_id, market_price, price_subtype, is_sealed, card_number, rarity, product_kind, raw_source)
+      values($1,$2,'Miscellaneous Cards & Products','Card','TCGCSV',$3,$3,$4,$5,false,$6,$7,$8,$9) returning id`,
+      [owner, name, String(productId), marketPrice, subtype, number, fields.Rarity ?? null, kind, JSON.stringify({ product: product(0, productId, name, fields) })]);
+    const master = await one(`insert into public.master_catalog_items(legacy_product_catalog_id, catalog_item_type, name, product_type, card_number, rarity, tcgplayer_product_id, source)
+      values($1,'card',$2,'Card',$3,$4,$5,'TCGCSV') returning id`, [pc.id, name, number, fields.Rarity ?? null, String(productId)]);
+    await db.query("insert into public.master_catalog_variants(catalog_item_id, variant_name, is_default) values($1,$2,true)", [master.id, subtype ?? "Default"]);
+  };
+  await misfiled(900001, "Fall 2022 Collector Chest", { UPC: "820650850431" }, { subtype: "Normal", marketPrice: 83.77 });
+  await misfiled(900002, "Code Card - Holiday Calendar", { Rarity: "Code Card" }, { kind: "code_card" });
+  await misfiled(900003, "Unified Minds Prerelease Kit", {});
+  await misfiled(900004, "Pikachu", card("058/102", "Common"), { number: "058/102", subtype: "Normal" });
+  // The source record says nothing, but someone gave it a card number by hand: it stays a card.
+  await misfiled(900005, "Unlisted Promo", {}, { number: "12/34" });
+  const refile = await readFile(new URL("../supabase/migrations/20261126223000_catalog_sealed_products_not_cards.sql", import.meta.url), "utf8");
+  await db.query(refile);
+  const filing = async (productId) => {
+    const row = await item(productId);
+    const variant = await one("select variant_type, variant_name, finish from public.master_catalog_variants where catalog_item_id = $1", [row.master_id]);
+    return [row.is_sealed, row.product_type, row.product_kind, row.sealed_product_type, row.catalog_item_type, row.master_product_type, variant.variant_type, variant.variant_name, variant.finish];
+  };
+  equal(await filing(900001), [true, "Sealed Product", "sealed_product", "other", "sealed", "Sealed Product", "sealed", "Normal", "Sealed"], "a Collector Chest is a sealed product");
+  equal(await filing(900002), [true, "Sealed Product", "sealed_product", "other", "sealed", "Sealed Product", "sealed", "Sealed", "Sealed"], "a code card is filed with sealed products, like the others");
+  equal((await filing(900003)).slice(0, 5), [true, "Sealed Product", "sealed_product", "other", "sealed"], "a Prerelease Kit is a sealed product");
+  equal(await filing(900004), [false, "Card", "single_card", null, "card", "Card", "standard", "Normal", null], "a card stays a card");
+  equal((await filing(900005)).slice(0, 5), [false, "Card", "single_card", null, "card"], "a hand-numbered item stays a card");
+  const chest = await item(900001);
+  equal([chest.name, Number(chest.market_price), chest.price_subtype, chest.rarity, (await item(900002)).rarity], ["Fall 2022 Collector Chest", 83.77, "Normal", null, "Code Card"], "only the filing changes");
+  equal([(await item(726500)).catalog_item_type, (await item(704900)).catalog_item_type, (await item(250001)).catalog_item_type], ["card", "sealed", "card"], "items the daily job added are untouched");
+  await db.query(refile);
+  equal((await item(900001)).updated_at, chest.updated_at, "running it again changes nothing");
+  equal((await one(`select count(*)::int n from public.product_catalog pc join public.master_catalog_items m on m.legacy_product_catalog_id = pc.id
+    where pc.market_source = 'TCGCSV' and m.catalog_item_type = 'card' and jsonb_typeof(pc.raw_source->'product') = 'object'
+      and not public.catalog_tcgcsv_is_card(public.catalog_tcgcsv_extended_data(pc.raw_source->'product'))
+      and not public.catalog_is_single_card(pc.card_number, pc.rarity)`)).n, 0, "no sealed product is left filed as a card");
   console.log(`catalog new sets: ${checks} checks passed`);
 } finally {
   await db.end().catch(() => {});

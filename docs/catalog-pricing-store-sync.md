@@ -82,6 +82,7 @@ The script above only refreshes the JSON files bundled with the app. The catalog
 - New sets and new products (`supabase/migrations/20261126213000_catalog_new_sets.sql`): each run reads TCGCSV's set list into `catalog_tcgcsv_groups`, then reads a set's product list when the set has never been read, came out within the last year (or is not out yet), is on its weekly turn, or has a price for a product the catalog lacks. Products the catalog does not have are added and priced in the same run. Until November 26, 2026 nothing did this, so the catalog stayed as it was on its one-time load of May 9, 2026.
 - A product is a single card when it carries a card rarity, a collector number or card stats. Its name is never the evidence ("Giratina" holds "tin"). Everything else on a set's product list is a sealed product or a code card.
 - Products already in the catalog are not rewritten. The one exception is a set's code when TCGCSV changes it (Pitch Black was `ME05` until its cards were listed, then `PBL`).
+- The same rule was applied once to the older rows: 85 sealed products and code cards that the first import had filed as cards because their names held no sealed word (Collector Chests, Prerelease Kits, Holiday Calendars, Trainer's Toolkits) are now sealed (`supabase/migrations/20261126223000_catalog_sealed_products_not_cards.sql`). The bundled JSON files still decide items with no card data by name, so a few (Prerelease Kits, for example) remain under cards there.
 
 Useful queries:
 
