@@ -197,3 +197,50 @@ export function pickScannedCard({ name = "", number = "", setName = "" } = {}, c
 // same name, set and number rules as a card picked from its name and number.
 export { nameKeyOf as catalogCardNameKey, rowNameOf as catalogRowName, rowSetOf as catalogRowSet, rowNumberOf as catalogRowNumber, printingKeyOf as catalogPrintingKey };
 export const isSpecialPrintSet = (row) => SPECIAL_PRINT_SETS.test(rowSetOf(row));
+
+/**
+ * PostgREST "or" clauses for one printed number, every way the catalog spells it:
+ * "75/102" is stored as "75/102" or "075/102", "TG10/TG30" as written. A number
+ * with no set total is only looked up when it is a promo code ("SWSH174"); bare
+ * digits ("85") belong to hundreds of cards. "" when there is nothing to look up.
+ */
+export function exactNumberClauses(number = "") {
+  const tidy = String(number || "").toLowerCase().replace(/\s+/g, "").replace(/[^a-z0-9/]/g, "");
+  const [first = "", second = "", extra] = tidy.split("/");
+  if (extra !== undefined) return "";
+  const spellings = (part) => {
+    const match = /^([a-z]{0,4})(\d{1,4})([a-z]?)$/.exec(part);
+    if (!match) return [];
+    const digits = String(Number(match[2]));
+    return [...new Set([digits, digits.padStart(2, "0"), digits.padStart(3, "0")])].map((value) => `${match[1]}${value}${match[3]}`);
+  };
+  const owns = spellings(first);
+  if (!owns.length) return "";
+  if (!second) return /^[a-z]/.test(first) ? owns.map((own) => `card_number.ilike.${own}`).join(",") : "";
+  const totals = spellings(second);
+  if (!totals.length) return "";
+  return owns.flatMap((own) => totals.map((total) => `card_number.ilike.${own}/${total}`)).join(",");
+}
+
+/**
+ * Which match a scanned row takes when both ways of finding its card were tried:
+ * byNumber (the printed number, then what else was read) and byClues (the name that
+ * was read, then pieces of the number, year, HP, attacks). Each is { card, choices, ... }.
+ *   1. The number's card whose name is also in what was read: nothing fits better.
+ *   2. A card of the name that was read. It comes before a card found by number alone,
+ *      because a misread number can be another card's number.
+ *   3. The number's card, when the name that was read led nowhere at all.
+ *   4. Otherwise nothing is filed: the cards either way found are offered, the number's first.
+ * choicesBy says what to tell the person: "number" (the name was hard to read),
+ * "" (the number was hard to read) or "either".
+ */
+export function settleScanMatch(byNumber = {}, byClues = {}) {
+  const numberChoices = byNumber?.choices || [], clueChoices = byClues?.choices || [];
+  if (byNumber?.card && byNumber.nameAgrees) return byNumber;
+  if (byClues?.card) return byClues;
+  if (byNumber?.card && !clueChoices.length) return byNumber;
+  const offered = [...(byNumber?.card ? [byNumber.card] : numberChoices), ...clueChoices];
+  const choices = offered.filter((card, index) => card && offered.findIndex((other) => String(other?.id) === String(card.id)) === index).slice(0, 4);
+  const fromNumber = Boolean(byNumber?.card || numberChoices.length), fromClues = clueChoices.length > 0;
+  return { card: null, others: 0, choices, choicesBy: fromNumber && fromClues ? "either" : fromNumber ? "number" : "" };
+}

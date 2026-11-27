@@ -1,5 +1,5 @@
 import { compareCatalogProducts } from "../utils/catalogSortUtils";
-import { catalogCardQueryMatchesRow, getCatalogCollectorQuery } from "../utils/catalogResultIdentity.mjs";
+import { catalogCardQueryMatchesRow, exactNumberClauses, getCatalogCollectorQuery } from "../utils/catalogResultIdentity.mjs";
 import { identifierEquivalents } from "../utils/barcodeIdentity.mjs";
 import {
   analyzeCatalogSearch,
@@ -1071,6 +1071,35 @@ export async function fetchCardsForClues({ supabase, names = [], limit = 240, si
     if (signal) detailRequest = detailRequest.abortSignal(signal);
     const { data: details, error: detailError } = await detailRequest;
     if (detailError) break; // the rows can still be told apart by pieces of the number
+    facts.push(...(details || []));
+  }
+  return { rows, facts };
+}
+
+/**
+ * Every card with this printed number, with what the catalog knows about each one,
+ * for a scan whose number was read but whose name was not (Nov 27 2026, see
+ * pickCardByNumber in utils/cardClueMatch.mjs). A number belongs to very few cards.
+ * Returns { rows, facts } like fetchCardsForClues.
+ */
+export async function fetchCardsByNumber({ supabase, number = "", limit = 60, signal } = {}) {
+  const clauses = exactNumberClauses(number);
+  if (!supabase || !clauses) return { rows: [], facts: [] };
+  let request = supabase.from("catalog_search_lightweight").select(CATALOG_SELECT_FIELDS).or(clauses).limit(limit);
+  if (signal) request = request.abortSignal(signal);
+  const { data, error } = await request;
+  if (error) throw error;
+  const rows = Array.isArray(data) ? data : [];
+  const ids = [...new Set(rows.map((row) => row.id).filter(Boolean))];
+  const facts = [];
+  for (let at = 0; at < ids.length; at += 100) {
+    let detailRequest = supabase
+      .from("tcg_card_details")
+      .select("catalog_product_id, published:raw_source->group->>publishedOn, facts:raw_source->product->extendedData")
+      .in("catalog_product_id", ids.slice(at, at + 100));
+    if (signal) detailRequest = detailRequest.abortSignal(signal);
+    const { data: details, error: detailError } = await detailRequest;
+    if (detailError) break; // the name read from the card can still tell the rows apart
     facts.push(...(details || []));
   }
   return { rows, facts };

@@ -199,3 +199,106 @@ export function pickCardByClues({ name = "", otherNames = [], number = "", clues
   const sure = picked.why.has("number") || picked.why.size >= 2;
   return { card: picked.row, sure, others, why: [...picked.why], choices: [], nameFromText: picked.fromText };
 }
+
+// "Iono's Kilowattrel - 055/159 (Cosmos Holo) [Staff]" -> "Iono's Kilowattrel"
+const plainCardName = (value = "") => String(value).replace(/\s*\([^)]*\)/g, "").replace(/\s*\[[^\]]*\]/g, "").replace(/\s+-\s+.*$/, "").trim();
+const sameCardNumber = (a, b) => {
+  const tidy = (value) => String(value || "").toLowerCase().replace(/\s+/g, "").split("/").map(stripZeros).join("/");
+  return Boolean(tidy(a)) && tidy(a) === tidy(b);
+};
+
+/**
+ * True when a card's name is in what was read from the card (the name that was read, or
+ * the card's text). A long name counts when its letters are there however they were spaced
+ * or punctuated ("Iono's Kilowattrel" read as "Ionos Kilowattrel"); a short one ("Lass",
+ * "Seel") only as a whole word, because four letters turn up inside other words.
+ */
+export function nameIsInText(cardName = "", textLetters = "", textWords = new Set()) {
+  const letters = lettersOf(plainCardName(cardName));
+  const joined = letters.replace(/ /g, "");
+  if (joined.length < 3) return false;
+  if (joined.length >= 7 && textLetters.replace(/ /g, "").includes(joined)) return true;
+  const words = letters.split(" ").filter((word) => word.length >= 3);
+  return words.length > 0 && words.every((word) => textWords.has(word) || (word.length >= 6 && [...textWords].some((seen) => editsWithin(word, seen, 1))));
+}
+
+/**
+ * The catalog card for a number that was read in full when the name was not (Nov 27 2026).
+ * Measured on camera pictures of the owner's scanned cards: in about 7 of 100 reads the
+ * number is right and the name is wrong. Trainer cards, whose name sits elsewhere; "Iono's"
+ * read as "Ionos"; the "Evolves from" name taken for the card's own. A printed number
+ * belongs to very few cards (055/159 is Iono's Kilowattrel and one Zeraora), so the number
+ * finds the card and the rest of what was read says which of them it is.
+ *   read        { name, number, clues, text } from the card reader
+ *   candidates  catalog rows with that number (other rows are ignored)
+ *   factsById   Map of catalog id -> cardFactsFromDetails()
+ * Returns { card, sure, others, why, choices }. sure is true when the card's name is in
+ * what was read, or two different kinds of clue agree. A card that is the only one with the
+ * number, with nothing else to go on, is offered as a choice and not filed.
+ */
+export function pickCardByNumber({ name = "", number = "", clues = {}, text = "" } = {}, candidates = [], factsById = new Map()) {
+  const none = { card: null, sure: false, others: 0, why: [], choices: [] };
+  if (!String(number || "").trim()) return none;
+  const textLetters = lettersOf(`${name}\n${text}`);
+  const textWords = new Set(textLetters.split(" ").filter((word) => word.length >= 3));
+  const years = (clues?.years || []).map(Number).filter(Boolean);
+
+  const byPrinting = new Map();
+  for (const row of candidates) {
+    if (!row || !sameCardNumber(catalogRowNumber(row), number)) continue;
+    const facts = factsById.get(String(row.id)) || factsById.get(row.id) || null;
+    const key = `${catalogPrintingKey(row)}|${String(catalogRowName(row)).includes("(") ? catalogRowName(row) : ""}`;
+    const known = byPrinting.get(key);
+    if (!known || (!known.facts && facts)) byPrinting.set(key, { row, facts });
+  }
+  if (!byPrinting.size) return none;
+
+  const scored = [...byPrinting.values()].map((entry) => {
+    const why = new Set();
+    let score = 0, conflicts = 0;
+    if (nameIsInText(catalogRowName(entry.row), textLetters, textWords)) { score += 5; why.add("name"); }
+    const facts = entry.facts;
+    if (facts?.year) {
+      if (years.length) {
+        const gap = Math.min(...years.map((year) => Math.abs(year - facts.year)));
+        if (gap === 0) { score += 3; why.add("year"); }
+        else if (gap >= 2) { score -= 4; conflicts += 1; }
+      } else if (clues?.wizards) {
+        if (facts.year >= 1999 && facts.year <= 2003) { score += 2; why.add("year"); }
+        else { score -= 4; conflicts += 1; }
+      }
+    }
+    if (facts?.hp && clues?.hp) {
+      if (facts.hp === Number(clues.hp)) { score += 2; why.add("hp"); }
+      else { score -= 3; conflicts += 1; }
+    }
+    const attackHits = (facts?.attacks || []).filter((attack) => attackIsInText(attack, textLetters, textWords)).length;
+    if (attackHits) { score += Math.min(2, attackHits) * 3; why.add("attack"); }
+    return { ...entry, score, conflicts, why };
+  });
+
+  const narrow = (list, keep) => { const kept = list.filter(keep); return kept.length ? kept : list; };
+  // The plain card rather than a variant row, the main set rather than a stamped reprint.
+  const mainPrintings = (list) => {
+    let kept = narrow(list, (entry) => !String(catalogRowName(entry.row)).includes("("));
+    kept = narrow(kept, (entry) => !isSpecialPrintSet(entry.row));
+    return narrow(kept, (entry) => !VARIANT_SET.test(catalogRowSet(entry.row)));
+  };
+  // Different cards that share the number: 055/159 is two cards, each with reprint rows of its own.
+  const cardsWithNumber = new Set(scored.map((entry) => catalogCardNameKey(plainCardName(catalogRowName(entry.row))))).size;
+  const top = Math.max(...scored.map((entry) => entry.score));
+  if (top < 2) {
+    // Nothing read says which card it is. When the number belongs to one card only, that card is offered.
+    const only = mainPrintings(scored);
+    return cardsWithNumber === 1 && only.length ? { ...none, choices: [only[0].row] } : none;
+  }
+  const list = mainPrintings(scored.filter((entry) => entry.score > top - 2));
+  const choices = [...list].sort((a, b) => b.score - a.score).slice(0, 4).map((entry) => entry.row);
+  if (list.length !== 1) return { ...none, choices };
+  const picked = list[0];
+  // Something read disagrees (an HP misread, say): offered, not filed.
+  if (picked.conflicts) return { ...none, choices: [picked.row] };
+  const others = new Set(scored.filter((entry) => entry !== picked && entry.score > top - 2).map((entry) => catalogPrintingKey(entry.row))).size;
+  const sure = picked.why.has("name") || picked.why.size >= 2;
+  return { card: picked.row, sure, others, why: [...picked.why], choices: [] };
+}

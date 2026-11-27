@@ -23,7 +23,7 @@ import { NATIVE_BUILD, isHiddenInNativeApp } from "./config/nativeLaunchScope.js
 import {nearbyCoordinatesForText} from './utils/nearbyPreference.mjs';
 import { compactSavedStores } from "./utils/storeDirectoryPersistence.js";
 import { isBlockedAuthor, useBlockedUsers } from "./utils/blockedUsers.js";
-import { catalogCardQueryMatchesRow, getCatalogCollectorQuery, getCatalogPageProducts, pickScannedCard } from "./utils/catalogResultIdentity.mjs";
+import { catalogCardQueryMatchesRow, getCatalogCollectorQuery, getCatalogPageProducts, pickScannedCard, settleScanMatch } from "./utils/catalogResultIdentity.mjs";
 import { mergeScannedCardRows, undoScannedCardRow } from "./utils/cardScanRows.mjs";
 import SocialSignInButtons, { ConnectedSignIns } from "./features/auth/SocialSignIn.jsx";
 import EmailConfirmationHelp, { SignupFieldPrivacy } from "./features/auth/EmailConfirmationHelp.jsx";
@@ -711,6 +711,11 @@ function loadPokemonCatalogSearchModule() {
 async function searchPokemonCatalogOnDemand(options = {}) {
   const catalogSearchModule = await loadPokemonCatalogSearchModule();
   return catalogSearchModule.searchPokemonCatalog(options);
+}
+
+async function fetchCardsByNumberOnDemand(options = {}) {
+  const catalogSearchModule = await loadPokemonCatalogSearchModule();
+  return catalogSearchModule.fetchCardsByNumber(options);
 }
 
 async function fetchCardsForCluesOnDemand(options = {}) {
@@ -19145,7 +19150,37 @@ export default function App() {
       const exact = pickScannedCard({ name, number, setName: row.setName }, candidates);
       if (exact.card) return exact;
     }
-    return matchScannedCardByClues(row, name, number);
+    // Nov 27 2026: the number was read but no card has that name and number. The number alone
+    // belongs to very few cards, so it is looked up before the clues that need the name.
+    const byNumber = await matchScannedCardByNumber(row, name, number);
+    // The number and the letters of the name point at the same card: nothing fits better.
+    if (byNumber.card && byNumber.nameAgrees) return byNumber;
+    const byClues = await matchScannedCardByClues(row, name, number);
+    return settleScanMatch(byNumber, byClues);
+  }
+
+  // The card for a number that was read in full when the name was not (a trainer card,
+  // "Iono's" read as "Ionos", the "Evolves from" name taken for the card's own). The row
+  // then says the name was hard to read.
+  async function matchScannedCardByNumber(row, name, number) {
+    const none = { card: null, others: 0 };
+    if (!number || !isSupabaseConfigured || !supabase) return none;
+    try {
+      const [{ rows, facts }, { cardFactsFromDetails, pickCardByNumber }] = await Promise.all([
+        fetchCardsByNumberOnDemand({ supabase, number }),
+        import("./utils/cardClueMatch.mjs"),
+      ]);
+      if (!rows?.length) return none;
+      const factsById = new Map((facts || []).map((detail) => [String(detail.catalog_product_id), cardFactsFromDetails(detail)]));
+      const typedSet = String(row.setName || "").trim().toLowerCase();
+      const cards = rows.map(mapCatalog).filter((card) => !typedSet || String(card.setName || card.expansion || "").toLowerCase().includes(typedSet));
+      const picked = pickCardByNumber({ name, number, clues: row.scanClues || {}, text: row.scanText || "" }, cards, factsById);
+      // A pick resting on one kind of clue alone is offered as a choice, not filed.
+      if (picked.card && !picked.sure) return { card: null, others: 0, choices: [picked.card], choicesBy: "number" };
+      return { card: picked.card, others: picked.others, byNumber: Boolean(picked.card), nameAgrees: picked.why.includes("name"), choices: picked.choices || [], choicesBy: "number" };
+    } catch {
+      return none;
+    }
   }
 
   // Nov 26 2026 (owner's inventory scans): the printed number is often hidden by a
@@ -19220,7 +19255,9 @@ export default function App() {
           expansion: known.setName || product.setName || row.setName || "",
           cardNumber: product.cardNumber || row.cardNumber || "",
           variant: row.variant || "",
-          notes: row.matchedBy === "clues" ? "Added from Scan several cards (Save all). The card number was hard to read, so the card was matched from its name, year and other details." : "Added from Scan several cards (Save all).",
+          notes: row.matchedBy === "clues" ? "Added from Scan several cards (Save all). The card number was hard to read, so the card was matched from its name, year and other details."
+            : row.matchedBy === "numberOnly" ? "Added from Scan several cards (Save all). The card name was hard to read, so the card was matched from its number and other details."
+              : "Added from Scan several cards (Save all).",
           sourceType: "TideTradr",
           conditionName: row.condition || "Near Mint",
           language: "English",
@@ -20029,20 +20066,24 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   // the row shows its card, set and price, and the list shows a running total.
   async function matchCardScanRows(rows = []) {
     for (const row of rows) {
-      // A row with no number is still matched when the reader handed over clues.
-      if (!String(row.cardName || "").trim() && !row.scanClues?.namesInText?.length) continue;
+      // A row with no number is still matched when the reader handed over clues, and a row
+      // with no name when its number was read in full ("75/102").
+      const fullNumber = String(row.cardNumber || "").includes("/");
+      if (!String(row.cardName || "").trim() && !row.scanClues?.namesInText?.length && !fullNumber) continue;
       if (!String(row.cardNumber || "").trim() && !row.scanClues) continue;
       let product = null;
       let others = 0;
       let byClues = false;
+      let byNumber = false;
       let choices = [];
-      try { ({ card: product, others, byClues = false, choices = [] } = await matchScannedCardRow(row)); } catch { product = null; }
+      let choicesBy = "";
+      try { ({ card: product, others, byClues = false, byNumber = false, choices = [], choicesBy = "" } = await matchScannedCardRow(row)); } catch { product = null; }
       const marketValue = product ? Number(getTideTradrMarketInfo(product).currentMarketValue || product.marketPrice || product.midPrice || 0) : 0;
       const labelOf = (card) => [catalogTitle(card), card.setName || card.expansion, card.cardNumber].filter(Boolean).join(" · ");
       const valueOf = (card) => { const value = Number(getTideTradrMarketInfo(card).currentMarketValue || card.marketPrice || card.midPrice || 0); return Number.isFinite(value) && value > 0 ? value : 0; };
       const patch = product
-        ? { matchedProduct: product, matchState: "matched", matchedBy: byClues ? "clues" : "number", matchedChoices: [], matchedOthers: others || 0, matchedLabel: labelOf(product), matchedValue: Number.isFinite(marketValue) && marketValue > 0 ? marketValue : 0, matchedFor: `${row.cardName}|${row.cardNumber}` }
-        : { matchedProduct: null, matchState: "review", matchedBy: "", matchedChoices: (choices || []).slice(0, 4).map((card) => ({ product: card, label: labelOf(card), short: [card.setName || card.expansion, card.cardNumber].filter(Boolean).join(" · "), value: valueOf(card) })), matchedLabel: "", matchedValue: 0, matchedFor: `${row.cardName}|${row.cardNumber}` };
+        ? { matchedProduct: product, matchState: "matched", matchedBy: byClues ? "clues" : byNumber ? "numberOnly" : "number", matchedChoices: [], matchedOthers: others || 0, matchedLabel: labelOf(product), matchedValue: Number.isFinite(marketValue) && marketValue > 0 ? marketValue : 0, matchedFor: `${row.cardName}|${row.cardNumber}` }
+        : { matchedProduct: null, matchState: "review", matchedBy: "", matchedChoicesBy: choicesBy === "number" || choicesBy === "either" ? choicesBy : "", matchedChoices: (choices || []).slice(0, 4).map((card) => ({ product: card, label: labelOf(card), short: [card.setName || card.expansion, card.cardNumber].filter(Boolean).join(" · "), value: valueOf(card) })), matchedLabel: "", matchedValue: 0, matchedFor: `${row.cardName}|${row.cardNumber}` };
       setQuickAddWizard((current) => ({
         ...current,
         cardScanRows: (current.cardScanRows || []).map((candidate) => (candidate.id === row.id && `${candidate.cardName}|${candidate.cardNumber}` === patch.matchedFor ? { ...candidate, ...patch } : candidate)),
