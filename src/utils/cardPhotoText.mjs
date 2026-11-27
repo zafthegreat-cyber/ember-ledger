@@ -188,8 +188,15 @@ export function findCardClues(text = "", { nameIndex = null, nameStripText = "",
     for (const match of body.matchAll(/\b((?:19|20)\d{2})\b[^\n]{0,14}Nintendo/gi)) addYears(match[1]);
   }
   const wizardsEra = !years.size && /19\s?95[.,]?\s*96[.,]?\s*98/.test(body);
-  const hpMatch = body.match(/\bHP\s?([1-3]?\d0)\b/) || body.match(/\b([1-3]?\d0)\s?HP\b/);
-  let hp = hpMatch ? Number(hpMatch[1]) : 0;
+  // Nov 27 2026 (owner's Rocket's Snorlax: one read of the top gave "20 HP", two others "90 HP"):
+  // every read is in the text, so the HP most of them agree on wins; on a tie, the first one read.
+  const hpVotes = new Map();
+  for (const match of body.matchAll(/\bHP\s?([1-3]?\d0)\b|\b([1-3]?\d0)\s?HP\b/g)) {
+    const value = match[1] || match[2];
+    hpVotes.set(value, (hpVotes.get(value) || 0) + 1);
+  }
+  const hpBest = [...hpVotes.entries()].sort((a, b) => b[1] - a[1])[0];
+  let hp = hpBest ? Number(hpBest[0]) : 0;
   if (!hp && nameStripText) {
     // The small "HP" is often lost; the big number after the name is what is left ("Golurk ... 150").
     const counts = new Map();
@@ -272,10 +279,15 @@ export function findCardClues(text = "", { nameIndex = null, nameStripText = "",
         else if (snapped && !snapped.includes(" ") && snapped.length >= 8 && words[i].length >= 2 && words[i + 1].length >= 3 && closeWord(snapped, pair.replace(/ /g, ""))) found = snapped;
       }
       // One word: six letters or more, and not all capitals ("LARRY" read from a border is not the card Larry).
-      if (!found && /^[A-ZÀ-Ž]/.test(words[i]) && !/^[A-ZÀ-Ž'’-]+$/.test(words[i]) && words[i].replace(/[^A-Za-zÀ-ž]/g, "").length >= 6 && isKnownCardName(words[i], nameIndex)) found = words[i];
+      // Nov 27 2026 (owner's Delta Species Ditto, its name bar cut off): five letters count too, but
+      // only when the word comes up twice (below). A card's own name is in its text again and again
+      // ("switch it with Ditto ... put Ditto on top"); a stray five-letter word is not.
+      const letters = words[i].replace(/[^A-Za-zÀ-ž]/g, "").length;
+      if (!found && /^[A-ZÀ-Ž]/.test(words[i]) && !/^[A-ZÀ-Ž'’-]+$/.test(words[i]) && letters >= 5 && isKnownCardName(words[i], nameIndex)) found = words[i];
       if (!found || skip.has(found.toLowerCase())) continue;
       counts.set(found, (counts.get(found) || 0) + 1);
     }
+    for (const [name, count] of counts) if (!name.includes(" ") && name.replace(/[^A-Za-zÀ-ž]/g, "").length === 5 && count < 2) counts.delete(name);
     // A one-word name that is only part of a longer name found here ("Slowpoke" in "Galarian Slowpoke") is dropped.
     const longer = [...counts.keys()].filter((name) => name.includes(" "));
     for (const [name, count] of [...counts.entries()].sort((a, b) => b[1] - a[1] || b[0].length - a[0].length)) {

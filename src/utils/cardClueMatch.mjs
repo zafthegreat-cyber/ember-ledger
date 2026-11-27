@@ -190,27 +190,47 @@ export function pickCardByClues({ name = "", otherNames = [], number = "", clues
       if (facts.hp === Number(clues.hp)) { score += 2; why.add("hp"); }
       else { score -= 3; conflicts += 1; }
     }
-    const attackHits = (facts?.attacks || []).filter((attack) => attackIsInText(attack, textLetters, textWords)).length;
+    const attacksSeen = (facts?.attacks || []).filter((attack) => attackIsInText(attack, textLetters, textWords));
+    const attackHits = attacksSeen.length;
     if (attackHits) { score += Math.min(2, attackHits) * 3; why.add("attack"); }
     const blind = !facts || (!facts.year && !facts.hp && !(facts.attacks || []).length);
-    return { ...entry, score, conflicts, why, numberPoints, blind };
+    return { ...entry, score, conflicts, why, numberPoints, blind, attacksSeen };
   });
+  // Nov 27 2026 (owner's Delta Species Ditto, held so close its name bar was cut off): of the
+  // ten Delta Species Dittos only one has "Linear Attack", and that was read from the card. A
+  // name found only in the card's text, with a long attack name that no other printing of it
+  // has, is offered (one kind of clue: never filed) even without a second clue.
+  const longAttack = (attack) => /\s/.test(String(attack).trim()) || String(attack).replace(/[^A-Za-zÀ-ž]/g, "").length >= 8;
+  const onlyOneHas = (attack) => scoredAll.filter((other) => other.attacksSeen.some((seen) => lettersOf(seen) === lettersOf(attack))).length === 1;
+  const ownAttack = (entry) => !entry.conflicts && entry.attacksSeen.some((attack) => longAttack(attack) && onlyOneHas(attack));
   const bestOther = Math.max(0, ...scoredAll.filter((entry) => !entry.blind && !entry.fromText).map((entry) => entry.score - entry.numberPoints));
   const scored = scoredAll.map((entry) => (entry.blind && !entry.fromText && bestOther > 0 ? { ...entry, score: entry.numberPoints + bestOther } : entry))
-    .filter((entry) => !entry.fromText || ((entry.why.has("attack") || entry.why.has("number")) && entry.score >= 5));
+    .filter((entry) => !entry.fromText || ((entry.why.has("attack") || entry.why.has("number")) && entry.score >= 5) || ownAttack(entry));
   if (!scored.length) return none;
 
   const top = Math.max(...scored.map((entry) => entry.score));
-  if (top < 2) return none;
-  // Every printing within two points of the best one still fits about as well.
-  const close = scored.filter((entry) => entry.score > top - 2);
   const narrow = (list, keep) => { const kept = list.filter(keep); return kept.length ? kept : list; };
-  let list = close;
   // The plain card rather than a variant row, the main set rather than a stamped
   // reprint or first print run: the same order of choices pickScannedCard makes.
-  list = narrow(list, (entry) => !String(catalogRowName(entry.row)).includes("("));
-  list = narrow(list, (entry) => !isSpecialPrintSet(entry.row));
-  list = narrow(list, (entry) => !VARIANT_SET.test(catalogRowSet(entry.row)));
+  const mainPrintings = (entries) => {
+    let kept = narrow(entries, (entry) => !String(catalogRowName(entry.row)).includes("("));
+    kept = narrow(kept, (entry) => !isSpecialPrintSet(entry.row));
+    return narrow(kept, (entry) => !VARIANT_SET.test(catalogRowSet(entry.row)));
+  };
+  // Cards the catalog has facts for come before ones it knows nothing about.
+  const choicesOf = (entries) => [...entries].sort((a, b) => Number(a.blind) - Number(b.blind) || b.score - a.score).slice(0, 4).map((entry) => entry.row);
+  if (top < 2) {
+    // Nov 27 2026 (owner's Rocket's Snorlax, its HP read as 20 from an attack's damage): with
+    // no number read, nothing else picks out a printing, or one misread clue counts against
+    // the only one there is. A name that belongs to only a few printings still says a lot:
+    // those are offered (never filed), unless two things read from the card disagree with one.
+    // A row whose number was read is left to that number (see settleScanMatch).
+    const named = String(number).trim() ? [] : mainPrintings(scored.filter((entry) => !entry.fromText && entry.conflicts <= 1));
+    return { ...none, choices: named.length && named.length <= 4 ? choicesOf(named) : [] };
+  }
+  // Every printing within two points of the best one still fits about as well.
+  const close = scored.filter((entry) => entry.score > top - 2);
+  const list = mainPrintings(close);
   // Nov 26 2026: a reprint under another number that fits just as well (a trainer-kit copy
   // of a main-set card) is set aside above, but with no piece of the number read it cannot
   // be told from the main-set card, so it is offered beside it instead of being dropped.
@@ -221,8 +241,6 @@ export function pickCardByClues({ name = "", otherNames = [], number = "", clues
   const listed = new Set(list);
   const listedNumbers = new Set(list.map(numberOf));
   const setAside = close.filter((entry) => !listed.has(entry) && !entry.blind && !entry.conflicts && entry.score >= top && !listedNumbers.has(numberOf(entry)));
-  // Cards the catalog has facts for come before ones it knows nothing about.
-  const choicesOf = (entries) => [...entries].sort((a, b) => Number(a.blind) - Number(b.blind) || b.score - a.score).slice(0, 4).map((entry) => entry.row);
   // The HP alone, or the set total alone: never a pick, but a few printings that fit equally are worth offering.
   if (top < 3) return { ...none, choices: list.length <= 4 ? choicesOf(list) : [] };
   // Picked only when one printing is left and nothing read from the card disagrees with it.

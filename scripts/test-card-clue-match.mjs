@@ -198,6 +198,43 @@ test("nothing is picked when what was read disagrees with the card", () => {
   assert.equal(pick({ name: "Missingno", clues: { years: [2021] } }).card, null);
 });
 
+test("a name with only a few printings is offered when nothing else read picks one (Nov 27 2026)", () => {
+  const where = (card) => `${card.setName} ${card.cardNumber}`;
+  // Owner's Rocket's Snorlax: no number read, and its HP read as 20 (an attack's damage).
+  const rocket = { row: { id: "rocket-snorlax", name: "Rocket's Snorlax", setName: "Gym Heroes", cardNumber: "033/132" }, facts: { year: 2000, hp: 90, attacks: ["Collapse"] } };
+  const offered = pickCardByClues({ name: "Rocket's Snorlax", clues: { hp: 20 } }, [rocket.row], new Map([[rocket.row.id, rocket.facts]]));
+  assert.equal(offered.card, null, "offered, never filed");
+  assert.deepEqual(offered.choices.map(where), ["Gym Heroes 033/132"]);
+  assert.deepEqual(pick({ name: "Zangoose", clues: {} }).choices.map(where), ["SM - Cosmic Eclipse 173/236", "SWSH06: Chilling Reign 120/198", "SV08: Surging Sparks 149/191"], "nothing read but the name");
+  assert.deepEqual(pick({ name: "Zangoose", clues: { years: [2021], hp: 70 } }).choices.map(where), ["SWSH06: Chilling Reign 120/198"], "two things read disagree with the others");
+  assert.deepEqual(pick({ name: "Golurk", clues: {} }).choices, [], "too many printings to offer");
+  assert.deepEqual(pick({ name: "Zangoose", number: "999/999", clues: {} }).choices, [], "a number that was read is left to the number match");
+});
+
+test("a name found in the card's text and an attack only one printing of it has: offered (Nov 27 2026)", () => {
+  // Owner's Delta Species Ditto held close: the name bar was cut off ("SPECIES" came from the set
+  // logo), but the text says Ditto four times and the attack "Linear Attack" was read.
+  const dittos = [
+    ["Ditto (Geodude)", "62/113", ["Linear Attack"]], ["Ditto - 037/113 (Charmander)", "37/113", ["Rage"]],
+    ["Ditto - 040/113 (Squirtle)", "40/113", ["Smash Turn"]], ["Ditto - 039/113 (Pikachu)", "39/113", ["Thunderbolt"]],
+  ].map(([name, cardNumber, attacks], at) => ({ row: { id: `ditto-${at}`, name, setName: "Delta Species", cardNumber }, facts: { year: 2005, hp: 60, attacks } }));
+  const run = (text, list = dittos) => pickCardByClues({ name: "SPECIES", otherNames: ["Ditto"], clues: {}, text }, list.map((entry) => entry.row), new Map(list.map((entry) => [entry.row.id, entry.facts])));
+  const text = "species basic duplicate search your deck for another ditto and switch it with ditto linear attack choose of your opponent s pokemon";
+  const offered = run(text);
+  assert.equal(offered.card?.name, "Ditto (Geodude)");
+  assert.equal(offered.sure, false, "one kind of clue: offered, not filed");
+  assert.equal(run("another ditto and switch it with ditto rage").card, null, "a short attack name is too common a word");
+  const twins = [...dittos, { row: { id: "ditto-twin", name: "Ditto (Geodude)", setName: "Some Reprint", cardNumber: "9/99" }, facts: { year: 2005, hp: 60, attacks: ["Linear Attack"] } }];
+  assert.equal(run(text, twins).card, null, "two printings have that attack");
+});
+
+test("the HP most reads agree on wins over one misread (Nov 27 2026)", () => {
+  // The owner's Rocket's Snorlax: the wide top strip read "20 HP", the whole card and the sharp strip "90 HP".
+  assert.equal(findCardClues("Basic Pokemon\nrlax     20 HP 4\nBasic Pokémon\nSnorl\n90 HP X\nthis power does 20\nRoc\n90 HP X").hp, 90);
+  assert.equal(findCardClues("BASIC Snorlax HP 150\nThudding Press 130").hp, 150);
+  assert.equal(findCardClues("Golurk HP 130\nGolurk 150 HP").hp, 130, "a tie keeps the first read");
+});
+
 test("an old card: the first print run is set aside, and the year picks between reprints", () => {
   const text = "evolves from machop karate chop does damage minus submission machoke does damage to itself";
   const unsure = pick({ name: "Machoke", clues: { wizards: true, hp: 80 }, text });
