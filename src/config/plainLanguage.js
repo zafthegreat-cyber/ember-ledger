@@ -153,7 +153,7 @@ export const LEGACY_NAME_REPLACEMENTS = [
 ];
 
 export function renameLegacyProductNames(value = "") {
-  return LEGACY_NAME_REPLACEMENTS.reduce((result, [pattern, replacement]) => result.replace(pattern, replacement), String(value ?? ""));
+  return LEGACY_NAME_REPLACEMENTS.reduce((result, [pattern, replacement]) => result.replace(new RegExp(pattern.source, pattern.flags.includes("i") ? pattern.flags : `${pattern.flags}i`), replacement), String(value ?? ""));
 }
 
 // The store apps must not describe themselves as a beta (App Store guideline
@@ -179,7 +179,7 @@ export function removeBetaWording(value = "") {
 
 export function plainLanguageText(value = "", { native = NATIVE_BUILD } = {}) {
   const source = String(value ?? "");
-  const exact = EXACT_VISIBLE_LABELS.get(source.trim());
+  const exact = EXACT_VISIBLE_LABELS.get(source.trim()) || [...EXACT_VISIBLE_LABELS].find(([label]) => label.toLowerCase() === source.trim().toLowerCase())?.[1];
   if (exact && source.trim() === source) return exact;
   const phrased = VISIBLE_PHRASE_REPLACEMENTS.reduce((result, [pattern, replacement]) => result.replace(pattern, replacement), formatBrandText(source));
   const renamed = renameLegacyProductNames(phrased);

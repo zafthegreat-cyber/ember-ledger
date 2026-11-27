@@ -1,5 +1,6 @@
 import { Component, lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
+import { Analytics } from "@vercel/analytics/react";
 import "./index.css";
 import AppLoadFallback from "./components/AppLoadFallback";
 import { registerServiceWorker } from "./registerServiceWorker";
@@ -9,7 +10,7 @@ import CloudWorkspaceBoundary from "./features/persistence/CloudWorkspaceBoundar
 import NativeBridge from "./native/NativeBridge.jsx";
 import SocialAuthBoundary from "./features/auth/SocialAuthBoundary.jsx";
 import "./native/native.css";
-import { initCrashReporting, reportHandledError } from "./features/monitoring/crashReporting.js";
+import { initCrashReporting, reportHandledError, crashReportingAllowed } from "./features/monitoring/crashReporting.js";
 import { preloadDurableAppData } from "./features/persistence/legacyAppStorage.js";
 
 const App = lazy(() => import("./App.jsx"));
@@ -49,6 +50,14 @@ initCrashReporting().catch(() => {});
 preloadDurableAppData().finally(() => {
   createRoot(document.getElementById("root")).render(
     <StrictMode>
+      {import.meta.env.PROD && /^(code3tcg\.app|emberandtide\.app)$/.test(window.location.hostname) && <Analytics beforeSend={(event) => {
+        if (!crashReportingAllowed()) return null;
+        const url = new URL(event.url);
+        url.search = "";
+        url.hash = "";
+        url.pathname = url.pathname.replace(/\b[0-9a-f]{8}-[0-9a-f-]{27,}\b/gi, "record");
+        return { ...event, url: url.toString() };
+      }} />}
       <AppErrorBoundary>
         <NativeBridge />
         <Suspense fallback={<AppLoadFallback kind="loading" />}>

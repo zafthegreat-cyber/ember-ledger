@@ -320,6 +320,7 @@
     "@supabase/supabase-js": "^2.105.4",
     "@tesseract.js-data/eng": "1.0.0",
     "@upstash/redis": "^1.35.7",
+    "@vercel/analytics": "2.0.1",
     "@zxing/browser": "^0.2.0",
     "cheerio": "^1.2.0",
     "cors": "^2.8.6",
