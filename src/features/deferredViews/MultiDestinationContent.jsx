@@ -3,6 +3,7 @@ import "./multi-destination.css";
 import { useId, useRef, useState } from "react";
 import { PrivateStorageImage } from "../../components/PrivateReceipt.jsx";
 import { knownStorageLocations } from "../../utils/storageLocations.mjs";
+import { cardLanguageBadge, cardLanguageChoices, cardLanguagePriceRule, normalizeCardLanguage } from "../../utils/cardLanguage.mjs";
 // App owns state, authority and handlers; only this existing renderer is deferred.
 export default function MultiDestinationContent({ scope }) {
   const barcodeId = useId();
@@ -338,7 +339,7 @@ export default function MultiDestinationContent({ scope }) {
             <div className="selected-match-copy">
               <span className="neon-chip add-item-selected-chip">From Market</span>
               <strong>{catalogTitle(selectedCatalog)}</strong>
-              <span>{[catalogExpansionName(selectedCatalog), catalogProductTypeLabel(selectedCatalog)].filter(Boolean).join(" | ") || "Catalog product"}</span>
+              <span>{[catalogExpansionName(selectedCatalog), catalogProductTypeLabel(selectedCatalog), cardLanguageBadge(selectedCatalog.language)].filter(Boolean).join(" | ") || "Catalog product"}</span>
               <small>{[selectedCatalogIdentifierText, selectedCatalogMarketText].filter(Boolean).join(" | ")}</small>
             </div>
             {multiDestinationStep === "destination" ? (
@@ -634,6 +635,23 @@ export default function MultiDestinationContent({ scope }) {
             {addFlowIsCard && !quickSave ? (
               <PrintingPicker value={multiDestinationForm.variant} catalogNames={catalogFinishChoices} onChange={(value) => updateMultiDestinationField("variant", value)} />
             ) : null}
+            {/* Nov 27 2026 (non-English cards): the copy's language. A Korean or Chinese copy has no
+                catalog price, so the price is cleared to be typed if known. */}
+            {quickSave ? null : (() => {
+              const language = normalizeCardLanguage(multiDestinationForm.language);
+              const note = cardLanguagePriceRule(language).note;
+              return (
+                <Field label="Language">
+                  <select value={language} onChange={(event) => {
+                    updateMultiDestinationField("language", event.target.value);
+                    if (cardLanguagePriceRule(event.target.value).source === "none") updateMultiDestinationField("marketPrice", "");
+                  }}>
+                    {cardLanguageChoices(language).map((choice) => <option key={choice} value={choice}>{choice}</option>)}
+                  </select>
+                  {note ? <small>{note === "English card's price" ? "Shows the English card's price." : `${note}.`}</small> : null}
+                </Field>
+              );
+            })()}
             {addFlowIsCard && !quickSave ? (
               <fieldset className="graded-slab-fields">
                 <legend>Graded slab</legend>

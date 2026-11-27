@@ -10,7 +10,22 @@ import OverflowMenu from "../../components/OverflowMenu";
 import ExternalWebLink from "../../components/ExternalWebLink.jsx";
 import { gradingDetails } from "../../utils/gradedCopies.mjs";
 import GradingFields from "../../components/GradingFields.jsx";
+import { cardLanguageBadge, cardLanguageChoices, cardLanguagePriceRule, languageForCatalogCard, normalizeCardLanguage } from "../../utils/cardLanguage.mjs";
 import { MASTER_CARD_VARIANT_LABELS, MASTER_CARD_CONDITION_LABELS, INFO_TOOLTIP_COPY, PURCHASER_NAME_MAX_LENGTH, PERSON_TYPE_OPTIONS, normalizeCollectorShowcaseKind, COLLECTOR_SHOWCASE_KIND_LABELS, sealedProductFrameMeta, collectorShowcaseRarityLabel, collectorShowcaseRarityTone, collectorShowcaseInitials, COLLECTOR_SHOWCASE_RARITY_HELPER, inventoryGroupEntries, summarizeBreakdownRows, itemPurchaserName, hasValue, money, inventoryEntryLabel, shortDate, vaultItemDisplayImage, forgePhysicalLocationLabel, getCatalogImage, statusClass, gradeAssistRecordKey, loadGradeAssistDraft, isWishlistLikeVaultItem, vaultItemSetLabel, vaultItemTypeLabel, vaultItemLocationLabel, friendlyInventoryLabel, vaultCardNumberLabel, vaultVariantLabel, collectorVisualTypeLabel, detectCollectorItemVisualType, vaultStatusLabel, normalizeVaultStatus, vaultItemLastUpdatedLabel, gradeAssistValueComparison, saveGradeAssistDraft, isInventorySealedProduct, inferMasterCardVariantType, renderGenericProductImageFallback, getImageSourceLabel, VAULT_STATUS_OPTIONS, CATEGORIES, VAULT_CONDITIONS, VAULT_STORAGE_LOCATIONS, STATUSES, FORGE_PHYSICAL_LOCATION_OPTIONS, isCatalogCardProduct } from "./vaultItemHelpers.jsx";
+
+// Nov 27 2026 (non-English cards): the copy's language, picked the way its condition is.
+function CardLanguageField({ value, onChange }) {
+  const language = normalizeCardLanguage(value);
+  const note = cardLanguagePriceRule(language).note;
+  return (
+    <Field label="Language">
+      <select value={language} onChange={(event) => onChange(event.target.value)}>
+        {cardLanguageChoices(language).map((choice) => <option key={choice} value={choice}>{choice}</option>)}
+      </select>
+      {note ? <small>{note === "English card's price" ? "Shows the English card's price." : `${note}.`}</small> : null}
+    </Field>
+  );
+}
 
 const MarketPriceHistoryPanel = lazy(() => import("../../components/MarketPriceHistoryPanel"));
 const CenteringCheck = lazy(() => import("../../components/CenteringCheck.jsx"));
@@ -988,6 +1003,7 @@ function VaultItemDetailContent({ item, marketItem, masterCard, setSummary, link
     ? `Estimated Value uses saved local item fields${profileValueSource ? ` from ${profileValueSource}` : ""}. It is not live pricing or a guarantee.`
     : "No value saved yet. Add a manual estimate or check Market when you are ready.";
   const languageLabel = item.language || item.cardLanguage || item.card_language || item.printLanguage || item.print_language || "Language not set yet.";
+  const languagePriceNote = cardLanguagePriceRule(item.language || item.cardLanguage || item.card_language).note;
   const collectorNotes = item.collectorNotes || item.collector_notes || item.notes || item.note || "";
   const memoryStory = item.memoryStory || item.memory_story || item.story || item.memory || item.actionNotes || item.action_notes || "";
   const kidSafeNotes = item.kidSafeNotes || item.kid_safe_notes || item.familyNotes || item.family_notes || "";
@@ -1100,7 +1116,7 @@ function VaultItemDetailContent({ item, marketItem, masterCard, setSummary, link
     ["Condition Notes", manualConditionNotes || conditionLabel || "Condition not set yet."],
     ["Storage care", storageCareNotes || "No storage care note yet."],
     ["Date checked", conditionCheckedAt ? shortDate(conditionCheckedAt) : "Not checked yet."],
-    ["Language", languageLabel],
+    ["Language", languagePriceNote ? `${languageLabel} · ${languagePriceNote}` : languageLabel],
     ["Variant", itemVariantLabel || "Variant unknown"],
     ["Card Number", itemCardNumber || "Card number not set"],
     ["Type", itemProfileKind],
@@ -1911,7 +1927,7 @@ function CompactInventoryCard({
         <div className="compact-card-header vault-card-topline">
           <div className="compact-title-block">
             <h3>{item.name}</h3>
-            <p className="compact-subtitle">{setLabel || itemType || "Collection item"}</p>
+            <p className="compact-subtitle">{[setLabel || itemType || "Collection item", cardLanguageBadge(item.language)].filter(Boolean).join(" · ")}</p>
           </div>
           <span className={statusClass(statusLabel)}>{statusLabel}</span>
         </div>
@@ -2350,6 +2366,7 @@ function VaultEditForm({
                 {VAULT_CONDITIONS.map((condition) => <option key={condition || "blank"} value={condition}>{condition || "Not set"}</option>)}
               </select>
             </Field>
+            <CardLanguageField value={form.language} onChange={(language) => setForm("language", language)} />
             <Field label="Condition Notes">
               <textarea value={form.conditionNotes || ""} onChange={(event) => setForm("conditionNotes", event.target.value)} placeholder="Corner wear, box dents, whitening, wrap condition, or anything to review manually." />
             </Field>
@@ -2515,7 +2532,7 @@ function InventoryForm({
                 setForm("catalogVariantId", event.target.value);
                 setForm("finish", variant?.finish || "");
                 setForm("printing", variant?.printing || "");
-                setForm("language", variant?.language || "English");
+                setForm("language", languageForCatalogCard(form.language, variant?.language || selectedCatalogProduct?.language));
               }}
             >
               <option value="">Choose version</option>
@@ -2674,6 +2691,7 @@ function InventoryForm({
       <Field label="Shelf / bin label"><input value={form.storageLocation || ""} onChange={(e) => setForm("storageLocation", e.target.value)} placeholder="Shelf, tote, case, storage bin..." /></Field>
       <Field label="Notes"><input value={form.notes || ""} onChange={(e) => setForm("notes", e.target.value)} /></Field>
       <Field label="Condition"><input value={form.condition || ""} onChange={(e) => setForm("condition", e.target.value)} placeholder="Sealed, damaged box, NM, LP..." /></Field>
+      <CardLanguageField value={form.language} onChange={(language) => setForm("language", language)} />
       {allowGrading && (isCatalogCardProduct(form) || form.graded || Object.values(gradingDetails(form)).some(Boolean)) ? <GradingFields record={form} onChange={patch => Object.entries(patch).forEach(([key,value]) => setForm(key,value))} /> : null}
       <Field label="Tags"><input value={form.tags || ""} onChange={(e) => setForm("tags", e.target.value)} placeholder="restock, promo, hold, bundle..." /></Field>
       <Field label="Market Watch Product ID"><input value={form.externalProductId} onChange={(e) => setForm("externalProductId", e.target.value)} /></Field>

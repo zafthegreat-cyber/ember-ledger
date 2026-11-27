@@ -130,11 +130,17 @@ test("wiring: the app tries the number before the clues, and says the name was h
   const flat = (path) => readFileSync(new URL(path, import.meta.url), "utf8").replace(/\s+/g, " ");
   const has = (source, piece, why) => assert.ok(source.includes(piece), `${why}: missing "${piece}"`);
   const app = flat("../src/App.jsx");
-  has(app, "try { numbered = await fetchCardsByNumberOnDemand({ supabase, number }); } catch { numbered = null; }", "the exact number is looked up first, and a failure falls through to the old search");
+  has(app, "try { numbered = await fetchCardsByNumberOnDemand({ supabase, number, language }); } catch { numbered = null; }", "the exact number is looked up first (in the row's catalog language), and a failure falls through to the old search");
   has(app, "const quick = pickScannedCard({ name, number, setName: row.setName }, numbered.rows.map(mapCatalog)); if (quick.card) return quick;", "the quick rows settle a name-and-number match by the same rule as before");
-  has(app, "const byNumber = await matchScannedCardByNumber(row, name, number, numbered); // The number and the letters of the name point at the same card: nothing fits better. if (byNumber.card && byNumber.nameAgrees) return byNumber; const byClues = await matchScannedCardByClues(row, name, number);", "the number is tried before the clues, and only its name-backed card is taken outright");
-  has(app, "numbered || fetchCardsByNumberOnDemand({ supabase, number }),", "the rows are not fetched twice");
-  has(app, "return settleScanMatch(byNumber, byClues);", "the two matches are settled by the tested rule");
+  has(app, "const byNumber = await matchScannedCardByNumber(row, name, number, numbered); // The number and the letters of the name point at the same card: nothing fits better. So do // the number and the set code printed beside it (a Japanese card). if (byNumber.card && (byNumber.nameAgrees || byNumber.bySetCode)) return byNumber; const byClues = await matchScannedCardByClues(row, name, number);", "the number is tried before the clues, and only its name-backed (or set-code-backed) card is taken outright");
+  has(app, 'if (inPrintedSet.length === 1) return { card: inPrintedSet[0], others: 0, byNumber: true, nameAgrees: false, bySetCode: true, choices: [], choicesBy: "number" };', "a Japanese set code and number file their one card, saying the name was hard to read");
+  has(app, "numbered || fetchCardsByNumberOnDemand({ supabase, number, language }),", "the rows are not fetched twice");
+  has(app, "const settled = settleScanMatch(byNumber, byClues);", "the two matches are settled by the tested rule");
+  // Nov 27 2026 (non-English cards): each lookup asks the row's catalog language.
+  has(app, "const language = catalogLanguageFor(row?.language); if (!language) return { card: null, others: 0 };", "a row's language picks its catalog, and a card with no catalog is not matched");
+  has(app, 'searchPokemonCatalogOnDemand({ supabase, query, mode: "general", page: 1, pageSize: 24, force: true, language })', "the name-and-number search asks the same catalog");
+  has(app, "fetchCards: (lookup) => fetchCardsForCluesOnDemand({ supabase, ...lookup, language }),", "the clues look in the same catalog");
+  has(app, 'if (!settled.card && language === "English" && !row.languageSource && number.includes("/") && isSupabaseConfigured && supabase) {', "a Japanese card is only offered when nothing English was found and nothing named a language");
   has(app, 'if (picked.card && !picked.sure) return { card: null, others: 0, choices: [picked.card], choicesBy: "number" };', "an unsure pick is offered, not filed");
   has(app, 'nameAgrees: picked.why.includes("name")', "the app knows when the name agrees");
   // Seen on the owner's Raticate 40/102 (Nov 27 2026): name and number both read right, the

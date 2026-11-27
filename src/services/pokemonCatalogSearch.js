@@ -1,6 +1,7 @@
 import { compareCatalogProducts } from "../utils/catalogSortUtils";
 import { catalogCardQueryMatchesRow, exactNumberSpellings, getCatalogCollectorQuery } from "../utils/catalogResultIdentity.mjs";
 import { identifierEquivalents } from "../utils/barcodeIdentity.mjs";
+import { cardLanguageInQuery, catalogLanguageFor } from "../utils/cardLanguage.mjs";
 import {
   analyzeCatalogSearch,
   buildCatalogAliasSuggestions,
@@ -10,6 +11,13 @@ import {
   POKEMON_SET_ALIAS_ROWS,
   scoreCatalogSearchRow,
 } from "../data/catalogSearchAliases.mjs";
+
+// Nov 27 2026 (non-English cards): the catalog view with every language (language is its last
+// column). The older catalog_search_lightweight shows English items only and stays for app
+// builds from before this one. A search reads English items unless it asks for another
+// language (see searchPokemonCatalog), so English searches find what they found before.
+export const CATALOG_SEARCH_VIEW = "catalog_search_all_languages";
+const LANGUAGE_FIELD_ERROR = /catalog_search_all_languages|column [^ ]*language does not exist/i;
 
 const TEXT_SEARCH_FIELDS = [
   "name",
@@ -122,6 +130,7 @@ const CATALOG_SELECT_FIELDS = [
   "market_source_count",
   "data_confidence_score",
   "last_verified_at",
+  "language",
 ].join(",");
 
 const LEGACY_CATALOG_SELECT_FIELDS = [
@@ -478,9 +487,13 @@ function applyFilters(query, filters = {}) {
     setName = "All",
     dataFilter = "All",
     rarity = "All",
+    language = "",
+    setCode = "",
   } = filters;
 
   let next = query.eq("category", "Pokemon");
+  if (language) next = next.eq("language", language);
+  if (setCode) next = next.ilike("set_code", String(setCode).replace(/[%_,()]/g, ""));
 
   if (productType !== "All") next = next.eq("product_type", productType);
   if (setName !== "All") next = next.eq("set_name", setName);
@@ -675,7 +688,9 @@ function setCachedCatalogRecommendations(options = {}, payload = {}) {
 }
 
 function catalogSearchCacheKey({
-  sourceName = "catalog_search_lightweight",
+  sourceName = CATALOG_SEARCH_VIEW,
+  language = "",
+  setCode = "",
   query = "",
   barcode = "",
   mode = "general",
@@ -692,6 +707,8 @@ function catalogSearchCacheKey({
 } = {}) {
   return JSON.stringify({
     sourceName,
+    language,
+    setCode,
     query: cleanCatalogSearch(query),
     barcode: cleanCatalogSearch(barcode),
     mode,
@@ -1053,14 +1070,16 @@ async function runSearchAgainstSource({ supabase, sourceName, query, barcode, mo
 // Nov 26 2026 (dark foil cards): species is the name from the card's Pokédex line, so any
 // card of that species is fetched ("Skitty" and "Erika's Skitty"), first from the sets whose
 // code was read from the card.
-export async function fetchCardsForClues({ supabase, names = [], species = "", setCodes = [], limit = 240, signal } = {}) {
+// language: the catalog language to look in ("English" unless asked; "" for every language).
+export async function fetchCardsForClues({ supabase, names = [], species = "", setCodes = [], limit = 240, language = "English", signal } = {}) {
   const tidy = (name) => String(name || "").replace(/["\\,()*%]/g, " ").replace(/\s+/g, " ").trim();
   const wanted = [...new Set((Array.isArray(names) ? names : []).map(tidy).filter((name) => name.length >= 3))].slice(0, 3);
   const kind = tidy(species);
   const codes = [...new Set((Array.isArray(setCodes) ? setCodes : []).map((code) => String(code || "").toUpperCase()).filter((code) => /^[A-Z0-9]{2,6}$/.test(code)))].slice(0, 4);
   if (!supabase || (!wanted.length && kind.length < 3)) return { rows: [], facts: [] };
   const run = async (build) => {
-    let request = build(supabase.from("catalog_search_lightweight").select(CATALOG_SELECT_FIELDS));
+    let request = build(supabase.from(CATALOG_SEARCH_VIEW).select(CATALOG_SELECT_FIELDS));
+    if (language) request = request.eq("language", language);
     if (signal) request = request.abortSignal(signal);
     const { data, error } = await request;
     if (error) throw error;
@@ -1097,11 +1116,12 @@ export async function fetchCardsForClues({ supabase, names = [], species = "", s
  * pickCardByNumber in utils/cardClueMatch.mjs). A number belongs to very few cards.
  * Returns { rows, facts } like fetchCardsForClues.
  */
-export async function fetchCardsByNumber({ supabase, number = "", limit = 60, signal } = {}) {
+export async function fetchCardsByNumber({ supabase, number = "", limit = 60, language = "English", signal } = {}) {
   const spellings = exactNumberSpellings(number);
   if (!supabase || !spellings.length) return { rows: [], facts: [] };
   // Exact spellings, not patterns: the catalog finds these by its card-number index.
-  let request = supabase.from("catalog_search_lightweight").select(CATALOG_SELECT_FIELDS).in("card_number", spellings).limit(limit);
+  let request = supabase.from(CATALOG_SEARCH_VIEW).select(CATALOG_SELECT_FIELDS).in("card_number", spellings).limit(limit);
+  if (language) request = request.eq("language", language);
   if (signal) request = request.abortSignal(signal);
   const { data, error } = await request;
   if (error) throw error;
@@ -1137,9 +1157,19 @@ export async function searchPokemonCatalog({
   force = false,
   signal,
   allowCompatibilityFallback = true,
+  // Nov 27 2026: "auto" searches English items, or the language the search asks for
+  // ("pikachu japanese", "jp pikachu", "sv2a pikachu"), and every language when nothing
+  // English matches. A language name searches that language's catalog only; "All" every language.
+  language = "auto",
 } = {}) {
-  const filters = { productGroup, productType, setName, dataFilter, rarity };
-  if (!force && !hasCatalogSearchCriteria({ query, barcode, ...filters })) {
+  const asked = language && language !== "auto" && language !== "All" ? String(language) : "";
+  const said = asked || language === "All" ? { language: "", query: String(query || ""), setCode: "" } : cardLanguageInQuery(query);
+  const wanted = asked || said.language;
+  const languageScope = language === "All" ? "" : wanted ? catalogLanguageFor(wanted) || "English" : "English";
+  const searchQuery = said.query;
+  const anyLanguageWhenEmpty = language === "auto" && !said.language;
+  const filters = { productGroup, productType, setName, dataFilter, rarity, language: languageScope, setCode: said.setCode };
+  if (!force && !hasCatalogSearchCriteria({ query, barcode, productGroup, productType, setName, dataFilter, rarity })) {
     return {
       skipped: true,
       rows: [],
@@ -1153,7 +1183,7 @@ export async function searchPokemonCatalog({
   }
 
   const normalizedPageSize = Math.min(Math.max(1, Number(pageSize || CATALOG_SEARCH_DEFAULT_LIMIT)), 50);
-  const cacheKey = catalogSearchCacheKey({ query, barcode, mode, productGroup, productType, setName, dataFilter, rarity, sort, page, pageSize: normalizedPageSize, force, allowCompatibilityFallback });
+  const cacheKey = catalogSearchCacheKey({ language: language === "auto" ? `auto:${languageScope}` : languageScope, setCode: said.setCode, query: searchQuery, barcode, mode, productGroup, productType, setName, dataFilter, rarity, sort, page, pageSize: normalizedPageSize, force, allowCompatibilityFallback });
   const cached = getCachedCatalogSearch(cacheKey);
   if (cached) {
     debugCatalogSearch("cache-hit", {
@@ -1174,25 +1204,34 @@ export async function searchPokemonCatalog({
   const startedAt = nowMs();
   const searchPromise = (async () => {
   try {
-    const result = await runSearchAgainstSource({
+    const searchIn = (scope) => runSearchAgainstSource({
       supabase,
-      sourceName: "catalog_search_lightweight",
-      query,
+      sourceName: CATALOG_SEARCH_VIEW,
+      query: searchQuery,
       barcode,
       mode,
-      filters,
+      filters: { ...filters, language: scope },
       sort,
       page,
       pageSize: normalizedPageSize,
       signal,
     });
+    let result = await searchIn(languageScope);
+    let searchedLanguage = languageScope;
+    // Nothing English matched a search that named no language: every language is looked in
+    // (a Japanese-only card or box typed by its English name).
+    if (anyLanguageWhenEmpty && !result.rows.length && page === 1) {
+      result = await searchIn("");
+      searchedLanguage = "";
+    }
     const payload = {
       ...result,
       page,
       pageSize: normalizedPageSize,
       hasMore: page * normalizedPageSize < result.count,
       usedFallback: false,
-      sourceName: "catalog_search_lightweight",
+      sourceName: CATALOG_SEARCH_VIEW,
+      searchedLanguage,
       searchMode: mode,
       searchPhase: result.phase,
       elapsedMs: Math.round(nowMs() - startedAt),
@@ -1213,15 +1252,16 @@ export async function searchPokemonCatalog({
     });
     return payload;
   } catch (error) {
-    const missingNewView = /catalog_search_lightweight|master_catalog|column .* does not exist|schema cache/i.test(error?.message || "");
+    const missingNewView = LANGUAGE_FIELD_ERROR.test(error?.message || "") || /catalog_search_lightweight|master_catalog|column .* does not exist|schema cache/i.test(error?.message || "");
     if (!missingNewView || !allowCompatibilityFallback) throw error;
+    // The older catalog has no languages: English items, by the words searched.
     const result = await runSearchAgainstSource({
       supabase,
       sourceName: "pokemon_catalog_browse",
-      query,
+      query: searchQuery,
       barcode,
       mode,
-      filters,
+      filters: { productGroup, productType, setName, dataFilter, rarity },
       sort,
       page,
       pageSize: normalizedPageSize,

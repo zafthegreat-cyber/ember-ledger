@@ -5,6 +5,8 @@ import pg from "pg";
 
 // New sets reach the catalog on their own (supabase/migrations/20261126213000_catalog_new_sets.sql),
 // and each single card arrives with its card facts row (20261127040000_catalog_card_details_for_new_cards.sql).
+// Japanese sets come from TCGCSV's category 85 and are filed as Japanese (20261127210000_catalog_language.sql,
+// 20261127211000_catalog_japanese_cards.sql); the English search view keeps English items only.
 // Runs the real migrations in a disposable loopback database and plays TCGCSV's part: the daily
 // job asks for the set list, product lists and price files through a stand-in for pg_net, and this
 // test answers with small copies of what TCGCSV sends. Needs Postgres on 127.0.0.1:55439 (user
@@ -38,7 +40,12 @@ const PERFECT_ORDER = 24587; // in the catalog already, nothing new
 const PITCH_BLACK = 24688; // in the catalog with sealed pre-orders only, filed under the code ME05
 const DELTA_REIGN = 24831; // not in the catalog
 const MCDONALDS_2026 = 24938; // not in the catalog
+const JP_151 = 23599; // Japanese (TCGCSV category 85), not in the catalog
 const tcgcsv = {
+  // TCGCSV category 85, "Pokemon Japan": English card names, the printed set code, Japanese prices.
+  japanGroups: [
+    { groupId: JP_151, name: "SV2a: Pokemon Card 151", abbreviation: "SV2a", isSupplemental: false, publishedOn: daysAgo(1000), modifiedOn: "2026-11-20T10:00:00.1", categoryId: 85 },
+  ],
   groups: [
     { groupId: PERFECT_ORDER, name: "ME03: Perfect Order", abbreviation: "POR", isSupplemental: false, publishedOn: daysAgo(240), modifiedOn: "2026-11-23T10:00:00.1", categoryId: 3 },
     { groupId: PITCH_BLACK, name: "ME05: Pitch Black", abbreviation: "PBL", isSupplemental: false, publishedOn: daysAgo(130), modifiedOn: "2026-11-20T10:00:00.1", categoryId: 3 },
@@ -71,6 +78,11 @@ const tcgcsv = {
       product(DELTA_REIGN, 726602, "Delta Reign Elite Trainer Box"),
     ],
     [MCDONALDS_2026]: [product(MCDONALDS_2026, 730004, "Pikachu", card("004/015", "Promo"))],
+    [JP_151]: [
+      { ...product(JP_151, 566370, "Pikachu - 025/165", card("025/165", "Common", { "Card Type": "Lightning", HP: "60" })), categoryId: 85 },
+      { ...product(JP_151, 566371, "Pikachu - 025/165 (Master Ball Pattern)", card("025/165", "Common", { "Card Type": "Lightning", HP: "60" })), categoryId: 85 },
+      { ...product(JP_151, 513001, "Pokemon Card 151 Booster Box"), categoryId: 85 },
+    ],
   },
   prices: {
     [PERFECT_ORDER]: [price(684397, "Normal", 0.08), price(684397, "Reverse Holofoil", 0.18)],
@@ -84,6 +96,8 @@ const tcgcsv = {
       price(726566, "Holofoil", 12), price(726600, "Normal", 0.5), price(726601, "Normal", 11),
     ],
     [MCDONALDS_2026]: [price(730004, "Holofoil", 1.25)],
+    // A second printing on the first Pikachu so both printing steps run for a Japanese card.
+    [JP_151]: [price(566370, "Normal", 0.24), price(566370, "Holofoil", 1.1), price(566371, "Holofoil", 6.5), price(513001, "Normal", 95)],
   },
 };
 
@@ -93,9 +107,12 @@ async function serve() {
   const { rows } = await db.query("select r.id, r.url from net.requests r where not exists (select 1 from net._http_response h where h.id = r.id) order by r.id");
   for (const row of rows) {
     requested.push(row.url);
-    const groups = /\/tcgplayer\/3\/groups$/.test(row.url);
-    const match = /\/tcgplayer\/3\/(\d+)\/(products|prices)$/.exec(row.url);
-    const results = groups ? tcgcsv.groups : match ? tcgcsv[match[2]][match[1]] : null;
+    const groups = /\/tcgplayer\/(3|85)\/groups$/.exec(row.url);
+    const match = /\/tcgplayer\/(3|85)\/(\d+)\/(products|prices)$/.exec(row.url);
+    // A set is served under its own category only: asking category 3 for a Japanese set is a 404.
+    const japanese = match && tcgcsv.japanGroups.some((group) => group.groupId === Number(match[2]));
+    const results = groups ? (groups[1] === "85" ? tcgcsv.japanGroups : tcgcsv.groups)
+      : match && (match[1] === "85") === japanese ? tcgcsv[match[3]][match[2]] : null;
     if (!results) {
       await db.query("insert into net._http_response(id, status_code, content) values($1, 404, 'not found')", [row.id]);
     } else {
@@ -133,6 +150,7 @@ try {
   await db.query(`
     do $$ begin create role anon; exception when duplicate_object then null; end $$;
     do $$ begin create role authenticated; exception when duplicate_object then null; end $$;
+    do $$ begin create role service_role; exception when duplicate_object then null; end $$;
     create schema extensions;
     create schema cron;
     create function cron.schedule(text, text, text) returns bigint language sql as 'select 1::bigint';
@@ -213,6 +231,13 @@ try {
       printed_total integer, rarity text, artist text, flavor_text text, regulation_mark text, legalities jsonb not null default '{}',
       national_pokedex_numbers integer[], raw_source jsonb not null default '{}',
       created_at timestamptz not null default now(), updated_at timestamptz not null default now());
+    -- What the search view (20261127210000) reads besides the columns above.
+    alter table public.master_catalog_items add column upc text, add column sku text, add column retailer_skus jsonb not null default '{}',
+      add column contents jsonb not null default '{}', add column related_cards jsonb not null default '[]', add column release_date date,
+      add column admin_review_status text, add column is_verified boolean not null default false, add column source_url text;
+    alter table public.master_catalog_identifiers add column created_at timestamptz not null default now();
+    alter table public.master_market_price_sources add column variant_id uuid, add column sold_average numeric, add column sample_size integer,
+      add column updated_at timestamptz not null default now();
   `);
   for (const file of [
     "20261125090000_catalog_price_refresh.sql",
@@ -225,6 +250,9 @@ try {
     "20261127030000_catalog_price_pokemontcg_only_unmatched.sql",
     // Single cards the job adds get their card facts row (tcg_card_details).
     "20261127040000_catalog_card_details_for_new_cards.sql",
+    // Each item's language, the search views, and the Japanese sets.
+    "20261127210000_catalog_language.sql",
+    "20261127211000_catalog_japanese_cards.sql",
   ]) {
     await db.query(await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), "utf8"));
   }
@@ -286,15 +314,47 @@ try {
 
   // ---- Run 1: a check for new sets only (no price refresh for sets already in the catalog). ----
   const first = await run("public.catalog_price_refresh(0, false)");
-  equal(first.sets_added, 2, "Delta Reign and McDonald's Promos 2026 are new to the catalog");
-  equal(first.products_added, 13, "every product the catalog lacked was added");
+  equal(first.sets_added, 3, "Delta Reign, McDonald's Promos 2026 and the Japanese 151 are new to the catalog");
+  equal(first.products_added, 16, "every product the catalog lacked was added");
   equal(first.groups_failed, 0);
-  ok(requested[0].endsWith("/tcgplayer/3/groups"), "the run reads TCGCSV's set list first");
+  equal(requested.slice(0, 2).sort(), ["https://tcgcsv.com/tcgplayer/3/groups", "https://tcgcsv.com/tcgplayer/85/groups"], "the run reads both of TCGCSV's set lists first");
   for (const groupId of [PERFECT_ORDER, PITCH_BLACK, DELTA_REIGN, MCDONALDS_2026]) {
     ok(requested.includes(`https://tcgcsv.com/tcgplayer/3/${groupId}/products`), `product list read for set ${groupId}`);
   }
   ok(!requested.includes(`https://tcgcsv.com/tcgplayer/3/${PERFECT_ORDER}/prices`), "a set with nothing new is not re-priced by a new-sets check");
-  equal((await one("select count(*)::int n from public.catalog_tcgcsv_groups")).n, 4, "the set list is recorded");
+  equal((await one("select count(*)::int n from public.catalog_tcgcsv_groups")).n, 5, "the set lists are recorded");
+  equal(await all("select category_id, count(*)::int n from public.catalog_tcgcsv_groups group by 1 order by 1"), [{ category_id: 3, n: 4 }, { category_id: 85, n: 1 }], "each set knows its category");
+  ok(requested.includes(`https://tcgcsv.com/tcgplayer/85/${JP_151}/products`) && requested.includes(`https://tcgcsv.com/tcgplayer/85/${JP_151}/prices`), "a Japanese set is read from category 85");
+  ok(!requested.some((url) => url.includes(`/tcgplayer/3/${JP_151}/`)), "and never asked for under the English category");
+
+  // Japanese: each row says so, in both catalogs and on every printing. English rows say English.
+  const jpPikachu = await item(566370);
+  const masterLanguage = async (productId) => (await one("select m.language from public.master_catalog_items m join public.product_catalog pc on pc.id = m.legacy_product_catalog_id where pc.external_product_id = $1", [String(productId)])).language;
+  equal([jpPikachu.language, await masterLanguage(566370), jpPikachu.set_code, jpPikachu.set_name, jpPikachu.card_number, jpPikachu.catalog_item_type, jpPikachu.price_subtype, Number(jpPikachu.market_price), Number(jpPikachu.recommended_market_value)],
+    ["Japanese", "Japanese", "SV2a", "SV2a: Pokemon Card 151", "025/165", "card", "Normal", 0.24, 0.24], "a Japanese card is filed as Japanese, with its set code, number and price");
+  equal(await all("select variant_name, language from public.catalog_product_variants where catalog_product_id = $1 order by 1", [jpPikachu.id]),
+    [{ variant_name: "Holofoil", language: "Japanese" }, { variant_name: "Normal", language: "Japanese" }], "its printings say Japanese");
+  equal(await all("select variant_name, language from public.master_catalog_variants where catalog_item_id = $1 order by 1", [jpPikachu.master_id]),
+    [{ variant_name: "Holofoil", language: "Japanese" }, { variant_name: "Normal", language: "Japanese" }], "in the master catalog too (the second printing by catalog_add_missing_printings)");
+  const jpBox = await item(513001);
+  equal([jpBox.language, await masterLanguage(513001), jpBox.catalog_item_type, jpBox.sealed_product_type, Number(jpBox.market_price)], ["Japanese", "Japanese", "sealed", "booster_display_box", 95], "a Japanese booster box is a Japanese sealed product");
+  equal([(await item(566371)).language, Number((await item(566371)).market_price)], ["Japanese", 6.5]);
+  equal((await factsRow(566370)).raw_source.product.extendedData.find((entry) => entry.name === "HP").value, "60", "a Japanese card has its card facts");
+  equal(await all(`select distinct pc.language as a, m.language as b,
+        (select string_agg(distinct v.language, ',') from public.master_catalog_variants v where v.catalog_item_id = m.id) as c,
+        (select string_agg(distinct v.language, ',') from public.catalog_product_variants v where v.catalog_product_id = pc.id) as d
+      from public.product_catalog pc join public.master_catalog_items m on m.legacy_product_catalog_id = pc.id
+      where pc.source_group_id is distinct from $1 and exists (select 1 from public.master_catalog_variants v where v.catalog_item_id = m.id)`, [JP_151]),
+    [{ a: "English", b: "English", c: "English", d: "English" }], "every English row and printing still says English");
+
+  // Search: new builds read every language; the view older builds read shows English items only.
+  equal(await all("select language, count(*)::int n from public.catalog_search_all_languages group by 1 order by 1"),
+    [{ language: "English", n: 16 }, { language: "Japanese", n: 3 }], "the all-languages view has both");
+  equal(await all("select language, count(*)::int n from public.catalog_search_lightweight group by 1"), [{ language: "English", n: 16 }], "the older view has the same English rows and nothing else");
+  equal((await one("select market_price::float8 as p from public.catalog_search_all_languages where tcgplayer_product_id = '566370'")).p, 0.24, "with its price");
+  const columns = async (view) => (await all("select column_name from information_schema.columns where table_schema = 'public' and table_name = $1 order by ordinal_position", [view])).map((row) => row.column_name);
+  equal(await columns("catalog_search_lightweight"), await columns("catalog_search_all_languages"), "both views have the same columns");
+  equal((await columns("catalog_search_all_languages")).at(-1), "language", "language comes last, after the columns older builds know");
 
   // A new set: its cards arrive as cards, with set code, number, rarity, printings and prices.
   const pikachu = await item(730004);
@@ -369,7 +429,7 @@ try {
 
   // Card facts go to single cards only: the six cards this run added, next to the one row that was there.
   equal((await all("select pc.name from public.tcg_card_details d join public.product_catalog pc on pc.id = d.catalog_product_id")).map((row) => row.name).sort(),
-    ["Ariados", "Azurill - 115/103", "Giratina", "Mantine", "Maschiff", "Pikachu", "Secret Box - 2026 (Championship Deck)"],
+    ["Ariados", "Azurill - 115/103", "Giratina", "Mantine", "Maschiff", "Pikachu", "Pikachu - 025/165", "Pikachu - 025/165 (Master Ball Pattern)", "Secret Box - 2026 (Championship Deck)"],
     "no card facts row for a sealed product or a code card, and none for the older card that had none");
 
   // The set's code changed (ME05 -> PBL): the items already there follow, and are otherwise untouched.
@@ -387,7 +447,7 @@ try {
 
   // ---- Run 2: the same answers again. Nothing is added twice. ----
   const before = await one("select (select count(*) from public.product_catalog)::int pc, (select count(*) from public.master_catalog_items)::int m, (select count(*) from public.master_catalog_variants)::int mv, (select count(*) from public.catalog_product_variants)::int cv, (select count(*) from public.product_market_price_current)::int prices, (select count(*) from public.master_market_price_sources)::int sources, (select count(*) from public.master_catalog_identifiers)::int ids, (select count(*) from public.product_identifiers)::int pids, (select count(*) from public.tcg_card_details)::int facts");
-  equal([before.pc, before.facts], [16, 7]);
+  equal([before.pc, before.facts], [19, 9]);
   const second = await run("public.catalog_price_refresh(0, false)");
   equal([second.sets_added, second.products_added, second.groups_failed], [0, 0, 0]);
   equal(await one("select (select count(*) from public.product_catalog)::int pc, (select count(*) from public.master_catalog_items)::int m, (select count(*) from public.master_catalog_variants)::int mv, (select count(*) from public.catalog_product_variants)::int cv, (select count(*) from public.product_market_price_current)::int prices, (select count(*) from public.master_market_price_sources)::int sources, (select count(*) from public.master_catalog_identifiers)::int ids, (select count(*) from public.product_identifiers)::int pids, (select count(*) from public.tcg_card_details)::int facts"), before, "a second run changes no counts");
@@ -406,6 +466,7 @@ try {
   equal([third.sets_added, third.products_added], [1, 1], "a set TCGCSV starts listing is picked up by the daily run");
   equal([(await item(250001)).catalog_item_type, Number((await item(250001)).market_price)], ["card", 0.2]);
   ok(requested.includes(`https://tcgcsv.com/tcgplayer/3/${PERFECT_ORDER}/prices`), "the daily run still refreshes prices for every set in the catalog");
+  ok(requested.includes(`https://tcgcsv.com/tcgplayer/85/${JP_151}/prices`), "Japanese sets included, from their own category");
   equal(Number((await item(684397)).market_price), 0.08, "and applies them");
 
   requested.length = 0;

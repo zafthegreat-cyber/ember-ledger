@@ -130,7 +130,9 @@ test("Save all for scanned cards saves a row only when its name and number match
     { id: "c", name: "Charizard", cardNumber: "4/102", setName: "Base Set Shadowless" },
   ];
   const { settleScanMatch } = await import("../src/utils/catalogResultIdentity.mjs");
-  const scope = { getCatalogCollectorQuery, catalogCardQueryMatchesRow, pickScannedCard, settleScanMatch, isSupabaseConfigured: true, supabase: {},
+  // Nov 27 2026: the row's language picks the catalog (cardLanguage.mjs, imported by the app).
+  const cardLanguage = await import("../src/utils/cardLanguage.mjs");
+  const scope = { ...cardLanguage, getCatalogCollectorQuery, catalogCardQueryMatchesRow, pickScannedCard, settleScanMatch, isSupabaseConfigured: true, supabase: {},
     searchPokemonCatalogOnDemand: async () => ({ rows }), mapCatalog: (row) => row, getBestCatalogMatches: () => [], catalogProducts: [] };
   vm.runInNewContext(source.slice(start, end) + "\nglobalThis.find = findVerifiedCardForScanRow;", scope);
   assert.equal((await scope.find({ cardName: "Alakazam ex", cardNumber: "SVP 050" }))?.id, "a", "one verified match is saved");
@@ -187,14 +189,16 @@ test("scanned rows are matched as they arrive and show their price (Nov 24 2026)
   const end = source.indexOf("\n  function setQuickAddPath(", start);
   assert.ok(start > 0 && end > start, "the live matcher is extractable");
   assert.match(source, /void matchCardScanRows\(created\);/, "new scan rows start matching straight away");
-  assert.match(source, /row\.matchedProduct && row\.matchedFor === `\$\{row\.cardName\}\|\$\{row\.cardNumber\}` \? row\.matchedProduct/, "Save all reuses a match the row still fits");
+  assert.match(source, /row\.matchedProduct && row\.matchedFor === `\$\{row\.cardName\}\|\$\{row\.cardNumber\}` && normalizeCardLanguage\(row\.matchedLanguage\) === normalizeCardLanguage\(row\.language\) \? row\.matchedProduct/, "Save all reuses a match the row still fits, in the same language");
   let state = { cardScanRows: [
     { id: "a", cardName: "Pikachu", cardNumber: "58/102" },
     { id: "b", cardName: "Pikachu", cardNumber: "" },
     { id: "c", cardName: "Mewtwo", cardNumber: "10/102" },
   ] };
   const products = { Pikachu: { id: "p1", name: "Pikachu", setName: "Base Set", cardNumber: "58/102", marketPrice: 4.5 } };
+  const cardLanguage = await import("../src/utils/cardLanguage.mjs");
   const scope = {
+    ...cardLanguage,
     matchScannedCardRow: async (row) => ({ card: products[row.cardName] || null, others: row.cardName === "Pikachu" ? 2 : 0 }),
     getTideTradrMarketInfo: (product) => ({ currentMarketValue: product.marketPrice }),
     catalogTitle: (product) => product.name,

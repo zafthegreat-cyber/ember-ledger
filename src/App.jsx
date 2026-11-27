@@ -3,6 +3,7 @@ import { readLegacyCatalogIdentity, buildLegacyCatalogIdentityUpdate } from "./u
 import ProductPhotoLookup from "./components/ProductPhotoLookup.jsx";
 import { gradingDetails, gradedCertificateError } from "./utils/gradedCopies.mjs";
 import { cardScanSavedDetails } from "./utils/cardScanDetails.mjs";
+import { cardLanguageBadge, cardLanguagePrice, cardLanguagePriceRule, catalogLanguageFor, languageForCatalogCard, normalizeCardLanguage, rowsForCardLanguage, titleWithCardLanguage } from "./utils/cardLanguage.mjs";
 import { readLegacyGradingMetadata, reconcileLegacyGradingEdit } from "./utils/legacyGradingMetadata.mjs";
 import PasswordInput from "./features/auth/PasswordInput.jsx";
 import NotificationInbox from "./components/NotificationInbox.jsx";
@@ -19115,7 +19116,7 @@ export default function App() {
         notes: "Added from a barcode batch scan.",
         sourceType: "TideTradr",
         conditionName: "Near Mint",
-        language: "English",
+        language: normalizeCardLanguage(product.language),
         createdAt: now,
       };
       return destination === "forge"
@@ -19157,13 +19158,19 @@ export default function App() {
     const name = String(row?.cardName || "").trim();
     const number = String(row?.cardNumber || "").trim();
     const query = `${name} ${number}`;
+    // Nov 27 2026 (non-English cards): the row's language picks the catalog looked in. English,
+    // French, German, Italian, Spanish and Portuguese copies are the English card; Japanese,
+    // Korean and Traditional Chinese copies the Japanese card. Simplified Chinese cards are
+    // not in the catalog.
+    const language = catalogLanguageFor(row?.language);
+    if (!language) return { card: null, others: 0 };
     // Nov 27 2026: one quick lookup of the exact number first. The catalog finds it by its
     // card-number index (about 30 ms on the live catalog); the search below scans for the
     // number in any spelling and took 1.6 s, an error for anyone not signed in. The same
     // rows serve the name-and-number match here and the number-alone match further down.
     let numbered = null;
     if (number && isSupabaseConfigured && supabase) {
-      try { numbered = await fetchCardsByNumberOnDemand({ supabase, number }); } catch { numbered = null; }
+      try { numbered = await fetchCardsByNumberOnDemand({ supabase, number, language }); } catch { numbered = null; }
     }
     if (name && number && getCatalogCollectorQuery(query)) {
       if (numbered?.rows?.length) {
@@ -19173,23 +19180,40 @@ export default function App() {
       let candidates = [];
       if (isSupabaseConfigured && supabase) {
         try {
-          const result = await searchPokemonCatalogOnDemand({ supabase, query, mode: "general", page: 1, pageSize: 24, force: true });
+          const result = await searchPokemonCatalogOnDemand({ supabase, query, mode: "general", page: 1, pageSize: 24, force: true, language });
           candidates = (result.rows || []).map(mapCatalog);
         } catch {
           candidates = [];
         }
       }
-      if (!candidates.length) candidates = getBestCatalogMatches(query, catalogProducts).map((match) => match.item);
+      if (!candidates.length) candidates = rowsForCardLanguage(getBestCatalogMatches(query, catalogProducts).map((match) => match.item), language);
       const exact = pickScannedCard({ name, number, setName: row.setName }, candidates);
       if (exact.card) return exact;
     }
     // Nov 27 2026: the number was read but no card has that name and number. The number alone
     // belongs to very few cards, so it is looked up before the clues that need the name.
     const byNumber = await matchScannedCardByNumber(row, name, number, numbered);
-    // The number and the letters of the name point at the same card: nothing fits better.
-    if (byNumber.card && byNumber.nameAgrees) return byNumber;
+    // The number and the letters of the name point at the same card: nothing fits better. So do
+    // the number and the set code printed beside it (a Japanese card).
+    if (byNumber.card && (byNumber.nameAgrees || byNumber.bySetCode)) return byNumber;
     const byClues = await matchScannedCardByClues(row, name, number);
-    return settleScanMatch(byNumber, byClues);
+    const settled = settleScanMatch(byNumber, byClues);
+    // Nov 27 2026: no card, the number was read in full and nothing said the card's language
+    // (a Japanese card whose set code was not read): the Japanese cards with that number are
+    // offered too, named with their language. A card is never filed this way.
+    if (!settled.card && language === "English" && !row.languageSource && number.includes("/") && isSupabaseConfigured && supabase) {
+      try {
+        const japanese = (await fetchCardsByNumberOnDemand({ supabase, number, language: "Japanese", limit: 4 }))?.rows || [];
+        const offered = japanese.map(mapCatalog).slice(0, 2);
+        if (offered.length) {
+          const choices = Array.isArray(settled.choices) ? settled.choices.slice(0, 2) : [];
+          return { ...settled, choices: [...choices, ...offered], choicesBy: choices.length ? settled.choicesBy || "either" : "number" };
+        }
+      } catch {
+        // the English result stands
+      }
+    }
+    return settled;
   }
 
   // The card for a number that was read in full when the name was not (a trainer card,
@@ -19198,16 +19222,22 @@ export default function App() {
   // numbered: the rows already fetched for this number, when the caller has them.
   async function matchScannedCardByNumber(row, name, number, numbered = null) {
     const none = { card: null, others: 0 };
-    if (!number || !isSupabaseConfigured || !supabase) return none;
+    const language = catalogLanguageFor(row?.language);
+    if (!number || !language || !isSupabaseConfigured || !supabase) return none;
     try {
       const [{ rows, facts }, { cardFactsFromDetails, pickCardByNumber }] = await Promise.all([
-        numbered || fetchCardsByNumberOnDemand({ supabase, number }),
+        numbered || fetchCardsByNumberOnDemand({ supabase, number, language }),
         import("./utils/cardClueMatch.mjs"),
       ]);
       if (!rows?.length) return none;
       const factsById = new Map((facts || []).map((detail) => [String(detail.catalog_product_id), cardFactsFromDetails(detail)]));
       const typedSet = String(row.setName || "").trim().toLowerCase();
       const cards = rows.map(mapCatalog).filter((card) => !typedSet || String(card.setName || card.expansion || "").toLowerCase().includes(typedSet));
+      // Nov 27 2026 (non-English cards): a Japanese card's name cannot be read here, but the set
+      // code printed beside its number was ("SV2a 025/165"). Code and number name one card.
+      const printedSet = String(row.scanSetCode || "").toLowerCase();
+      const inPrintedSet = printedSet ? cards.filter((card) => String(card.setCode || "").toLowerCase() === printedSet) : [];
+      if (inPrintedSet.length === 1) return { card: inPrintedSet[0], others: 0, byNumber: true, nameAgrees: false, bySetCode: true, choices: [], choicesBy: "number" };
       const picked = pickCardByNumber({ name, number, clues: row.scanClues || {}, text: row.scanText || "" }, cards, factsById);
       // A pick resting on one kind of clue alone is offered as a choice, not filed.
       if (picked.card && !picked.sure) return { card: null, others: 0, choices: [picked.card], choicesBy: "number" };
@@ -19225,12 +19255,13 @@ export default function App() {
   async function matchScannedCardByClues(row, name, number) {
     const clues = row?.scanClues;
     const none = { card: null, others: 0 };
-    if (!clues || typeof clues !== "object" || !isSupabaseConfigured || !supabase) return none;
+    const language = catalogLanguageFor(row?.language);
+    if (!clues || typeof clues !== "object" || !language || !isSupabaseConfigured || !supabase) return none;
     // Which rows to fetch and what to make of them is in matchScanRowByClues (tested on its own).
     try {
       const { matchScanRowByClues } = await import("./utils/cardClueMatch.mjs");
       return await matchScanRowByClues({ ...row, cardName: name, cardNumber: number }, {
-        fetchCards: (lookup) => fetchCardsForCluesOnDemand({ supabase, ...lookup }),
+        fetchCards: (lookup) => fetchCardsForCluesOnDemand({ supabase, ...lookup, language }),
         mapCard: mapCatalog,
       });
     } catch {
@@ -19260,7 +19291,7 @@ export default function App() {
           ? activeForgeWorkspace
           : workspaces.find((candidate) => String(candidate.id) === String(defaultWorkspaceIdForDestination("vault"))) || activeWorkspace;
         if (!workspace?.id || !canEditWorkspaceId(workspace.id)) { unsure.set(row.id, "You can't add to this workspace."); continue; }
-        const product = row.matchedProduct && row.matchedFor === `${row.cardName}|${row.cardNumber}` ? row.matchedProduct : await findVerifiedCardForScanRow(row);
+        const product = row.matchedProduct && row.matchedFor === `${row.cardName}|${row.cardNumber}` && normalizeCardLanguage(row.matchedLanguage) === normalizeCardLanguage(row.language) ? row.matchedProduct : await findVerifiedCardForScanRow(row);
         if (!product) { unsure.set(row.id, row.cardNumber ? "Review this one: more than one card or no card matched." : "Review this one: add the card number to match it."); continue; }
         const known = buildCatalogAutofillDetails(product);
         const marketInfo = getTideTradrMarketInfo(product);
@@ -19271,6 +19302,9 @@ export default function App() {
         // Nov 27 2026: the condition, printing and grade picked on the row. The printing also goes in
         // "printing" (the column the server keeps) and grading in the notes line the app reads back.
         const details = cardScanSavedDetails(row, scanNotes);
+        // Nov 27 2026: a French copy is filed under the English card with its own language, and
+        // shows the English card's price; a Korean copy shows no price (cardLanguagePriceRule).
+        const copyLanguage = languageForCatalogCard(row.language, product.language);
         const shared = {
           name: catalogTitle(product),
           category: "Pokemon",
@@ -19283,7 +19317,7 @@ export default function App() {
           itemImage: known.itemImage || "",
           itemImageSource: product.imageSource || getDefaultImageSource(product),
           itemImageStatus: product.imageStatus || getDefaultImageStatus(product),
-          marketPrice: blankToNull(marketInfo.currentMarketValue || product.marketPrice || product.midPrice),
+          marketPrice: cardLanguagePriceRule(copyLanguage).source === "none" ? null : blankToNull(marketInfo.currentMarketValue || product.marketPrice || product.midPrice),
           setCode: known.setCode || "",
           setName: known.setName || product.setName || row.setName || "",
           expansion: known.setName || product.setName || row.setName || "",
@@ -19291,7 +19325,7 @@ export default function App() {
           notes: scanNotes,
           sourceType: "TideTradr",
           ...details,
-          language: "English",
+          language: copyLanguage,
           createdAt: now,
         };
         const certificateProblem = details.graded && details.certificationNumber && copies > 1
@@ -20116,15 +20150,20 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       let choices = [];
       let choicesBy = "";
       try { ({ card: product, others, byClues = false, byNumber = false, nameAgrees = false, choices = [], choicesBy = "" } = await matchScannedCardRow(row)); } catch { product = null; }
-      const marketValue = product ? Number(getTideTradrMarketInfo(product).currentMarketValue || product.marketPrice || product.midPrice || 0) : 0;
-      const labelOf = (card) => [catalogTitle(card), card.setName || card.expansion, card.cardNumber].filter(Boolean).join(" · ");
-      const valueOf = (card) => { const value = Number(getTideTradrMarketInfo(card).currentMarketValue || card.marketPrice || card.midPrice || 0); return Number.isFinite(value) && value > 0 ? value : 0; };
+      // Nov 27 2026 (non-English cards): a card in another language is named so ("· Japanese"),
+      // and the price is the one the copy's language shows (none for a Korean copy).
+      const copyLanguage = (card) => languageForCatalogCard(row.language, card?.language);
+      const marketValue = product ? cardLanguagePrice(copyLanguage(product), Number(getTideTradrMarketInfo(product).currentMarketValue || product.marketPrice || product.midPrice || 0)) : 0;
+      const labelOf = (card) => [catalogTitle(card), card.setName || card.expansion, card.cardNumber, cardLanguageBadge(card.language)].filter(Boolean).join(" · ");
+      const valueOf = (card) => { const value = cardLanguagePrice(copyLanguage(card), Number(getTideTradrMarketInfo(card).currentMarketValue || card.marketPrice || card.midPrice || 0)); return Number.isFinite(value) && value > 0 ? value : 0; };
+      const matchedLanguage = normalizeCardLanguage(row.language);
       const patch = product
-        ? { matchedProduct: product, matchState: "matched", matchedBy: byClues ? "clues" : byNumber && !nameAgrees ? "numberOnly" : "number", matchedChoices: [], matchedOthers: others || 0, matchedLabel: labelOf(product), matchedValue: Number.isFinite(marketValue) && marketValue > 0 ? marketValue : 0, matchedFor: `${row.cardName}|${row.cardNumber}` }
-        : { matchedProduct: null, matchState: "review", matchedBy: "", matchedChoicesBy: choicesBy === "number" || choicesBy === "either" ? choicesBy : "", matchedChoices: (choices || []).slice(0, 4).map((card) => ({ product: card, label: labelOf(card), name: cardNameForChoice(catalogTitle(card)), short: [card.setName || card.expansion, card.cardNumber].filter(Boolean).join(" · "), value: valueOf(card) })), matchedLabel: "", matchedValue: 0, matchedFor: `${row.cardName}|${row.cardNumber}` };
+        ? { matchedProduct: product, matchState: "matched", matchedBy: byClues ? "clues" : byNumber && !nameAgrees ? "numberOnly" : "number", matchedChoices: [], matchedOthers: others || 0, matchedLabel: labelOf(product), matchedValue: Number.isFinite(marketValue) && marketValue > 0 ? marketValue : 0, matchedFor: `${row.cardName}|${row.cardNumber}`, matchedLanguage }
+        : { matchedProduct: null, matchState: "review", matchedBy: "", matchedChoicesBy: choicesBy === "number" || choicesBy === "either" ? choicesBy : "", matchedChoices: (choices || []).slice(0, 4).map((card) => ({ product: card, label: labelOf(card), name: cardNameForChoice(catalogTitle(card)), short: [card.setName || card.expansion, card.cardNumber, cardLanguageBadge(card.language)].filter(Boolean).join(" · "), value: valueOf(card) })), matchedLabel: "", matchedValue: 0, matchedFor: `${row.cardName}|${row.cardNumber}`, matchedLanguage };
       setQuickAddWizard((current) => ({
         ...current,
-        cardScanRows: (current.cardScanRows || []).map((candidate) => (candidate.id === row.id && `${candidate.cardName}|${candidate.cardNumber}` === patch.matchedFor ? { ...candidate, ...patch } : candidate)),
+        // A row whose name, number or language changed while it was matched waits for its own match.
+        cardScanRows: (current.cardScanRows || []).map((candidate) => (candidate.id === row.id && `${candidate.cardName}|${candidate.cardNumber}` === patch.matchedFor && normalizeCardLanguage(candidate.language) === matchedLanguage ? { ...candidate, ...patch } : candidate)),
       }));
     }
   }
@@ -22575,6 +22614,10 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     const now = new Date().toISOString();
     const selectedCatalog = catalogProducts.find((product) => String(product.id) === String(multiDestinationForm.catalogProductId));
     const selectedCatalogKnown = selectedCatalog ? buildCatalogAutofillDetails(selectedCatalog) : {};
+    // Nov 27 2026: the copy's language, picked on the save screen or the catalog item's own.
+    // A Korean or Chinese copy keeps only a price typed for it (none comes from the catalog).
+    const copyLanguage = normalizeCardLanguage(multiDestinationForm.language || selectedCatalog?.language);
+    const catalogPriceShown = cardLanguagePriceRule(copyLanguage).source !== "none";
     const successes = [];
     const failures = [];
     const pendingInventoryCreates = [];
@@ -22612,8 +22655,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       itemImageLastUpdated: selectedCatalog?.imageLastUpdated || selectedCatalog?.lastUpdated || selectedCatalog?.updatedAt || selectedCatalog?.updated_at || "",
       itemImageNeedsReview: Boolean(selectedCatalog?.imageNeedsReview),
       // A107 (2026-11-01): a blank price stays blank instead of becoming $0.
-      marketPrice: blankToNull(multiDestinationForm.marketPrice || selectedCatalog?.marketPrice || selectedCatalog?.midPrice),
+      marketPrice: blankToNull(multiDestinationForm.marketPrice || (catalogPriceShown ? selectedCatalog?.marketPrice || selectedCatalog?.midPrice : "")),
       msrpPrice: blankToNull(multiDestinationForm.msrpPrice || selectedCatalog?.msrpPrice),
+      language: copyLanguage,
       setCode: selectedCatalogKnown.setCode || "",
       setName: multiDestinationForm.setName || selectedCatalogKnown.setName || multiDestinationForm.tidetradr.setName,
       expansion: multiDestinationForm.setName || selectedCatalogKnown.setName || multiDestinationForm.tidetradr.setName,
@@ -22666,7 +22710,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
           receiptImage: shared.receiptImage,
           actionNotes: [multiDestinationForm.vault.notes, shared.notes].filter(Boolean).join(" "),
           conditionName: "Near Mint",
-          language: "English",
+          language: shared.language,
           createdAt: now,
         }, vaultWorkspace);
         pendingInventoryCreates.push({ record: vaultItem, successMessage: `Added to Vault (${vaultWorkspace?.name || "Workspace"})` });
@@ -22711,7 +22755,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
             shared.notes,
           ].filter(Boolean).join(" "),
           conditionName: multiDestinationForm.wishlist.desiredCondition || "Any",
-          language: "English",
+          language: shared.language,
           createdAt: now,
         }, wishlistWorkspace);
         pendingInventoryCreates.push({ record: wishlistItem, successMessage: `Added to Wishlist (${wishlistWorkspace?.name || "Workspace"})` });
@@ -22756,7 +22800,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
           receiptId: shared.receiptId,
           receiptImage: shared.receiptImage,
           conditionName: multiDestinationForm.forge.conditionName || "Near Mint",
-          language: "English",
+          language: shared.language,
           notes: [multiDestinationForm.forge.notes, shared.notes].filter(Boolean).join(" "),
           createdAt: now,
         }, forgeWorkspace);
@@ -35456,6 +35500,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       variant: defaultVariant?.variantName || "",
       catalogProductId: product.id || "",
       catalogVariantId: defaultVariant?.id || "",
+      language: normalizeCardLanguage(product.language),
       upcSku,
       msrpPrice: known.msrpPrice || "",
       marketPrice: known.marketPrice || "",
@@ -36029,6 +36074,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const productTypeLabels = [...new Set([
       productVisualLabel,
       productTypeLabel,
+      cardLanguageBadge(product.language),
     ].filter((label) => label && label !== "Unknown"))];
     const productMasterCard = buildMarketMasterCardFromCatalogProduct(product);
     const marketSourceLabel = productHasMarketPrice ? getCatalogMarketSourceLabel(product) : "Market data unavailable";
@@ -40350,10 +40396,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   function listingFromSource(sourceType = "manual", source = {}) {
     const catalogProduct = sourceType === "catalog" ? source : catalogProducts.find((product) => String(product.id) === String(source.catalogProductId));
     const marketInfo = catalogProduct ? getTideTradrMarketInfo(catalogProduct) : {};
-    const title =
+    // Nov 27 2026 (non-English cards): a listing names the copy's language ("Pikachu Japanese"),
+    // and a Korean copy does not take the Japanese card's price.
+    const language = source.language || catalogProduct?.language;
+    const title = titleWithCardLanguage(
       sourceType === "catalog"
         ? catalogTitle(source)
-        : source.name || source.itemName || source.productName || source.title || "";
+        : source.name || source.itemName || source.productName || source.title || "",
+      language,
+    );
     return {
       ...BLANK_MARKETPLACE_FORM,
       title,
@@ -40364,7 +40415,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       condition: source.condition || source.sealedCondition || "Unknown",
       quantity: Number(source.quantity || 1),
       askingPrice: source.salePrice || source.plannedSalePrice || source.plannedSellingPrice || "",
-      tradeValue: source.marketPrice || marketInfo.currentMarketValue || "",
+      tradeValue: source.marketPrice || cardLanguagePrice(language, marketInfo.currentMarketValue) || "",
       // Public listing location must be chosen separately from private home/GPS settings.
       locationCity: "",
       locationState: "VA",
@@ -43165,6 +43216,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         collectorVisualTypeLabel,
         createQuickAddCardScanRow,
         appendQuickAddCardScanRows,
+        rematchCardScanRows: matchCardScanRows,
         undoQuickAddCardScan,
         saveAllCardScanRows,
         cardScanSaving,

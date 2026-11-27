@@ -67,6 +67,7 @@ jobs:
           scripts/test-card-scan-rows.mjs
           scripts/test-card-clue-match.mjs
           scripts/test-card-number-match.mjs
+          scripts/test-card-language.mjs
           scripts/test-card-printings.mjs
           scripts/test-slab-label.mjs
           scripts/test-listing-screenshot.mjs

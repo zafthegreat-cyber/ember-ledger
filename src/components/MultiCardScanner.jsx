@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import { BINDER_LAYOUTS, binderCells, pocketLabel } from "../utils/binderPage.mjs";
 import { lastScanSummary, sameSlabListed } from "../utils/cardScanRows.mjs";
 import { isCardScanGraded } from "../utils/cardScanDetails.mjs";
+import { cardLanguageFromScan } from "../utils/cardLanguage.mjs";
 import "./multi-card-scanner.css";
 
 const CardCameraFrame = lazy(() => import("./CardCameraFrame.jsx"));
@@ -52,6 +53,10 @@ export default function MultiCardScanner({ onRows, autoStart = false, rows = [],
   // Load the reader while the first card is being lined up, so the first read is not the slow one.
   useEffect(() => { if (mode === "camera") loadReader().then((module) => module.warmCardReader?.()).catch(() => {}); }, [mode]);
 
+  const scanLanguage = (read) => {
+    const found = cardLanguageFromScan({ text: read.text, slab: Boolean(read.gradedSlab) });
+    return { language: found.language, languageSource: found.source, languageCheck: found.check, ...(found.setCode ? { scanSetCode: found.setCode } : {}) };
+  };
   const rowFrom = (read, extra = {}) => ({
     cardName: read.name || "",
     cardNumber: read.number || "",
@@ -62,6 +67,9 @@ export default function MultiCardScanner({ onRows, autoStart = false, rows = [],
     scanText: String(read.text || "").toLowerCase().replace(/[^a-zà-ž]+/g, " ").trim().slice(0, 2500),
     // Nov 27 2026: a slab's label gave its grader, grade and certificate (the row's grading button shows them).
     ...(read.gradedSlab ? { graded: true, gradingCompany: read.gradedSlab.gradingCompany || "", grade: read.gradedSlab.grade || "", certificationNumber: read.gradedSlab.certificationNumber || "" } : {}),
+    // Nov 27 2026 (non-English cards): the language the card shows (the code beside its number,
+    // a Japanese set code, a slab's label). English when it shows none, as before.
+    ...scanLanguage(read),
     ...extra,
   });
 
@@ -135,7 +143,7 @@ export default function MultiCardScanner({ onRows, autoStart = false, rows = [],
       {/* A slab is one of a kind (its own certificate), so it has no One more. */}
       {lastOffer
         ? <button type="button" className="multi-card-scanner__yes" aria-label={`Yes, this is ${lastOffer.name || "my card"}`} onClick={() => { onPick(lastRow, lastOffer); buzz(30); setStatus(""); }}>Yes</button>
-        : isCardScanGraded(lastRow) ? null : <button type="button" aria-label={`One more copy of ${lastName || "this card"}`} onClick={() => { onRowsRef.current?.([{ cardName: lastRow.cardName, cardNumber: lastRow.cardNumber, scanNote: "", scanned: true }]); setCount((value) => value + 1); setStatus(""); }}>One more</button>}
+        : isCardScanGraded(lastRow) ? null : <button type="button" aria-label={`One more copy of ${lastName || "this card"}`} onClick={() => { onRowsRef.current?.([{ cardName: lastRow.cardName, cardNumber: lastRow.cardNumber, scanNote: "", scanned: true, language: lastRow.language, languageSource: lastRow.languageSource, languageCheck: lastRow.languageCheck }]); setCount((value) => value + 1); setStatus(""); }}>One more</button>}
       {onUndo ? <button type="button" onClick={() => { onUndo(last); if (lastQuantity <= 1) setLast(null); setCount((value) => Math.max(0, value - 1)); setStatus("Removed that scan."); }}>Undo</button> : null}
     </div>
   </div> : null;

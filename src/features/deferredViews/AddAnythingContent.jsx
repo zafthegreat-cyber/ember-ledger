@@ -1,7 +1,8 @@
 import MultiCardScanner from "../../components/MultiCardScanner.jsx";
 import { cardScanCopies } from "../../utils/cardScanRows.mjs";
 import CardScanRowDetails from "../../components/CardScanRowDetails.jsx";
-import { applyCardScanDetailToAll } from "../../utils/cardScanDetails.mjs";
+import { applyCardScanDetailToAll, cardScanLanguage } from "../../utils/cardScanDetails.mjs";
+import { cardLanguageBadge, cardLanguagePriceRule, languageForCatalogCard } from "../../utils/cardLanguage.mjs";
 import "./add-anything.css";
 import { useMemo } from "react";
 import { PrivateReceiptImage, PrivateStorageImage } from "../../components/PrivateReceipt.jsx";
@@ -44,6 +45,7 @@ export default function AddAnythingContent({ scope }) {
     collectorVisualTypeLabel,
     createQuickAddCardScanRow,
     appendQuickAddCardScanRows,
+    rematchCardScanRows,
     undoQuickAddCardScan,
     saveAllCardScanRows,
     cardScanSaving,
@@ -194,7 +196,7 @@ export default function AddAnythingContent({ scope }) {
           </span>
           <span className="quick-add-result-copy">
             <strong>{catalogTitle(product)}</strong>
-            <small>{[catalogExpansionName(product), cardNumberText, ...productTypeLabels].filter(Boolean).join(" | ") || "Catalog product"}</small>
+            <small>{[catalogExpansionName(product), cardNumberText, ...productTypeLabels, cardLanguageBadge(product.language)].filter(Boolean).join(" | ") || "Catalog product"}</small>
             <small>{hasCatalogMarketPrice(product) ? `Market ${money(priceInfo.currentMarketValue)}` : "Market data unavailable"}</small>
           </span>
           <span className="quick-add-result-action">Review/Add</span>
@@ -254,25 +256,40 @@ export default function AddAnythingContent({ scope }) {
       closeFlowModal({ force: true, reset: false });
       window.setTimeout(() => openScoutReportDetail(report, { fallback: report, focus: "details" }), 80);
     };
+    // Nov 27 2026 (non-English cards): a row whose language changes is the card in another
+    // catalog (Japanese, or English for a French copy), so its match is cleared and found again.
+    const CLEARED_CARD_SCAN_MATCH = { matchedProduct: null, matchState: "", matchedBy: "", matchedChoices: [], matchedChoicesBy: "", matchedLabel: "", matchedValue: 0, matchedOthers: 0, matchedFor: "", matchedLanguage: "" };
+    const rematchRelanguagedRows = (before, after) => {
+      const changed = after.filter((row, index) => row !== before[index] && cardScanLanguage(row) !== cardScanLanguage(before[index]));
+      const cleared = new Set(changed.map((row) => row.id));
+      const rows = cleared.size ? after.map((row) => (cleared.has(row.id) ? { ...row, ...CLEARED_CARD_SCAN_MATCH } : row)) : after;
+      return { rows, changed: rows.filter((row) => cleared.has(row.id)) };
+    };
     const updateCardScanRow = (rowId, patch = {}) => {
       const rows = Array.isArray(quickAddWizard.cardScanRows) && quickAddWizard.cardScanRows.length
         ? quickAddWizard.cardScanRows
         : [createQuickAddCardScanRow({ id: "card-scan-row-1" })];
-      updateQuickAddWizard({
-        cardScanRows: rows.map((row) => String(row.id) === String(rowId) ? { ...row, ...patch } : row),
-        message: "",
-      });
+      const updated = rows.map((row) => String(row.id) === String(rowId) ? { ...row, ...patch } : row);
+      // A pick sets its own card and language together: nothing to find again.
+      const { rows: next, changed } = "matchedProduct" in patch ? { rows: updated, changed: [] } : rematchRelanguagedRows(rows, updated);
+      updateQuickAddWizard({ cardScanRows: next, message: "" });
+      if (changed.length && rematchCardScanRows) void rematchCardScanRows(changed);
     };
-    // "Use Reverse Holo for the other cards" (Nov 27 2026): condition or printing on every row.
+    // "Use Reverse Holo for the other cards" (Nov 27 2026): condition, printing or language on every row.
     const applyCardScanDetailToAllRows = (field, value) => {
       const rows = Array.isArray(quickAddWizard.cardScanRows) ? quickAddWizard.cardScanRows : [];
-      updateQuickAddWizard({ cardScanRows: applyCardScanDetailToAll(rows, field, value), message: "" });
+      const { rows: next, changed } = rematchRelanguagedRows(rows, applyCardScanDetailToAll(rows, field, value));
+      updateQuickAddWizard({ cardScanRows: next, message: "" });
+      if (changed.length && rematchCardScanRows) void rematchCardScanRows(changed);
     };
     // Picking one of the cards offered for a scanned row: from the list, or from the
     // "Is this ...? Yes" strip under the camera (Nov 27 2026).
     const pickCardScanChoice = (row, choice) => {
       if (!row || !choice?.product) return;
-      updateCardScanRow(row.id, { matchedProduct: choice.product, matchState: "matched", matchedBy: "picked", matchedOthers: 0, matchedLabel: choice.label, matchedValue: choice.value || 0, matchedChoices: [], matchedFor: `${row.cardName}|${row.cardNumber}` });
+      // The copy takes the picked card's language unless it is already one that card stands for
+      // (a French copy stays French on the English card).
+      const language = languageForCatalogCard(row.language, choice.product.language);
+      updateCardScanRow(row.id, { matchedProduct: choice.product, matchState: "matched", matchedBy: "picked", matchedOthers: 0, matchedLabel: choice.label, matchedValue: choice.value || 0, matchedChoices: [], matchedFor: `${row.cardName}|${row.cardNumber}`, language, matchedLanguage: language, ...(language !== cardScanLanguage(row) ? { languageSource: "picked", languageCheck: false } : {}) });
     };
     // A row typed by hand is marked so it shows before it has a name (Nov 25 2026).
     const addCardScanRow = () => {
@@ -569,7 +586,7 @@ export default function AddAnythingContent({ scope }) {
                   </div>
                 </div>
                 {row.matchedFor === `${row.cardName}|${row.cardNumber}` && row.matchState === "matched" ? (
-                  <p className="quick-add-card-scan-match">Matched: {row.matchedLabel}{row.matchedValue ? ` · ${money(row.matchedValue)}` : ""}{row.matchedBy === "clues" ? " · The number was hard to read, so check this is your card" : row.matchedBy === "numberOnly" ? " · The name was hard to read, so check this is your card" : ""}{row.matchedOthers ? ` · ${row.matchedOthers} other printing${row.matchedOthers === 1 ? "" : "s"}: tap Change to pick another` : ""}</p>
+                  <p className="quick-add-card-scan-match">Matched: {row.matchedLabel}{row.matchedValue ? ` · ${money(row.matchedValue)}` : ""}{(() => { const rule = cardLanguagePriceRule(row.language); return rule.source === "none" || (rule.source === "english" && row.matchedValue) ? ` · ${rule.note}` : ""; })()}{row.matchedBy === "clues" ? " · The number was hard to read, so check this is your card" : row.matchedBy === "numberOnly" ? " · The name was hard to read, so check this is your card" : ""}{row.matchedOthers ? ` · ${row.matchedOthers} other printing${row.matchedOthers === 1 ? "" : "s"}: tap Change to pick another` : ""}</p>
                 ) : row.matchedFor === `${row.cardName}|${row.cardNumber}` && row.matchState === "review" ? (
                   Array.isArray(row.matchedChoices) && row.matchedChoices.some((choice) => choice?.product) ? (
                     <div className="quick-add-card-scan-choices">

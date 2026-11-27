@@ -3,11 +3,15 @@ import {
   CARD_SCAN_CONDITIONS,
   CARD_SCAN_GRADERS,
   CARD_SCAN_GRADES,
+  CARD_SCAN_LANGUAGES,
   CARD_SCAN_SPECIAL_PRINTINGS,
   cardScanCondition,
   cardScanFinishChoices,
   cardScanGradeLabel,
   cardScanGradingPatch,
+  cardScanLanguage,
+  cardScanLanguageLabel,
+  cardScanLanguagePatch,
   cardScanPrinting,
   cardScanPrintingParts,
   cardScanPrintingWith,
@@ -20,6 +24,8 @@ import "./card-scan-row-details.css";
 // changing the condition or marking it as a graded or changing the type (holo, reverse
 // holo) if needed very simple"). Each row shows what it will save as three buttons; a tap
 // opens the choices right under them, and one more tap sets it.
+// Nov 27 2026 (non-English cards): a fourth button for the card's language. A new language
+// finds the card again in that language's catalog (the list does that on onChange).
 export default function CardScanRowDetails({ row, rows = [], cardTitle = "this card", onChange, onApplyToAll }) {
   const id = useId();
   const [open, setOpen] = useState("");
@@ -52,6 +58,12 @@ export default function CardScanRowDetails({ row, rows = [], cardTitle = "this c
     setOpen("");
     offerAll("variant", value, cardScanPrinting({ variant: value }) || "Normal");
   };
+  const language = cardScanLanguage(row);
+  const pickLanguage = (value) => {
+    onChange?.(cardScanLanguagePatch(value));
+    setOpen("");
+    offerAll("language", value, value);
+  };
   const pickCompany = (company) => {
     setOtherCompany(false);
     onChange?.(cardScanGradingPatch(row, company));
@@ -63,7 +75,7 @@ export default function CardScanRowDetails({ row, rows = [], cardTitle = "this c
   );
   return (
     <div className="card-scan-details">
-      <div className="card-scan-details__bar" role="group" aria-label={`Condition, printing and grading for ${cardTitle}`}>
+      <div className="card-scan-details__bar" role="group" aria-label={`Condition, printing, grading and language for ${cardTitle}`}>
         {!graded ? (
           <button type="button" className="card-scan-details__pill" aria-expanded={open === "condition"} aria-controls={`${id}-condition`} aria-label={`Condition: ${condition}. Change`} onClick={() => toggle("condition")}>
             {condition}<span aria-hidden="true" className="card-scan-details__caret">▾</span>
@@ -74,6 +86,9 @@ export default function CardScanRowDetails({ row, rows = [], cardTitle = "this c
         </button>
         <button type="button" className={`card-scan-details__pill${graded ? " is-graded" : ""}`} aria-expanded={open === "grading"} aria-controls={`${id}-grading`} aria-label={`Grading: ${cardScanGradeLabel(row)}. Change`} onClick={() => toggle("grading")}>
           {cardScanGradeLabel(row)}<span aria-hidden="true" className="card-scan-details__caret">▾</span>
+        </button>
+        <button type="button" className={`card-scan-details__pill${row.languageCheck ? " is-check" : ""}`} aria-expanded={open === "language"} aria-controls={`${id}-language`} aria-label={`Language: ${row.languageCheck ? `${language}, please check` : language}. Change`} onClick={() => toggle("language")}>
+          {cardScanLanguageLabel(row)}<span aria-hidden="true" className="card-scan-details__caret">▾</span>
         </button>
       </div>
 
@@ -137,6 +152,15 @@ export default function CardScanRowDetails({ row, rows = [], cardTitle = "this c
             </>
           ) : null}
           <button type="button" className="secondary-button card-scan-details__done" onClick={() => setOpen("")}>Done</button>
+        </div>
+      ) : null}
+
+      {open === "language" ? (
+        <div className="card-scan-details__picker" id={`${id}-language`}>
+          {row.languageCheck ? <p className="card-scan-details__label">Korean and Chinese cards print the same set codes as Japanese ones. Which is this card?</p> : null}
+          <div className="card-scan-details__chips" role="radiogroup" aria-label={`Language of ${cardTitle}`}>
+            {CARD_SCAN_LANGUAGES.map((value) => chip(value, language === value && !row.languageCheck, () => pickLanguage(value)))}
+          </div>
         </div>
       ) : null}
 

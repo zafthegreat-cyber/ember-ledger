@@ -4,6 +4,7 @@
 // for what Save stores, so both are tested.
 import { COMMON_FINISHES, SPECIAL_PRINTINGS, combinePrinting, printingChoices, printingLabel } from "./cardPrintings.mjs";
 import { buildLegacyGradingUpdate } from "./legacyGradingMetadata.mjs";
+import { CARD_LANGUAGES, normalizeCardLanguage } from "./cardLanguage.mjs";
 
 const tidy = (value) => (typeof value === "string" || typeof value === "number" ? String(value).trim() : "");
 
@@ -101,6 +102,30 @@ export function cardScanGradingPatch(row = {}, company) {
   return { graded: true, gradingCompany: name };
 }
 
+// Nov 27 2026 (owner: non-English cards): the card's language is a fourth button. English
+// unless the reader saw otherwise (the code beside the number, a Japanese set code, a slab's
+// label) or it was picked. Changing it finds the card again in that language's catalog.
+export const CARD_SCAN_LANGUAGES = CARD_LANGUAGES;
+
+/** The row's language ("English" when nothing was read or picked). */
+export function cardScanLanguage(row = {}) {
+  return normalizeCardLanguage(row.language);
+}
+
+/**
+ * The language button's words. A Japanese set code is also printed on Korean and Traditional
+ * Chinese cards, so a language taken from it asks to be checked: "Japanese? Check".
+ */
+export function cardScanLanguageLabel(row = {}) {
+  const language = cardScanLanguage(row);
+  return row.languageCheck ? `${language}? Check` : language;
+}
+
+/** What one tap on a language sets on a row (it was picked, so nothing is left to check). */
+export function cardScanLanguagePatch(language) {
+  return { language: normalizeCardLanguage(language), languageSource: "picked", languageCheck: false };
+}
+
 /** One text that says whether two rows hold the same kind of copy. */
 export function cardScanDetailsKey(row = {}) {
   const graded = isCardScanGraded(row);
@@ -108,12 +133,14 @@ export function cardScanDetailsKey(row = {}) {
     graded ? "" : cardScanCondition(row).toLowerCase(),
     cardScanPrinting(row).toLowerCase(),
     graded ? ["graded", tidy(row.gradingCompany).toLowerCase(), tidy(row.grade).toLowerCase(), tidy(row.certificationNumber).toLowerCase()].join(":") : "raw",
+    cardScanLanguage(row).toLowerCase(),
   ].join("|");
 }
 
 /**
- * Sets one detail on every row ("Use Reverse Holo for every card"). Only condition and
- * printing: a grade belongs to one slab. Rows already set that way are left as they are.
+ * Sets one detail on every row ("Use Reverse Holo for every card"). Only condition,
+ * printing and language: a grade belongs to one slab. Rows already set that way are left
+ * as they are.
  */
 export function applyCardScanDetailToAll(rows = [], field, value) {
   const list = Array.isArray(rows) ? rows : [];
@@ -123,6 +150,10 @@ export function applyCardScanDetailToAll(rows = [], field, value) {
   if (field === "variant") {
     const wanted = cardScanPrinting({ variant: value });
     return list.map((row) => (cardScanPrinting(row) === wanted ? row : { ...row, variant: value }));
+  }
+  if (field === "language") {
+    const patch = cardScanLanguagePatch(value);
+    return list.map((row) => (cardScanLanguage(row) === patch.language && !row.languageCheck ? row : { ...row, ...patch }));
   }
   return list;
 }

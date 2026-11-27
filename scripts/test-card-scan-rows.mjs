@@ -223,7 +223,7 @@ assert.match(app, /quantity: copies, ownedQuantity: copies/, "Save all saves eac
   has(flatScreen, `<CardScanRowDetails row={row} rows={rows} cardTitle={title} onChange={(patch) => updateCardScanRow(row.id, patch)} onApplyToAll={applyCardScanDetailToAllRows} /> <details className="quick-add-card-scan-edit"`, "the buttons come before Edit details");
   assert.ok(!flatScreen.includes('<Field label="Variant">') && !flatScreen.includes('<Field label="Condition">'), "no second, typed copy of the same fields");
   has(flatApp, "const details = cardScanSavedDetails(row, scanNotes);", "Save stores what the row shows");
-  has(flatApp, '...details, language: "English",', "the details go on the saved copy");
+  has(flatApp, "...details, language: copyLanguage,", "the details and the copy's language go on the saved copy");
   has(flatApp, "gradedCertificateError({ id: row.id, ...shared }, [...items, ...records])", "a certificate already saved is not added twice");
   has(flatRowDetails, "{!graded ? (", "a slab shows its grade instead of a condition");
   has(flatRowDetails, 'aria-expanded={open === "printing"}', "each button says when its choices are open");

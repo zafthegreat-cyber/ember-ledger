@@ -33,3 +33,6 @@
 .app .card-scan-details__more,
 .app .card-scan-details__all,
 .app .card-scan-details__done { min-height: 44px; justify-self: start; }
+/* Nov 27 2026: a language read from a Japanese set code asks to be checked (Korean and
+   Traditional Chinese cards print the same codes). */
+.app .card-scan-details__pill.is-check { border-style: dashed; border-color: var(--accent-teal, #E3B07A); }
