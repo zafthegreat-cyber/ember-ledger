@@ -229,4 +229,38 @@ assert.match(app, /quantity: copies, ownedQuantity: copies/, "Save all saves eac
   has(flatRowDetails, 'aria-expanded={open === "printing"}', "each button says when its choices are open");
 }
 
+// A slab shown to the camera (Nov 27 2026, owner's slab photos): its label fills in the grading.
+{
+  const { sameSlabListed } = await import("../src/utils/cardScanRows.mjs");
+  const slab = (id, extra = {}) => row(id, "Palafin ex", "151", { scanned: true, graded: true, gradingCompany: "PSA", grade: "9", certificationNumber: "138296840", ...extra });
+  assert.equal(sameSlabListed([slab("a")], slab("b")), true);
+  assert.equal(sameSlabListed([slab("a")], slab("b", { certificationNumber: " 138 296 840 " })), true, "spaces in a certificate do not make it another slab");
+  assert.equal(sameSlabListed([slab("a")], slab("b", { certificationNumber: "138296841" })), false);
+  assert.equal(sameSlabListed([slab("a", { certificationNumber: "" })], slab("b", { certificationNumber: "" })), false, "no certificate read: nothing to compare");
+  // The same slab again adds nothing; another slab of the same card is its own line, never a second copy.
+  let slabs = mergeScannedCardRows([], [slab("a")]);
+  slabs = mergeScannedCardRows(slabs, [slab("b")]);
+  assert.deepEqual(slabs.map((entry) => [entry.id, entry.quantity]), [["a", undefined]]);
+  slabs = mergeScannedCardRows(slabs, [slab("c", { certificationNumber: "99887766" })]);
+  assert.deepEqual(slabs.map((entry) => entry.id), ["a", "c"]);
+  // The raw card scanned after it is a line of its own too.
+  slabs = mergeScannedCardRows(slabs, [row("d", "Palafin ex", "151", { scanned: true })]);
+  assert.deepEqual(slabs.map((entry) => entry.id), ["a", "c", "d"]);
+  // The strip under the camera names the grade with the card.
+  assert.equal(lastScanSummary(slab("a")).title, "Palafin ex · 151 · PSA 9");
+  assert.equal(lastScanSummary(slab("a", { matchedFor: "Palafin ex|151", matchState: "matched", matchedProduct: { name: "Palafin ex", cardNumber: "151/131", setName: "SV: Prismatic Evolutions" } })).title, "Palafin ex · 151/131 · PSA 9");
+  assert.equal(lastScanSummary(row("e", "Pikachu", "025/165")).title, "Pikachu · 025/165", "a raw card's strip is as before");
+  // Wiring: the reader's label goes on the row, a slab has no One more, and a listed slab is not added again.
+  const scanner = readFileSync(new URL("../src/components/MultiCardScanner.jsx", import.meta.url), "utf8").replace(/\s+/g, " ");
+  const reader = readFileSync(new URL("../src/utils/cardPhotoReader.mjs", import.meta.url), "utf8").replace(/\s+/g, " ");
+  const lookup = readFileSync(new URL("../src/components/ProductPhotoLookup.jsx", import.meta.url), "utf8").replace(/\s+/g, " ");
+  const has = (source, piece, why) => assert.ok(source.includes(piece), `${why}: missing "${piece}"`);
+  has(scanner, "...(read.gradedSlab ? { graded: true, gradingCompany: read.gradedSlab.gradingCompany", "the label's grading goes on the row");
+  has(scanner, 'if (sameSlabListed(rowsRef.current, row)) { setStatus("That slab is already in the list."); continue; }', "a listed slab is not added again");
+  has(scanner, ": isCardScanGraded(lastRow) ? null : <button", "a slab has no One more");
+  has(reader, "findSlabInCardText(topKeys.map((key) => byKey[key]).join(\"\\n\"), { nameIndex })", "the reader looks for a label at the top of the picture");
+  has(reader, "gradedSlab: graded,", "the reader hands the grading over");
+  has(lookup, "else if(kind==='card'&&result.gradedSlab)", "the one-card scanner ticks its slab box");
+}
+
 console.log("Card scan rows checks passed.");

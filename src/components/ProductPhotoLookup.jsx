@@ -56,6 +56,8 @@ export default function ProductPhotoLookup({onQuery,onDraftChange,onSlabDetails,
    setText(result.text||'');setSuggestions(result.suggestions||[]);if(!edited.current){onDraftChange?.();setQuery(result.query||'');}
    if(result.listing){const details={site:result.site||'',price:money(result.price),shipping:money(result.shipping),sold:Boolean(result.sold),title:result.title||'',condition:result.condition||'',graded:Boolean(result.graded),gradingCompany:result.gradingCompany||'',grade:result.grade||''};setListingDetails(details);onListingDetails?.(details);}
    if(slab){const details={gradingCompany:result.gradingCompany||'',grade:result.grade||'',certificationNumber:result.certificationNumber||''};setSlabDetails(details);onSlabDetails?.(details);}
+   // Nov 27 2026: a slab scanned with the card frame. The reader found its label, so the slab box is ticked and filled in.
+   else if(kind==='card'&&result.gradedSlab){const details={gradingCompany:result.gradedSlab.gradingCompany||'',grade:result.gradedSlab.grade||'',certificationNumber:result.gradedSlab.certificationNumber||''};setSlab(true);setSlabDetails(details);onSlabDetails?.(details);}
    setMessage(result.message||'Review the text before searching.');
    // A card read with both name and number (or a slab with its card number) is searched straight away; the person still picks the match.
    const confident=result.certainty==='name-and-number'||(slab&&result.number&&result.name);

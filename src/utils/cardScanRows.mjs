@@ -3,9 +3,19 @@
 // - the same card shown to the camera again is one more copy of it (x2), not a new line;
 // - Undo takes back the newest scan of a card (one copy, or the whole line).
 import { cardNameForChoice } from "./catalogResultIdentity.mjs";
-import { cardScanDetailsKey } from "./cardScanDetails.mjs";
+import { cardScanDetailsKey, cardScanGradeLabel, isCardScanGraded } from "./cardScanDetails.mjs";
 
 const clean = (value) => String(value || "").trim().toLowerCase();
+const certOf = (row) => clean(row?.certificationNumber).replace(/\s+/g, "");
+
+/**
+ * A slab whose certificate number is already on a line (Nov 27 2026). One certificate is
+ * one slab, so a slab shown to the camera again is not a second copy of it.
+ */
+export function sameSlabListed(rows = [], row = {}) {
+  const cert = certOf(row);
+  return Boolean(cert) && (Array.isArray(rows) ? rows : []).some((candidate) => certOf(candidate) === cert);
+}
 
 /** Name and number together name a card. A row missing either has no key. */
 export function cardScanRowKey(row = {}) {
@@ -31,6 +41,8 @@ export function cardScanCopies(row = {}) {
 export function mergeScannedCardRows(existing = [], created = []) {
   let rows = (Array.isArray(existing) ? existing : []).filter((row) => row.byHand || row.cardName || row.cardNumber || row.setName || row.variant || row.condition);
   for (const row of Array.isArray(created) ? created : []) {
+    // The same slab again (its certificate is already listed) adds nothing.
+    if (row?.scanned && sameSlabListed(rows, row)) continue;
     const key = row?.scanned ? cardScanRowKey(row) : "";
     const twin = key ? rows.find((candidate) => cardScanRowKey(candidate) === key && (candidate.destination || "vault") === (row.destination || "vault") && cardScanDetailsKey(candidate) === cardScanDetailsKey(row)) : null;
     rows = twin
@@ -74,7 +86,9 @@ export function undoScannedCardRow(rows = [], read = {}) {
 export function lastScanSummary(row, { canPick = false } = {}) {
   if (!row) return { matched: false, offer: null, detail: "", name: "", title: "" };
   const tidy = (value) => String(value || "").trim();
-  const titled = (name, number) => ({ name, title: [name, number].filter(Boolean).join(" · ") });
+  // A slab's grade is part of what was scanned ("Palafin ex · 151/131 · PSA 9").
+  const grade = isCardScanGraded(row) ? cardScanGradeLabel(row) : "";
+  const titled = (name, number) => ({ name, title: [name, number, grade].filter(Boolean).join(" · ") });
   const read = titled(tidy(row.cardName), tidy(row.cardNumber));
   const current = row.matchedFor === `${row.cardName}|${row.cardNumber}`;
   if (current && row.matchState === "matched") {

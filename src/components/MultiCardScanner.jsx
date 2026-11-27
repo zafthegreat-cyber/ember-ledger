@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import { BINDER_LAYOUTS, binderCells, pocketLabel } from "../utils/binderPage.mjs";
-import { lastScanSummary } from "../utils/cardScanRows.mjs";
+import { lastScanSummary, sameSlabListed } from "../utils/cardScanRows.mjs";
+import { isCardScanGraded } from "../utils/cardScanDetails.mjs";
 import "./multi-card-scanner.css";
 
 const CardCameraFrame = lazy(() => import("./CardCameraFrame.jsx"));
@@ -45,7 +46,8 @@ export default function MultiCardScanner({ onRows, autoStart = false, rows = [],
   const lastKeyRef = useRef(""); // the newest card read, to tell a drifted card from a new one
   const aliveRef = useRef(true);
   const onRowsRef = useRef(onRows);
-  useEffect(() => { onRowsRef.current = onRows; });
+  const rowsRef = useRef(rows);
+  useEffect(() => { onRowsRef.current = onRows; rowsRef.current = rows; });
   useEffect(() => { aliveRef.current = true; return () => { aliveRef.current = false; queueRef.current = []; }; }, []);
   // Load the reader while the first card is being lined up, so the first read is not the slow one.
   useEffect(() => { if (mode === "camera") loadReader().then((module) => module.warmCardReader?.()).catch(() => {}); }, [mode]);
@@ -58,6 +60,8 @@ export default function MultiCardScanner({ onRows, autoStart = false, rows = [],
     // number), so the list can still match a card whose number is hidden. Letters only, kept short.
     scanClues: read.clues && typeof read.clues === "object" ? read.clues : null,
     scanText: String(read.text || "").toLowerCase().replace(/[^a-zà-ž]+/g, " ").trim().slice(0, 2500),
+    // Nov 27 2026: a slab's label gave its grader, grade and certificate (the row's grading button shows them).
+    ...(read.gradedSlab ? { graded: true, gradingCompany: read.gradedSlab.gradingCompany || "", grade: read.gradedSlab.grade || "", certificationNumber: read.gradedSlab.certificationNumber || "" } : {}),
     ...extra,
   });
 
@@ -87,7 +91,9 @@ export default function MultiCardScanner({ onRows, autoStart = false, rows = [],
           const key = scanKey(row.cardName, row.cardNumber);
           // The picture followed only a small change in view and reads as the card
           // just added: it is that card again (the hand drifted), not another copy.
-          if (job.sameCardGuard && key === lastKeyRef.current) { setStatus("That's the same card. Have another copy? Tap One more."); continue; }
+          if (job.sameCardGuard && key === lastKeyRef.current) { setStatus(row.graded ? "That's the same slab." : "That's the same card. Have another copy? Tap One more."); continue; }
+          // A certificate number is one slab: shown again, it is not a second copy.
+          if (sameSlabListed(rowsRef.current, row)) { setStatus("That slab is already in the list."); continue; }
           lastKeyRef.current = key;
           onRowsRef.current?.([row]);
           setLast({ cardName: row.cardName, cardNumber: row.cardNumber });
@@ -126,9 +132,10 @@ export default function MultiCardScanner({ onRows, autoStart = false, rows = [],
     </div>
     <div className="multi-card-scanner__last-actions">
       {/* While the card is in question, Yes takes the place of One more: a copy is added once the card is known. */}
+      {/* A slab is one of a kind (its own certificate), so it has no One more. */}
       {lastOffer
         ? <button type="button" className="multi-card-scanner__yes" aria-label={`Yes, this is ${lastOffer.name || "my card"}`} onClick={() => { onPick(lastRow, lastOffer); buzz(30); setStatus(""); }}>Yes</button>
-        : <button type="button" aria-label={`One more copy of ${lastName || "this card"}`} onClick={() => { onRowsRef.current?.([{ cardName: lastRow.cardName, cardNumber: lastRow.cardNumber, scanNote: "", scanned: true }]); setCount((value) => value + 1); setStatus(""); }}>One more</button>}
+        : isCardScanGraded(lastRow) ? null : <button type="button" aria-label={`One more copy of ${lastName || "this card"}`} onClick={() => { onRowsRef.current?.([{ cardName: lastRow.cardName, cardNumber: lastRow.cardNumber, scanNote: "", scanned: true }]); setCount((value) => value + 1); setStatus(""); }}>One more</button>}
       {onUndo ? <button type="button" onClick={() => { onUndo(last); if (lastQuantity <= 1) setLast(null); setCount((value) => Math.max(0, value - 1)); setStatus("Removed that scan."); }}>Undo</button> : null}
     </div>
   </div> : null;
