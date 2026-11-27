@@ -93,7 +93,7 @@ export default function MarketPage(props) {
     { key: "search", icon: "search", label: "Search product", detail: "Card, set, sealed, UPC", action: marketFocusSearch },
     { key: "deal", icon: "market", label: "Check deal", detail: "Ask vs fair range", action: openDealFinderModal },
     { key: "watch", icon: "bell", label: "Watch target", detail: "Price and restock alert", action: () => setTideTradrSubTab("watch") },
-    { key: "add", icon: "vault", label: "Add to Vault", detail: "Save for review", action: () => openProductAddFlow({ source: "market-command-board", seed: { destinations: destinationDefaults({ vault: true }) } }) },
+    { key: "add", icon: "vault", label: "Add to Collection", detail: "Save for review", action: () => openProductAddFlow({ source: "market-command-board", seed: { destinations: destinationDefaults({ vault: true }) } }) },
   ];
   const marketCommandRoutes = [
     { key: "market", icon: "market", label: "Market", title: "Price research", detail: "Search and comps", active: true, action: () => setTideTradrSubTab("overview") },
@@ -101,7 +101,7 @@ export default function MarketPage(props) {
     { key: "compare", icon: "data", label: "Compare", title: "Product Compare", detail: "Hold, buy, sell", action: openDealFinderModal },
     { key: "harbor", icon: "exchange", label: "Harbor", title: "Selling desk", detail: "Listings and proof", action: () => openExchangeSection?.("harbor") },
     { key: "forge", icon: "forge", label: "Business", title: "Trade decisions", detail: "Fairness and records", action: () => openExchangeSection?.("forge") },
-    { key: "vault", icon: "vault", label: "Vault", title: "Save item", detail: "Track ownership", action: () => openProductAddFlow({ source: "market-route-vault", seed: { destinations: destinationDefaults({ vault: true }) } }) },
+    { key: "vault", icon: "vault", label: "Collection", title: "Save item", detail: "Track ownership", action: () => openProductAddFlow({ source: "market-route-vault", seed: { destinations: destinationDefaults({ vault: true }) } }) },
   ];
   const marketResultSource = catalogSearchHasRun ? tideTradrCatalogResults : workspaceWatchlist;
   const marketPreviewItems = marketResultSource.slice(0, visibleResultCount);
@@ -141,7 +141,7 @@ export default function MarketPage(props) {
       title: "Buying Safety",
       detail: "No checkout, no seller matching, no guaranteed stock, and no investment advice in Market.",
       status: "Research only",
-      action: "Add to Vault",
+      action: "Add to Collection",
       onClick: () => openProductAddFlow({ source: "market-safety-vault", seed: { destinations: destinationDefaults({ vault: true }) } }),
     },
   ];
@@ -171,7 +171,7 @@ export default function MarketPage(props) {
         ariaLabel="Market Command Center"
         label="Market"
         title={fullBoard ? "Market Command Center" : "Market"}
-        description={fullBoard ? "Search products, compare fair-value context, manage watch targets, and move researched items into Vault or Exchange without checkout, stock promises, or seller matching." : "Search a card or product, see its price range, and watch the ones you care about."}
+        description={fullBoard ? "Search products, compare fair-value context, manage watch targets, and move researched items into Collection or Sell without checkout, stock promises, or seller matching." : "Search a card or product, see its price range, and watch the ones you care about."}
         primaryAction={{ label: "Search Market", icon: "search", onClick: marketFocusSearch }}
         secondaryActions={[
           { label: "Check Deal", icon: "market", onClick: openDealFinderModal },
@@ -280,7 +280,7 @@ export default function MarketPage(props) {
                     <div className="market-v4-result-actions">
                       <button type="button" onClick={() => openCatalogDetails(product.id || product.productId)}>Details</button>
                       <button type="button" onClick={() => applyCatalogProductToDeal(product.productId || product.id)}>Compare</button>
-                      <button type="button" onClick={() => openMarketProductAddFlow(product, "market-result", { defaultDestination: "vault" })}>Add to Vault</button>
+                      <button type="button" onClick={() => openMarketProductAddFlow(product, "market-result", { defaultDestination: "vault" })}>Add to Collection</button>
                     </div>
                   </article>
                   );
