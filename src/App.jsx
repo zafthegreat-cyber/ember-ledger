@@ -20082,14 +20082,17 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       let others = 0;
       let byClues = false;
       let byNumber = false;
+      // The number's card also has its name in what was read (Raticate 40/102, read right,
+      // picked among the cards that share the number): a plain match, nothing was hard to read.
+      let nameAgrees = false;
       let choices = [];
       let choicesBy = "";
-      try { ({ card: product, others, byClues = false, byNumber = false, choices = [], choicesBy = "" } = await matchScannedCardRow(row)); } catch { product = null; }
+      try { ({ card: product, others, byClues = false, byNumber = false, nameAgrees = false, choices = [], choicesBy = "" } = await matchScannedCardRow(row)); } catch { product = null; }
       const marketValue = product ? Number(getTideTradrMarketInfo(product).currentMarketValue || product.marketPrice || product.midPrice || 0) : 0;
       const labelOf = (card) => [catalogTitle(card), card.setName || card.expansion, card.cardNumber].filter(Boolean).join(" · ");
       const valueOf = (card) => { const value = Number(getTideTradrMarketInfo(card).currentMarketValue || card.marketPrice || card.midPrice || 0); return Number.isFinite(value) && value > 0 ? value : 0; };
       const patch = product
-        ? { matchedProduct: product, matchState: "matched", matchedBy: byClues ? "clues" : byNumber ? "numberOnly" : "number", matchedChoices: [], matchedOthers: others || 0, matchedLabel: labelOf(product), matchedValue: Number.isFinite(marketValue) && marketValue > 0 ? marketValue : 0, matchedFor: `${row.cardName}|${row.cardNumber}` }
+        ? { matchedProduct: product, matchState: "matched", matchedBy: byClues ? "clues" : byNumber && !nameAgrees ? "numberOnly" : "number", matchedChoices: [], matchedOthers: others || 0, matchedLabel: labelOf(product), matchedValue: Number.isFinite(marketValue) && marketValue > 0 ? marketValue : 0, matchedFor: `${row.cardName}|${row.cardNumber}` }
         : { matchedProduct: null, matchState: "review", matchedBy: "", matchedChoicesBy: choicesBy === "number" || choicesBy === "either" ? choicesBy : "", matchedChoices: (choices || []).slice(0, 4).map((card) => ({ product: card, label: labelOf(card), name: cardNameForChoice(catalogTitle(card)), short: [card.setName || card.expansion, card.cardNumber].filter(Boolean).join(" · "), value: valueOf(card) })), matchedLabel: "", matchedValue: 0, matchedFor: `${row.cardName}|${row.cardNumber}` };
       setQuickAddWizard((current) => ({
         ...current,

@@ -137,7 +137,10 @@ test("wiring: the app tries the number before the clues, and says the name was h
   has(app, "return settleScanMatch(byNumber, byClues);", "the two matches are settled by the tested rule");
   has(app, 'if (picked.card && !picked.sure) return { card: null, others: 0, choices: [picked.card], choicesBy: "number" };', "an unsure pick is offered, not filed");
   has(app, 'nameAgrees: picked.why.includes("name")', "the app knows when the name agrees");
-  has(app, 'matchedBy: byClues ? "clues" : byNumber ? "numberOnly" : "number"', "the row remembers how it was matched");
+  // Seen on the owner's Raticate 40/102 (Nov 27 2026): name and number both read right, the
+  // card picked among those sharing the number, and the row still said the name was hard to read.
+  has(app, 'matchedBy: byClues ? "clues" : byNumber && !nameAgrees ? "numberOnly" : "number"', "the row says the name was hard to read only when the name did not agree");
+  has(app, "byNumber = false, nameAgrees = false, choices = []", "the row is told whether the name agreed");
   has(app, 'const fullNumber = String(row.cardNumber || "").includes("/");', "a row with a full number and no name is still matched");
   has(app, "The card name was hard to read, so the card was matched from its number and other details.", "the saved note says how");
   const screen = flat("../src/features/deferredViews/AddAnythingContent.jsx");
@@ -162,6 +165,35 @@ test("an offered card is named without the number some catalog rows put in the n
   assert.equal(cardNameForChoice("080/091"), "080/091", "a name that is only a number is kept");
   assert.equal(cardNameForChoice(""), "");
   assert.equal(cardNameForChoice(null), "");
+});
+
+test("the search for a number with any set total has an index it can use", () => {
+  // The older search asks for card_number ilike '100' or ilike '100/%'. Without an index
+  // ordered character by character the catalog read every row for it: 1.4 s for the rows
+  // and 1.0 s for the count on Nov 27 2026 (10 ms and 7 ms with the index).
+  const flat = (path) => readFileSync(new URL(path, import.meta.url), "utf8").replace(/\s+/g, " ");
+  const service = flat("../src/services/pokemonCatalogSearch.js");
+  assert.ok(service.includes("`card_number.ilike.${value}`, `card_number.ilike.${value}/%`"), "the search still asks by the start of the number");
+  const migration = flat("../supabase/migrations/20261127050000_catalog_card_number_prefix_index.sql");
+  assert.ok(migration.includes("create index if not exists master_catalog_items_card_number_prefix_idx on public.master_catalog_items (card_number text_pattern_ops);"), "the index compares character by character and covers every row");
+});
+
+test("a row that stores only the card's own number needs the exact name", async () => {
+  const { pickScannedCard } = await import("../src/utils/catalogResultIdentity.mjs");
+  // Real catalog rows (Nov 27 2026). The owner's Articuno 032/159 was read as "032/250".
+  const promo = { id: "promo", name: "Articuno ex - 032 (EX Collector's Window Tins)", setName: "Nintendo Promos", cardNumber: "032" };
+  assert.equal(pickScannedCard({ name: "Articuno", number: "032/250" }, [promo]).card, null, "filed at $214.90 before");
+  // A row with only the card's own number still matches when the name is exactly its name.
+  const bare = { id: "bare", name: "Charizard", setName: "Base Set", cardNumber: "4" };
+  assert.equal(pickScannedCard({ name: "Charizard", number: "4/102" }, [bare]).card, bare);
+  assert.equal(pickScannedCard({ name: "Charizard", number: "4/102" }, [promo, bare]).card, bare);
+  // A full number on a row is still taken on the usual near-miss name rules.
+  const full = { id: "full", name: "Charizard", setName: "Base Set", cardNumber: "004/102" };
+  assert.equal(pickScannedCard({ name: "Charizarb", number: "4/102" }, [full, bare]).card, full);
+  // Without the full number on any row, a near miss is not enough for a bare row.
+  assert.equal(pickScannedCard({ name: "Charizarb", number: "4/102" }, [bare]).card, null);
+  // "Pikachu" is not "Pikachu V".
+  assert.equal(pickScannedCard({ name: "Pikachu", number: "25/185" }, [{ id: "v", name: "Pikachu V", setName: "Vivid Voltage Promos", cardNumber: "25" }]).card, null);
 });
 
 test("a card found by number never overrides a good match on the name that was read", async () => {

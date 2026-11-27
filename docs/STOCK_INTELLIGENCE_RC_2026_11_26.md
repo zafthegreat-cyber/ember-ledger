@@ -5,10 +5,14 @@ Supabase Auth staging acceptance. Passing synthetic tests is not that acceptance
 
 ## Main reconciliation
 
-Merged main `dabed6311f4fc243cd9fa0162266401d94a627df` into feature head
+Initially merged main `dabed6311f4fc243cd9fa0162266401d94a627df` into feature head
 `5a16a19bf845491b026ad1f0b7862757be07d5a1` with both parents retained.
-All 27 newer main commits are included. Catalog data, camera/scanner changes,
-card printing prices, reviewed card backs and App.jsx match that main snapshot.
+During validation main advanced by four more commits. A second reviewed merge
+includes `1781bb2c9f5fac1e32a7ef50f80c051a6a7577b5`, bringing the total to 31
+newer main commits. Catalog data, camera/scanner changes, card printing prices,
+reviewed card backs and App.jsx match this final main snapshot. The later scanner
+confirmation/save fixes and card-number prefix-index migration are preserved;
+no hosted migration was run by this work.
 The combined workflow retains main's catalog Postgres tests, new picture-quality
 browser test, all inventory suites and the disposable opt-in RLS job.
 
@@ -40,6 +44,9 @@ CORS, anonymous denial and demotion/revocation checks remain required.
 - The hosted inbound function is still v2. Its old profile check uses a service
   key and requires both admin fields; it lacks the PR's current-session guard
   and explicit preview-origin configuration. It was inspected only, not updated.
+- Read-only preflights for both staff endpoints allow the production web origin
+  (204) and reject this candidate preview origin (403, no allow-origin header).
+  Real staff operations must be validated on an isolated backend.
 - The preferences table is absent. Six retailer sources exist, all disconnected;
   zero stock signals and zero warehouse reports exist.
 
@@ -74,6 +81,8 @@ real Supabase JWT/session behavior, gateway CORS, or the deployed staff function
 
 - Locked dependency installation: zero audit vulnerabilities.
 - Focused stock/consent/intake/project-isolation tests: 60 passed, zero skipped.
+- After the second main reconciliation, the 60 stock tests plus 27 affected
+  scanner/card-identity tests pass (87 total); source lint and build pass again.
 - Connected sign-in regression tests: 41 passed.
 - National-launch checks: 7 passed. Synthetic browser tests passed at 390px and
   1440px for warehouse visibility, sign-out, consent save/delete, account switching
@@ -82,6 +91,9 @@ real Supabase JWT/session behavior, gateway CORS, or the deployed staff function
   chunk: App, 1914.3 KiB, below the 2304 KiB limit (location index excluded by CI).
 - Final GitHub CI and commit-bound Vercel preview results are recorded on PR #50
   after the reconciled branch is pushed.
+- Vercel emits four TS2339 diagnostics in the unchanged billing service. The
+  earlier main production deployment has the identical diagnostics; a READY
+  preview is not a clean backend type-check claim.
 
 No production merge, deployment, migration, notification, retailer scrape or
 connection-state update is authorized by this candidate validation.

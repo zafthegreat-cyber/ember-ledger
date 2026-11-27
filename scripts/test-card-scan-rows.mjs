@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { cardScanCopies, cardScanRowKey, mergeScannedCardRows, undoScannedCardRow } from "../src/utils/cardScanRows.mjs";
+import { cardScanCopies, cardScanRowKey, lastScanSummary, mergeScannedCardRows, undoScannedCardRow } from "../src/utils/cardScanRows.mjs";
 
 // Scan cards, continuous scanning (Nov 25 2026).
 const row = (id, cardName, cardNumber, extra = {}) => ({ id, cardName, cardNumber, destination: "vault", ...extra });
@@ -63,8 +63,59 @@ assert.equal(undoScannedCardRow(list, {}), list);
 const nameOnly = undoScannedCardRow([row("f", "Pikachu", ""), row("g", "Pikachu", "")], { cardName: "Pikachu", cardNumber: "" });
 assert.deepEqual(nameOnly.map((entry) => entry.id), ["f"]);
 
+// The strip under the camera (Nov 27 2026): one offered card is asked about right there.
+{
+  const lokix = { product: { id: "lokix" }, name: "Lokix", short: "SV09: Journey Together · 100/159", label: "Lokix · SV09: Journey Together · 100/159", value: 0.11 };
+  const rayquaza = { product: { id: "ray" }, name: "Rayquaza V", short: "SWSH: Crown Zenith · 100/159", value: 2 };
+  const scanned = (extra = {}) => ({ id: "s", cardName: "Nymble", cardNumber: "100/159", matchedFor: "Nymble|100/159", ...extra });
+  assert.deepEqual(lastScanSummary(null), { matched: false, offer: null, detail: "", name: "", title: "" });
+  // The strip names the card that was filed, not the misread name; before that, what was read.
+  const filed = lastScanSummary(scanned({ cardName: "Zqgxv Wopl", cardNumber: "080/091", matchedFor: "Zqgxv Wopl|080/091", matchState: "matched", matchedProduct: { name: "Iono - 080/091", setName: "SV: Paldean Fates", cardNumber: "080/091" } }));
+  assert.deepEqual([filed.title, filed.name, filed.detail], ["Iono · 080/091", "Iono", "SV: Paldean Fates"]);
+  assert.equal(lastScanSummary(scanned({ cardName: "Pikachu", cardNumber: "", matchedFor: "Pikachu|", matchState: "matched", matchedProduct: { cardName: "Pikachu", cardNumber: "025/165" } })).title, "Pikachu · 025/165", "a number the reader missed comes from the card");
+  assert.equal(lastScanSummary(scanned({ matchState: "matched", matchedProduct: {} })).title, "Nymble · 100/159", "a card with no name of its own keeps what was read");
+  assert.equal(lastScanSummary(scanned({ matchState: "review", matchedChoices: [lokix] }), { canPick: true }).title, "Nymble · 100/159", "not filed yet: what was read");
+  assert.equal(lastScanSummary({ cardName: " ", cardNumber: " 12/34 " }).title, "12/34");
+  assert.equal(lastScanSummary(scanned({ matchedFor: "" })).detail, "Finding its price…");
+  // Matched: the set, as before.
+  const matched = lastScanSummary(scanned({ matchState: "matched", matchedProduct: { setName: "SV09: Journey Together" } }), { canPick: true });
+  assert.deepEqual([matched.matched, matched.offer, matched.detail], [true, null, "SV09: Journey Together"]);
+  // One card offered: asked by name, and Yes can file it.
+  const one = lastScanSummary(scanned({ matchState: "review", matchedChoices: [lokix] }), { canPick: true });
+  assert.equal(one.offer, lokix);
+  assert.equal(one.detail, "Is this Lokix? SV09: Journey Together · 100/159");
+  assert.equal(one.matched, false);
+  // The offer comes before "Name not read": the question is the useful line.
+  assert.equal(lastScanSummary(scanned({ matchState: "review", matchedChoices: [lokix], scanNote: "Name not read" }), { canPick: true }).detail, "Is this Lokix? SV09: Journey Together · 100/159");
+  // A choice saved before names were kept still asks a question.
+  assert.equal(lastScanSummary(scanned({ matchState: "review", matchedChoices: [{ product: { id: "x" }, short: "Set · 1/2" }] }), { canPick: true }).detail, "Is this your card? Set · 1/2");
+  // Nothing to file it with: no offer, the list is pointed at.
+  const noPick = lastScanSummary(scanned({ matchState: "review", matchedChoices: [lokix] }));
+  assert.deepEqual([noPick.offer, noPick.detail], [null, "Not sure which card this is. Check it in the list below."]);
+  // Two cards: picked in the list.
+  const two = lastScanSummary(scanned({ matchState: "review", matchedChoices: [lokix, rayquaza] }), { canPick: true });
+  assert.deepEqual([two.offer, two.detail], [null, "Not sure which card this is. Pick it in the list below."]);
+  // A choice with no card behind it does not count.
+  assert.equal(lastScanSummary(scanned({ matchState: "review", matchedChoices: [lokix, { product: null }] }), { canPick: true }).offer, lokix);
+  // No choices: as before.
+  assert.equal(lastScanSummary(scanned({ matchState: "review", matchedChoices: [] }), { canPick: true }).detail, "Not sure which card this is. Check it in the list below.");
+  assert.equal(lastScanSummary(scanned({ matchState: "review", scanNote: "Number not read" }), { canPick: true }).detail, "Number not read. Check it in the list below.");
+  // An answer for an older reading of the row (the name was edited since) is not used.
+  assert.equal(lastScanSummary(scanned({ matchState: "review", matchedChoices: [lokix], matchedFor: "Nymbel|100/159" }), { canPick: true }).offer, null);
+}
+
 // Wiring: the scanner reads in the background and the app uses these helpers.
 const scanner = readFileSync(new URL("../src/components/MultiCardScanner.jsx", import.meta.url), "utf8");
+{
+  const flatScanner = scanner.replace(/\s+/g, " ");
+  const flatScreen = readFileSync(new URL("../src/features/deferredViews/AddAnythingContent.jsx", import.meta.url), "utf8").replace(/\s+/g, " ");
+  const has = (source, piece, why) => assert.ok(source.includes(piece), `${why}: missing "${piece}"`);
+  has(flatScanner, "lastScanSummary(lastRow, { canPick: Boolean(onPick) })", "the strip uses the tested summary");
+  has(flatScanner, "<strong>{lastTitle}", "the strip shows the summary's title");
+  has(flatScanner, 'className="multi-card-scanner__yes" aria-label={`Yes, this is ${lastOffer.name || "my card"}`} onClick={() => { onPick(lastRow, lastOffer);', "Yes files the offered card");
+  has(flatScreen, "onPick={pickCardScanChoice}", "the list hands the scanner its own pick step");
+  has(flatScreen, "onClick={() => pickCardScanChoice(row, choice)}", "the list buttons use the same step");
+}
 assert.match(scanner, /queueRef\.current\.push\(/, "Pictures join a line to be read");
 assert.match(scanner, /<CardCameraFrame continuous retryKey=\{retryKey\}/, "The camera stays free and can retry a failed read once");
 assert.match(scanner, /below=\{lastCard \|\| reading/, "The last card shows straight under the camera picture");

@@ -260,6 +260,12 @@ export default function AddAnythingContent({ scope }) {
         message: "",
       });
     };
+    // Picking one of the cards offered for a scanned row: from the list, or from the
+    // "Is this ...? Yes" strip under the camera (Nov 27 2026).
+    const pickCardScanChoice = (row, choice) => {
+      if (!row || !choice?.product) return;
+      updateCardScanRow(row.id, { matchedProduct: choice.product, matchState: "matched", matchedBy: "picked", matchedOthers: 0, matchedLabel: choice.label, matchedValue: choice.value || 0, matchedChoices: [], matchedFor: `${row.cardName}|${row.cardNumber}` });
+    };
     // A row typed by hand is marked so it shows before it has a name (Nov 25 2026).
     const addCardScanRow = () => {
       const rows = Array.isArray(quickAddWizard.cardScanRows) ? quickAddWizard.cardScanRows : [];
@@ -505,7 +511,7 @@ export default function AddAnythingContent({ scope }) {
       return (
         <div className="add-anything-flow add-anything-card-page-review">
           {renderFlowHeader("Scan cards", "Scan one card or a whole stack. Each card is matched with its price. Check the list, then tap Save.")}
-          {appendQuickAddCardScanRows ? <MultiCardScanner onRows={appendQuickAddCardScanRows} autoStart={!rows.length} rows={rows} onUndo={undoQuickAddCardScan} money={money} /> : null}
+          {appendQuickAddCardScanRows ? <MultiCardScanner onRows={appendQuickAddCardScanRows} autoStart={!rows.length} rows={rows} onUndo={undoQuickAddCardScan} onPick={pickCardScanChoice} money={money} /> : null}
           {cardScanSetProgress?.length ? (
             <section className="card-scan-set-progress" aria-label="Set progress">
               {cardScanSetProgress.map((set) => (
@@ -560,7 +566,7 @@ export default function AddAnythingContent({ scope }) {
                         ? (row.matchedChoices.length === 1 ? "The name was hard to read. Is this your card?" : "The name was hard to read. Which one is your card?")
                         : (row.matchedChoices.length === 1 ? "The number was hard to read. Is this your card?" : "The number was hard to read. Which one is your card?")}</p>
                       {row.matchedChoices.filter((choice) => choice?.product).map((choice) => (
-                        <button type="button" className="secondary-button" key={String(choice.product.id)} onClick={() => updateCardScanRow(row.id, { matchedProduct: choice.product, matchState: "matched", matchedBy: "picked", matchedOthers: 0, matchedLabel: choice.label, matchedValue: choice.value || 0, matchedChoices: [], matchedFor: `${row.cardName}|${row.cardNumber}` })}>
+                        <button type="button" className="secondary-button" key={String(choice.product.id)} onClick={() => pickCardScanChoice(row, choice)}>
                           {/* Nov 27 2026: the name is the part the person needs when the name was hard to read. */}
                           {(row.matchedChoicesBy === "number" || row.matchedChoicesBy === "either") && choice.name ? `${choice.name} · ` : ""}{choice.short}{choice.value ? ` · ${money(choice.value)}` : ""}
                         </button>
