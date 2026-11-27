@@ -1971,9 +1971,9 @@ async function main() {
       // Collector Add sheet: the common actions first, the rest under More.
       await assertVisibleText("Report a restock");
       await assertVisibleText("Add to my collection");
-      await assertNotVisibleText("Scan several cards");
+      await assertVisibleText("Scan cards");
+      await assertNotVisibleText("Request Missing Item");
       await quickAddModal.locator("summary", { hasText: /^More$/ }).click();
-      await assertVisibleText("Scan several cards");
       await assertVisibleText("Request Missing Item");
       await quickAddModal.locator(".modal-close-button").click();
       await quickAddModal.waitFor({ state: "hidden", timeout: 5000 });
@@ -3915,7 +3915,7 @@ async function main() {
     await clickAddWizardNext();
     await clickAddWizardNext();
     await page.locator(".flow-modal").getByRole("button", { name: /Save and Close/ }).click();
-    await assertVisibleText("saved to Vault");
+    await assertVisibleText("your collection x1");
     await page.locator(".flow-modal").getByRole("button", { name: /^Finish$/ }).click();
     await marketAddModal.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
 

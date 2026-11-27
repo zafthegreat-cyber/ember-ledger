@@ -57,6 +57,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+          # Keeps Gradle downloads between runs so builds rely less on Maven Central.
+          cache: gradle
       - run: npm ci
       - run: npm run test:native
       - run: node scripts/test-native-build-readiness.mjs
@@ -89,7 +91,14 @@ jobs:
           CODE3_ANDROID_STORE_PASSWORD: ${{ secrets.CODE3_ANDROID_STORE_PASSWORD }}
           CODE3_ANDROID_KEY_ALIAS: ${{ secrets.CODE3_ANDROID_KEY_ALIAS }}
           CODE3_ANDROID_KEY_PASSWORD: ${{ secrets.CODE3_ANDROID_KEY_PASSWORD }}
-        run: chmod +x android/gradlew && cd android && ./gradlew bundleRelease assembleRelease
+        # Maven Central sometimes answers 429 Too Many Requests; wait and try again.
+        run: |
+          chmod +x android/gradlew && cd android
+          for attempt in 1 2 3; do
+            ./gradlew bundleRelease assembleRelease && exit 0
+            if [ "$attempt" -lt 3 ]; then echo "::warning::Gradle build attempt $attempt failed; retrying in 90 seconds."; sleep 90; fi
+          done
+          exit 1
       - name: Remove temporary keystore
         if: always()
         run: |

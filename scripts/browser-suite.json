@@ -34,6 +34,7 @@
     "test-login-presentation.cjs",
     "test-restock-shortcuts-browser.cjs",
     "test-add-scan-layout-browser.cjs",
+    "test-continuous-scan-browser.cjs",
     "beta-smoke.cjs",
     "test-multi-game-browser.cjs",
     "test-collection-sets-browser.cjs",
@@ -42,6 +43,7 @@
     "test-adaptive-restock-home-browser.cjs",
     "test-restock-details-browser.cjs",
     "test-restock-phone-navigation-browser.cjs",
+    "test-restock-map-browser.cjs",
     "test-restock-report-browser.cjs",
     "test-restock-save-reload-browser.cjs",
     "test-restock-feed-browser.cjs",
@@ -90,7 +92,10 @@
     "test-private-beta-journeys.cjs",
     "test-scout-store-presentation.cjs",
     "test-semantic-theme.cjs",
-    "test-stock-screenshot-import-browser.cjs"
+    "test-stock-screenshot-import-browser.cjs",
+    "test-scan-picture-quality-browser.cjs",
+    "test-guest-preview-bar-browser.cjs",
+    "test-you-page-header-browser.cjs"
   ],
   "knownFailing": []
 }

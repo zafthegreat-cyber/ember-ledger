@@ -7,7 +7,7 @@ const { chromium } = require("@playwright/test");
     // Home's resale shortcuts (Find deals, Inventory, Sales, Purchases) are only shown to
     // seller/store personas since "Prioritize restocks and personalize Home and Add" (783a4fc),
     // so seed a seller persona before the app loads.
-    const context = await browser.newContext({ viewport: { width: 360, height: 800 } });
+    const context = await browser.newContext({ viewport: { width: 360, height: 800 } }); await context.addInitScript(require("./lib/open-home-more.cjs"));
     await context.addInitScript(() => {
       if (localStorage.getItem("__qa_workspace_polish_seeded")) return;
       localStorage.setItem("__qa_workspace_polish_seeded", "true");

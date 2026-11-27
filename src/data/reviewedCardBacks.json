@@ -1991,6 +1991,12 @@
       "cardNumber": "60/100",
       "asset": "worlds2004"
     },
+    "477383": {
+      "name": "Fighting Energy 2004 Tsuguyoshi Yamato",
+      "setName": "World Championship Decks",
+      "cardNumber": "105/109",
+      "asset": "worlds2004"
+    },
     "477384": {
       "name": "Fire Energy 2004 Chris Fulop",
       "setName": "World Championship Decks",
@@ -2585,6 +2591,24 @@
       "cardNumber": "61/101",
       "asset": "worlds2005"
     },
+    "477523": {
+      "name": "Fighting Energy 2005 Curran Hill",
+      "setName": "World Championship Decks",
+      "cardNumber": "",
+      "asset": "worlds2005"
+    },
+    "477524": {
+      "name": "Fighting Energy 2005 Takashi Yoneda",
+      "setName": "World Championship Decks",
+      "cardNumber": "",
+      "asset": "worlds2005"
+    },
+    "477525": {
+      "name": "Fighting Energy 2005 Jeremy Maron",
+      "setName": "World Championship Decks",
+      "cardNumber": "",
+      "asset": "worlds2005"
+    },
     "477526": {
       "name": "Grass Energy 2005 Jeremy Maron",
       "setName": "World Championship Decks",
@@ -3063,6 +3087,12 @@
       "name": "Espeon ex 2006 Jimmy Ballard",
       "setName": "World Championship Decks",
       "cardNumber": "102/115",
+      "asset": "worlds2006"
+    },
+    "477616": {
+      "name": "Fighting Energy 2006 Miska Saari",
+      "setName": "World Championship Decks",
+      "cardNumber": "",
       "asset": "worlds2006"
     },
     "477617": {
@@ -3677,6 +3707,12 @@
       "cardNumber": "73/92",
       "asset": "worlds2007"
     },
+    "479663": {
+      "name": "Fighting Energy 2007 Jeremy Scharff Kim",
+      "setName": "World Championship Decks",
+      "cardNumber": "",
+      "asset": "worlds2007"
+    },
     "479668": {
       "name": "Flygon Delta Species 2007 Jun Hasebe",
       "setName": "World Championship Decks",
@@ -3903,6 +3939,12 @@
       "name": "Multi Energy 2007 Tom Roos",
       "setName": "World Championship Decks",
       "cardNumber": "96/110",
+      "asset": "worlds2007"
+    },
+    "479710": {
+      "name": "Phoebes Stadium 2007 Jeremy Scharff Kim",
+      "setName": "World Championship Decks",
+      "cardNumber": "79/108",
       "asset": "worlds2007"
     },
     "479712": {
@@ -4673,6 +4715,12 @@
       "cardNumber": "85/100",
       "asset": "worlds2008"
     },
+    "479852": {
+      "name": "Aarons Collection 2009 Tsubasa Nakamura",
+      "setName": "World Championship Decks",
+      "cardNumber": "88/111",
+      "asset": "worlds2009"
+    },
     "479853": {
       "name": "Azelf 2009 Tsubasa Nakamura",
       "setName": "World Championship Decks",
@@ -4697,6 +4745,12 @@
       "cardNumber": "60/106",
       "asset": "worlds2009"
     },
+    "479857": {
+      "name": "Baltoy 2009 Jason Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "60/106",
+      "asset": "worlds2009"
+    },
     "479858": {
       "name": "Baltoy 2009 David Cohen",
       "setName": "World Championship Decks",
@@ -4711,6 +4765,12 @@
     },
     "479860": {
       "name": "Bebes Search 2009 Stephen Silvestro",
+      "setName": "World Championship Decks",
+      "cardNumber": "89/111",
+      "asset": "worlds2009"
+    },
+    "479861": {
+      "name": "Bebes Search 2009 Jason Martinez",
       "setName": "World Championship Decks",
       "cardNumber": "89/111",
       "asset": "worlds2009"
@@ -4739,10 +4799,22 @@
       "cardNumber": "104/127",
       "asset": "worlds2009"
     },
+    "479866": {
+      "name": "Broken Time Space 2009 Jason Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "104/127",
+      "asset": "worlds2009"
+    },
     "479867": {
       "name": "Bronzong G 2009 Tsubasa Nakamura",
       "setName": "World Championship Decks",
       "cardNumber": "41/127",
+      "asset": "worlds2009"
+    },
+    "479868": {
+      "name": "Call Energy 2009 Jason Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "92/100",
       "asset": "worlds2009"
     },
     "479869": {
@@ -4763,6 +4835,12 @@
       "cardNumber": "15/106",
       "asset": "worlds2009"
     },
+    "479872": {
+      "name": "Claydol 2009 Jason Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "15/106",
+      "asset": "worlds2009"
+    },
     "479873": {
       "name": "Claydol 2009 David Cohen",
       "setName": "World Championship Decks",
@@ -4777,6 +4855,12 @@
     },
     "479875": {
       "name": "Crobat G 2009 Stephen Silvestro",
+      "setName": "World Championship Decks",
+      "cardNumber": "47/127",
+      "asset": "worlds2009"
+    },
+    "479876": {
+      "name": "Crobat G 2009 Jason Martinez",
       "setName": "World Championship Decks",
       "cardNumber": "47/127",
       "asset": "worlds2009"
@@ -4823,6 +4907,12 @@
       "cardNumber": "27/146",
       "asset": "worlds2009"
     },
+    "479897": {
+      "name": "Fighting Energy 2009 David Cohen",
+      "setName": "World Championship Decks",
+      "cardNumber": "",
+      "asset": "worlds2009"
+    },
     "479898": {
       "name": "Flygon 2009 David Cohen",
       "setName": "World Championship Decks",
@@ -4841,10 +4931,28 @@
       "cardNumber": "106/127",
       "asset": "worlds2009"
     },
+    "479901": {
+      "name": "Gastly 2009 Jason Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "62/100",
+      "asset": "worlds2009"
+    },
+    "479902": {
+      "name": "Gengar 2009 Jason Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "18/100",
+      "asset": "worlds2009"
+    },
     "479903": {
       "name": "Grass Energy 2009 Stephen Silvestro",
       "setName": "World Championship Decks",
       "cardNumber": "",
+      "asset": "worlds2009"
+    },
+    "479904": {
+      "name": "Haunter 2009 Jason Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "40/100",
       "asset": "worlds2009"
     },
     "479905": {
@@ -4869,6 +4977,12 @@
       "name": "Lightning Energy 2009 Stephen Silvestro",
       "setName": "World Championship Decks",
       "cardNumber": "",
+      "asset": "worlds2009"
+    },
+    "479909": {
+      "name": "Lookers Investigation 2009 Jason Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "109/127",
       "asset": "worlds2009"
     },
     "479910": {
@@ -4907,6 +5021,12 @@
       "cardNumber": "86/100",
       "asset": "worlds2009"
     },
+    "479916": {
+      "name": "Luxury Ball 2009 Jason Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "86/100",
+      "asset": "worlds2009"
+    },
     "479917": {
       "name": "Luxury Ball 2009 David Cohen",
       "setName": "World Championship Decks",
@@ -4931,10 +5051,22 @@
       "cardNumber": "144/146",
       "asset": "worlds2009"
     },
+    "479924": {
+      "name": "Moonlight Stadium 2009 Tsubasa Nakamura",
+      "setName": "World Championship Decks",
+      "cardNumber": "100/106",
+      "asset": "worlds2009"
+    },
     "479925": {
       "name": "Multi Energy 2009 Stephen Silvestro",
       "setName": "World Championship Decks",
       "cardNumber": "118/123",
+      "asset": "worlds2009"
+    },
+    "479927": {
+      "name": "Nidoqueen 2009 Jason Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "30/111",
       "asset": "worlds2009"
     },
     "479929": {
@@ -4943,10 +5075,22 @@
       "cardNumber": "30/111",
       "asset": "worlds2009"
     },
+    "479930": {
+      "name": "Nidoran F 2009 Jason Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "71/111",
+      "asset": "worlds2009"
+    },
     "479931": {
       "name": "Nidoran F 2009 David Cohen",
       "setName": "World Championship Decks",
       "cardNumber": "71/111",
+      "asset": "worlds2009"
+    },
+    "479932": {
+      "name": "Nidorina 2009 Jason Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "73/111",
       "asset": "worlds2009"
     },
     "479933": {
@@ -4957,6 +5101,12 @@
     },
     "479934": {
       "name": "Night Maintenance 2009 Stephen Silvestro",
+      "setName": "World Championship Decks",
+      "cardNumber": "120/132",
+      "asset": "worlds2009"
+    },
+    "479935": {
+      "name": "Night Maintenance 2009 Jason Martinez",
       "setName": "World Championship Decks",
       "cardNumber": "120/132",
       "asset": "worlds2009"
@@ -4985,6 +5135,12 @@
       "cardNumber": "89/100",
       "asset": "worlds2009"
     },
+    "479940": {
+      "name": "Pokedex HANDY910is 2009 Jason Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "114/127",
+      "asset": "worlds2009"
+    },
     "479941": {
       "name": "Premier Ball 2009 David Cohen",
       "setName": "World Championship Decks",
@@ -4993,6 +5149,12 @@
     },
     "479942": {
       "name": "Psychic Energy 2009 Tsubasa Nakamura",
+      "setName": "World Championship Decks",
+      "cardNumber": "",
+      "asset": "worlds2009"
+    },
+    "479943": {
+      "name": "Psychic Energy 2009 Jason Martinez",
       "setName": "World Championship Decks",
       "cardNumber": "",
       "asset": "worlds2009"
@@ -5009,6 +5171,12 @@
       "cardNumber": "102/106",
       "asset": "worlds2009"
     },
+    "479946": {
+      "name": "Rare Candy 2009 Jason Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "102/105",
+      "asset": "worlds2009"
+    },
     "479947": {
       "name": "Rare Candy 2009 David Cohen",
       "setName": "World Championship Decks",
@@ -5023,6 +5191,12 @@
     },
     "479949": {
       "name": "Roseannes Research 2009 Stephen Silvestro",
+      "setName": "World Championship Decks",
+      "cardNumber": "125/132",
+      "asset": "worlds2009"
+    },
+    "479950": {
+      "name": "Roseannes Research 2009 Jason Martinez",
       "setName": "World Championship Decks",
       "cardNumber": "125/132",
       "asset": "worlds2009"
@@ -5081,6 +5255,12 @@
       "cardNumber": "118/127",
       "asset": "worlds2009"
     },
+    "479961": {
+      "name": "Team Galactics Invention G 105 Poke Turn 2009 Jason Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "118/127",
+      "asset": "worlds2009"
+    },
     "479962": {
       "name": "Team Galactics Invention G 109 SP Radar 2009 Tsubasa Nakamura",
       "setName": "World Championship Decks",
@@ -5123,6 +5303,12 @@
       "cardNumber": "57/106",
       "asset": "worlds2009"
     },
+    "479969": {
+      "name": "Unown G 2009 Jason Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "57/106",
+      "asset": "worlds2009"
+    },
     "479970": {
       "name": "Unown G 2009 David Cohen",
       "setName": "World Championship Decks",
@@ -5137,6 +5323,12 @@
     },
     "479973": {
       "name": "Uxie 2009 Tsubasa Nakamura",
+      "setName": "World Championship Decks",
+      "cardNumber": "43/146",
+      "asset": "worlds2009"
+    },
+    "479975": {
+      "name": "Uxie 2009 Jason Martinez",
       "setName": "World Championship Decks",
       "cardNumber": "43/146",
       "asset": "worlds2009"
@@ -5165,6 +5357,12 @@
       "cardNumber": "88/100",
       "asset": "worlds2009"
     },
+    "479983": {
+      "name": "Warp Point 2009 Jason Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "88/100",
+      "asset": "worlds2009"
+    },
     "479984": {
       "name": "Water Energy 2009 David Cohen",
       "setName": "World Championship Decks",
@@ -5176,6 +5374,18 @@
       "setName": "World Championship Decks",
       "cardNumber": "93/106",
       "asset": "worlds2009"
+    },
+    "479986": {
+      "name": "Zangoose 2009 Jason Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "66/127",
+      "asset": "worlds2009"
+    },
+    "479990": {
+      "name": "Aarons Collection 2010 Yuta Komatsuda",
+      "setName": "World Championship Decks",
+      "cardNumber": "88/111",
+      "asset": "worlds2010"
     },
     "479991": {
       "name": "Azelf 4 2010 Mychael Bryan",
@@ -5387,6 +5597,12 @@
       "cardNumber": "98/106",
       "asset": "worlds2010"
     },
+    "480042": {
+      "name": "Fighting Energy 2010 Michael Pramawat",
+      "setName": "World Championship Decks",
+      "cardNumber": "",
+      "asset": "worlds2010"
+    },
     "480045": {
       "name": "Gallade 2010 Michael Pramawat",
       "setName": "World Championship Decks",
@@ -5559,6 +5775,12 @@
       "name": "Metal Energy 2010 Yuta Komatsuda",
       "setName": "World Championship Decks",
       "cardNumber": "",
+      "asset": "worlds2010"
+    },
+    "480088": {
+      "name": "Moonlight Stadium 2010 Michael Pramawat",
+      "setName": "World Championship Decks",
+      "cardNumber": "100/106",
       "asset": "worlds2010"
     },
     "480089": {
@@ -5883,6 +6105,12 @@
       "name": "Engineers Adjustments 2011 Christopher Kan",
       "setName": "World Championship Decks",
       "cardNumber": "75/95",
+      "asset": "worlds2011"
+    },
+    "480394": {
+      "name": "Fighting Energy 2011 Ross Cawthon",
+      "setName": "World Championship Decks",
+      "cardNumber": "",
       "asset": "worlds2011"
     },
     "480399": {
@@ -6441,6 +6669,18 @@
       "name": "Eviolite 2012 Shuto Itagaki",
       "setName": "World Championship Decks",
       "cardNumber": "91/101",
+      "asset": "worlds2012"
+    },
+    "480564": {
+      "name": "Fighting Energy 2012 Igor Costa",
+      "setName": "World Championship Decks",
+      "cardNumber": "",
+      "asset": "worlds2012"
+    },
+    "480565": {
+      "name": "Fighting Energy 2012 Shuto Itagaki",
+      "setName": "World Championship Decks",
+      "cardNumber": "",
       "asset": "worlds2012"
     },
     "480566": {
@@ -7319,6 +7559,12 @@
       "cardNumber": "102/108",
       "asset": "worlds2013"
     },
+    "480762": {
+      "name": "Victini 2013 Clement Lamberton",
+      "setName": "World Championship Decks",
+      "cardNumber": "15/101",
+      "asset": "worlds2013"
+    },
     "480763": {
       "name": "Virbank City Gym 2013 Jason Klaczynski",
       "setName": "World Championship Decks",
@@ -7949,6 +8195,12 @@
       "cardNumber": "17/108",
       "asset": "worlds2015"
     },
+    "481163": {
+      "name": "AZ 2015 Patrick Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "91/119",
+      "asset": "worlds2015"
+    },
     "481164": {
       "name": "AZ 2015 Rowan Stavenow",
       "setName": "World Championship Decks",
@@ -7973,6 +8225,12 @@
       "cardNumber": "121/160",
       "asset": "worlds2015"
     },
+    "481168": {
+      "name": "Colress 2015 Patrick Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "118/135",
+      "asset": "worlds2015"
+    },
     "481169": {
       "name": "Colress 2015 Rowan Stavenow",
       "setName": "World Championship Decks",
@@ -7991,10 +8249,22 @@
       "cardNumber": "137/149",
       "asset": "worlds2015"
     },
+    "481172": {
+      "name": "Crobat 2015 Patrick Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "33/119",
+      "asset": "worlds2015"
+    },
     "481173": {
       "name": "Crobat 2015 Rowan Stavenow",
       "setName": "World Championship Decks",
       "cardNumber": "33/119",
+      "asset": "worlds2015"
+    },
+    "481174": {
+      "name": "Double Colorless Energy 2015 Patrick Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "111/119",
       "asset": "worlds2015"
     },
     "481175": {
@@ -8009,6 +8279,30 @@
       "cardNumber": "4/116",
       "asset": "worlds2015"
     },
+    "481177": {
+      "name": "Fighting Energy 2015 Alejandro Ng Guzman",
+      "setName": "World Championship Decks",
+      "cardNumber": "",
+      "asset": "worlds2015"
+    },
+    "481178": {
+      "name": "Fighting Energy 2015 Rowan Stavenow",
+      "setName": "World Championship Decks",
+      "cardNumber": "",
+      "asset": "worlds2015"
+    },
+    "481179": {
+      "name": "Fighting Stadium 2015 Alejandro Ng Guzman",
+      "setName": "World Championship Decks",
+      "cardNumber": "90/111",
+      "asset": "worlds2015"
+    },
+    "481180": {
+      "name": "Fighting Stadium 2015 Rowan Stavenow",
+      "setName": "World Championship Decks",
+      "cardNumber": "90/111",
+      "asset": "worlds2015"
+    },
     "481181": {
       "name": "Float Stone 2015 Jacob Van Wagner",
       "setName": "World Championship Decks",
@@ -8019,6 +8313,12 @@
       "name": "Focus Sash 2015 Alejandro Ng Guzman",
       "setName": "World Championship Decks",
       "cardNumber": "91/111",
+      "asset": "worlds2015"
+    },
+    "481191": {
+      "name": "Golbat 2015 Patrick Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "32/119",
       "asset": "worlds2015"
     },
     "481193": {
@@ -8043,6 +8343,18 @@
       "name": "Hawlucha 2015 Rowan Stavenow",
       "setName": "World Championship Decks",
       "cardNumber": "63/111",
+      "asset": "worlds2015"
+    },
+    "481200": {
+      "name": "Head Ringer Team Flare Hyper Gear 2015 Patrick Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "97/119",
+      "asset": "worlds2015"
+    },
+    "481202": {
+      "name": "Hypnotoxic Laser 2015 Patrick Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "123/135",
       "asset": "worlds2015"
     },
     "481204": {
@@ -8075,6 +8387,12 @@
       "cardNumber": "89/149",
       "asset": "worlds2015"
     },
+    "481216": {
+      "name": "Lightning Energy 2015 Patrick Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "",
+      "asset": "worlds2015"
+    },
     "481219": {
       "name": "Lucario EX 2015 Rowan Stavenow",
       "setName": "World Championship Decks",
@@ -8093,10 +8411,22 @@
       "cardNumber": "90/106",
       "asset": "worlds2015"
     },
+    "481222": {
+      "name": "Lysandre 2015 Patrick Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "90/106",
+      "asset": "worlds2015"
+    },
     "481223": {
       "name": "Lysandre 2015 Rowan Stavenow",
       "setName": "World Championship Decks",
       "cardNumber": "90/106",
+      "asset": "worlds2015"
+    },
+    "481224": {
+      "name": "Manectric EX 2015 Patrick Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "23/119",
       "asset": "worlds2015"
     },
     "481225": {
@@ -8113,6 +8443,12 @@
     },
     "481227": {
       "name": "Muscle Band 2015 Jacob Van Wagner",
+      "setName": "World Championship Decks",
+      "cardNumber": "121/146",
+      "asset": "worlds2015"
+    },
+    "481228": {
+      "name": "Muscle Band 2015 Patrick Martinez",
       "setName": "World Championship Decks",
       "cardNumber": "121/146",
       "asset": "worlds2015"
@@ -8135,6 +8471,12 @@
       "cardNumber": "96/108",
       "asset": "worlds2015"
     },
+    "481232": {
+      "name": "N 2015 Patrick Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "96/108",
+      "asset": "worlds2015"
+    },
     "481233": {
       "name": "N 2015 Rowan Stavenow",
       "setName": "World Championship Decks",
@@ -8143,6 +8485,12 @@
     },
     "481234": {
       "name": "Pokemon Center Lady 2015 Alejandro Ng Guzman",
+      "setName": "World Championship Decks",
+      "cardNumber": "93/106",
+      "asset": "worlds2015"
+    },
+    "481235": {
+      "name": "Pokemon Center Lady 2015 Patrick Martinez",
       "setName": "World Championship Decks",
       "cardNumber": "93/106",
       "asset": "worlds2015"
@@ -8165,6 +8513,12 @@
       "cardNumber": "84/101",
       "asset": "worlds2015"
     },
+    "481239": {
+      "name": "Professor Juniper 2015 Patrick Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "84/101",
+      "asset": "worlds2015"
+    },
     "481240": {
       "name": "Professor Sycamore 2015 Rowan Stavenow",
       "setName": "World Championship Decks",
@@ -8183,6 +8537,12 @@
       "cardNumber": "102/119",
       "asset": "worlds2015"
     },
+    "481243": {
+      "name": "Rock Guard 2015 Patrick Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "108/116",
+      "asset": "worlds2015"
+    },
     "481244": {
       "name": "Rough Seas 2015 Jacob Van Wagner",
       "setName": "World Championship Decks",
@@ -8195,8 +8555,20 @@
       "cardNumber": "95/101",
       "asset": "worlds2015"
     },
+    "481246": {
+      "name": "Seismitoad EX 2015 Patrick Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "20/111",
+      "asset": "worlds2015"
+    },
     "481247": {
       "name": "Shaymin EX 2015 Jacob Van Wagner",
+      "setName": "World Championship Decks",
+      "cardNumber": "77/108",
+      "asset": "worlds2015"
+    },
+    "481248": {
+      "name": "Shaymin EX 2015 Patrick Martinez",
       "setName": "World Championship Decks",
       "cardNumber": "77/108",
       "asset": "worlds2015"
@@ -8243,6 +8615,12 @@
       "cardNumber": "104/111",
       "asset": "worlds2015"
     },
+    "481260": {
+      "name": "Super Scoop Up 2015 Patrick Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "100/111",
+      "asset": "worlds2015"
+    },
     "481261": {
       "name": "Super Scoop Up 2015 Rowan Stavenow",
       "setName": "World Championship Decks",
@@ -8285,10 +8663,22 @@
       "cardNumber": "93/108",
       "asset": "worlds2015"
     },
+    "481268": {
+      "name": "Ultra Ball 2015 Patrick Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "93/108",
+      "asset": "worlds2015"
+    },
     "481269": {
       "name": "Ultra Ball 2015 Rowan Stavenow",
       "setName": "World Championship Decks",
       "cardNumber": "93/108",
+      "asset": "worlds2015"
+    },
+    "481270": {
+      "name": "Virbank City Gym 2015 Patrick Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "126/135",
       "asset": "worlds2015"
     },
     "481271": {
@@ -8299,6 +8689,12 @@
     },
     "481272": {
       "name": "VS Seeker 2015 Alejandro Ng Guzman",
+      "setName": "World Championship Decks",
+      "cardNumber": "109/119",
+      "asset": "worlds2015"
+    },
+    "481273": {
+      "name": "VS Seeker 2015 Patrick Martinez",
       "setName": "World Championship Decks",
       "cardNumber": "109/119",
       "asset": "worlds2015"
@@ -8325,6 +8721,18 @@
       "name": "Wobbuffet 2015 Alejandro Ng Guzman",
       "setName": "World Championship Decks",
       "cardNumber": "36/119",
+      "asset": "worlds2015"
+    },
+    "481278": {
+      "name": "Xerosic 2015 Patrick Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "110/119",
+      "asset": "worlds2015"
+    },
+    "481279": {
+      "name": "Zubat 2015 Patrick Martinez",
+      "setName": "World Championship Decks",
+      "cardNumber": "53/135",
       "asset": "worlds2015"
     },
     "481280": {
@@ -8393,6 +8801,18 @@
       "cardNumber": "92/119",
       "asset": "worlds2016"
     },
+    "481731": {
+      "name": "Bursting Balloon 2016 Jesper Eriksen",
+      "setName": "World Championship Decks",
+      "cardNumber": "97/122",
+      "asset": "worlds2016"
+    },
+    "481732": {
+      "name": "Bursting Balloon 2016 Cody Walinski",
+      "setName": "World Championship Decks",
+      "cardNumber": "97/122",
+      "asset": "worlds2016"
+    },
     "481735": {
       "name": "Cobalion 2016 Shintaro Ito",
       "setName": "World Championship Decks",
@@ -8447,6 +8867,12 @@
       "cardNumber": "127/160",
       "asset": "worlds2016"
     },
+    "481744": {
+      "name": "Fighting Fury Belt 2016 Shunto Sadahiro",
+      "setName": "World Championship Decks",
+      "cardNumber": "99/122",
+      "asset": "worlds2016"
+    },
     "481746": {
       "name": "Fisherman 2016 Cody Walinski",
       "setName": "World Championship Decks",
@@ -8487,6 +8913,12 @@
       "name": "Garbodor 2016 Shunto Sadahiro",
       "setName": "World Championship Decks",
       "cardNumber": "57/122",
+      "asset": "worlds2016"
+    },
+    "481757": {
+      "name": "Giratina EX 2016 Shunto Sadahiro",
+      "setName": "World Championship Decks",
+      "cardNumber": "57/98",
       "asset": "worlds2016"
     },
     "481758": {
@@ -9065,6 +9497,12 @@
       "cardNumber": "93/147",
       "asset": "worlds2017"
     },
+    "481871": {
+      "name": "Giratina 2017 Zachary Bokhari",
+      "setName": "World Championship Decks",
+      "cardNumber": "XY184",
+      "asset": "worlds2017"
+    },
     "481872": {
       "name": "Golisopod GX 2017 Naoto Suzuki",
       "setName": "World Championship Decks",
@@ -9579,6 +10017,18 @@
       "name": "Field Blower 2018 Robin Schulz",
       "setName": "World Championship Decks",
       "cardNumber": "125/145",
+      "asset": "worlds2018"
+    },
+    "481960": {
+      "name": "Fighting Energy 2018 Naohito Inoue",
+      "setName": "World Championship Decks",
+      "cardNumber": "",
+      "asset": "worlds2018"
+    },
+    "481961": {
+      "name": "Fighting Fury Belt 2018 Naohito Inoue",
+      "setName": "World Championship Decks",
+      "cardNumber": "99/122",
       "asset": "worlds2018"
     },
     "481962": {
@@ -10403,6 +10853,12 @@
       "cardNumber": "SM104",
       "asset": "worlds2019"
     },
+    "482109": {
+      "name": "Stadium Nav 2019 Haruki Miyamoto",
+      "setName": "World Championship Decks",
+      "cardNumber": "208/236",
+      "asset": "worlds2019"
+    },
     "482110": {
       "name": "Switch 2019 Kaya Lichtleitner",
       "setName": "World Championship Decks",
@@ -10455,6 +10911,12 @@
       "name": "Ultra Space 2019 Shintaro Ito",
       "setName": "World Championship Decks",
       "cardNumber": "115/131",
+      "asset": "worlds2019"
+    },
+    "482119": {
+      "name": "Victini Prism Star 2019 Kaya Lichtleitner",
+      "setName": "World Championship Decks",
+      "cardNumber": "7/70",
       "asset": "worlds2019"
     },
     "482120": {
@@ -10563,6 +11025,12 @@
       "name": "Rapid Strike Energy 2022 Sebastian Lashmet",
       "setName": "World Championship Decks",
       "cardNumber": "140/163",
+      "asset": "worlds2022-sebastian-lashmet"
+    },
+    "484985": {
+      "name": "Fighting Energy 2022 Sebastian Lashmet",
+      "setName": "World Championship Decks",
+      "cardNumber": "",
       "asset": "worlds2022-sebastian-lashmet"
     },
     "484986": {
@@ -10921,6 +11389,12 @@
     },
     "485055": {
       "name": "Lightning Energy 2022 Ondrej Skubal",
+      "setName": "World Championship Decks",
+      "cardNumber": "",
+      "asset": "worlds2022-ondrej-skubal"
+    },
+    "485056": {
+      "name": "Fighting Energy 2022 Ondrej Skubal",
       "setName": "World Championship Decks",
       "cardNumber": "",
       "asset": "worlds2022-ondrej-skubal"
@@ -11399,6 +11873,12 @@
       "cardNumber": "90/113",
       "asset": "worlds2006"
     },
+    "530347": {
+      "name": "Fighting Energy 2012 Zachary Bokhari",
+      "setName": "World Championship Decks",
+      "cardNumber": "",
+      "asset": "worlds2012"
+    },
     "532087": {
       "name": "Basic Fire Energy Blue Border",
       "setName": "My First Battle",
@@ -11517,6 +11997,12 @@
       "name": "Professor Burnet 2023 Gabriel Fernandez",
       "setName": "World Championship Decks",
       "cardNumber": "",
+      "asset": "worlds2023-gabriel-fernandez"
+    },
+    "541791": {
+      "name": "Collapsed Stadium 2023 Gabriel Fernandez",
+      "setName": "World Championship Decks",
+      "cardNumber": "137/172",
       "asset": "worlds2023-gabriel-fernandez"
     },
     "541792": {
@@ -11836,6 +12322,12 @@
       "cardNumber": "171/193",
       "asset": "worlds2023-tord-reklev"
     },
+    "542060": {
+      "name": "Collapsed Stadium 2023 Tord Reklev",
+      "setName": "World Championship Decks",
+      "cardNumber": "137/172",
+      "asset": "worlds2023-tord-reklev"
+    },
     "542061": {
       "name": "Battle VIP Pass 2023 Tord Reklev",
       "setName": "World Championship Decks",
@@ -12051,6 +12543,12 @@
       "setName": "World Championship Decks",
       "cardNumber": "107/122",
       "asset": "worlds2017"
+    },
+    "637454": {
+      "name": "Collapsed Stadium 2023 Vance Kelley",
+      "setName": "World Championship Decks",
+      "cardNumber": "137/172",
+      "asset": "worlds2023-vance-kelley"
     },
     "637455": {
       "name": "Capturing Aroma 2023 Vance Kelley",
@@ -12524,6 +13022,12 @@
       "name": "Hisuian Goodra VSTAR 2024 Evan Pavelski",
       "setName": "World Championship Decks",
       "cardNumber": "136/196",
+      "asset": "worlds2024-evan-pavelski"
+    },
+    "637589": {
+      "name": "Giratina VSTAR 2024 Evan Pavelski",
+      "setName": "World Championship Decks",
+      "cardNumber": "131/196",
       "asset": "worlds2024-evan-pavelski"
     },
     "637590": {

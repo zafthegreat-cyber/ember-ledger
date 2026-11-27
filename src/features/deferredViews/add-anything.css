@@ -62,3 +62,22 @@ html body .app[data-theme] .flow-modal[data-flow="addActionSheet"] .scan-anythin
 .card-scan-set-progress__head span, .card-scan-set-progress__set small { color: var(--text-secondary); font-size: 14px; line-height: 1.45; }
 .card-scan-set-progress__bar { height: 8px; border-radius: 999px; background: rgb(255 255 255 / 10%); overflow: hidden; }
 .card-scan-set-progress__bar span { display: block; height: 100%; border-radius: inherit; background: var(--binder-foil, linear-gradient(90deg, #C2604F, #E8C86B)); }
+
+/* Scan several cards: live match per row and running total (Nov 24 2026). */
+.quick-add-card-scan-total { margin: 8px 0 4px; padding: 10px 14px; border-radius: 16px; border: 1px solid var(--border-strong, #6b5a5e); font-weight: 600; font-size: 15px; }
+.quick-add-card-scan-match { margin: 4px 0 8px; font-size: 14px; line-height: 1.45; color: var(--text-primary, inherit); }
+.quick-add-card-scan-match::before { content: "✓ "; color: var(--gold, #E8C86B); }
+.quick-add-card-scan-match--review { color: var(--text-secondary); }
+.quick-add-card-scan-match--review::before { content: "• "; color: var(--text-secondary); }
+/* Nov 26 2026: the printings a card could be when its number was hard to read, one tap each. */
+.quick-add-card-scan-choices { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 10px; }
+.quick-add-card-scan-choices .quick-add-card-scan-match { flex: 1 0 100%; margin: 0; }
+.quick-add-card-scan-choices button { min-height: 44px; text-align: left; white-space: normal; }
+
+/* Scan cards, simpler list (Nov 25 2026) */
+.quick-add-card-scan-empty { margin: 8px 0; padding: 14px; border: 1px dashed var(--border-strong, #6b5a5e); border-radius: 14px; font-size: 15px; line-height: 1.45; color: var(--text-secondary, inherit); }
+.quick-add-card-scan-edit > summary { min-height: 44px; display: flex; align-items: center; font-weight: 700; cursor: pointer; color: var(--text-primary, inherit); }
+.quick-add-card-scan-row.is-matched .quick-add-card-scan-match { font-weight: 600; }
+/* Nov 27 2026: Remove beside Change was a 22px ghost link; every button in a row is a 44px target. */
+.app .quick-add-card-scan-row .quick-add-row-actions button { min-height: 44px; padding-inline: 14px; }
+.quick-add-card-scan-more > summary { min-height: 44px; display: flex; align-items: center; font-weight: 700; cursor: pointer; }

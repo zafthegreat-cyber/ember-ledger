@@ -1,5 +1,6 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const { isSingleCard, singleCardEvidence } = require("../pokemon_market_ingestion_kit/single_card_evidence.cjs");
 
 const rootDir = path.resolve(__dirname, "..");
 const generatedDir = path.join(rootDir, "src", "data", "generated");
@@ -330,6 +331,10 @@ function inferProductType(name = "") {
 }
 
 function isSealedOrAccessory(product = {}) {
+  // A card rarity, collector number or card type means a single card, whatever
+  // the name contains: "Dratini", "Fighting Energy" and "Nemona's Backpack" all
+  // hold a sealed word (tin, pack). Only rows with none of them are decided by name.
+  if (isSingleCard(singleCardEvidence(product, extendedDataObject(product)))) return false;
   const text = normalizeSearch(product.name || product.cleanName);
   return Boolean(inferProductType(text)) || SEALED_KEYWORDS.some((keyword) => text.includes(keyword));
 }
@@ -459,6 +464,9 @@ function normalizeTcgCsvCard(product = {}, group = {}, price = {}, checkedAt = S
     cardNumber: ext.number || ext.card_number || "",
     setNumber: ext.number || ext.card_number || "",
     rarity: ext.rarity || "",
+    // Pokemon, Trainer - Supporter, Basic Fighting Energy. Proof of a single card
+    // when the rarity says "None" (World Championship deck cards).
+    cardType: ext.card_type || "",
     imageSmall: product.imageUrl || "",
     imageLarge: product.imageUrl || "",
     imageUrl: product.imageUrl || "",
@@ -635,15 +643,19 @@ function quoteCurrency(row = {}) {
   return String(row.marketCurrency || row.currency || "USD").toUpperCase();
 }
 
-function mergeQuote(previous, incoming) {
-  const merged = { ...previous, ...incoming, id: previous.id || incoming.id };
+// Feed rows cannot replace user/admin values or make an absent quote appear newly checked.
+function keepsPreviousQuote(previous, incoming) {
   const previousObservedAt = quoteObservation(previous);
   const incomingObservedAt = quoteObservation(incoming);
   const olderOrUnknown = Boolean(usableReference(previous)) && previousObservedAt !== null
     && (incomingObservedAt === null || incomingObservedAt < previousObservedAt);
   const differentCurrency = Boolean(usableReference(previous)) && quoteCurrency(previous) !== quoteCurrency(incoming);
-  // Feed rows cannot replace user/admin values or make an absent quote appear newly checked.
-  if (manualQuote(previous) || !usableReference(incoming) || olderOrUnknown || differentCurrency) {
+  return manualQuote(previous) || !usableReference(incoming) || olderOrUnknown || differentCurrency;
+}
+
+function mergeQuote(previous, incoming) {
+  const merged = { ...previous, ...incoming, id: previous.id || incoming.id };
+  if (keepsPreviousQuote(previous, incoming)) {
     for (const field of QUOTE_FIELDS) {
       if (Object.hasOwn(previous, field)) merged[field] = previous[field];
       else delete merged[field];
@@ -658,6 +670,24 @@ function mergeQuote(previous, incoming) {
   return merged;
 }
 
+// A stored row that was filed as sealed only because of its name (Dratini,
+// Fighting Energy and Brock's Scouting hold "tin") becomes the feed's card row.
+// Its record ID and last good quote are kept; the sealed-only fields (product
+// type "Tin", pack count) go. Returns null when the feed row is not such a
+// correction.
+function refiledAsSingleCard(previous = {}, incoming = {}) {
+  if (previous.catalogType === "card" || incoming.catalogType !== "card") return null;
+  if (!isSingleCard({ cardNumber: incoming.cardNumber, rarity: incoming.rarity, cardType: incoming.cardType })) return null;
+  const keepQuote = keepsPreviousQuote(previous, incoming);
+  const merged = mergeQuote(previous, incoming);
+  for (const field of Object.keys(previous)) {
+    if (Object.hasOwn(incoming, field) || ["id", "createdAt", "updatedAt"].includes(field)) continue;
+    if (keepQuote && QUOTE_FIELDS.includes(field)) continue;
+    delete merged[field];
+  }
+  return { ...merged, catalogType: "card" };
+}
+
 /** Merge an independently validated feed with the last good files; absence never means deletion. */
 function preserveLastGoodCatalog(previous = {}, incoming = {}) {
   const freshProducts = [...(incoming.sealedProducts || []), ...(incoming.cards || [])];
@@ -667,6 +697,7 @@ function preserveLastGoodCatalog(previous = {}, incoming = {}) {
   }
   const products = new Map();
   const productKeys = new Map();
+  const refiledCards = new Set();
   for (const row of [...(previous.sealed || []), ...(previous.cards || [])]) {
     const key = row.id || catalogIdentity(row);
     products.set(key, row);
@@ -676,7 +707,10 @@ function preserveLastGoodCatalog(previous = {}, incoming = {}) {
     const identity = catalogIdentity(row);
     const key = productKeys.get(identity) || row.id || identity;
     const prior = products.get(key);
-    products.set(key, prior ? { ...mergeQuote(prior, row), catalogType: prior.catalogType || row.catalogType } : row);
+    const refiled = prior ? refiledAsSingleCard(prior, row) : null;
+    if (refiled && tcgPlayerProductId(row)) refiledCards.add(tcgPlayerProductId(row));
+    products.set(key, !prior ? row
+      : refiled || { ...mergeQuote(prior, row), catalogType: prior.catalogType || row.catalogType });
     productKeys.set(identity, key);
   }
   const catalogIds = new Map();
@@ -715,7 +749,9 @@ function preserveLastGoodCatalog(previous = {}, incoming = {}) {
     ...incoming,
     sealedProducts: [...products.values()].filter((row) => row.catalogType !== "card"),
     cards: [...products.values()].filter((row) => row.catalogType === "card"),
-    marketPrices: [...prices.values()],
+    // A stored price row the feed did not refresh still follows its card to the cards side.
+    marketPrices: [...prices.values()].map((row) => (refiledCards.has(tcgPlayerProductId(row)) && row.catalogType !== "card"
+      ? { ...row, catalogType: "card", itemType: "card", productType: "Card" } : row)),
   };
 }
 

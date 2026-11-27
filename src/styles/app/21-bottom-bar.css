@@ -109,8 +109,29 @@
     color: var(--app-brand-selected-ink, #F3D987);
   }
   html:root body .app[data-theme="light"] .ops-mobile-sections button.is-active { background: #7A0F1E; color: #FFF8EE; }
-  /* Command-board pages pin the main area to the first grid row, which pushed the
-     pills below the page. Keep them at the top there too. */
-  html:root body .app.app-command-shell[data-theme]:has(.command-board-v4) > .ops-mobile-sections { grid-row: 1; grid-column: 1 / -1; align-self: start; }
-  html:root body .app.app-command-shell[data-theme]:has(.command-board-v4):has(> .ops-mobile-sections) > .main { grid-row: 2 !important; min-height: calc(100dvh - 56px) !important; }
+
+  /* Board-style pages (Find, Market, Sell, the Collect dashboard) lay the app out
+     as a grid whose first row is the page itself. The pill row had no row of its
+     own there, so it dropped into a new row under the page: out of sight behind
+     the bottom bar, and 56px of empty scrolling after the last card. Give it the
+     first row, as on every other page, then the admin preview bars when those
+     are showing (experience-controls.css), then the page. */
+  html:root body .app.app-command-shell:has(.command-board-v4) > .ops-mobile-sections { grid-column: 1; grid-row: 1; }
+  html:root body .app.app-command-shell:has(.command-board-v4):has(> .ops-mobile-sections) { grid-template-rows: auto minmax(0, 1fr) !important; }
+  /* The page keeps a full-screen minimum height on these routes; with the pill row
+     above it that made a short page a pill row taller than the screen. The app
+     shell is already at least a screen tall, so the page just fills what is left. */
+  html:root body .app.app-command-shell:has(.command-board-v4):has(> .ops-mobile-sections) > .main { grid-row: 2 !important; min-height: 0 !important; }
+  html:root body .app.app-command-shell:has(.command-board-v4):has(> .ops-mobile-sections) > .admin-mode-control-bar { grid-row: 2; }
+  html:root body .app.app-command-shell:has(.command-board-v4):has(> .ops-mobile-sections):has(> .admin-mode-control-bar) { grid-template-rows: auto auto minmax(0, 1fr) !important; }
+  html:root body .app.app-command-shell:has(.command-board-v4):has(> .ops-mobile-sections):has(> .admin-mode-control-bar) > .main { grid-row: 3 !important; }
+  html:root body .app.app-command-shell:has(.command-board-v4):has(> .ops-mobile-sections) > .admin-edit-mode-banner { grid-row: 3; }
+  html:root body .app.app-command-shell:has(.command-board-v4):has(> .ops-mobile-sections):has(> .admin-edit-mode-banner) { grid-template-rows: auto auto auto minmax(0, 1fr) !important; }
+  html:root body .app.app-command-shell:has(.command-board-v4):has(> .ops-mobile-sections):has(> .admin-edit-mode-banner) > .main { grid-row: 4 !important; }
+  /* Guest preview: the preview bar goes between the pill row and the page (its
+     own rules are in 16-should-polish.css). The admin bars above never show in
+     guest preview, so these rows cannot collide with theirs. */
+  html:root body .app.app-command-shell:has(.command-board-v4):has(> .ops-mobile-sections) > .guest-preview-banner { grid-row: 2; }
+  html:root body .app.app-command-shell:has(.command-board-v4):has(> .ops-mobile-sections):has(> .guest-preview-banner) { grid-template-rows: auto auto minmax(0, 1fr) !important; }
+  html:root body .app.app-command-shell:has(.command-board-v4):has(> .ops-mobile-sections):has(> .guest-preview-banner) > .main { grid-row: 3 !important; }
 }

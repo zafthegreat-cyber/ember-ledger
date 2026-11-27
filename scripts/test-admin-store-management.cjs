@@ -11,15 +11,19 @@ const root = path.resolve(__dirname, "..");
 const source = fs.readFileSync(path.join(root, "src/App.jsx"), "utf8");
 const ast = espree.parse(source, { ecmaVersion: "latest", sourceType: "module", ecmaFeatures: { jsx: true }, range: true });
 const declarations = new Map();
-function visit(node) {
+function visit(node, text = source) {
   if (!node || typeof node !== "object") return;
-  if (node.type === "FunctionDeclaration") declarations.set(node.id.name, node);
+  if (node.type === "FunctionDeclaration") declarations.set(node.id.name, text.slice(...node.range));
   for (const value of Object.values(node)) {
-    if (Array.isArray(value)) value.forEach(visit);
-    else if (value?.type) visit(value);
+    if (Array.isArray(value)) value.forEach((child) => visit(child, text));
+    else if (value?.type) visit(value, text);
   }
 }
 visit(ast);
+// The Store Management renderer lives in a deferred view (App keeps a lazy wrapper with the
+// same name); the deferred file's declaration replaces the wrapper so the real renderer runs.
+const deferredSource = fs.readFileSync(path.join(root, "src/features/deferredViews/AdminStoreManagementContent.jsx"), "utf8");
+visit(espree.parse(deferredSource, { ecmaVersion: "latest", sourceType: "module", ecmaFeatures: { jsx: true }, range: true }), deferredSource);
 const names = [
   "updateAdminStoreDraft", "resetAdminStoreDraft", "startAdminStoreDraft",
   "persistAdminStoreManagementDraft", "saveAdminStoreManagementDraft", "quickPatchAdminStore",
@@ -28,7 +32,7 @@ const names = [
 ];
 const code = names.map((name) => {
   assert.ok(declarations.has(name), `Missing actual App function ${name}`);
-  return source.slice(...declarations.get(name).range);
+  return declarations.get(name);
 }).join("\n");
 const compiled = transformSync(code, { loader: "jsx", jsx: "transform" }).code;
 const key = "et-tcg-beta-scout";

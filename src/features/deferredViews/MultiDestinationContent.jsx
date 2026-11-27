@@ -196,6 +196,12 @@ export default function MultiDestinationContent({ scope }) {
           ? "Sealed product"
           : "Type unknown";
     const itemSearchQuery = String(multiDestinationCatalogQuery || "").trim();
+    // Nov 25 2026: one-screen add (find it, how many, Save). The full steps stay behind "More options".
+    const quickSave = Boolean(multiDestinationForm.quickSave) && multiDestinationStep === "item";
+    const quickTarget = multiDestinationForm.destinations.forge ? "forge" : multiDestinationForm.destinations.wishlist && !multiDestinationForm.destinations.vault ? "wishlist" : "vault";
+    const quickHasItem = Boolean(selectedCatalog || String(multiDestinationForm.itemName || "").trim());
+    const quickQuantity = Math.max(1, Math.floor(Number(multiDestinationForm[quickTarget]?.quantity) || 1));
+    const setQuickQuantity = (value) => updateMultiDestinationSection(quickTarget, "quantity", value);
     const itemSearchResults = itemSearchQuery ? getCatalogPickerResults(itemSearchQuery, 10) : [];
     const recentAddItems = [...items]
       .filter((item) => item?.name || item?.itemName || item?.catalogProductName)
@@ -285,17 +291,24 @@ export default function MultiDestinationContent({ scope }) {
     }
     return (
       <form id="multi-destination-add-form" className="form multi-destination-flow" onSubmit={submitMultiDestinationAdd} noValidate>
+        {quickSave ? (
+          <div className="universal-review-banner quick-save-banner">
+            <strong>{quickHasItem ? "How many do you have?" : "Find your item"}</strong>
+            <span>{quickHasItem ? "Set how many, then tap Save." : "Type a card or product name, then tap it."}</span>
+          </div>
+        ) : (
         <div className="universal-review-banner">
           <strong>{MULTI_DESTINATION_STEP_LABELS[multiDestinationStep] || "Review and add"}</strong>
           <span>Step {currentStepIndex + 1} of {MULTI_DESTINATION_STEPS.length}{multiDestinationStep === "item" ? " · Search, scan, or use a photo." : ""}</span>
         </div>
+        )}
         {scanFoundationSourceActive ? (
           <div className="scan-anything-review-note">
             <strong>Review before saving.</strong>
             <p>Please confirm this item before saving. Not sure? Search again or request a missing item.</p>
           </div>
         ) : null}
-        {selectedCatalog || String(multiDestinationForm.itemName || "").trim() ? <div className="quick-add-flow-summary" aria-live="polite">
+        {!quickSave && (selectedCatalog || String(multiDestinationForm.itemName || "").trim()) ? <div className="quick-add-flow-summary" aria-live="polite">
           <div>
             <span>Item</span>
             <strong>{selectedItemSummary}</strong>
@@ -348,7 +361,7 @@ export default function MultiDestinationContent({ scope }) {
             </div>
           </div>
         ) : null}
-        <div className="multi-destination-wizard-stepper" aria-label="Add item progress">
+        {quickSave ? null : <div className="multi-destination-wizard-stepper" aria-label="Add item progress">
           {MULTI_DESTINATION_STEPS.map((step, index) => (
             <span
               key={step}
@@ -359,7 +372,7 @@ export default function MultiDestinationContent({ scope }) {
               {stepHasVisibleError(step) ? <em>Needs info</em> : null}
             </span>
           ))}
-        </div>
+        </div>}
         {validationErrorSummary ? (
           <div className="validation-summary" role="alert" aria-live="polite">
             <strong>{validationErrorSummary}</strong>
@@ -404,11 +417,11 @@ export default function MultiDestinationContent({ scope }) {
                   </div>
                   <div className="selected-match-actions">
                     <button type="button" className="secondary-button" onClick={() => setMultiDestinationMatchSearchOpen(true)}>
-                      Change match
+                      {quickSave ? "Pick a different one" : "Change match"}
                     </button>
-                    <button type="button" className="ghost-button" onClick={clearMultiDestinationCatalogProduct}>
+                    {quickSave ? null : <button type="button" className="ghost-button" onClick={clearMultiDestinationCatalogProduct}>
                       Clear match
-                    </button>
+                    </button>}
                   </div>
                 </div>
               ) : manualModeActive ? (
@@ -438,7 +451,7 @@ export default function MultiDestinationContent({ scope }) {
               ) : (
                 <>
                   <div className="add-item-search-card">
-                    <Field label="Search product, set, UPC, or SKU">
+                    <Field label={quickSave ? "Card or product name" : "Search product, set, UPC, or SKU"}>
                       <LazySmartCatalogSearchBox
                         value={multiDestinationCatalogQuery}
                         onChange={(value) => {
@@ -452,12 +465,12 @@ export default function MultiDestinationContent({ scope }) {
                         mapRow={mapCatalog}
                         productGroup="All"
                         dataFilter="All"
-                        placeholder="Search product, set, UPC, or SKU"
+                        placeholder={quickSave ? "Pikachu, Charizard ex, booster box…" : "Search product, set, UPC, or SKU"}
                         maxSuggestions={8}
                         inputClassName="add-item-search-input"
                         localCatalogProducts={catalogProducts}
                         autoFocus
-                        inputLabel="Search product, set, UPC, or SKU"
+                        inputLabel={quickSave ? "Card or product name" : "Search product, set, UPC, or SKU"}
                         inlineResults
                         emptyMessage="No Market Watch match found. Try fewer words, a UPC/SKU, or add it manually."
                         renderEmptyActions={() => (
@@ -473,17 +486,17 @@ export default function MultiDestinationContent({ scope }) {
                         money={money}
                       />
                     </Field>
-                    <p className="compact-subtitle">Partial names, set names, UPCs, SKUs, and sealed-product terms work here. {AI_REVIEW_DISCLAIMER}</p>
+                    {quickSave ? null : <p className="compact-subtitle">Partial names, set names, UPCs, SKUs, and sealed-product terms work here. {AI_REVIEW_DISCLAIMER}</p>}
                   </div>
                   <div className="catalog-selector-actions add-item-primary-tools">
-                    <button type="button" className="secondary-button" onClick={() => { closeFlowModal({ force: true, reset: false }); openVaultScanFlow(); }}>Scan product/card</button>
-                    <button type="button" className="secondary-button" onClick={() => { const destination = multiDestinationForm.destinations.forge ? "forge" : multiDestinationForm.destinations.wishlist ? "wishlist" : multiDestinationForm.destinations.vault ? "vault" : "none"; closeFlowModal({ force: true, reset: false }); openPictureLookupFlow(destination); }}>Photo lookup</button>
-                    <button type="button" className="secondary-button" aria-expanded={barcodeOpen} aria-controls={barcodeId} onClick={() => { setBarcodeOpen(true); requestAnimationFrame(() => barcodeRef.current?.focus()); }}>Type a barcode number</button>
+                    <button type="button" className="secondary-button" onClick={() => { closeFlowModal({ force: true, reset: false }); openVaultScanFlow(); }}>{quickSave ? "Scan it with the camera" : "Scan product/card"}</button>
+                    {quickSave ? null : <button type="button" className="secondary-button" onClick={() => { const destination = multiDestinationForm.destinations.forge ? "forge" : multiDestinationForm.destinations.wishlist ? "wishlist" : multiDestinationForm.destinations.vault ? "vault" : "none"; closeFlowModal({ force: true, reset: false }); openPictureLookupFlow(destination); }}>Photo lookup</button>}
+                    {quickSave ? null : <button type="button" className="secondary-button" aria-expanded={barcodeOpen} aria-controls={barcodeId} onClick={() => { setBarcodeOpen(true); requestAnimationFrame(() => barcodeRef.current?.focus()); }}>Type a barcode number</button>}
                   </div>
                   {barcodeOpen ? <div className="add-item-barcode-entry" id={barcodeId}><label>UPC, SKU or barcode<input ref={barcodeRef} value={barcodeInput} onChange={event => setBarcodeInput(event.target.value)} placeholder="Enter the number printed below the barcode" autoComplete="off" enterKeyHint="search" onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); if (barcodeInput.trim()) runMultiDestinationCatalogSearch(barcodeInput.trim(), { mode: "barcode", barcode: barcodeInput.trim() }); } }} /></label><button type="button" className="primary-button" disabled={!barcodeInput.trim()} onClick={() => runMultiDestinationCatalogSearch(barcodeInput.trim(), { mode: "barcode", barcode: barcodeInput.trim() })}>Look up barcode</button></div> : null}
                   {!itemSearchQuery ? (
                     <div className="add-item-picker-start">
-                      <div className="add-item-quick-section">
+                      {quickSave ? null : <div className="add-item-quick-section">
                         <span>Common sealed searches</span>
                         <div className="catalog-chip-row add-item-chip-row">
                           {ADD_ITEM_QUICK_SEARCH_CHIPS.map((value) => (
@@ -492,7 +505,7 @@ export default function MultiDestinationContent({ scope }) {
                             </button>
                           ))}
                         </div>
-                      </div>
+                      </div>}
                       {recentAddItems.length ? (
                         <div className="add-item-quick-section">
                           <span>Recently added</span>
@@ -528,9 +541,9 @@ export default function MultiDestinationContent({ scope }) {
                   ) : null}
                   {itemSearchQuery && !supabaseCatalogStatus.loading && !itemSearchResults.length ? (
                     <div className="empty-state small-empty-state add-item-no-results">
-                      <h3>Can&apos;t find item?</h3>
-                      <p>Try a shorter search like ETB, tin, booster bundle, a set name, UPC, or SKU. If it still is not there, add it manually now or suggest it for admin catalog review.</p>
-                      <div className="catalog-chip-row add-item-chip-row" aria-label="Alternate catalog search terms">
+                      <h3>{quickSave ? "Can't find it?" : "Can't find item?"}</h3>
+                      <p>{quickSave ? "Try fewer words, like just the card's name. Still not there? Type it in yourself." : "Try a shorter search like ETB, tin, booster bundle, a set name, UPC, or SKU. If it still is not there, add it manually now or suggest it for admin catalog review."}</p>
+                      <div className="catalog-chip-row add-item-chip-row" aria-label="Alternate catalog search terms" hidden={quickSave}>
                         {ADD_ITEM_NO_RESULT_HINTS.map((hint) => {
                           const value = hint.replace(/^Try\s+/i, "").replace(/\s+instead of.*$/i, "");
                           return (
@@ -542,10 +555,10 @@ export default function MultiDestinationContent({ scope }) {
                       </div>
                       <div className="catalog-selector-actions">
                         <button type="button" className="secondary-button" onClick={() => startMultiDestinationManualEntry({ itemName: multiDestinationCatalogQuery })}>
-                          Can't find it? Add manually
+                          {quickSave ? "Type it in myself" : "Can't find it? Add manually"}
                         </button>
                         <button type="button" onClick={markMultiDestinationMissingCatalog}>
-                          Suggest missing product
+                          {quickSave ? "Ask us to add it" : "Suggest missing product"}
                         </button>
                       </div>
                     </div>
@@ -594,7 +607,7 @@ export default function MultiDestinationContent({ scope }) {
                 </>
               )}
             </div>
-            <details className="add-item-identification" key={selectedCatalog?.id || "manual"} open={!selectedCatalog || Boolean(fieldError("item-name"))}>
+            {quickSave && selectedCatalog ? null : <details className="add-item-identification" key={selectedCatalog?.id || "manual"} open={!selectedCatalog || Boolean(fieldError("item-name"))}>
               <summary>{selectedCatalog ? "Edit item details" : "Item details"}</summary><div className="flow-form-grid">
             <Field label="Item name" fieldId="item-name" error={fieldError("item-name")}>
               <input
@@ -604,24 +617,24 @@ export default function MultiDestinationContent({ scope }) {
                 required
               />
             </Field>
-            <Field label="Type / Category">
+            {quickSave ? null : <Field label="Type / Category">
               <input
                 value={multiDestinationForm.productType}
                 onChange={(event) => updateMultiDestinationField("productType", event.target.value)}
                 placeholder={addFlowIsCard ? "Single Card, Graded Card..." : "Elite Trainer Box, Booster Bundle, Tin..."}
               />
-            </Field>
-            <Field label="Set / Expansion if known">
+            </Field>}
+            <Field label={quickSave ? "Set (if you know it)" : "Set / Expansion if known"}>
               <input
                 value={multiDestinationForm.setName}
                 onChange={(event) => updateMultiDestinationField("setName", event.target.value)}
                 placeholder="Prismatic Evolutions, 151, Surging Sparks..."
               />
             </Field>
-            {addFlowIsCard ? (
+            {addFlowIsCard && !quickSave ? (
               <PrintingPicker value={multiDestinationForm.variant} catalogNames={catalogFinishChoices} onChange={(value) => updateMultiDestinationField("variant", value)} />
             ) : null}
-            {addFlowIsCard ? (
+            {addFlowIsCard && !quickSave ? (
               <fieldset className="graded-slab-fields">
                 <legend>Graded slab</legend>
                 <label className="graded-slab-fields__toggle">
@@ -646,14 +659,14 @@ export default function MultiDestinationContent({ scope }) {
                 ) : null}
               </fieldset>
             ) : null}
-            <Field label="UPC / SKU if known">
+            {quickSave ? null : <Field label="UPC / SKU if known">
               <input
                 value={multiDestinationForm.upcSku}
                 onChange={(event) => updateMultiDestinationField("upcSku", event.target.value)}
                 placeholder="UPC, retail SKU, or other identifier"
               />
-            </Field>
-            {!addFlowIsCard ? (
+            </Field>}
+            {!addFlowIsCard && !quickSave ? (
               <Field label={addFlowIsSealed ? "MSRP" : "Retail Price / MSRP"}>
                 <input
                   type="number"
@@ -665,7 +678,7 @@ export default function MultiDestinationContent({ scope }) {
                 />
               </Field>
             ) : null}
-            <Field label="Saved market estimate">
+            <Field label={quickSave ? "What it's worth (optional)" : "Saved market estimate"}>
               <input
                 type="number"
                 min="0"
@@ -674,17 +687,45 @@ export default function MultiDestinationContent({ scope }) {
                 onChange={(event) => updateMultiDestinationField("marketPrice", event.target.value)}
                 placeholder="0.00"
               />
-              <small>Changes apply to this item's saved estimate. The catalog's market quote is kept.</small>
+              {quickSave ? null : <small>Changes apply to this item's saved estimate. The catalog's market quote is kept.</small>}
             </Field>
-              </div></details>
+              </div></details>}
           </div>
-          <Field label="Notes">
+          {quickSave && quickHasItem ? (
+            <div className="quick-save-panel">
+              <div className="quick-save-quantity" data-validation-field={`${quickTarget}-quantity`}>
+                <span id="quick-save-quantity-label">How many?</span>
+                <div className="quick-save-stepper" role="group" aria-labelledby="quick-save-quantity-label">
+                  <button type="button" aria-label="One less" disabled={quickQuantity <= 1} onClick={() => setQuickQuantity(Math.max(1, quickQuantity - 1))}>−</button>
+                  <input type="number" min="1" step="1" inputMode="numeric" aria-labelledby="quick-save-quantity-label" value={multiDestinationForm[quickTarget]?.quantity ?? 1} onChange={(event) => setQuickQuantity(event.target.value)} />
+                  <button type="button" aria-label="One more" onClick={() => setQuickQuantity(quickQuantity + 1)}>+</button>
+                </div>
+                {fieldError(`${quickTarget}-quantity`) ? <span className="field-error" role="alert">{fieldError(`${quickTarget}-quantity`)}</span> : null}
+              </div>
+              {quickTarget !== "wishlist" ? (
+                <Field label="What you paid for each (optional)" fieldId={`${quickTarget}-unit-cost`} error={fieldError(`${quickTarget}-unit-cost`)}>
+                  <input type="number" min="0" step="0.01" inputMode="decimal" placeholder="0.00" value={multiDestinationForm[quickTarget]?.unitCost ?? ""} onChange={(event) => updateMultiDestinationSection(quickTarget, "unitCost", event.target.value)} />
+                </Field>
+              ) : null}
+              {quickTarget === "forge" ? (
+                <Field label="Condition">
+                  <select value={multiDestinationForm.forge.conditionName} onChange={(event) => updateMultiDestinationSection("forge", "conditionName", event.target.value)}>
+                    <option value="">Near Mint / Sealed</option>
+                    {VAULT_CONDITIONS.filter(Boolean).map((condition) => (
+                      <option key={condition} value={condition}>{condition}</option>
+                    ))}
+                  </select>
+                </Field>
+              ) : null}
+            </div>
+          ) : null}
+          {quickSave ? null : <Field label="Notes">
             <textarea
               value={multiDestinationForm.notes}
               onChange={(event) => updateMultiDestinationField("notes", event.target.value)}
               placeholder="Condition notes, source notes, or anything the destination should remember."
             />
-          </Field>
+          </Field>}
         </section>
         ) : null}
 

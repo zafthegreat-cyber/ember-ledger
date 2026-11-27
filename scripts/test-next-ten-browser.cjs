@@ -8,6 +8,10 @@ const { chromium, expect } = require("@playwright/test");
   assert.ok(["localhost", "127.0.0.1"].includes(base.hostname));
   const output = path.resolve("artifacts/qa/next-ten/browser"); fs.mkdirSync(output, { recursive: true });
   const browser = await chromium.launch({ headless: true }); const results = [];
+  // Opening a search result, reloading and going Back or Forward each load the whole app
+  // again (3 to 5 seconds on a quiet machine), so they get the same allowance as the page
+  // loads below instead of the 5 second default meant for changes within a page.
+  const pageLoad = { timeout: 30000 };
   try {
     for (const theme of ["light", "dark"]) for (const width of [360, 1440]) {
       const context = await browser.newContext({ viewport: { width, height: 900 } });
@@ -30,16 +34,16 @@ const { chromium, expect } = require("@playwright/test");
         await page.screenshot({ path: path.join(output, `${theme}-${width}-search.png`), fullPage: true });
         const searchUrl = page.url();
         await page.getByRole("link", { name: /^Synthetic browser group profileGroups:/ }).click();
-        await expect(page.getByRole("heading", { name: "Synthetic browser group", exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Synthetic browser group", exact: true })).toBeVisible(pageLoad);
         const exactId = new URL(page.url()).searchParams.get("record"); assert.ok(exactId.startsWith("profileGroups:"));
         await page.reload();
-        await expect(page.getByRole("heading", { name: "Synthetic browser group", exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Synthetic browser group", exact: true })).toBeVisible(pageLoad);
         await page.screenshot({ path: path.join(output, `${theme}-${width}-detail.png`), fullPage: true });
         await page.goBack();
-        await expect(page.getByRole("heading", { name: "Record search", exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Record search", exact: true })).toBeVisible(pageLoad);
         assert.equal(page.url(), searchUrl);
         await page.goForward();
-        await expect(page.getByRole("heading", { name: "Synthetic browser group", exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Synthetic browser group", exact: true })).toBeVisible(pageLoad);
         assert.equal(new URL(page.url()).searchParams.get("record"), exactId);
         assert.equal(await page.evaluate(() => localStorage.getItem("code3.account-ops.v1")), before);
         await page.goto(`${base.origin}/owner-center/controls/data-backup?betaLocalMode=true&themeInspect=${theme}`);
@@ -75,9 +79,20 @@ const { chromium, expect } = require("@playwright/test");
       await Promise.all(Array.from({ length: 8 }, (_, i) => service.createProfileGroup({ displayName: `${label} ${i}` })));
     }, prefix);
     await Promise.all([create(one, "Tab A"), create(two, "Tab B")]);
+    // A tab hears about another tab's localStorage write a moment after it happens, so
+    // reading tab one the instant both tabs finish can miss tab two's last write (CI once
+    // counted 19 of 20 groups). Count once both tabs hold the same saved data. A write
+    // that was really lost never arrives in either tab, so the counts below still catch it.
+    const savedIn = (page) => page.evaluate(() => localStorage.getItem("code3.account-ops.v1"));
+    const firstRead = await Promise.all([savedIn(one), savedIn(two)]);
+    await expect.poll(async () => { const [first, second] = await Promise.all([savedIn(one), savedIn(two)]); return first === second; }, { timeout: 15000, message: "Both tabs should end up holding the same saved Account Ops data" }).toBe(true);
     const snapshot = await one.evaluate(() => JSON.parse(localStorage.getItem("code3.account-ops.v1")));
-    fs.writeFileSync(path.join(output, "two-tab-write-trace.json"), JSON.stringify({ one: await one.evaluate(() => window.__accountOpsWrites), two: await two.evaluate(() => window.__accountOpsWrites), counts: { groups: snapshot.profileGroups.length, activity: snapshot.activity.length } }, null, 2));
-    assert.equal(snapshot.profileGroups.length, 20); assert.equal(snapshot.activity.length, 16);
+    fs.writeFileSync(path.join(output, "two-tab-write-trace.json"), JSON.stringify({ one: await one.evaluate(() => window.__accountOpsWrites), two: await two.evaluate(() => window.__accountOpsWrites), counts: { groups: snapshot.profileGroups.length, activity: snapshot.activity.length, groupsAtFirstRead: firstRead.map((raw) => JSON.parse(raw).profileGroups.length) } }, null, 2));
+    // If this ever fails, the message says which it was: a count that is short only at the
+    // first read is a late read; a count still short after both tabs agree is a lost write.
+    const firstReadGroups = firstRead.map((raw) => JSON.parse(raw).profileGroups.length).join(" and ");
+    assert.equal(snapshot.profileGroups.length, 20, `Saved profile groups after both tabs agreed (the first read saw ${firstReadGroups})`);
+    assert.equal(snapshot.activity.length, 16, "Saved activity entries after both tabs agreed");
     const direct = await two.evaluate(async () => { const { createAccountOpsRepository } = await import("/src/features/accountOps/repository.js"); const repo = createAccountOpsRepository(); try { repo.save(repo.load()); return "BYPASSED"; } catch (error) { return error.code; } });
     assert.equal(direct, "COORDINATED_WRITE_REQUIRED");
     results.push({ name: "two actual browser tabs preserve 16 concurrent records and activities; direct writer cannot bypass Web Locks", passed: true });

@@ -57,7 +57,7 @@ const homeKeys = page => page.locator("[data-home-card]").evaluateAll(rows => ro
     for (const testCase of cases) {
       const { width, height, theme } = testCase;
       const prefix = `${width}-${theme}`;
-      const context = await browser.newContext({ viewport: { width, height }, reducedMotion: "reduce", serviceWorkers: "block" });
+      const context = await browser.newContext({ viewport: { width, height }, reducedMotion: "reduce", serviceWorkers: "block" }); await context.addInitScript(require("./lib/open-home-more.cjs"));
       const writes = []; const external = []; const errors = [];
       await context.route("**/*", route => {
         const request = route.request(); const url = new URL(request.url());
@@ -148,9 +148,9 @@ const homeKeys = page => page.locator("[data-home-card]").evaluateAll(rows => ro
       const initialNavigation = await navigation();
       const report = page.getByRole("button", { name: "Report a restock", exact: true });
       await expect(report).toBeVisible();
-      // Since the Nov 2026 Home redesign (search and Cards/Wants/Stores tiles first), the restock card can sit
-      // just below the fold on 568px-tall phones; there it must be one short scroll away and clear of the nav.
-      if (height < 600) await report.evaluate(element => element.scrollIntoView({ block: "center" }));
+      // Home opens on a few big choices (Nov 25 2026); the restock card comes right after them, so on
+      // a phone it is one short scroll away. Once in view it must be whole and clear of the nav.
+      if (height < 900) await report.evaluate(element => element.scrollIntoView({ block: "center" }));
       const reportBox = await report.boundingBox(); assert.ok(reportBox.width >= 44 && reportBox.height >= 44, "Home report touch target is at least 44px");
       await expect(report).toBeInViewport({ ratio: 1 });
       const mobileNav = page.locator(".ops-mobile-nav").filter({ visible: true });
@@ -171,7 +171,7 @@ const homeKeys = page => page.locator("[data-home-card]").evaluateAll(rows => ro
       await page.keyboard.press("Escape"); await expect(page.locator('.flow-modal[data-flow="scoutSubmit"]')).toHaveCount(0);
       assert.deepEqual(await navigation(), initialNavigation, "Opening reporting never reorders navigation");
       step = `${prefix}: actual collector Sell or trade`;
-      await page.getByRole("button", { name: "Sell or trade", exact: true }).click();
+      await page.locator(".home-choices").getByRole("button", { name: /^Sell or trade./ }).click(); // Nov 25 2026: Home opens on a few big choices
       await expect(page.locator(".collector-sell-trade")).toBeVisible();
       await page.getByRole("button", { name: "Compare a trade", exact: true }).click();
       await expect(page.locator('.flow-modal[data-flow="tradeCompass"]')).toBeVisible();
@@ -217,8 +217,9 @@ const homeKeys = page => page.locator("[data-home-card]").evaluateAll(rows => ro
       await page.screenshot({ path: path.join(output, `${prefix}-adaptive-collection-home.png`), fullPage: true });
 
       step = `${prefix}: adaptive Add choices and manual preferences`;
-      await render("add"); const defaultAdd = await primaryAdd(page).allTextContents(); assert.deepEqual(defaultAdd, ["Add to my collection", "Search cards & products", "Scan with camera", "Type a barcode number", "Sell or trade"]);
-      await render("add", { adaptiveActivity: { collection: records("collection") } }); assert.equal((await primaryAdd(page).allTextContents())[0], "Add to my collection");
+      await render("add"); const defaultAdd = await primaryAdd(page).allTextContents(); assert.deepEqual(defaultAdd, ["Scan cards", "Add to my collection", "Search cards & products", "Other scans", "Sell or trade"]);
+      // Collection activity keeps the collection actions on top; "Scan cards" adds to the collection too (Nov 25 2026).
+      await render("add", { adaptiveActivity: { collection: records("collection") } }); assert.deepEqual((await primaryAdd(page).allTextContents()).slice(0, 2), ["Scan cards", "Add to my collection"]);
       await render("add", { ...seller, adaptiveActivity: { sales: records("sale") } }); assert.equal((await primaryAdd(page).allTextContents())[0], "Record Sale");
       await render("add", { ...seller, adaptiveActivity: { sales: [] } }, { sales: records("native-sale") }); assert.equal((await primaryAdd(page).allTextContents())[0], "Record Sale");
       await render("add", { adaptiveActivity: { sales: records("sale", 4) }, personalizationPreferences: { smartRecommendationsEnabled: false } }); assert.deepEqual(await primaryAdd(page).allTextContents(), defaultAdd);
@@ -237,8 +238,8 @@ const homeKeys = page => page.locator("[data-home-card]").evaluateAll(rows => ro
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, "Add fixture fits viewport");
       await page.screenshot({ path: path.join(output, `${prefix}-adaptive-manual-add.png`) });
       await render("add", { personalizationPreferences: { pagePreferences: { quickAdd: { visibleKeys: ["searchCard", "scanUpc", "scanScreenshot", "scanCards", "requestMissingItem"], updatedAt: now } } } });
-      assert.deepEqual(await primaryAdd(page).allTextContents(), ["Search cards & products", "Type a barcode number", "Review a restock screenshot", "Scan several cards", "Request Missing Item"], "Saved preferences point to their exact working actions");
-      for (const [name, destination] of [[/^Search cards/, "search"], [/^Type a barcode number/, "upc"], [/^Review a restock screenshot/, "scoutScreenshotReview"], [/^Scan several cards/, "cardPageReview"]]) {
+      assert.deepEqual(await primaryAdd(page).allTextContents(), ["Search cards & products", "Type a barcode number", "Review a restock screenshot", "Scan cards", "Request Missing Item"], "Saved preferences point to their exact working actions");
+      for (const [name, destination] of [[/^Search cards/, "search"], [/^Type a barcode number/, "upc"], [/^Review a restock screenshot/, "scoutScreenshotReview"], [/^Scan cards/, "cardPageReview"]]) {
         await page.getByRole("button", { name }).click();
         assert.deepEqual(await page.evaluate(() => window.qaCalls.at(-1)), ["path", destination]);
       }
@@ -259,9 +260,9 @@ const homeKeys = page => page.locator("[data-home-card]").evaluateAll(rows => ro
       await expect(page.getByText("Projected profit", { exact: true })).toHaveCount(0);
       await expect(page.getByText("Private expense record", { exact: true })).toHaveCount(0);
       await expect(page.locator('[data-home-card="forgeSummary"]')).toHaveCount(0);
-      await page.getByRole("button", { name: "Sell or trade", exact: true }).click();
+      await page.locator(".home-choices").getByRole("button", { name: /^Sell or trade./ }).click(); // Nov 25 2026: Home opens on a few big choices
       assert.deepEqual(await page.evaluate(() => window.qaCalls.at(-1)), ["sell-trade"]);
-      await page.getByRole("button", { name: "Search cards & products", exact: true }).click();
+      await page.locator(".home-choices").getByRole("button", { name: /^Prices./ }).click();
       assert.deepEqual(await page.evaluate(() => window.qaCalls.at(-1)), ["navigate", "market"]);
       await page.screenshot({ path: path.join(output, `${prefix}-collector-home.png`), fullPage: true });
       await render("add", { adaptiveActivity: { sales: records("sale", 8) }, personalizationPreferences: { pagePreferences: { quickAdd: { visibleKeys: ["addSale", "addExpense", "addVaultItem"], updatedAt: now } } } }, businessRepository);

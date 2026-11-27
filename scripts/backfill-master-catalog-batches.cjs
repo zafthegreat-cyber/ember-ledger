@@ -127,6 +127,9 @@ const sections = [
         pc.id,
         case
           when lower(coalesce(pc.product_type, '')) like any (array['%slab%', '%graded%', '%psa%', '%bgs%', '%cgc%']) then 'slab'
+          -- A card rarity or collector number means a single card, whatever the
+          -- name contains (Dratini, Mantine, Fighting Energy all hold "tin").
+          when public.catalog_is_single_card(pc.card_number, pc.rarity) then 'card'
           when coalesce(pc.is_sealed, false)
             or lower(coalesce(pc.product_type, '')) like any (array['%sealed%', '%booster%', '%elite trainer%', '%box%', '%tin%', '%collection%', '%bundle%', '%pack%', '%deck%', '%blister%'])
             or lower(coalesce(pc.name, '')) like any (array['%booster%', '%elite trainer%', '% etb%', '%box%', '%pack%', '%tin%', '%collection%', '%bundle%', '%blister%', '%deck%', '%build%battle%'])

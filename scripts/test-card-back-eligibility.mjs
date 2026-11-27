@@ -26,8 +26,10 @@ test('My First Battle cards use their actual reverse while whole retail packages
 
 test('reviewed 2004 championship backs require exact product, printing and language',()=>{
   const rows=JSON.parse(readFileSync('src/data/generated/pokemonTcgCards.json'));
-  const exact=rows.filter(row=>row.setName==='World Championship Decks' && /\b2004\b/.test(row.name));
-  assert.equal(exact.length,95);
+  // Count the reviewed products: deck cards that were once filed as sealed (Fighting Energy,
+  // Giratina) join this file unreviewed, and the last line of this test keeps them without a back.
+  const exact=rows.filter(row=>row.setName==='World Championship Decks' && /\b2004\b/.test(row.name) && reviewedBacks.products[String(row.tcgplayerProductId)]);
+  assert.equal(exact.length,96);
   for(const record of exact){
     const before=JSON.stringify(record);
     assert.equal(inspectionCardBack(record)?.src,'/assets/inspection/pokemon-worlds-2004-back.webp');
@@ -46,27 +48,46 @@ test('reviewed 2004 championship backs require exact product, printing and langu
 });
 
 test('2005 cards use their own reviewed back and never borrow the 2004 printing',()=>{
- const rows=JSON.parse(readFileSync('src/data/generated/pokemonTcgCards.json')).filter(row=>row.setName==='World Championship Decks'&&/\b2005\b/.test(row.name));
- assert.equal(rows.length,86);
+ const rows=JSON.parse(readFileSync('src/data/generated/pokemonTcgCards.json')).filter(row=>row.setName==='World Championship Decks'&&/\b2005\b/.test(row.name)&&reviewedBacks.products[String(row.tcgplayerProductId)]);
+ assert.equal(rows.length,89);
  for(const row of rows){assert.equal(inspectionCardBack(row)?.src,'/assets/inspection/pokemon-worlds-2005-back.webp');assert.equal(inspectionCardBack({...row,printing:'World Championships2004'}),null);assert.equal(inspectionCardBack({...row,language:'Japanese'}),null);}
 });
 
 test('2022–2025 printed backs stay specific to each reviewed player deck',()=>{
  const catalog=JSON.parse(readFileSync('src/data/generated/pokemonTcgCards.json'));
  const entries=Object.entries(reviewedBacks.products).filter(([,r])=>/^worlds202[2-5]-/.test(r.asset));
- assert.equal(entries.length,414);assert.equal(new Set(entries.map(([,r])=>r.asset)).size,16);
+ assert.equal(entries.length,420);assert.equal(new Set(entries.map(([,r])=>r.asset)).size,16);
  for(const [id,identity]of entries){const row=catalog.find(r=>String(r.tcgplayerProductId)===id),before=JSON.stringify(row);assert.equal(inspectionCardBack(row)?.src,reviewedBacks.assets[identity.asset].src);assert.equal(inspectionCardBack({...row,tcgplayerProductId:'unknown'}),null);assert.equal(inspectionCardBack({...row,cardName:row.name+' Gold Signature'}),null);assert.equal(inspectionCardBack({...row,printing:'World Championships 2004'}),null);assert.equal(inspectionCardBack({...row,languageCode:'ja'}),null);assert.equal(JSON.stringify(row),before);}
  for(const id of ['696842','696841','696764','696767'])assert.equal(inspectionCardBack(catalog.find(r=>String(r.tcgplayerProductId)===id)),null);
 });
 
 test('2006 through 2019 exact printing backs reject unknown and conflicting identities',()=>{
  const catalog=JSON.parse(readFileSync('src/data/generated/pokemonTcgCards.json'));
- for(const [year,count] of [[2006,94],[2007,99],[2008,94],[2009,84],[2010,106],[2011,89],[2012,84],[2013,87],[2014,99],[2015,67],[2016,89],[2017,94],[2018,92],[2019,89]]){
-  const rows=catalog.filter(r=>r.setName==='World Championship Decks'&&r.name.includes(' '+year+' ')&&String(r.tcgplayerProductId)!=='479839');
+ for(const [year,count] of [[2006,95],[2007,101],[2008,94],[2009,111],[2010,109],[2011,90],[2012,87],[2013,88],[2014,99],[2015,94],[2016,93],[2017,95],[2018,94],[2019,91]]){
+  const rows=catalog.filter(r=>r.setName==='World Championship Decks'&&r.name.includes(' '+year+' ')&&String(r.tcgplayerProductId)!=='479839'&&reviewedBacks.products[String(r.tcgplayerProductId)]);
   assert.equal(rows.length,count);
   for(const row of rows){const before=JSON.stringify(row);assert.match(inspectionCardBack(row)?.src,new RegExp('^/assets/inspection/(?:optimized-20261123/[a-f0-9]{16}/)?pokemon-worlds-'+year+'-back\\.(?:jpg|webp)$'));assert.equal(inspectionCardBack({...row,printing:'World Championships 2024'}),null);assert.equal(inspectionCardBack({...row,collector_number:'incorrect'}),null);assert.equal(JSON.stringify(row),before);}
  }
  assert.equal(inspectionCardBack(catalog.find(r=>String(r.tcgplayerProductId)==='479839')),null,'Energy artwork year cannot determine a different player deck year');
+});
+
+test('deck cards once filed as sealed products use their own year, and doubtful listings stay without a back',()=>{
+ const catalog=JSON.parse(readFileSync('src/data/generated/pokemonTcgCards.json'));
+ // "Martinez" holds "tin": both players' whole decks were filed as tins, so no card of theirs had been reviewed.
+ for(const [deck,year,count] of [['2009 Jason Martinez',2009,24],['2015 Patrick Martinez',2015,23]]){
+  const rows=catalog.filter(r=>r.setName==='World Championship Decks'&&r.name.endsWith(' '+deck));
+  assert.equal(rows.length,count,deck);
+  for(const row of rows){
+   assert.match(inspectionCardBack(row)?.src,new RegExp('pokemon-worlds-'+year+'-back\\.(?:jpg|webp)$'),row.name);
+   assert.equal(inspectionCardBack({...row,name:row.name.replace(String(year),String(year+1))}),null,row.name);
+   assert.equal(inspectionCardBack({...row,tcgplayerProductId:'unknown'}),null,row.name);
+  }
+ }
+ // No year, a misspelled player, a gold stamp or a code card: nothing reviewed stands behind these.
+ for(const name of ['Zacian V','Luminous Energy 2025 Jose Cruz Galindo Rosendiz','Raging Bolt 2025 Yuya Okita Gold Stamped','Code Card 2025 World Championships digital bundle']){
+  const row=catalog.find(r=>r.setName==='World Championship Decks'&&r.name===name);
+  assert.ok(row,name);assert.equal(inspectionCardBack(row),null,name);
+ }
 });
 
 test('ordinary metal card titles and official Custom Catcher keep the international card back',()=>{

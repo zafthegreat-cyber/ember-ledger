@@ -100,3 +100,21 @@ test("the reader stops after the name strip and corners only when they give a re
   assert.equal(stageOneIsEnough(stage1("mew", "151/165")), false, "short or lower-case name: read more");
   assert.equal(stageOneIsEnough(null), false);
 });
+
+test("promo numbers printed with a language code, and attack damage is not a card number (Nov 24 2026)", async () => {
+  const { findCardNumbers: numbers } = await import("../src/utils/cardPhotoText.mjs");
+  assert.deepEqual(numbers("SVP EN 085").map((entry) => entry.value), ["SVP085"]);
+  assert.deepEqual(numbers("SWSH050").map((entry) => entry.value), ["SWSH050"]);
+  assert.deepEqual(numbers("Fire Blast 1207 60"), [], "damage next to a cost is not 120/60");
+  assert.deepEqual(numbers("250 / 30"), [], "a number far above the set total is not a collector number");
+  assert.deepEqual(numbers("230/193").map((entry) => entry.value), ["230/193"], "secret rares above the total still count");
+  assert.deepEqual(numbers("0587102").map((entry) => entry.value), ["058/102"], "a slash read as 7 still works for real numbers");
+});
+
+
+test("a number found only elsewhere on the card is a guess, not a certain read (Nov 24 2026)", () => {
+  const guess = parseCardPhotoText({ nameText: "Charizard ex", numberText: "Illus. 5ban Graphics", fullText: "Charizard ex\nBurning Darkness 180/230" });
+  assert.notEqual(guess.certainty, "name-and-number", "damage text on the card does not count as the collector number");
+  const read = parseCardPhotoText({ nameText: "Charizard ex", numberText: "125/197" });
+  assert.equal(read.certainty, "name-and-number");
+});

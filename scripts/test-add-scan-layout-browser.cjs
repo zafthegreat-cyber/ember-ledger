@@ -24,7 +24,7 @@ async function rowGeometry(chooser) {
 }
 
 function verifyRows(rows, width) {
-  assert.ok(rows.length >= 6, "All six available paths remain present");
+  assert.ok(rows.length >= 4, "The four everyday paths are shown up front (Nov 25 2026)");
   for (const row of rows) {
     assert.ok(Math.abs(row.label.x - row.helper.x) < 2, `${row.title}: helper aligns with label instead of the icon column`);
     assert.ok(row.helper.width >= 140 && row.helper.width >= row.row.width * 0.6, `${row.title}: helper uses remaining row width (${row.helper.width}px)`);
@@ -94,7 +94,7 @@ async function contrastReport(chooser) {
       const modal = page.locator('.flow-modal[data-flow="addActionSheet"]');
       await expect(modal).toBeVisible();
       await expect(modal.locator(".add-anything-entry")).toBeVisible();
-      await modal.getByRole("button", { name: /^Scan (Listing|or review|with camera)\./ }).click();
+      await modal.getByRole("button", { name: /^(Scan (Listing|or review|with camera)|Other scans)\./ }).click();
       const chooser = modal.locator(".add-anything-scan-foundation");
       await expect(chooser).toBeVisible();
       const body = modal.locator(".flow-modal-body");
@@ -119,7 +119,10 @@ async function contrastReport(chooser) {
       verifyRows(initialRows, width);
       // Nov 17 2026: card, slab, listing and receipt scanning are built, so there is no "Coming later" section.
       const titles = initialRows.map(row => row.title);
-      for (const title of ["Scan barcode", "Scan several cards", "Scan a card", "Graded slab", "Listing screenshot", "Scan a receipt", "Search by name", "Manual entry"]) assert.ok(titles.includes(title), `${title} is offered: ${titles.join(", ")}`);
+      // Nov 25 2026: four everyday choices up front, the rest under "More ways to add".
+      for (const title of ["Scan cards", "Scan barcode", "Graded slab", "Search by name"]) assert.ok(titles.includes(title), `${title} is offered up front: ${titles.join(", ")}`);
+      const moreTitles = await chooser.locator(".scan-anything-more .add-anything-option strong").allTextContents();
+      for (const title of ["Scan a card", "Listing screenshot", "Scan a receipt", "Type a barcode number", "Manual entry", "Request Missing Item"]) assert.ok(moreTitles.includes(title), `${title} is under More ways to add: ${moreTitles.join(", ")}`);
       assert.ok(initialRows.every(row => !row.disabled), "Every scan choice works");
       await expect(chooser.locator("details.scan-anything-unavailable")).toHaveCount(0);
       const colors = await contrastReport(chooser);
@@ -143,13 +146,14 @@ async function contrastReport(chooser) {
         lastStep = `${prefix}: working choices preserve callbacks without saving`;
         const paths = [
           { name: /^Search by name\./, selector: ".add-anything-search", title: "Search item" },
-          { name: /^Type a barcode number/, selector: ".add-anything-upc", title: "Type a barcode number" },
-          { name: /^Manual entry\./, selector: ".add-anything-manual", title: "Manual entry" },
-          { name: /^Scan several cards/, selector: ".add-anything-card-page-review", title: "Scan several cards" },
+          { name: /^Type a barcode number/, selector: ".add-anything-upc", title: "Type a barcode number", more: true },
+          { name: /^Manual entry\./, selector: ".add-anything-manual", title: "Manual entry", more: true },
+          { name: /^Scan cards\./, selector: ".add-anything-card-page-review", title: "Scan cards" },
         ];
         // The restocks screenshot choice now opens the full "Report a restock" flow on its screenshot step.
         await opener.click(); await expect(modal.locator(".add-anything-entry")).toBeVisible();
-        await modal.getByRole("button", { name: /^Scan (Listing|or review|with camera)\./ }).click();
+        await modal.getByRole("button", { name: /^(Scan (Listing|or review|with camera)|Other scans)\./ }).click();
+        await chooser.locator(".scan-anything-more > summary").click();
         await chooser.getByRole("button", { name: /^Restocks screenshot or photo review\./ }).click();
         await expect(page.getByRole("heading", { name: "Report a restock", exact: true })).toBeVisible();
         await expect(page.getByText("Add from a screenshot", { exact: true })).toBeVisible();
@@ -157,11 +161,12 @@ async function contrastReport(chooser) {
         await expect(page.getByRole("heading", { name: "Report a restock", exact: true })).toHaveCount(0);
         for (const target of paths) {
           await opener.click(); await expect(modal.locator(".add-anything-entry")).toBeVisible();
-          await modal.getByRole("button", { name: /^Scan (Listing|or review|with camera)\./ }).click();
+          await modal.getByRole("button", { name: /^(Scan (Listing|or review|with camera)|Other scans)\./ }).click();
+          if (target.more) await chooser.locator(".scan-anything-more > summary").click();
           await chooser.getByRole("button", { name: target.name }).click();
           const screen = modal.locator(target.selector); await expect(screen).toBeVisible();
           await expect(screen.locator(".add-anything-path-header strong")).toHaveText(target.title);
-          if (target.selector === ".add-anything-card-page-review") await expect(screen.getByRole("textbox", { name: "Card name", exact: true })).toBeVisible();
+          if (target.selector === ".add-anything-card-page-review") await expect(screen.locator(".quick-add-card-scan-empty")).toBeVisible();
           if (target.selector === ".add-anything-scout-scan-review") await expect(screen.getByRole("button", { name: "Save Report", exact: true })).toBeDisabled();
           await screen.locator(".add-anything-path-header").getByRole("button", { name: "Back", exact: true }).click();
           await expect(modal.locator(".add-anything-entry")).toBeVisible();

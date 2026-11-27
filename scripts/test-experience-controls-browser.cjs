@@ -33,7 +33,7 @@ async function bundleFixture() {
 }
 
 async function isolatedContext(browser, viewport) {
-  const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, serviceWorkers: "block", reducedMotion: "reduce" });
+  const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, serviceWorkers: "block", reducedMotion: "reduce" }); await context.addInitScript(require("./lib/open-home-more.cjs"));
   const networkWrites = [];
   await context.route("**/*", route => {
     const request = route.request(); const url = new URL(request.url());
@@ -115,18 +115,28 @@ async function seedApp(context, { theme, admin = false, family = false }) {
   }, { theme, admin, family });
 }
 
-// Start-up saves (workspace backfill, catalog seed) land shortly after load; take baselines
-// only once et-tcg-beta-data has been unchanged for ~500ms.
+// Start-up saves land in steps. The app first writes the stored data back as it found it;
+// one debounced save later (about half a second here, longer on a slow CI machine) it
+// writes the records again with their workspace fields added; then the catalog seed.
+// A quiet half second between those steps is not "settled": CI took the baseline before
+// the second write, and the unchanged records then looked changed. A baseline is settled
+// once every saved item, sale and expense carries its workspace (the app adds one to each
+// record it saves) and what these tests compare has then stayed the same for a second.
 async function settledSnapshot(page) {
+  await expect.poll(() => page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem("et-tcg-beta-data"));
+    return [data.items, data.sales, data.expenses].flatMap(rows => rows || []).every(record => record.workspaceId);
+  }), { timeout: 30000, message: "The app saves every record with its workspace after start-up" }).toBe(true);
   let last = null, stableSince = Date.now();
-  const deadline = Date.now() + 15000;
+  const deadline = Date.now() + 20000;
   while (Date.now() < deadline) {
-    const current = await page.evaluate(() => localStorage.getItem("et-tcg-beta-data"));
+    const snapshot = await appSnapshot(page);
+    const current = JSON.stringify(snapshot);
     if (current !== last) { last = current; stableSince = Date.now(); }
-    else if (Date.now() - stableSince >= 500) break;
+    else if (Date.now() - stableSince >= 1000) return snapshot;
     await page.waitForTimeout(100);
   }
-  return appSnapshot(page);
+  throw new Error("Saved records, account and preferences kept changing for 20 seconds after start-up");
 }
 
 async function appSnapshot(page) {
@@ -150,7 +160,10 @@ async function openSettingsInApp(page) {
 }
 
 async function openAppPreferences(page) {
-  await expect(page.locator(".settings-layout")).toBeVisible();
+  // Settings is often the first screen after a whole page load here (goto or reload),
+  // which takes 3 to 5 seconds on a quiet machine, so it gets the same 30 seconds as the
+  // Home loads in this file instead of the 5 second default.
+  await expect(page.locator(".settings-layout")).toBeVisible({ timeout: 30000 });
   const preferences = page.getByRole("region", { name: "Make it yours" });
   if (!await preferences.isVisible()) {
     await page.locator("summary").filter({ hasText: "Experience & tools" }).click();

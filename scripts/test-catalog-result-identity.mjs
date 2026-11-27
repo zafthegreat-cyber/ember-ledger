@@ -4,7 +4,7 @@ import { build } from "esbuild";
 import { resolve } from "node:path";
 import { mkdir } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
-import { catalogCardQueryMatchesRow, getCatalogCollectorQuery, getCatalogPageProducts } from "../src/utils/catalogResultIdentity.mjs";
+import { catalogCardQueryMatchesRow, getCatalogCollectorQuery, getCatalogPageProducts, pickScannedCard } from "../src/utils/catalogResultIdentity.mjs";
 import { analyzeCatalogSearch, normalizeSearchQuery, scoreCatalogSearchRow } from "../src/data/catalogSearchAliases.mjs";
 
 const charizard = { id: "charizard", name: "Charizard", setName: "Base Set", cardNumber: "004/102" };
@@ -89,4 +89,158 @@ test("scanner misreads: near-miss names and stray marks still match the same num
   assert.equal(matches("Charizard ex 126/197", row), false, "the number still has to match");
   assert.equal(nameWordsMatch(["blastoise", "ex"], ["charizard", "ex"]), false, "a short shared word is not enough");
   assert.equal(matches("Charizard Base Set 4/102", { name: "Fire Energy", cardNumber: "4/102", setName: "Base Set" }), false, "set words alone are not a name match");
+});
+
+test("promo numbers: SWSH keeps its prefix, SVP rows store the digits in the promo set (Nov 24 2026)", async () => {
+  const { catalogCardQueryMatchesRow: matches, getCatalogCollectorQuery: identity } = await import("../src/utils/catalogResultIdentity.mjs");
+  assert.equal(identity("Alakazam ex SVP EN 050").collectorNumber, "svp50");
+  assert.equal(identity("Smile"), null, "words that start like a promo code are not numbers");
+  const svpPromo = { name: "Alakazam ex 050", cardNumber: "050", setName: "SV: Scarlet & Violet Promo Cards", setCode: "SVP" };
+  assert.equal(matches("Alakazam ex SVP050", svpPromo), true);
+  assert.equal(matches("Alakazam ex SVP050", { name: "Alakazam ex", cardNumber: "050", setName: "Obsidian Flames" }), false, "the same digits outside the promo set");
+  assert.equal(matches("Charizard V SWSH050", { name: "Charizard V SWSH050", cardNumber: "SWSH050", setName: "SWSH: Sword & Shield Promo Cards" }), true);
+  assert.equal(matches("Pikachu SWSH050", { name: "Charizard V SWSH050", cardNumber: "SWSH050" }), false, "the name still has to match");
+});
+
+test("a 12-digit UPC scan also asks the catalog for its 13- and 14-digit spellings (Nov 24 2026)", async () => {
+  const bundlePath = resolve("artifacts/qa/catalog-search-100", "catalog-service-test.mjs");
+  const { searchPokemonCatalog } = await import(pathToFileURL(bundlePath));
+  const clauses = [];
+  const query = {
+    select() { return this; }, eq() { return this; }, neq() { return this; }, in() { return this; },
+    or(value) { clauses.push(value); return this; }, ilike() { return this; }, limit() { return this; }, order() { return this; }, range() { return this; },
+    then(done) { return Promise.resolve({ data: [], error: null, count: 0 }).then(done); },
+  };
+  await searchPokemonCatalog({ supabase: { from: () => query, rpc: async () => ({ data: [], error: null }) }, query: "196214114845", barcode: "196214114845", mode: "barcode", pageSize: 4 });
+  const all = clauses.join(",");
+  assert.ok(all.includes("196214114845"));
+  assert.ok(all.includes("0196214114845"), "EAN-13 spelling with the leading zero");
+});
+
+test("Save all for scanned cards saves a row only when its name and number match one card (Nov 24 2026)", async () => {
+  const { readFileSync } = await import("node:fs");
+  const vm = await import("node:vm");
+  const source = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
+  const start = source.indexOf("  async function findVerifiedCardForScanRow(row) {");
+  const end = source.indexOf("\n  async function saveAllCardScanRows()", start);
+  assert.ok(start > 0 && end > start, "the real matching function is extractable");
+  const rows = [
+    { id: "a", name: "Alakazam ex", cardNumber: "050", setName: "SV: Scarlet & Violet Promo Cards", setCode: "SVP" },
+    { id: "b", name: "Charizard", cardNumber: "4/102", setName: "Base Set" },
+    { id: "c", name: "Charizard", cardNumber: "4/102", setName: "Base Set Shadowless" },
+  ];
+  const { settleScanMatch } = await import("../src/utils/catalogResultIdentity.mjs");
+  const scope = { getCatalogCollectorQuery, catalogCardQueryMatchesRow, pickScannedCard, settleScanMatch, isSupabaseConfigured: true, supabase: {},
+    searchPokemonCatalogOnDemand: async () => ({ rows }), mapCatalog: (row) => row, getBestCatalogMatches: () => [], catalogProducts: [] };
+  vm.runInNewContext(source.slice(start, end) + "\nglobalThis.find = findVerifiedCardForScanRow;", scope);
+  assert.equal((await scope.find({ cardName: "Alakazam ex", cardNumber: "SVP 050" }))?.id, "a", "one verified match is saved");
+  assert.equal(await scope.find({ cardName: "Charizard", cardNumber: "4/102" }), null, "two printings: left for review");
+  assert.equal((await scope.find({ cardName: "Charizard", cardNumber: "4/102", setName: "Shadowless" }))?.id, "c", "the typed set picks one");
+  assert.equal(await scope.find({ cardName: "Charizard", cardNumber: "" }), null, "no number: left for review");
+  assert.equal(await scope.find({ cardName: "Pikachu", cardNumber: "4/102" }), null, "a different name with the same number is not saved");
+});
+
+
+test("set ids are not promo numbers, names in any script must match, printed set codes rank their set first (Nov 24 2026)", async () => {
+  const { catalogCardQueryMatchesRow: matches, getCatalogCollectorQuery: identity } = await import("../src/utils/catalogResultIdentity.mjs");
+  assert.equal(identity("Pikachu sm12"), null, "sm12 is Cosmic Eclipse, not promo SM12");
+  assert.equal(identity("Pikachu swsh45"), null, "swsh45 is Shining Fates");
+  assert.equal(identity("Pikachu SM012").collectorNumber, "sm12", "a padded number is still a promo");
+  assert.equal(identity("Charizard V SWSH050").collectorNumber, "swsh50");
+  assert.equal(matches("ピカチュウ 025/165", { name: "ピカチュウ", cardNumber: "025/165" }), true);
+  assert.equal(matches("ピカチュウ 025/165", { name: "リザードンex", cardNumber: "025/165" }), false, "another Japanese name with the same number");
+  assert.equal(matches("피카츄 025/165", { name: "Pikachu", cardNumber: "025/165" }), false, "a Korean name does not match an English row");
+
+  const bundlePath = resolve("artifacts/qa/catalog-search-100", "catalog-service-test.mjs");
+  await build({ entryPoints: [resolve("src/services/pokemonCatalogSearch.js")], bundle: true, outfile: bundlePath, format: "esm", platform: "node", define: { "import.meta.env": "{}" } });
+  const { printedSetCodeIn, rowIsFromSet } = await import(pathToFileURL(bundlePath) + "?setcode");
+  const obf = printedSetCodeIn("Charizard ex OBF 125/197");
+  assert.equal(obf?.name, "Obsidian Flames");
+  assert.equal(printedSetCodeIn("Charizard ex 125/197"), null);
+  assert.equal(printedSetCodeIn("Lugia BKT 140"), null, "BKT names two sets, so it does not pick one");
+  assert.equal(rowIsFromSet({ set_code: "sv3" }, obf), true);
+  assert.equal(rowIsFromSet({ setName: "SV03: Obsidian Flames" }, obf), true);
+  assert.equal(rowIsFromSet({ setName: "Paldea Evolved", setCode: "sv2" }, obf), false);
+});
+
+test("printed codes are not name words, SWSH with a space is a promo, #N is the card's own number (Nov 24 2026)", async () => {
+  const { catalogCardQueryMatchesRow: matches, getCatalogCollectorQuery: identity } = await import("../src/utils/catalogResultIdentity.mjs");
+  const { normalizeSearchQuery: normalize } = await import("../src/data/catalogSearchAliases.mjs");
+  assert.deepEqual(identity(normalize("Charizard ex MEW EN 199/165")).requiredWords, ["charizard", "ex"], "the retry searches the name, not 'charizard ex mew en'");
+  assert.deepEqual(identity("Mew ex MEW 151/165").requiredWords, ["mew", "ex"], "Mew the Pokemon stays");
+  assert.equal(matches("Mew 151/165", { name: "Charizard", cardNumber: "151/165" }), false, "a lone name that is also a set code still has to match");
+  assert.equal(identity(normalize("Charizard V SWSH 050")).collectorNumber, "swsh50");
+  assert.equal(normalize("swsh 7"), "sword shield 7", "a set number after SWSH still reads as the set");
+  assert.equal(identity("Pikachu #25").collectorNumber, "25");
+  assert.equal(matches("Pikachu #25", { name: "Pikachu", cardNumber: "025/198" }), true);
+  assert.equal(matches("Pikachu #25", { name: "Pikachu", cardNumber: "58/102" }), false);
+  assert.equal(matches("Pikachu #25", { name: "Raichu", cardNumber: "25/198" }), false);
+  assert.equal(matches("ナッシー 103/108", { name: "ナッシー[Exeggutor]", cardNumber: "103/108" }), true, "a Japanese catalog row matches its own name");
+  assert.equal(matches("ナッシー 103/108", { name: "Exeggutor", cardNumber: "103/108" }), false, "a Japanese read does not match an English-only row");
+});
+
+test("scanned rows are matched as they arrive and show their price (Nov 24 2026)", async () => {
+  const { readFileSync } = await import("node:fs");
+  const vm = await import("node:vm");
+  const source = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
+  const start = source.indexOf("  async function matchCardScanRows(rows = []) {");
+  const end = source.indexOf("\n  function setQuickAddPath(", start);
+  assert.ok(start > 0 && end > start, "the live matcher is extractable");
+  assert.match(source, /void matchCardScanRows\(created\);/, "new scan rows start matching straight away");
+  assert.match(source, /row\.matchedProduct && row\.matchedFor === `\$\{row\.cardName\}\|\$\{row\.cardNumber\}` \? row\.matchedProduct/, "Save all reuses a match the row still fits");
+  let state = { cardScanRows: [
+    { id: "a", cardName: "Pikachu", cardNumber: "58/102" },
+    { id: "b", cardName: "Pikachu", cardNumber: "" },
+    { id: "c", cardName: "Mewtwo", cardNumber: "10/102" },
+  ] };
+  const products = { Pikachu: { id: "p1", name: "Pikachu", setName: "Base Set", cardNumber: "58/102", marketPrice: 4.5 } };
+  const scope = {
+    matchScannedCardRow: async (row) => ({ card: products[row.cardName] || null, others: row.cardName === "Pikachu" ? 2 : 0 }),
+    getTideTradrMarketInfo: (product) => ({ currentMarketValue: product.marketPrice }),
+    catalogTitle: (product) => product.name,
+    setQuickAddWizard: (fn) => { state = fn(state); },
+  };
+  vm.runInNewContext(source.slice(start, end) + "\nglobalThis.match = matchCardScanRows;", scope);
+  await scope.match(state.cardScanRows);
+  const [a, b, c] = state.cardScanRows;
+  assert.equal(a.matchState, "matched");
+  assert.equal(a.matchedValue, 4.5);
+  assert.equal(a.matchedOthers, 2, "other printings are counted for the row note");
+  assert.equal(a.matchedLabel, "Pikachu · Base Set · 58/102");
+  assert.equal(b.matchState, undefined, "a row without a number waits for review");
+  assert.equal(c.matchState, "review");
+});
+
+test("a scanned card picks the main printing among duplicates and reprints (Nov 24 2026)", () => {
+  const rows = (list) => list.map(([name, setName, cardNumber], id) => ({ id, name, setName, cardNumber }));
+  const mew = rows([
+    ["Mew V", "Fusion Strike", "113"],
+    ["Mew V", "Prize Pack Series Cards", "113/264"],
+    ["Mew V", "SWSH08: Fusion Strike", "113/264"],
+    ["Mew V - 2022 (Andre Chiasson)", "World Championship Decks", "113/264"],
+    ["Mew V - 2023 (Vance Kelley)", "World Championship Decks", "113/264"],
+    ["Mew V (Alternate Full Art)", "SWSH08: Fusion Strike", "251/264"],
+  ]);
+  const picked = pickScannedCard({ name: "Mew V", number: "113/264" }, mew);
+  assert.equal(picked.card?.setName, "SWSH08: Fusion Strike", "the main set, with the full printed number");
+  assert.equal(picked.others, 3, "the Prize Pack and both championship decks are other printings");
+  assert.equal(pickScannedCard({ name: "Mew V", number: "251/264" }, mew).card?.id, 5, "the full art has its own number");
+
+  const charizard = rows([
+    ["Charizard", "Base", "4"],
+    ["Charizard", "Base Set 2", "4"],
+    ["Charizard", "Base Set 2", "004/130"],
+    ["Charizard", "Celebrations: Classic Collection", "4/102"],
+    ["Charizard", "Base Set", "004/102"],
+    ["Charizard - 4/102 (CoroCoro Promo)", "Jumbo Cards", "004/102"],
+    ["Charizard (Black Dot Error)", "Base Set", "004/102"],
+    ["Charizard (Celebrations Metal Card)", "Miscellaneous Cards & Products", "004/102"],
+  ]);
+  assert.equal(pickScannedCard({ name: "Charizard", number: "4/102" }, charizard).card?.setName, "Base Set", "not the reprint, the jumbo card or the error variant");
+  assert.equal(pickScannedCard({ name: "Charizard", number: "4/130" }, charizard).card?.setName, "Base Set 2");
+  const shadowless = [...charizard, { id: 99, name: "Charizard", setName: "Base Set (Shadowless)", cardNumber: "004/102" }];
+  assert.equal(pickScannedCard({ name: "Charizard", number: "4/102" }, shadowless).card, null, "two main printings of one card: the user picks");
+  assert.equal(pickScannedCard({ name: "Charizard", number: "4/102", setName: "Shadowless" }, shadowless).card?.id, 99, "a typed set decides");
+  assert.equal(pickScannedCard({ name: "Blastoise", number: "4/102" }, charizard).card, null, "a different name never matches");
+  assert.equal(pickScannedCard({ name: "Charizard", number: "" }, charizard).card, null, "no number: review");
 });

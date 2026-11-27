@@ -27,5 +27,17 @@
 .app .card-camera-frame__toggle:disabled { opacity: .6; }
 @media (prefers-reduced-motion: reduce) { .card-camera-frame__guide.is-steadying { transition: none; } }
 
+/* Nov 26 2026: an outline on the card the camera has found (dashed), solid once it is ready to
+   be taken, so lining up is not guesswork. A tip that names a button rings that button. */
+.card-camera-frame__found { position: absolute; box-sizing: border-box; border: 2px dashed rgb(255 244 200 / 85%); border-radius: 4.5% / 3.2%; pointer-events: none; transition: left 160ms ease, top 160ms ease, width 160ms ease, height 160ms ease; }
+.card-camera-frame__found.is-ready { border-style: solid; border-color: #FFF4C8; box-shadow: 0 0 0 2px rgb(243 217 135 / 45%); }
+.app .card-camera-frame__toggle.is-suggested, .card-camera-frame__toggle.is-suggested { border-color: #F3D987; box-shadow: 0 0 0 3px rgb(243 217 135 / 55%); }
+@media (prefers-reduced-motion: reduce) { .card-camera-frame__found { transition: none; } }
+
 /* Graded slab: taller frame (about 3.1 x 5.3 in), label band at the top. */
 .card-camera-frame--slab .card-camera-frame__guide { aspect-ratio: 31 / 53; }
+
+/* Nov 25 2026: a big tick the moment a card is taken, so the next card can be shown right away. */
+.card-camera-frame__got { position: absolute; top: 50%; left: 50%; width: 88px; height: 88px; margin: -44px 0 0 -44px; display: grid; place-items: center; border-radius: 50%; background: #F3D987; color: #1a0f12; font: 800 48px/1 var(--font-ui, sans-serif); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55); pointer-events: none; animation: card-camera-got 220ms ease-out; }
+@keyframes card-camera-got { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .card-camera-frame__got { animation: none; } }

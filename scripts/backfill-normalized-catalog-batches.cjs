@@ -93,15 +93,20 @@ const sections = [
       )
       update public.product_catalog pc
       set product_kind = case
-        when coalesce(pc.is_sealed, false)
-          or lower(coalesce(pc.product_type, '')) like any (array['%sealed%', '%booster%', '%elite trainer%', '%box%', '%tin%', '%collection%', '%bundle%', '%pack%', '%deck%', '%blister%'])
-          or lower(coalesce(pc.name, '')) like any (array['%booster%', '%elite trainer%', '% etb%', '%box%', '%pack%', '%tin%', '%collection%', '%bundle%', '%blister%', '%deck%', '%build%battle%'])
+        -- A card rarity or collector number means a single card, whatever the
+        -- name contains (Dratini, Mantine, Fighting Energy all hold "tin"), so
+        -- the sealed words only decide rows that carry neither.
+        when not public.catalog_is_single_card(pc.card_number, pc.rarity)
+          and (coalesce(pc.is_sealed, false)
+            or lower(coalesce(pc.product_type, '')) like any (array['%sealed%', '%booster%', '%elite trainer%', '%box%', '%tin%', '%collection%', '%bundle%', '%pack%', '%deck%', '%blister%'])
+            or lower(coalesce(pc.name, '')) like any (array['%booster%', '%elite trainer%', '% etb%', '%box%', '%pack%', '%tin%', '%collection%', '%bundle%', '%blister%', '%deck%', '%build%battle%']))
           then 'sealed_product'
         when lower(coalesce(pc.product_type, '')) like '%code card%' or lower(coalesce(pc.name, '')) like '%code card%'
           then 'code_card'
         when lower(coalesce(pc.product_type, '')) like '%promo%' or lower(coalesce(pc.name, '')) like '%promo%'
           then 'promo'
         when lower(coalesce(pc.product_type, '')) like '%card%' or nullif(trim(coalesce(pc.card_number, '')), '') is not null
+          or public.catalog_is_single_card(pc.card_number, pc.rarity)
           then 'single_card'
         else coalesce(nullif(pc.product_kind, ''), 'unknown')
       end
