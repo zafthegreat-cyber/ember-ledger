@@ -5,6 +5,13 @@ export function focusFlowModalContent(modal, type) {
     || modal?.querySelector("[data-active-step='true']")
     || modal?.querySelector(".flow-modal-body")
     || modal;
+  // A deferred renderer and the modal's animation frame can both request focus.
+  // Once the user reaches a visible control, a late handoff must not redirect
+  // typing into the first field. Step changes still focus their new scope.
+  const active = modal?.ownerDocument?.activeElement;
+  if (scope?.contains(active)
+    && active.matches("input, select, textarea, button, a[href], summary")
+    && !active.disabled && active.getClientRects().length) return;
   if (!["multiDestinationAdd", "scoutSubmit"].includes(type)) scope?.scrollIntoView?.({ block: "nearest" });
   const pending = scope?.querySelector("[data-deferred-modal-loading]");
   const stepHeading = type === "scoutSubmit" ? scope?.querySelector("[data-scout-step-heading]") : null;

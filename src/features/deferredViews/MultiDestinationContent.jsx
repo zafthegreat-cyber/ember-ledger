@@ -452,6 +452,7 @@ export default function MultiDestinationContent({ scope }) {
                 <>
                   <div className="add-item-search-card">
                     <Field label={quickSave ? "Card or product name" : "Search product, set, UPC, or SKU"}>
+                      {/* The modal owns focus; a late search must not steal typing. */}
                       <LazySmartCatalogSearchBox
                         value={multiDestinationCatalogQuery}
                         onChange={(value) => {
@@ -469,7 +470,6 @@ export default function MultiDestinationContent({ scope }) {
                         maxSuggestions={8}
                         inputClassName="add-item-search-input"
                         localCatalogProducts={catalogProducts}
-                        autoFocus
                         inputLabel={quickSave ? "Card or product name" : "Search product, set, UPC, or SKU"}
                         inlineResults
                         emptyMessage="No Market Watch match found. Try fewer words, a UPC/SKU, or add it manually."

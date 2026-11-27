@@ -92,6 +92,11 @@ real Supabase JWT/session behavior, gateway CORS, or the deployed staff function
 
 ## Validation
 
+- Final browser CI exposed competing deferred-modal/search autofocus: typed text
+  could land in the search box instead of the chosen item-name field. The modal
+  now preserves a visible chosen control and owns the nested search's focus.
+  The strengthened cold-load/draft suite passed 32/32 locally, and delayed-modal
+  lifetime passed 4/4. No record-preservation assertions were removed.
 - Locked dependency installation: zero audit vulnerabilities.
 - Focused stock/consent/intake/project-isolation tests: 60 passed, zero skipped.
 - After the later main reconciliations, the 60 stock tests plus 27 affected
