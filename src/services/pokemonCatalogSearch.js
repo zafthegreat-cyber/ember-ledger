@@ -1,5 +1,5 @@
 import { compareCatalogProducts } from "../utils/catalogSortUtils";
-import { catalogCardQueryMatchesRow, exactNumberClauses, getCatalogCollectorQuery } from "../utils/catalogResultIdentity.mjs";
+import { catalogCardQueryMatchesRow, exactNumberSpellings, getCatalogCollectorQuery } from "../utils/catalogResultIdentity.mjs";
 import { identifierEquivalents } from "../utils/barcodeIdentity.mjs";
 import {
   analyzeCatalogSearch,
@@ -1098,9 +1098,10 @@ export async function fetchCardsForClues({ supabase, names = [], species = "", s
  * Returns { rows, facts } like fetchCardsForClues.
  */
 export async function fetchCardsByNumber({ supabase, number = "", limit = 60, signal } = {}) {
-  const clauses = exactNumberClauses(number);
-  if (!supabase || !clauses) return { rows: [], facts: [] };
-  let request = supabase.from("catalog_search_lightweight").select(CATALOG_SELECT_FIELDS).or(clauses).limit(limit);
+  const spellings = exactNumberSpellings(number);
+  if (!supabase || !spellings.length) return { rows: [], facts: [] };
+  // Exact spellings, not patterns: the catalog finds these by its card-number index.
+  let request = supabase.from("catalog_search_lightweight").select(CATALOG_SELECT_FIELDS).in("card_number", spellings).limit(limit);
   if (signal) request = request.abortSignal(signal);
   const { data, error } = await request;
   if (error) throw error;

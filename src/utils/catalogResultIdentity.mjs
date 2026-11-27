@@ -199,15 +199,17 @@ export { nameKeyOf as catalogCardNameKey, rowNameOf as catalogRowName, rowSetOf 
 export const isSpecialPrintSet = (row) => SPECIAL_PRINT_SETS.test(rowSetOf(row));
 
 /**
- * PostgREST "or" clauses for one printed number, every way the catalog spells it:
- * "75/102" is stored as "75/102" or "075/102", "TG10/TG30" as written. A number
- * with no set total is only looked up when it is a promo code ("SWSH174"); bare
- * digits ("85") belong to hundreds of cards. "" when there is nothing to look up.
+ * Every way the catalog may spell one printed number: "75/102" is stored as "75/102" or
+ * "075/102", "TG10/TG30" as written (capitals). The lookup asks for these exact spellings,
+ * which the catalog has an index for (33 ms on Nov 27 2026); a case-blind pattern makes it
+ * read every row (6.5 s, past the 3 s allowed to someone who is not signed in).
+ * A number with no set total is only looked up when it is a promo code ("SWSH174"); bare
+ * digits ("85") belong to hundreds of cards. [] when there is nothing to look up.
  */
-export function exactNumberClauses(number = "") {
+export function exactNumberSpellings(number = "") {
   const tidy = String(number || "").toLowerCase().replace(/\s+/g, "").replace(/[^a-z0-9/]/g, "");
   const [first = "", second = "", extra] = tidy.split("/");
-  if (extra !== undefined) return "";
+  if (extra !== undefined) return [];
   const spellings = (part) => {
     const match = /^([a-z]{0,4})(\d{1,4})([a-z]?)$/.exec(part);
     if (!match) return [];
@@ -215,11 +217,15 @@ export function exactNumberClauses(number = "") {
     return [...new Set([digits, digits.padStart(2, "0"), digits.padStart(3, "0")])].map((value) => `${match[1]}${value}${match[3]}`);
   };
   const owns = spellings(first);
-  if (!owns.length) return "";
-  if (!second) return /^[a-z]/.test(first) ? owns.map((own) => `card_number.ilike.${own}`).join(",") : "";
-  const totals = spellings(second);
-  if (!totals.length) return "";
-  return owns.flatMap((own) => totals.map((total) => `card_number.ilike.${own}/${total}`)).join(",");
+  if (!owns.length) return [];
+  let list;
+  if (!second) list = /^[a-z]/.test(first) ? owns : [];
+  else {
+    const totals = spellings(second);
+    list = owns.flatMap((own) => totals.map((total) => `${own}/${total}`));
+  }
+  // Letters are printed in capitals on the card and stored that way; a few rows are lower case.
+  return [...new Set(list.flatMap((value) => (/[a-z]/.test(value) ? [value.toUpperCase(), value] : [value])))];
 }
 
 /**

@@ -19136,7 +19136,19 @@ export default function App() {
     const name = String(row?.cardName || "").trim();
     const number = String(row?.cardNumber || "").trim();
     const query = `${name} ${number}`;
+    // Nov 27 2026: one quick lookup of the exact number first. The catalog finds it by its
+    // card-number index (about 30 ms on the live catalog); the search below scans for the
+    // number in any spelling and took 1.6 s, an error for anyone not signed in. The same
+    // rows serve the name-and-number match here and the number-alone match further down.
+    let numbered = null;
+    if (number && isSupabaseConfigured && supabase) {
+      try { numbered = await fetchCardsByNumberOnDemand({ supabase, number }); } catch { numbered = null; }
+    }
     if (name && number && getCatalogCollectorQuery(query)) {
+      if (numbered?.rows?.length) {
+        const quick = pickScannedCard({ name, number, setName: row.setName }, numbered.rows.map(mapCatalog));
+        if (quick.card) return quick;
+      }
       let candidates = [];
       if (isSupabaseConfigured && supabase) {
         try {
@@ -19152,7 +19164,7 @@ export default function App() {
     }
     // Nov 27 2026: the number was read but no card has that name and number. The number alone
     // belongs to very few cards, so it is looked up before the clues that need the name.
-    const byNumber = await matchScannedCardByNumber(row, name, number);
+    const byNumber = await matchScannedCardByNumber(row, name, number, numbered);
     // The number and the letters of the name point at the same card: nothing fits better.
     if (byNumber.card && byNumber.nameAgrees) return byNumber;
     const byClues = await matchScannedCardByClues(row, name, number);
@@ -19162,12 +19174,13 @@ export default function App() {
   // The card for a number that was read in full when the name was not (a trainer card,
   // "Iono's" read as "Ionos", the "Evolves from" name taken for the card's own). The row
   // then says the name was hard to read.
-  async function matchScannedCardByNumber(row, name, number) {
+  // numbered: the rows already fetched for this number, when the caller has them.
+  async function matchScannedCardByNumber(row, name, number, numbered = null) {
     const none = { card: null, others: 0 };
     if (!number || !isSupabaseConfigured || !supabase) return none;
     try {
       const [{ rows, facts }, { cardFactsFromDetails, pickCardByNumber }] = await Promise.all([
-        fetchCardsByNumberOnDemand({ supabase, number }),
+        numbered || fetchCardsByNumberOnDemand({ supabase, number }),
         import("./utils/cardClueMatch.mjs"),
       ]);
       if (!rows?.length) return none;

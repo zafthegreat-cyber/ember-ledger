@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { readFileSync } from "node:fs";
 import { nameIsInText, pickCardByNumber } from "../src/utils/cardClueMatch.mjs";
-import { exactNumberClauses } from "../src/utils/catalogResultIdentity.mjs";
+import { exactNumberSpellings } from "../src/utils/catalogResultIdentity.mjs";
 
 // name | set | number | year | hp | attacks
 const CATALOG = `
@@ -110,15 +110,19 @@ test("a card's name is found in what was read, however it was spaced", () => {
 });
 
 test("the catalog is asked for the number in every way it is spelled", () => {
-  assert.equal(exactNumberClauses("75/102"), "card_number.ilike.75/102,card_number.ilike.075/102");
-  assert.equal(exactNumberClauses("055/159"), "card_number.ilike.55/159,card_number.ilike.055/159");
-  assert.equal(exactNumberClauses("4/95"), "card_number.ilike.4/95,card_number.ilike.4/095,card_number.ilike.04/95,card_number.ilike.04/095,card_number.ilike.004/95,card_number.ilike.004/095");
-  assert.equal(exactNumberClauses("TG10/TG30"), "card_number.ilike.tg10/tg30,card_number.ilike.tg10/tg030,card_number.ilike.tg010/tg30,card_number.ilike.tg010/tg030");
-  assert.equal(exactNumberClauses("SWSH174"), "card_number.ilike.swsh174", "a promo code has no total");
-  assert.equal(exactNumberClauses("85"), "", "bare digits belong to hundreds of cards");
-  assert.equal(exactNumberClauses(""), "");
-  assert.equal(exactNumberClauses("1/2/3"), "");
-  assert.equal(exactNumberClauses("75/102),name.eq.x"), "", "nothing but a number gets through");
+  assert.deepEqual(exactNumberSpellings("75/102"), ["75/102", "075/102"]);
+  assert.deepEqual(exactNumberSpellings("055/159"), ["55/159", "055/159"]);
+  assert.deepEqual(exactNumberSpellings("4/95"), ["4/95", "4/095", "04/95", "04/095", "004/95", "004/095"]);
+  assert.deepEqual(exactNumberSpellings("tg10/tg30"), ["TG10/TG30", "tg10/tg30", "TG10/TG030", "tg10/tg030", "TG010/TG30", "tg010/tg30", "TG010/TG030", "tg010/tg030"], "capitals first: that is how the catalog stores them");
+  assert.deepEqual(exactNumberSpellings("SWSH174"), ["SWSH174", "swsh174"], "a promo code has no total");
+  assert.deepEqual(exactNumberSpellings("85"), [], "bare digits belong to hundreds of cards");
+  assert.deepEqual(exactNumberSpellings(""), []);
+  assert.deepEqual(exactNumberSpellings("1/2/3"), []);
+  assert.deepEqual(exactNumberSpellings("75/102),name.eq.x"), [], "nothing but a number gets through");
+  // The lookup must ask for these exact spellings. A pattern (ilike) made the live catalog read
+  // every row: 6.5 s on Nov 27 2026, an error for anyone not signed in. Exact spellings took 33 ms.
+  const service = readFileSync(new URL("../src/services/pokemonCatalogSearch.js", import.meta.url), "utf8").replace(/\s+/g, " ");
+  assert.ok(service.includes('.select(CATALOG_SELECT_FIELDS).in("card_number", spellings).limit(limit)'), "the by-number lookup uses exact spellings");
 });
 
 test("wiring: the app tries the number before the clues, and says the name was hard to read", () => {
@@ -126,9 +130,11 @@ test("wiring: the app tries the number before the clues, and says the name was h
   const flat = (path) => readFileSync(new URL(path, import.meta.url), "utf8").replace(/\s+/g, " ");
   const has = (source, piece, why) => assert.ok(source.includes(piece), `${why}: missing "${piece}"`);
   const app = flat("../src/App.jsx");
-  has(app, "const byNumber = await matchScannedCardByNumber(row, name, number); // The number and the letters of the name point at the same card: nothing fits better. if (byNumber.card && byNumber.nameAgrees) return byNumber; const byClues = await matchScannedCardByClues(row, name, number);", "the number is tried first, and only its name-backed card is taken before the clues");
+  has(app, "try { numbered = await fetchCardsByNumberOnDemand({ supabase, number }); } catch { numbered = null; }", "the exact number is looked up first, and a failure falls through to the old search");
+  has(app, "const quick = pickScannedCard({ name, number, setName: row.setName }, numbered.rows.map(mapCatalog)); if (quick.card) return quick;", "the quick rows settle a name-and-number match by the same rule as before");
+  has(app, "const byNumber = await matchScannedCardByNumber(row, name, number, numbered); // The number and the letters of the name point at the same card: nothing fits better. if (byNumber.card && byNumber.nameAgrees) return byNumber; const byClues = await matchScannedCardByClues(row, name, number);", "the number is tried before the clues, and only its name-backed card is taken outright");
+  has(app, "numbered || fetchCardsByNumberOnDemand({ supabase, number }),", "the rows are not fetched twice");
   has(app, "return settleScanMatch(byNumber, byClues);", "the two matches are settled by the tested rule");
-  has(app, "fetchCardsByNumberOnDemand({ supabase, number })", "the catalog is asked for the number");
   has(app, 'if (picked.card && !picked.sure) return { card: null, others: 0, choices: [picked.card], choicesBy: "number" };', "an unsure pick is offered, not filed");
   has(app, 'nameAgrees: picked.why.includes("name")', "the app knows when the name agrees");
   has(app, 'matchedBy: byClues ? "clues" : byNumber ? "numberOnly" : "number"', "the row remembers how it was matched");
