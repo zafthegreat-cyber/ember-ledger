@@ -1,3 +1,7 @@
+import singleCardRule from './single_card_evidence.cjs';
+
+const { isSingleCard, singleCardEvidence } = singleCardRule;
+
 export function normalizeText(value = '') {
   return String(value || '')
     .normalize('NFD')
@@ -93,6 +97,18 @@ export function classifySealedProduct(product = {}, extendedData = {}) {
   const name = String(product.name || product.cleanName || product.productName || '');
   const type = String(extendedData.product_type || extendedData.producttype || extendedData.type || product.productType || '');
   const text = normalizeText(`${name} ${type}`);
+
+  // A card rarity or collector number means a single card, whatever the name
+  // contains (Dratini, Mantine, Fighting Energy, Nemona's Backpack). The name
+  // words below only decide rows that carry neither.
+  if (isSingleCard(singleCardEvidence(product, extendedData))) {
+    return {
+      isSealed: false,
+      productKind: 'single_card',
+      sealedProductType: null,
+      isPokemonCenterExclusive: false,
+    };
+  }
 
   const explicitSealed =
     /sealed|booster|box|pack|tin|collection|bundle|case|blister|deck|trainer kit|premium|portfolio|binder|sleeves/.test(text);

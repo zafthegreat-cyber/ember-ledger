@@ -16,6 +16,20 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    services:
+      # For the catalog new-sets test, which runs the real migrations in a throwaway database.
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: code3qa
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 55439:5432
+        options: >-
+          --health-cmd "pg_isready -U code3qa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -51,6 +65,8 @@ jobs:
           scripts/test-card-name-snap.mjs
           scripts/test-catalog-result-identity.mjs
           scripts/test-card-scan-rows.mjs
+          scripts/test-card-clue-match.mjs
+          scripts/test-card-number-match.mjs
           scripts/test-card-printings.mjs
           scripts/test-slab-label.mjs
           scripts/test-listing-screenshot.mjs
@@ -63,6 +79,7 @@ jobs:
           scripts/test-card-camera-assist.mjs
           scripts/test-market-history.mjs
           scripts/test-market-history-points.mjs
+          scripts/test-catalog-single-card-rule.mjs
       - name: Domain suites (plain node)
         run: |
           node --no-warnings scripts/test-empty-states.mjs
@@ -93,6 +110,8 @@ jobs:
           node --no-warnings scripts/test-code3-branding.mjs
           node --no-warnings scripts/test-code3-client-security.mjs
           node scripts/test-scout-lint-regressions.cjs
+      - name: Catalog new sets (Postgres)
+        run: node --no-warnings scripts/test-catalog-new-sets-postgres.mjs
       - name: Build
         run: npm run build
       - name: Chunk size report

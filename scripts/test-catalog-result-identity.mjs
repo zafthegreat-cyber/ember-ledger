@@ -129,7 +129,8 @@ test("Save all for scanned cards saves a row only when its name and number match
     { id: "b", name: "Charizard", cardNumber: "4/102", setName: "Base Set" },
     { id: "c", name: "Charizard", cardNumber: "4/102", setName: "Base Set Shadowless" },
   ];
-  const scope = { getCatalogCollectorQuery, catalogCardQueryMatchesRow, pickScannedCard, isSupabaseConfigured: true, supabase: {},
+  const { settleScanMatch } = await import("../src/utils/catalogResultIdentity.mjs");
+  const scope = { getCatalogCollectorQuery, catalogCardQueryMatchesRow, pickScannedCard, settleScanMatch, isSupabaseConfigured: true, supabase: {},
     searchPokemonCatalogOnDemand: async () => ({ rows }), mapCatalog: (row) => row, getBestCatalogMatches: () => [], catalogProducts: [] };
   vm.runInNewContext(source.slice(start, end) + "\nglobalThis.find = findVerifiedCardForScanRow;", scope);
   assert.equal((await scope.find({ cardName: "Alakazam ex", cardNumber: "SVP 050" }))?.id, "a", "one verified match is saved");

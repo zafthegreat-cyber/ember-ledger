@@ -1,7 +1,8 @@
 import { reconcileLegacyQuoteEdit, mergeLegacySavedQuoteRecord } from "./utils/legacyQuoteEdit.mjs";
 import { readLegacyCatalogIdentity, buildLegacyCatalogIdentityUpdate } from "./utils/legacyCatalogIdentity.mjs";
 import ProductPhotoLookup from "./components/ProductPhotoLookup.jsx";
-import { gradingDetails } from "./utils/gradedCopies.mjs";
+import { gradingDetails, gradedCertificateError } from "./utils/gradedCopies.mjs";
+import { cardScanSavedDetails } from "./utils/cardScanDetails.mjs";
 import { readLegacyGradingMetadata, reconcileLegacyGradingEdit } from "./utils/legacyGradingMetadata.mjs";
 import PasswordInput from "./features/auth/PasswordInput.jsx";
 import NotificationInbox from "./components/NotificationInbox.jsx";
@@ -23,7 +24,7 @@ import { NATIVE_BUILD, isHiddenInNativeApp } from "./config/nativeLaunchScope.js
 import {nearbyCoordinatesForText} from './utils/nearbyPreference.mjs';
 import { compactSavedStores } from "./utils/storeDirectoryPersistence.js";
 import { isBlockedAuthor, useBlockedUsers } from "./utils/blockedUsers.js";
-import { catalogCardQueryMatchesRow, getCatalogCollectorQuery, getCatalogPageProducts, pickScannedCard } from "./utils/catalogResultIdentity.mjs";
+import { cardNameForChoice, catalogCardQueryMatchesRow, getCatalogCollectorQuery, getCatalogPageProducts, pickScannedCard, settleScanMatch } from "./utils/catalogResultIdentity.mjs";
 import { mergeScannedCardRows, undoScannedCardRow } from "./utils/cardScanRows.mjs";
 import SocialSignInButtons, { ConnectedSignIns } from "./features/auth/SocialSignIn.jsx";
 import EmailConfirmationHelp, { SignupFieldPrivacy } from "./features/auth/EmailConfirmationHelp.jsx";
@@ -125,6 +126,7 @@ import {
 } from "./components/command-system";
 import { HEARTH_FOUNDATION_SCREEN, MASTER_CARD_PREVIEW_SEEDS } from "./data/appPreviewFoundation";
 import { APP_VERSION, checkForEmberTideUpdate, refreshEmberTideApp } from "./appUpdate";
+import { isLikelyChunkLoadError } from "./utils/appFallbackContent";
 import { SEALED_PRODUCT_TYPES, SET_SEARCH_METADATA } from "./data/pokemonCatalogCoreData";
 import {
   ALERT_TYPE_OPTIONS,
@@ -703,7 +705,11 @@ let scoutRestockIntelBundlePromise = null;
 
 function loadPokemonCatalogSearchModule() {
   if (!pokemonCatalogSearchModulePromise) {
-    pokemonCatalogSearchModulePromise = import("./services/pokemonCatalogSearch");
+    // A load that failed (a dropped connection) is not kept: the next search tries again.
+    pokemonCatalogSearchModulePromise = import("./services/pokemonCatalogSearch").catch((error) => {
+      pokemonCatalogSearchModulePromise = null;
+      throw error;
+    });
   }
   return pokemonCatalogSearchModulePromise;
 }
@@ -711,6 +717,16 @@ function loadPokemonCatalogSearchModule() {
 async function searchPokemonCatalogOnDemand(options = {}) {
   const catalogSearchModule = await loadPokemonCatalogSearchModule();
   return catalogSearchModule.searchPokemonCatalog(options);
+}
+
+async function fetchCardsByNumberOnDemand(options = {}) {
+  const catalogSearchModule = await loadPokemonCatalogSearchModule();
+  return catalogSearchModule.fetchCardsByNumber(options);
+}
+
+async function fetchCardsForCluesOnDemand(options = {}) {
+  const catalogSearchModule = await loadPokemonCatalogSearchModule();
+  return catalogSearchModule.fetchCardsForClues(options);
 }
 
 async function analyzeCatalogSearchOnDemand(query = "") {
@@ -5350,6 +5366,7 @@ function getCatalogVariantOptions(product = {}) {
       language: variant.language || "English",
       tcgplayerSkuId: variant.tcgplayerSkuId || variant.tcgplayer_sku_id || "",
       conditionName: variant.conditionName || variant.condition_name || "",
+      marketPrice: Number(variant.marketPrice ?? variant.market_price ?? 0) || 0,
       isDefault: Boolean(variant.isDefault || variant.is_default),
     }));
     if (product.priceSubtype || product.variantNames) {
@@ -5370,6 +5387,32 @@ function getCatalogVariantOptions(product = {}) {
     return product.catalogType === "card"
       ? [{ id: `${product.id}-default`, variantName: "Default", printing: "", finish: "", language: product.language || "English", conditionName: "", isDefault: true }]
       : [];
+  }
+
+// A card with several printings (Normal, Reverse Holofoil, 1st Edition...) keeps
+// one main price. When one printing is chosen, price it from its own row and its
+// matching TCGCSV source instead. Falls back to the card when it has no price.
+function withCatalogVariantPricing(product, variant, variantCount = 0) {
+    if (!product || !variant || variant.sourceProduct || variantCount < 2) return product;
+    const names = [variant.variantName, variant.finish].map((name) => String(name || "").trim().toLowerCase()).filter(Boolean);
+    const sources = (Array.isArray(product.marketSources) ? product.marketSources : [])
+      .filter((source) => names.includes(String(source.priceType || "").trim().toLowerCase()));
+    const source = sources.find((entry) => Number(entry.marketPrice || 0) > 0) || sources[0] || null;
+    const price = Number(variant.marketPrice || source?.marketPrice || 0);
+    if (!(price > 0)) return product;
+    return {
+      ...product,
+      marketPrice: price,
+      marketValue: price,
+      marketValueNearMint: price,
+      lowPrice: Number(source?.lowPrice || 0),
+      midPrice: Number(source?.midPrice || 0) || price,
+      highPrice: Number(source?.highPrice || 0),
+      marketSummary: product.marketSummary
+        ? { ...product.marketSummary, recommended_market_value: price, recommendedMarketValue: price }
+        : product.marketSummary,
+      marketSources: sources,
+    };
   }
 
 function getCatalogVariantDisplayName(product = {}, index = 0) {
@@ -7814,6 +7857,21 @@ export default function App() {
       window.removeEventListener("ember-tide:update-available", onServiceWorkerUpdate);
     };
   }, []);
+
+  // Nov 27 2026: a web page left open across an update asked for the scanner's catalog code
+  // by its old file name, which the new version no longer has, and every card came back
+  // "Not sure". That code now loads as the scanner opens, so an update while scanning
+  // cannot take it away; a page already too old says so and offers a refresh.
+  const [scanLookupStale, setScanLookupStale] = useState(false);
+  const scanScreenOpen = quickAddWizard.screen === "cardPageReview";
+  useEffect(() => {
+    if (!scanScreenOpen) return undefined;
+    let active = true;
+    Promise.all([loadPokemonCatalogSearchModule(), import("./utils/cardClueMatch.mjs")])
+      .then(() => { if (active) setScanLookupStale(false); })
+      .catch((error) => { if (active && isLikelyChunkLoadError(error)) setScanLookupStale(true); });
+    return () => { active = false; };
+  }, [scanScreenOpen]);
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
@@ -19098,25 +19156,92 @@ export default function App() {
   async function matchScannedCardRow(row) {
     const name = String(row?.cardName || "").trim();
     const number = String(row?.cardNumber || "").trim();
-    if (!name || !number) return { card: null, others: 0 };
     const query = `${name} ${number}`;
-    if (!getCatalogCollectorQuery(query)) return { card: null, others: 0 };
-    let candidates = [];
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const result = await searchPokemonCatalogOnDemand({ supabase, query, mode: "general", page: 1, pageSize: 24, force: true });
-        candidates = (result.rows || []).map(mapCatalog);
-      } catch {
-        candidates = [];
-      }
+    // Nov 27 2026: one quick lookup of the exact number first. The catalog finds it by its
+    // card-number index (about 30 ms on the live catalog); the search below scans for the
+    // number in any spelling and took 1.6 s, an error for anyone not signed in. The same
+    // rows serve the name-and-number match here and the number-alone match further down.
+    let numbered = null;
+    if (number && isSupabaseConfigured && supabase) {
+      try { numbered = await fetchCardsByNumberOnDemand({ supabase, number }); } catch { numbered = null; }
     }
-    if (!candidates.length) candidates = getBestCatalogMatches(query, catalogProducts).map((match) => match.item);
-    return pickScannedCard({ name, number, setName: row.setName }, candidates);
+    if (name && number && getCatalogCollectorQuery(query)) {
+      if (numbered?.rows?.length) {
+        const quick = pickScannedCard({ name, number, setName: row.setName }, numbered.rows.map(mapCatalog));
+        if (quick.card) return quick;
+      }
+      let candidates = [];
+      if (isSupabaseConfigured && supabase) {
+        try {
+          const result = await searchPokemonCatalogOnDemand({ supabase, query, mode: "general", page: 1, pageSize: 24, force: true });
+          candidates = (result.rows || []).map(mapCatalog);
+        } catch {
+          candidates = [];
+        }
+      }
+      if (!candidates.length) candidates = getBestCatalogMatches(query, catalogProducts).map((match) => match.item);
+      const exact = pickScannedCard({ name, number, setName: row.setName }, candidates);
+      if (exact.card) return exact;
+    }
+    // Nov 27 2026: the number was read but no card has that name and number. The number alone
+    // belongs to very few cards, so it is looked up before the clues that need the name.
+    const byNumber = await matchScannedCardByNumber(row, name, number, numbered);
+    // The number and the letters of the name point at the same card: nothing fits better.
+    if (byNumber.card && byNumber.nameAgrees) return byNumber;
+    const byClues = await matchScannedCardByClues(row, name, number);
+    return settleScanMatch(byNumber, byClues);
+  }
+
+  // The card for a number that was read in full when the name was not (a trainer card,
+  // "Iono's" read as "Ionos", the "Evolves from" name taken for the card's own). The row
+  // then says the name was hard to read.
+  // numbered: the rows already fetched for this number, when the caller has them.
+  async function matchScannedCardByNumber(row, name, number, numbered = null) {
+    const none = { card: null, others: 0 };
+    if (!number || !isSupabaseConfigured || !supabase) return none;
+    try {
+      const [{ rows, facts }, { cardFactsFromDetails, pickCardByNumber }] = await Promise.all([
+        numbered || fetchCardsByNumberOnDemand({ supabase, number }),
+        import("./utils/cardClueMatch.mjs"),
+      ]);
+      if (!rows?.length) return none;
+      const factsById = new Map((facts || []).map((detail) => [String(detail.catalog_product_id), cardFactsFromDetails(detail)]));
+      const typedSet = String(row.setName || "").trim().toLowerCase();
+      const cards = rows.map(mapCatalog).filter((card) => !typedSet || String(card.setName || card.expansion || "").toLowerCase().includes(typedSet));
+      const picked = pickCardByNumber({ name, number, clues: row.scanClues || {}, text: row.scanText || "" }, cards, factsById);
+      // A pick resting on one kind of clue alone is offered as a choice, not filed.
+      if (picked.card && !picked.sure) return { card: null, others: 0, choices: [picked.card], choicesBy: "number" };
+      return { card: picked.card, others: picked.others, byNumber: Boolean(picked.card), nameAgrees: picked.why.includes("name"), choices: picked.choices || [], choicesBy: "number" };
+    } catch {
+      return none;
+    }
+  }
+
+  // Nov 26 2026 (owner's inventory scans): the printed number is often hidden by a
+  // foil pattern, a sleeve or glare, or read one digit off. The reader also hands
+  // over what else it saw on the card (year, HP, attack names, pieces of the number);
+  // those are weighed against every printing of the card and one is picked only when
+  // it clearly fits best. The row then says the number was hard to read.
+  async function matchScannedCardByClues(row, name, number) {
+    const clues = row?.scanClues;
+    const none = { card: null, others: 0 };
+    if (!clues || typeof clues !== "object" || !isSupabaseConfigured || !supabase) return none;
+    // Which rows to fetch and what to make of them is in matchScanRowByClues (tested on its own).
+    try {
+      const { matchScanRowByClues } = await import("./utils/cardClueMatch.mjs");
+      return await matchScanRowByClues({ ...row, cardName: name, cardNumber: number }, {
+        fetchCards: (lookup) => fetchCardsForCluesOnDemand({ supabase, ...lookup }),
+        mapCard: mapCatalog,
+      });
+    } catch {
+      return none;
+    }
   }
 
   async function saveAllCardScanRows() {
     if (cardScanSaving || blockGuestSave()) return;
-    const rows = (quickAddWizard.cardScanRows || []).filter((row) => String(row.cardName || "").trim());
+    // A row whose name was not read is saved too when its number found the card (Nov 27 2026).
+    const rows = (quickAddWizard.cardScanRows || []).filter((row) => String(row.cardName || "").trim() || row.matchedProduct || String(row.cardNumber || "").includes("/"));
     if (!rows.length) {
       updateQuickAddWizard({ message: "Add at least one card before saving." });
       return;
@@ -19140,6 +19265,12 @@ export default function App() {
         const known = buildCatalogAutofillDetails(product);
         const marketInfo = getTideTradrMarketInfo(product);
         const copies = Math.max(1, Math.floor(Number(row.quantity) || 1));
+        const scanNotes = row.matchedBy === "clues" ? "Added from Scan several cards (Save all). The card number was hard to read, so the card was matched from its name, year and other details."
+          : row.matchedBy === "numberOnly" ? "Added from Scan several cards (Save all). The card name was hard to read, so the card was matched from its number and other details."
+            : "Added from Scan several cards (Save all).";
+        // Nov 27 2026: the condition, printing and grade picked on the row. The printing also goes in
+        // "printing" (the column the server keeps) and grading in the notes line the app reads back.
+        const details = cardScanSavedDetails(row, scanNotes);
         const shared = {
           name: catalogTitle(product),
           category: "Pokemon",
@@ -19157,13 +19288,16 @@ export default function App() {
           setName: known.setName || product.setName || row.setName || "",
           expansion: known.setName || product.setName || row.setName || "",
           cardNumber: product.cardNumber || row.cardNumber || "",
-          variant: row.variant || "",
-          notes: "Added from Scan several cards (Save all).",
+          notes: scanNotes,
           sourceType: "TideTradr",
-          conditionName: row.condition || "Near Mint",
+          ...details,
           language: "English",
           createdAt: now,
         };
+        const certificateProblem = details.graded && details.certificationNumber && copies > 1
+          ? "One certificate number is one slab. Set How many to 1, or clear the certificate number."
+          : details.graded ? gradedCertificateError({ id: row.id, ...shared }, [...items, ...records]) : "";
+        if (certificateProblem) { unsure.set(row.id, certificateProblem); continue; }
         const record = destination === "forge"
           ? applyWorkspaceToRecord({ id: makeId("item"), ...shared, destinationScope: ["forge"], recordType: "forge_inventory", businessInventory: true, ownedItemPurpose: OWNED_ITEM_PURPOSES.FOR_RESALE, quantity: copies, forgeQuantity: copies, ownedQuantity: 0, unitCost: 0, salePrice: 0, physicalLocation: DEFAULT_FORGE_PHYSICAL_LOCATION, status: "In Stock" }, workspace)
           : applyWorkspaceToRecord({ id: makeId("vault"), ...shared, destinationScope: ["vault"], recordType: "vault_item", businessInventory: false, ownedItemPurpose: OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION, isWishlist: false, quantity: copies, ownedQuantity: copies, forgeQuantity: 0, unitCost: 0, status: vaultStatusLabel("personal_collection"), vaultStatus: "personal_collection", storageLocation: vaultStatusLabel("personal_collection") }, workspace);
@@ -19967,14 +20101,27 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   // the row shows its card, set and price, and the list shows a running total.
   async function matchCardScanRows(rows = []) {
     for (const row of rows) {
-      if (!String(row.cardName || "").trim() || !String(row.cardNumber || "").trim()) continue;
+      // A row with no number is still matched when the reader handed over clues, and a row
+      // with no name when its number was read in full ("75/102").
+      const fullNumber = String(row.cardNumber || "").includes("/");
+      if (!String(row.cardName || "").trim() && !row.scanClues?.namesInText?.length && !fullNumber) continue;
+      if (!String(row.cardNumber || "").trim() && !row.scanClues) continue;
       let product = null;
       let others = 0;
-      try { ({ card: product, others } = await matchScannedCardRow(row)); } catch { product = null; }
+      let byClues = false;
+      let byNumber = false;
+      // The number's card also has its name in what was read (Raticate 40/102, read right,
+      // picked among the cards that share the number): a plain match, nothing was hard to read.
+      let nameAgrees = false;
+      let choices = [];
+      let choicesBy = "";
+      try { ({ card: product, others, byClues = false, byNumber = false, nameAgrees = false, choices = [], choicesBy = "" } = await matchScannedCardRow(row)); } catch { product = null; }
       const marketValue = product ? Number(getTideTradrMarketInfo(product).currentMarketValue || product.marketPrice || product.midPrice || 0) : 0;
+      const labelOf = (card) => [catalogTitle(card), card.setName || card.expansion, card.cardNumber].filter(Boolean).join(" · ");
+      const valueOf = (card) => { const value = Number(getTideTradrMarketInfo(card).currentMarketValue || card.marketPrice || card.midPrice || 0); return Number.isFinite(value) && value > 0 ? value : 0; };
       const patch = product
-        ? { matchedProduct: product, matchState: "matched", matchedOthers: others || 0, matchedLabel: [catalogTitle(product), product.setName || product.expansion, product.cardNumber].filter(Boolean).join(" · "), matchedValue: Number.isFinite(marketValue) && marketValue > 0 ? marketValue : 0, matchedFor: `${row.cardName}|${row.cardNumber}` }
-        : { matchedProduct: null, matchState: "review", matchedLabel: "", matchedValue: 0, matchedFor: `${row.cardName}|${row.cardNumber}` };
+        ? { matchedProduct: product, matchState: "matched", matchedBy: byClues ? "clues" : byNumber && !nameAgrees ? "numberOnly" : "number", matchedChoices: [], matchedOthers: others || 0, matchedLabel: labelOf(product), matchedValue: Number.isFinite(marketValue) && marketValue > 0 ? marketValue : 0, matchedFor: `${row.cardName}|${row.cardNumber}` }
+        : { matchedProduct: null, matchState: "review", matchedBy: "", matchedChoicesBy: choicesBy === "number" || choicesBy === "either" ? choicesBy : "", matchedChoices: (choices || []).slice(0, 4).map((card) => ({ product: card, label: labelOf(card), name: cardNameForChoice(catalogTitle(card)), short: [card.setName || card.expansion, card.cardNumber].filter(Boolean).join(" · "), value: valueOf(card) })), matchedLabel: "", matchedValue: 0, matchedFor: `${row.cardName}|${row.cardNumber}` };
       setQuickAddWizard((current) => ({
         ...current,
         cardScanRows: (current.cardScanRows || []).map((candidate) => (candidate.id === row.id && `${candidate.cardName}|${candidate.cardNumber}` === patch.matchedFor ? { ...candidate, ...patch } : candidate)),
@@ -34908,8 +35055,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     selectedCatalogDetailVariants[0] ||
     null;
   const selectedCatalogDetailMasterCard = selectedCatalogDetailProduct ? buildMarketMasterCardFromCatalogProduct(selectedCatalogDetailProduct) : null;
-  const selectedCatalogDetailPricingProduct = selectedCatalogDetailVariant?.sourceProduct || selectedCatalogDetailProduct;
-  const selectedCatalogDetailMarketInfo = selectedCatalogDetailPricingProduct ? getTideTradrMarketInfo(selectedCatalogDetailPricingProduct) : null;
+  const selectedCatalogDetailPricingProduct = selectedCatalogDetailVariant?.sourceProduct ||
+    withCatalogVariantPricing(selectedCatalogDetailProduct, selectedCatalogDetailVariant, selectedCatalogDetailVariants.length);
+  // A printing's own price must not be replaced by a saved price for the whole card.
+  const selectedCatalogDetailUsesVariantPrice = Boolean(selectedCatalogDetailPricingProduct && selectedCatalogDetailPricingProduct !== selectedCatalogDetailProduct && !selectedCatalogDetailVariant?.sourceProduct);
+  const selectedCatalogDetailMarketInfo = selectedCatalogDetailPricingProduct
+    ? getTideTradrMarketInfo(selectedCatalogDetailUsesVariantPrice ? { ...selectedCatalogDetailPricingProduct, id: `${selectedCatalogDetailPricingProduct.id}::${selectedCatalogDetailVariant.id}` } : selectedCatalogDetailPricingProduct)
+    : null;
   const selectedCatalogDetailCondition = catalogConditionSelection[selectedCatalogDetailProduct?.id] || "Near Mint";
   const selectedCatalogDetailFairRange = selectedCatalogDetailPricingProduct
     ? [
@@ -43016,6 +43168,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         undoQuickAddCardScan,
         saveAllCardScanRows,
         cardScanSaving,
+        scanLookupStale,
+        onRefreshApp: handleSafeAppRefresh,
         createQuickAddWizardState,
         detectCollectorItemVisualType,
         getCatalogIdentifiers,
@@ -51840,6 +51994,17 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                               onClick={() => setCatalogVariantSelection((current) => ({ ...current, [selectedCatalogDetailProduct.id]: variant.id }))}
                             >
                               {variant.variantName}
+                              {(() => {
+                                // Show the printing's own price only; no price of its own means no number on the button.
+                                if (selectedCatalogDetailVariants.length < 2) return null;
+                                const ownPrice = variant.sourceProduct
+                                  ? Number(variant.sourceProduct.marketPrice || 0)
+                                  : (() => {
+                                      const priced = withCatalogVariantPricing(selectedCatalogDetailProduct, variant, selectedCatalogDetailVariants.length);
+                                      return priced === selectedCatalogDetailProduct ? 0 : Number(priced.marketPrice || 0);
+                                    })();
+                                return ownPrice > 0 ? <span className="catalog-version-price"> · {money(ownPrice)}</span> : null;
+                              })()}
                             </button>
                           ))}
                         </div>
@@ -51983,7 +52148,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       <DetailItem label="Flavor Text" value={catalogCardDetails(selectedCatalogDetailProduct).flavorText} />
                       <DetailItem label="Pokedex #" value={(catalogCardDetails(selectedCatalogDetailProduct).nationalPokedexNumbers || []).join(", ")} />
                       <DetailItem label="Variants" value={selectedCatalogDetailVariants.map((variant) => variant.variantName).join(", ")} />
-                      <DetailItem label="Market Price" value={money(getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).currentMarketValue)} />
+                      <DetailItem label="Market Price" value={money(selectedCatalogDetailMarketInfo?.currentMarketValue)} />
                       <DetailItem label="Low / Mid / High" value={`${money(selectedCatalogDetailPricingProduct?.lowPrice)} / ${money(selectedCatalogDetailPricingProduct?.midPrice)} / ${money(selectedCatalogDetailPricingProduct?.highPrice)}`} />
                       <DetailItem label="Last Price Update" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).lastUpdated} />
                       {shouldShowCatalogRepairLabels() ? <DetailItem label="Source" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).sourceName} /> : null}

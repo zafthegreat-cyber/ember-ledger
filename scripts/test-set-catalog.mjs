@@ -104,11 +104,14 @@ test("per-set assets contain public catalog fields only and exclude digital code
   assert.equal(JSON.stringify(input), before);
 });
 
-test("actual Aquapolis snapshot contains its real 185 card entries and two sealed products in a small independent asset", () => {
+test("actual Aquapolis snapshot contains its real 187 products (186 cards and the booster pack) in a small independent asset", () => {
   const cards = JSON.parse(readFileSync(new URL("../src/data/generated/pokemonTcgCards.json", import.meta.url)));
   const sealed = JSON.parse(readFileSync(new URL("../src/data/generated/sealedProducts.json", import.meta.url)));
   const rows = createSetCatalogSnapshot(cards, sealed), aquapolis = rows.find(row => row.key === "pokemon:aquapolis");
-  assert.equal(aquapolis.cards, 185); assert.equal(aquapolis.sealed, 2); assert.ok(Buffer.byteLength(aquapolis.json) < 100_000);
+  // "Fighting Cube 01" (121/147) was filed as a second sealed product ("tin" in its name). The daily
+  // refresh after Nov 26, 2026 moves it to the cards file, so both splits of the 187 are accepted.
+  assert.equal(aquapolis.cards + aquapolis.sealed, 187); assert.ok(aquapolis.sealed === 1 || aquapolis.sealed === 2, `${aquapolis.sealed} sealed`);
+  assert.ok(Buffer.byteLength(aquapolis.json) < 100_000);
   const payload = JSON.parse(aquapolis.json); assert.ok(payload.products.every(product => product.setName === "Aquapolis"));
   const original = new Map([...cards, ...sealed].map(product => [product.id, product]));
   assert.ok(payload.products.every(product => product.language === original.get(product.id).language), "Unrecorded languages are not guessed from the game category");

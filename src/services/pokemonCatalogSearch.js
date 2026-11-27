@@ -1,5 +1,5 @@
 import { compareCatalogProducts } from "../utils/catalogSortUtils";
-import { catalogCardQueryMatchesRow, getCatalogCollectorQuery } from "../utils/catalogResultIdentity.mjs";
+import { catalogCardQueryMatchesRow, exactNumberSpellings, getCatalogCollectorQuery } from "../utils/catalogResultIdentity.mjs";
 import { identifierEquivalents } from "../utils/barcodeIdentity.mjs";
 import {
   analyzeCatalogSearch,
@@ -1040,6 +1040,85 @@ async function runSearchAgainstSource({ supabase, sourceName, query, barcode, mo
   // add flows and still preserves pagination/filtering.
 
   return runTextSearchAgainstSource({ supabase, sourceName, query, barcode, mode, filters, sort, page, pageSize, selectFields, textFields, matchMode: "fuzzy", signal });
+}
+
+/**
+ * Every printing of the named cards, with what the catalog knows about each one
+ * (release date, HP, attack names), for picking a card whose printed number could
+ * not be read (Nov 26 2026, see utils/cardClueMatch.mjs). Up to three names. A name
+ * matches the plain card and its variant rows ("Golurk", "Golurk - 123/086",
+ * "Golurk (Master Ball Pattern)"), not other cards that start the same ("Golurk V").
+ * Returns { rows, facts }: catalog rows, and tcg_card_details rows to pass to cardFactsFromDetails.
+ */
+// Nov 26 2026 (dark foil cards): species is the name from the card's Pokédex line, so any
+// card of that species is fetched ("Skitty" and "Erika's Skitty"), first from the sets whose
+// code was read from the card.
+export async function fetchCardsForClues({ supabase, names = [], species = "", setCodes = [], limit = 240, signal } = {}) {
+  const tidy = (name) => String(name || "").replace(/["\\,()*%]/g, " ").replace(/\s+/g, " ").trim();
+  const wanted = [...new Set((Array.isArray(names) ? names : []).map(tidy).filter((name) => name.length >= 3))].slice(0, 3);
+  const kind = tidy(species);
+  const codes = [...new Set((Array.isArray(setCodes) ? setCodes : []).map((code) => String(code || "").toUpperCase()).filter((code) => /^[A-Z0-9]{2,6}$/.test(code)))].slice(0, 4);
+  if (!supabase || (!wanted.length && kind.length < 3)) return { rows: [], facts: [] };
+  const run = async (build) => {
+    let request = build(supabase.from("catalog_search_lightweight").select(CATALOG_SELECT_FIELDS));
+    if (signal) request = request.abortSignal(signal);
+    const { data, error } = await request;
+    if (error) throw error;
+    return Array.isArray(data) ? data : [];
+  };
+  const found = [];
+  const clauses = wanted.flatMap((name) => [`name.eq."${name}"`, `name.ilike."${name} -%"`, `name.ilike."${name} (%"`]);
+  if (kind.length >= 3) {
+    // The read set first, so a much-printed species (Pikachu) cannot crowd the right card out of the limit.
+    if (codes.length) found.push(...await run((query) => query.in("set_code", codes).ilike("name", `%${kind}%`).limit(60)).catch(() => []));
+    clauses.push(`name.ilike."%${kind}%"`);
+  }
+  if (clauses.length) found.push(...await run((query) => query.or(clauses.join(",")).limit(limit)));
+  const seenIds = new Set();
+  const rows = found.filter((row) => row?.id && !seenIds.has(row.id) && seenIds.add(row.id));
+  const ids = [...seenIds];
+  const facts = [];
+  for (let at = 0; at < ids.length; at += 100) {
+    let detailRequest = supabase
+      .from("tcg_card_details")
+      .select("catalog_product_id, published:raw_source->group->>publishedOn, released:raw_source->set->>releaseDate, facts:raw_source->product->extendedData")
+      .in("catalog_product_id", ids.slice(at, at + 100));
+    if (signal) detailRequest = detailRequest.abortSignal(signal);
+    const { data: details, error: detailError } = await detailRequest;
+    if (detailError) break; // the rows can still be told apart by pieces of the number
+    facts.push(...(details || []));
+  }
+  return { rows, facts };
+}
+
+/**
+ * Every card with this printed number, with what the catalog knows about each one,
+ * for a scan whose number was read but whose name was not (Nov 27 2026, see
+ * pickCardByNumber in utils/cardClueMatch.mjs). A number belongs to very few cards.
+ * Returns { rows, facts } like fetchCardsForClues.
+ */
+export async function fetchCardsByNumber({ supabase, number = "", limit = 60, signal } = {}) {
+  const spellings = exactNumberSpellings(number);
+  if (!supabase || !spellings.length) return { rows: [], facts: [] };
+  // Exact spellings, not patterns: the catalog finds these by its card-number index.
+  let request = supabase.from("catalog_search_lightweight").select(CATALOG_SELECT_FIELDS).in("card_number", spellings).limit(limit);
+  if (signal) request = request.abortSignal(signal);
+  const { data, error } = await request;
+  if (error) throw error;
+  const rows = Array.isArray(data) ? data : [];
+  const ids = [...new Set(rows.map((row) => row.id).filter(Boolean))];
+  const facts = [];
+  for (let at = 0; at < ids.length; at += 100) {
+    let detailRequest = supabase
+      .from("tcg_card_details")
+      .select("catalog_product_id, published:raw_source->group->>publishedOn, released:raw_source->set->>releaseDate, facts:raw_source->product->extendedData")
+      .in("catalog_product_id", ids.slice(at, at + 100));
+    if (signal) detailRequest = detailRequest.abortSignal(signal);
+    const { data: details, error: detailError } = await detailRequest;
+    if (detailError) break; // the name read from the card can still tell the rows apart
+    facts.push(...(details || []));
+  }
+  return { rows, facts };
 }
 
 export async function searchPokemonCatalog({

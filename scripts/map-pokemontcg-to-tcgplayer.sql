@@ -5,7 +5,8 @@
 -- where h.id is null` is 0 before the next step). No secrets: public endpoints only.
 -- Schema side (search filter, pokemontcg.io refresh guard): migration 20261125120000.
 --
--- Run of Nov 25 2026: 20,237 cards -> matched 19,938 (confident 19,335, plain 379, prefix 224),
+-- Run of Nov 25 2026: 20,237 cards -> matched 19,938 (confident 19,335, plain 379, prefix 224), +175 in the
+-- Nov 26 review pass (step 5b) = 20,113 merged; 124 left. Earlier counts:
 -- unclear 193, unmatched 106. All 19,938 products were already TCGCSV items in the catalog.
 
 -- 1. Scratch schema + TCGCSV group list --------------------------------------------------------
@@ -122,6 +123,38 @@ where status in ('confident', 'plain', 'prefix') and tsub like '1st%' and not su
 -- Review list:
 -- select status, ext, name, card_number, price_subtype, group_id from tcgmap.result
 -- where status not in ('confident', 'plain', 'prefix') order by status, ext;
+
+-- 5b. Review pass (Nov 26 2026: 175 of the 193 unclear resolved; write them with step 6 using
+--     `r.status like 'review_%'`). Rules, in order:
+-- only product with that number in the set (special-energy abbreviations, spelling differences):
+update tcgmap.result r set status = 'review_single', pick = (select k.product_id from tcgmap.cand k where k.pc_id = r.pc_id)
+where status = 'unclear' and (select count(*) from tcgmap.cand k where k.pc_id = r.pc_id) = 1;
+-- one same/prefix-named version that is not Staff or a [placing] (Prerelease vs Staff, base Worlds card):
+with p as (
+  select k.pc_id, count(*) filter (where k.pname !~ '\[' and k.pname !~* 'staff') n1,
+    (array_agg(k.product_id) filter (where k.pname !~ '\[' and k.pname !~* 'staff'))[1] pid
+  from tcgmap.cand k join tcgmap.result r using (pc_id)
+  where r.status = 'unclear' and (k.name_eq or k.name_prefix) group by 1)
+update tcgmap.result r set status = 'review_nonstaff', pick = p.pid from p where p.pc_id = r.pc_id and p.n1 = 1;
+-- POP Holo / Non-Holo by the card's own printing:
+with p as (
+  select k.pc_id, k.product_id from tcgmap.cand k join tcgmap.result r using (pc_id)
+  where r.status = 'unclear' and k.name_eq
+    and ((r.price_subtype = 'holofoil' and k.pname ~ '\(Holo\)') or (r.price_subtype = 'normal' and k.pname ~ '\(Non-Holo\)')))
+update tcgmap.result r set status = 'review_printing', pick = p.product_id from p where p.pc_id = r.pc_id;
+-- hand-picked (Unown !/?, plain Professor's Research, basep-1 not the misprint, Worlds base/Participation,
+-- trainer kits tk1a = Latias, tk1b = Latios):
+update tcgmap.result r set status = 'review_manual', pick = v.pid
+from (values ('ex10-!','90166'),('ex10-?','90167'),('sv8pt5-122','610477'),('sv8pt5-123','610478'),('sv8pt5-124','610479'),
+  ('sv8pt5-125','610480'),('zsv10pt5-85','642533'),('basep-1','121772'),('xyp-XY27','96390'),('xyp-XY91','199311'),
+  ('xyp-XY176','199330'),('hsp-HGSS18','90052'),('np-27','90050'),('np-36','90051'),('tk1a-8','88335'),('tk1a-9','85239'),
+  ('tk1b-8','88336'),('tk1b-9','85240')) v(ext, pid)
+where r.ext = v.ext and r.status = 'unclear';
+update tcgmap.result r set sub_ok = exists (select 1 from tcgmap.prices p where p.product_id = r.pick and p.sub = r.tsub)
+where status like 'review_%';
+-- Left after review (124, still priced by pokemontcg.io): Cosmos vs Cracked Ice holo promos, Victory Cup seasons,
+-- EX Deck Tin vs Target promos, stamped SM198-200, Vivillon xy1-17, zsv10pt5-80 (bad card number), neo2-11 1st Ed,
+-- and 106 cards with no TCGCSV product of that number.
 
 -- 6. Write (owner-approved Nov 25 2026): link ids, mark the API master item a duplicate of its TCGCSV twin --
 begin;

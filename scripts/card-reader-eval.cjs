@@ -1,6 +1,7 @@
 // Card reader evaluation (Nov 17 2026).
 //   APP_URL=http://127.0.0.1:5280 node scripts/card-reader-eval.cjs --dir="C:\path\to\card-photos"
 //   APP_URL=http://127.0.0.1:5280 node scripts/card-reader-eval.cjs --synthetic
+//   --framed  reads each photo as the card camera does (the whole picture is the card), for flat scans.
 //
 // Runs the real card reader (src/utils/cardPhotoReader.mjs, in Chromium through
 // the dev server) on each photo and checks what it read against the answer.
@@ -101,13 +102,13 @@ function score(answer, read) {
   const rows = [];
   for (const item of cases) {
     const started = Date.now();
-    const read = await page.evaluate(async ({ bytes, type, label }) => {
+    const read = await page.evaluate(async ({ bytes, type, label, framed }) => {
       const binary = Uint8Array.from(atob(bytes), (ch) => ch.charCodeAt(0));
       const file = new File([binary], label, { type });
       const { readCardPhoto } = await import("/src/utils/cardPhotoReader.mjs");
-      const value = await readCardPhoto(file);
-      return { status: value.status, query: value.query, name: value.name || "", number: value.number || "", certainty: value.certainty || "", foundCard: value.foundCard, message: value.message };
-    }, item);
+      const value = await readCardPhoto(file, { framed, debug: true });
+      return { status: value.status, query: value.query, name: value.name || "", number: value.number || "", certainty: value.certainty || "", foundCard: value.foundCard, message: value.message, text: String(value.text || "").slice(0, 8000), nameSource: value.nameSource || "", nameKnown: Boolean(value.nameKnown), upsideDown: Boolean(value.upsideDown), clues: value.clues || null, reads: value.reads || null };
+    }, { ...item, framed: args.framed === "true" });
     const ms = Date.now() - started;
     const verdict = score(item.answer, read);
     rows.push({ label: item.label, expected: item.answer, read, ms, ...verdict });

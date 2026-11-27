@@ -1,5 +1,7 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import { BINDER_LAYOUTS, binderCells, pocketLabel } from "../utils/binderPage.mjs";
+import { lastScanSummary, sameSlabListed } from "../utils/cardScanRows.mjs";
+import { isCardScanGraded } from "../utils/cardScanDetails.mjs";
 import "./multi-card-scanner.css";
 
 const CardCameraFrame = lazy(() => import("./CardCameraFrame.jsx"));
@@ -18,12 +20,15 @@ const loadReader = () => import("../utils/cardPhotoReader.mjs");
 // the next card can be shown at once. A card that could not be read adds nothing and
 // gets one more automatic try. The last card shows right under the camera with its
 // price and an Undo button. rows: the list below (to show the last card's match).
+// Nov 27 2026: when the list offers one card for the last scan ("Is this your card?"),
+// the question and a Yes button show here too, so nobody has to scroll down mid-scan.
+// onPick(row, choice) files that card, the same as tapping it in the list.
 function buzz(pattern) {
   try { navigator.vibrate?.(pattern); } catch { /* Optional feedback. */ }
 }
 const scanKey = (name, number) => `${String(name || "").trim().toLowerCase()}|${String(number || "").trim().toLowerCase()}`;
 
-export default function MultiCardScanner({ onRows, autoStart = false, rows = [], onUndo, money }) {
+export default function MultiCardScanner({ onRows, autoStart = false, rows = [], onUndo, onPick, money }) {
   const id = useId();
   const [mode, setMode] = useState(autoStart ? "camera" : "");
   const [layout, setLayout] = useState("3x3");
@@ -41,7 +46,8 @@ export default function MultiCardScanner({ onRows, autoStart = false, rows = [],
   const lastKeyRef = useRef(""); // the newest card read, to tell a drifted card from a new one
   const aliveRef = useRef(true);
   const onRowsRef = useRef(onRows);
-  useEffect(() => { onRowsRef.current = onRows; });
+  const rowsRef = useRef(rows);
+  useEffect(() => { onRowsRef.current = onRows; rowsRef.current = rows; });
   useEffect(() => { aliveRef.current = true; return () => { aliveRef.current = false; queueRef.current = []; }; }, []);
   // Load the reader while the first card is being lined up, so the first read is not the slow one.
   useEffect(() => { if (mode === "camera") loadReader().then((module) => module.warmCardReader?.()).catch(() => {}); }, [mode]);
@@ -50,6 +56,12 @@ export default function MultiCardScanner({ onRows, autoStart = false, rows = [],
     cardName: read.name || "",
     cardNumber: read.number || "",
     scanNote: read.certainty === "name-and-number" ? "" : read.certainty === "none" ? "Not read: type the details" : read.certainty === "number-only" ? "Name not read" : "Number not read",
+    // Nov 26 2026: what else was read from the card (year, HP, attack names, pieces of the
+    // number), so the list can still match a card whose number is hidden. Letters only, kept short.
+    scanClues: read.clues && typeof read.clues === "object" ? read.clues : null,
+    scanText: String(read.text || "").toLowerCase().replace(/[^a-zà-ž]+/g, " ").trim().slice(0, 2500),
+    // Nov 27 2026: a slab's label gave its grader, grade and certificate (the row's grading button shows them).
+    ...(read.gradedSlab ? { graded: true, gradingCompany: read.gradedSlab.gradingCompany || "", grade: read.gradedSlab.grade || "", certificationNumber: read.gradedSlab.certificationNumber || "" } : {}),
     ...extra,
   });
 
@@ -79,7 +91,9 @@ export default function MultiCardScanner({ onRows, autoStart = false, rows = [],
           const key = scanKey(row.cardName, row.cardNumber);
           // The picture followed only a small change in view and reads as the card
           // just added: it is that card again (the hand drifted), not another copy.
-          if (job.sameCardGuard && key === lastKeyRef.current) { setStatus("That's the same card. Have another copy? Tap One more."); continue; }
+          if (job.sameCardGuard && key === lastKeyRef.current) { setStatus(row.graded ? "That's the same slab." : "That's the same card. Have another copy? Tap One more."); continue; }
+          // A certificate number is one slab: shown again, it is not a second copy.
+          if (sameSlabListed(rowsRef.current, row)) { setStatus("That slab is already in the list."); continue; }
           lastKeyRef.current = key;
           onRowsRef.current?.([row]);
           setLast({ cardName: row.cardName, cardNumber: row.cardNumber });
@@ -106,22 +120,22 @@ export default function MultiCardScanner({ onRows, autoStart = false, rows = [],
   }
 
   const lastRow = last ? [...rows].reverse().find((row) => scanKey(row.cardName, row.cardNumber) === scanKey(last.cardName, last.cardNumber)) : null;
-  const lastMatched = Boolean(lastRow && lastRow.matchState === "matched" && lastRow.matchedFor === `${lastRow.cardName}|${lastRow.cardNumber}`);
   const lastQuantity = Math.max(1, Number(lastRow?.quantity) || 1);
-  const lastDetail = !lastRow ? ""
-    : lastMatched ? String(lastRow.matchedProduct?.setName || lastRow.matchedProduct?.expansion || lastRow.matchedLabel || "Matched")
-      : lastRow.scanNote ? `${lastRow.scanNote}. Check it in the list below.`
-        : lastRow.matchState === "review" && lastRow.matchedFor === `${lastRow.cardName}|${lastRow.cardNumber}` ? "Not sure which card this is. Check it in the list below."
-          : "Finding its price…";
+  // One card offered: the question and Yes show here. Two or more are picked in the list.
+  const { matched: lastMatched, offer: lastOffer, detail: lastDetail, name: lastName, title: lastTitle } = lastScanSummary(lastRow, { canPick: Boolean(onPick) });
   const reading = pending > 0 ? <p className="multi-card-scanner__pending" role="status">Reading {pending === 1 ? "1 card" : `${pending} cards`}…</p> : null;
   const lastCard = lastRow ? <div className="multi-card-scanner__last" role="status">
     <div>
       <small>{lastQuantity > 1 ? `Same card again: you now have ${lastQuantity}` : "Just scanned"}</small>
-      <strong>{[lastRow.cardName, lastRow.cardNumber].map((value) => String(value || "").trim()).filter(Boolean).join(" · ")}{lastQuantity > 1 ? ` ×${lastQuantity}` : ""}</strong>
-      <span>{lastDetail}{lastMatched && lastRow.matchedValue && money ? <b className="multi-card-scanner__price"> · {money(lastRow.matchedValue)}{lastQuantity > 1 ? " each" : ""}</b> : null}</span>
+      <strong>{lastTitle}{lastQuantity > 1 ? ` ×${lastQuantity}` : ""}</strong>
+      <span>{lastDetail}{lastMatched && lastRow.matchedValue && money ? <b className="multi-card-scanner__price"> · {money(lastRow.matchedValue)}{lastQuantity > 1 ? " each" : ""}</b> : null}{lastOffer?.value && money ? <b className="multi-card-scanner__price"> · {money(lastOffer.value)}</b> : null}</span>
     </div>
     <div className="multi-card-scanner__last-actions">
-      <button type="button" aria-label={`One more copy of ${lastRow.cardName || "this card"}`} onClick={() => { onRowsRef.current?.([{ cardName: lastRow.cardName, cardNumber: lastRow.cardNumber, scanNote: "", scanned: true }]); setCount((value) => value + 1); setStatus(""); }}>One more</button>
+      {/* While the card is in question, Yes takes the place of One more: a copy is added once the card is known. */}
+      {/* A slab is one of a kind (its own certificate), so it has no One more. */}
+      {lastOffer
+        ? <button type="button" className="multi-card-scanner__yes" aria-label={`Yes, this is ${lastOffer.name || "my card"}`} onClick={() => { onPick(lastRow, lastOffer); buzz(30); setStatus(""); }}>Yes</button>
+        : isCardScanGraded(lastRow) ? null : <button type="button" aria-label={`One more copy of ${lastName || "this card"}`} onClick={() => { onRowsRef.current?.([{ cardName: lastRow.cardName, cardNumber: lastRow.cardNumber, scanNote: "", scanned: true }]); setCount((value) => value + 1); setStatus(""); }}>One more</button>}
       {onUndo ? <button type="button" onClick={() => { onUndo(last); if (lastQuantity <= 1) setLast(null); setCount((value) => Math.max(0, value - 1)); setStatus("Removed that scan."); }}>Undo</button> : null}
     </div>
   </div> : null;
