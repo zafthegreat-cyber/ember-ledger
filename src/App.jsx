@@ -125,6 +125,7 @@ import {
 } from "./components/command-system";
 import { HEARTH_FOUNDATION_SCREEN, MASTER_CARD_PREVIEW_SEEDS } from "./data/appPreviewFoundation";
 import { APP_VERSION, checkForEmberTideUpdate, refreshEmberTideApp } from "./appUpdate";
+import { isLikelyChunkLoadError } from "./utils/appFallbackContent";
 import { SEALED_PRODUCT_TYPES, SET_SEARCH_METADATA } from "./data/pokemonCatalogCoreData";
 import {
   ALERT_TYPE_OPTIONS,
@@ -703,7 +704,11 @@ let scoutRestockIntelBundlePromise = null;
 
 function loadPokemonCatalogSearchModule() {
   if (!pokemonCatalogSearchModulePromise) {
-    pokemonCatalogSearchModulePromise = import("./services/pokemonCatalogSearch");
+    // A load that failed (a dropped connection) is not kept: the next search tries again.
+    pokemonCatalogSearchModulePromise = import("./services/pokemonCatalogSearch").catch((error) => {
+      pokemonCatalogSearchModulePromise = null;
+      throw error;
+    });
   }
   return pokemonCatalogSearchModulePromise;
 }
@@ -7851,6 +7856,21 @@ export default function App() {
       window.removeEventListener("ember-tide:update-available", onServiceWorkerUpdate);
     };
   }, []);
+
+  // Nov 27 2026: a web page left open across an update asked for the scanner's catalog code
+  // by its old file name, which the new version no longer has, and every card came back
+  // "Not sure". That code now loads as the scanner opens, so an update while scanning
+  // cannot take it away; a page already too old says so and offers a refresh.
+  const [scanLookupStale, setScanLookupStale] = useState(false);
+  const scanScreenOpen = quickAddWizard.screen === "cardPageReview";
+  useEffect(() => {
+    if (!scanScreenOpen) return undefined;
+    let active = true;
+    Promise.all([loadPokemonCatalogSearchModule(), import("./utils/cardClueMatch.mjs")])
+      .then(() => { if (active) setScanLookupStale(false); })
+      .catch((error) => { if (active && isLikelyChunkLoadError(error)) setScanLookupStale(true); });
+    return () => { active = false; };
+  }, [scanScreenOpen]);
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
@@ -43140,6 +43160,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         undoQuickAddCardScan,
         saveAllCardScanRows,
         cardScanSaving,
+        scanLookupStale,
+        onRefreshApp: handleSafeAppRefresh,
         createQuickAddWizardState,
         detectCollectorItemVisualType,
         getCatalogIdentifiers,
