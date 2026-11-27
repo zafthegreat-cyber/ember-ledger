@@ -198,6 +198,32 @@ test("the scanner's name list knows the cards that were filed as sealed, and the
   assert.match(job.slice(commit, job.indexOf("\n", commit)), /src\/data\/generated\/cardNames\.json/, "and committed with the rest");
 });
 
+test("a card whose name holds a product word is on the scanner's name list; a listing of another card is not", async () => {
+  // Iron Bundle is a Pokemon and Secret Box a Trainer card. The name builder dropped every
+  // name with a product word, so the scanner could not correct a misread to them.
+  const { buildCardNameList } = await import("./build-card-names.mjs");
+  const card = (name, evidence = { cardNumber: "001/100", rarity: "Common" }) => ({ name, cardName: name, catalogType: "card", ...evidence });
+  const list = buildCardNameList([
+    card("Bisharp"), card("Fire Energy"),
+    card("Iron Bundle 056 182"), card("Secret Box"), card("Tool Box"), card("Ancient Booster Energy Capsule"),
+    // Listings of cards already on the list.
+    card("Bisharp Darkrai Deck"), card("Fire Energy Prize Pack Series 1"), card("Iron Bundle Holiday Calendar"),
+    // No rarity and no number: a sealed product, whatever the file it came from.
+    card("Surging Sparks Booster Box", {}), card("Mystery Tin", { cardNumber: "", rarity: "" }), card("Code Card Booster Pack", { rarity: "Code Card" }),
+  ]);
+  assert.deepEqual(list, ["Ancient Booster Energy Capsule", "Bisharp", "Fire Energy", "Iron Bundle", "Secret Box", "Tool Box"]);
+
+  const names = new Set(JSON.parse(read("../src/data/generated/cardNames.json")).map((name) => name.toLowerCase()));
+  for (const name of ["Iron Bundle", "Secret Box", "Tool Box", "Legend Box", "Surprise Box", "Box of Disaster", "Suspicious Food Tin", "Aarons Collection",
+    "Ancient Booster Energy Capsule", "Future Booster Energy Capsule", "G Booster", "Deduction Kit", "Fossil Excavation Kit"]) {
+    assert.ok(names.has(name.toLowerCase()), `${name} is a card name the scanner should know`);
+  }
+  for (const name of ["Bisharp Darkrai Deck", "Fighting Energy Prize Pack Series", "Iron Bundle Holiday Calendar", "G Booster Team Plasma", "Hoopa EX Collection", "Greninja V Union Set of"]) {
+    assert.equal(names.has(name.toLowerCase()), false, `${name} is a listing, not a printed name`);
+  }
+  assert.deepEqual([...names].filter((name) => /\b(?:elite trainer box|booster box|booster pack|booster bundle|mini tin)\b/.test(name)), [], "no sealed product is on the list");
+});
+
 test("the SQL rule matches the JavaScript rule and runs before the name words", () => {
   const sqlPattern = (regex) => regex.source.replaceAll("\\/", "/");
   const migration = read("../supabase/migrations/20261126090000_catalog_single_cards_not_sealed.sql");
