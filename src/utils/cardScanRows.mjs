@@ -3,6 +3,7 @@
 // - the same card shown to the camera again is one more copy of it (x2), not a new line;
 // - Undo takes back the newest scan of a card (one copy, or the whole line).
 import { cardNameForChoice } from "./catalogResultIdentity.mjs";
+import { cardScanDetailsKey } from "./cardScanDetails.mjs";
 
 const clean = (value) => String(value || "").trim().toLowerCase();
 
@@ -21,7 +22,9 @@ export function cardScanCopies(row = {}) {
 /**
  * Adds newly created rows to the list. A row read by the camera (scanned: true)
  * that names a card already in the list, going to the same place, raises that
- * line's copies instead of adding a line. Binder pockets and typed rows are
+ * line's copies instead of adding a line, unless that line was marked another
+ * kind of copy (a condition, printing or grade set on it, Nov 27 2026): then the
+ * new copy is its own line. Binder pockets and typed rows are
  * always added as their own lines. Empty rows left over are dropped, except a
  * row the person opened to type by hand.
  */
@@ -29,7 +32,7 @@ export function mergeScannedCardRows(existing = [], created = []) {
   let rows = (Array.isArray(existing) ? existing : []).filter((row) => row.byHand || row.cardName || row.cardNumber || row.setName || row.variant || row.condition);
   for (const row of Array.isArray(created) ? created : []) {
     const key = row?.scanned ? cardScanRowKey(row) : "";
-    const twin = key ? rows.find((candidate) => cardScanRowKey(candidate) === key && (candidate.destination || "vault") === (row.destination || "vault")) : null;
+    const twin = key ? rows.find((candidate) => cardScanRowKey(candidate) === key && (candidate.destination || "vault") === (row.destination || "vault") && cardScanDetailsKey(candidate) === cardScanDetailsKey(row)) : null;
     rows = twin
       ? rows.map((candidate) => (candidate === twin ? { ...candidate, quantity: cardScanCopies(candidate) + 1 } : candidate))
       : [...rows, row];

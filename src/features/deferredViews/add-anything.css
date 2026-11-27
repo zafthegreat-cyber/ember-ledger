@@ -78,4 +78,6 @@ html body .app[data-theme] .flow-modal[data-flow="addActionSheet"] .scan-anythin
 .quick-add-card-scan-empty { margin: 8px 0; padding: 14px; border: 1px dashed var(--border-strong, #6b5a5e); border-radius: 14px; font-size: 15px; line-height: 1.45; color: var(--text-secondary, inherit); }
 .quick-add-card-scan-edit > summary { min-height: 44px; display: flex; align-items: center; font-weight: 700; cursor: pointer; color: var(--text-primary, inherit); }
 .quick-add-card-scan-row.is-matched .quick-add-card-scan-match { font-weight: 600; }
+/* Nov 27 2026: Remove beside Change was a 22px ghost link; every button in a row is a 44px target. */
+.app .quick-add-card-scan-row .quick-add-row-actions button { min-height: 44px; padding-inline: 14px; }
 .quick-add-card-scan-more > summary { min-height: 44px; display: flex; align-items: center; font-weight: 700; cursor: pointer; }

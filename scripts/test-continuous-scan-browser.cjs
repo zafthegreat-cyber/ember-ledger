@@ -149,7 +149,28 @@ function standInCamera() {
     await expect(scan.locator(".card-camera-frame")).toHaveCount(0);
     await expect(rows).toHaveCount(2);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, "No sideways scroll");
-    console.log("PASS continuous scan: auto-take, background reads, same card x2, Undo, drift ignored, One more, second copy, unreadable card adds nothing");
+
+    // Nov 27 2026 (owner: "very simple"): condition, printing and grading are one tap away on each card.
+    step = "Condition, printing and grading change in a tap or two";
+    const pill = (row, text) => row.locator(".card-scan-details__pill", { hasText: text });
+    await expect(rows.first().locator(".card-scan-details__pill")).toHaveText([/^Near Mint/, /^Printing/, /^Not graded/]);
+    await pill(rows.first(), "Near Mint").click();
+    await rows.first().getByRole("radiogroup", { name: /^Condition of/ }).getByRole("radio", { name: "Lightly Played" }).click();
+    await rows.first().getByRole("button", { name: "Use Lightly Played for the other card" }).click();
+    await expect(pill(rows.nth(1), "Lightly Played")).toBeVisible();
+    await pill(rows.first(), "Printing").click();
+    await rows.first().getByRole("radiogroup", { name: /^Printing of/ }).getByRole("radio", { name: "Reverse Holo" }).click();
+    await expect(pill(rows.first(), "Reverse Holo")).toBeVisible();
+    await pill(rows.nth(1), "Not graded").click();
+    await rows.nth(1).getByRole("radiogroup", { name: /^Grading company for/ }).getByRole("radio", { name: "PSA" }).click();
+    await rows.nth(1).getByRole("radiogroup", { name: /^Grade of/ }).getByRole("radio", { name: "10", exact: true }).click();
+    await rows.nth(1).getByRole("button", { name: "Done", exact: true }).click();
+    await expect(rows.nth(1).locator(".card-scan-details__pill")).toHaveText([/^Printing/, /^PSA 10/]);
+    for (const box of await rows.first().locator(".card-scan-details__pill").evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().toJSON()))) {
+      assert.ok(box.width >= 44 && box.height >= 44, "Touch target is at least 44px");
+    }
+    await page.screenshot({ path: path.join(output, "card-details.png") });
+    console.log("PASS continuous scan: auto-take, background reads, same card x2, Undo, drift ignored, One more, second copy, unreadable card adds nothing, one-tap condition, printing and grade");
   } catch (error) {
     await page.screenshot({ path: path.join(output, "failure.png"), fullPage: true }).catch(() => {});
     const text = await page.locator(".add-anything-card-page-review").innerText().catch(() => "");

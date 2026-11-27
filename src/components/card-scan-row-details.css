@@ -1,0 +1,35 @@
+/* One-tap condition, printing and grading on a scanned card (Nov 27 2026).
+   Quiet outline pills: gold stays for the one primary action (Save). The chosen
+   choice gets the copper accent and a tick, never blue or teal. */
+.card-scan-details { display: grid; gap: 8px; min-width: 0; margin: 2px 0 6px; }
+.card-scan-details__bar { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.app .card-scan-details__pill,
+.app .card-scan-details__chip {
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  min-height: 44px; max-width: 100%; padding: 0 12px;
+  border: 1px solid var(--border-strong, #6b5a5e); border-radius: 999px;
+  background: transparent; color: var(--text-primary, inherit);
+  font: 600 14px/1.2 var(--font-ui, inherit); text-align: center; white-space: normal;
+  box-shadow: none; cursor: pointer;
+}
+.app .card-scan-details__pill.is-unset { color: var(--text-secondary, inherit); border-style: dashed; }
+.app .card-scan-details__pill.is-graded,
+.app .card-scan-details__pill[aria-expanded="true"] { border-color: var(--accent-teal, #E3B07A); }
+.card-scan-details__caret { font-size: 12px; color: var(--text-secondary, inherit); }
+.card-scan-details__picker {
+  display: grid; gap: 10px; min-width: 0; padding: 12px;
+  border: 1px solid var(--border-subtle, #4a3f42); border-radius: 16px;
+}
+.card-scan-details__chips { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.app .card-scan-details__chip[aria-checked="true"] {
+  border: 2px solid var(--accent-teal, #E3B07A);
+  background: color-mix(in srgb, var(--accent-teal, #E3B07A) 16%, transparent);
+}
+.app .card-scan-details__chip[aria-checked="true"]::before { content: "✓"; color: var(--accent-teal, #E3B07A); }
+.card-scan-details__label { margin: 0; font-weight: 700; font-size: 14px; color: var(--text-primary, inherit); }
+.card-scan-details__fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.card-scan-details__field { display: grid; gap: 6px; min-width: 0; font-weight: 600; font-size: 14px; color: var(--text-primary, inherit); }
+.card-scan-details__field input { min-height: 44px; min-width: 0; }
+.app .card-scan-details__more,
+.app .card-scan-details__all,
+.app .card-scan-details__done { min-height: 44px; justify-self: start; }
