@@ -53,7 +53,7 @@ CORS, anonymous denial and demotion/revocation checks remain required.
 - The preferences table is absent. Six retailer sources exist, all disconnected;
   zero stock signals and zero warehouse reports exist.
 
-## Real Auth acceptance still required
+## Hosted Auth acceptance
 
 Update, November 27: a separately approved temporary branch subsequently passed
 65 real hosted backend Auth/API checks and was deleted. A second, separately
@@ -107,9 +107,9 @@ real Supabase JWT/session behavior, gateway CORS, or the deployed staff function
   final measured size is recorded in the PR evidence.
 - Final GitHub CI and commit-bound Vercel preview results are recorded on PR #50
   after the reconciled branch is pushed.
-- Vercel emits four TS2339 diagnostics in the unchanged billing service. The
-  earlier main production deployment has the identical diagnostics; a READY
-  preview is not a clean backend type-check claim.
+- The four backend TS2339 diagnostics were fixed with explicit guards for deleted
+  Stripe Products and Customers. Both strict and preview compiler modes now pass,
+  and CI includes 16 billing regression tests using a mocked Stripe client.
 
 No production merge, deployment, migration, notification, retailer scrape or
 connection-state update is authorized by this candidate validation.
