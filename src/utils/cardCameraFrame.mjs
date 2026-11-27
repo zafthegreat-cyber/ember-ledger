@@ -11,3 +11,10 @@ export function frameToVideoRect({ boxWidth, boxHeight, videoWidth, videoHeight,
   const clampX = Math.max(0, x), clampY = Math.max(0, y);
   return { x: clampX, y: clampY, width: Math.min(videoWidth - clampX, w), height: Math.min(videoHeight - clampY, h) };
 }
+
+/** Pure: the other way round. Where a rect in the video's own pixels shows on screen, in the box's pixels. */
+export function videoToBoxRect({ boxWidth, boxHeight, videoWidth, videoHeight, rect }) {
+  const scale = Math.max(boxWidth / videoWidth, boxHeight / videoHeight);
+  const offsetX = (boxWidth - videoWidth * scale) / 2, offsetY = (boxHeight - videoHeight * scale) / 2;
+  return { x: rect.x * scale + offsetX, y: rect.y * scale + offsetY, width: rect.width * scale, height: rect.height * scale };
+}

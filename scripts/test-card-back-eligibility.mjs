@@ -26,7 +26,9 @@ test('My First Battle cards use their actual reverse while whole retail packages
 
 test('reviewed 2004 championship backs require exact product, printing and language',()=>{
   const rows=JSON.parse(readFileSync('src/data/generated/pokemonTcgCards.json'));
-  const exact=rows.filter(row=>row.setName==='World Championship Decks' && /\b2004\b/.test(row.name));
+  // Count the reviewed products: deck cards that were once filed as sealed (Fighting Energy,
+  // Giratina) join this file unreviewed, and the last line of this test keeps them without a back.
+  const exact=rows.filter(row=>row.setName==='World Championship Decks' && /\b2004\b/.test(row.name) && reviewedBacks.products[String(row.tcgplayerProductId)]);
   assert.equal(exact.length,95);
   for(const record of exact){
     const before=JSON.stringify(record);
@@ -46,7 +48,7 @@ test('reviewed 2004 championship backs require exact product, printing and langu
 });
 
 test('2005 cards use their own reviewed back and never borrow the 2004 printing',()=>{
- const rows=JSON.parse(readFileSync('src/data/generated/pokemonTcgCards.json')).filter(row=>row.setName==='World Championship Decks'&&/\b2005\b/.test(row.name));
+ const rows=JSON.parse(readFileSync('src/data/generated/pokemonTcgCards.json')).filter(row=>row.setName==='World Championship Decks'&&/\b2005\b/.test(row.name)&&reviewedBacks.products[String(row.tcgplayerProductId)]);
  assert.equal(rows.length,86);
  for(const row of rows){assert.equal(inspectionCardBack(row)?.src,'/assets/inspection/pokemon-worlds-2005-back.webp');assert.equal(inspectionCardBack({...row,printing:'World Championships2004'}),null);assert.equal(inspectionCardBack({...row,language:'Japanese'}),null);}
 });
@@ -62,7 +64,7 @@ test('2022–2025 printed backs stay specific to each reviewed player deck',()=>
 test('2006 through 2019 exact printing backs reject unknown and conflicting identities',()=>{
  const catalog=JSON.parse(readFileSync('src/data/generated/pokemonTcgCards.json'));
  for(const [year,count] of [[2006,94],[2007,99],[2008,94],[2009,84],[2010,106],[2011,89],[2012,84],[2013,87],[2014,99],[2015,67],[2016,89],[2017,94],[2018,92],[2019,89]]){
-  const rows=catalog.filter(r=>r.setName==='World Championship Decks'&&r.name.includes(' '+year+' ')&&String(r.tcgplayerProductId)!=='479839');
+  const rows=catalog.filter(r=>r.setName==='World Championship Decks'&&r.name.includes(' '+year+' ')&&String(r.tcgplayerProductId)!=='479839'&&reviewedBacks.products[String(r.tcgplayerProductId)]);
   assert.equal(rows.length,count);
   for(const row of rows){const before=JSON.stringify(row);assert.match(inspectionCardBack(row)?.src,new RegExp('^/assets/inspection/(?:optimized-20261123/[a-f0-9]{16}/)?pokemon-worlds-'+year+'-back\\.(?:jpg|webp)$'));assert.equal(inspectionCardBack({...row,printing:'World Championships 2024'}),null);assert.equal(inspectionCardBack({...row,collector_number:'incorrect'}),null);assert.equal(JSON.stringify(row),before);}
  }

@@ -50,6 +50,10 @@ export default function MultiCardScanner({ onRows, autoStart = false, rows = [],
     cardName: read.name || "",
     cardNumber: read.number || "",
     scanNote: read.certainty === "name-and-number" ? "" : read.certainty === "none" ? "Not read: type the details" : read.certainty === "number-only" ? "Name not read" : "Number not read",
+    // Nov 26 2026: what else was read from the card (year, HP, attack names, pieces of the
+    // number), so the list can still match a card whose number is hidden. Letters only, kept short.
+    scanClues: read.clues && typeof read.clues === "object" ? read.clues : null,
+    scanText: String(read.text || "").toLowerCase().replace(/[^a-zà-ž]+/g, " ").trim().slice(0, 2500),
     ...extra,
   });
 

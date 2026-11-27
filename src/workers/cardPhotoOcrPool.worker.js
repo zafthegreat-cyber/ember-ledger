@@ -28,7 +28,7 @@ function load(gzip) {
   return reader;
 }
 
-const validImages = (images) => Array.isArray(images) && images.length > 0 && images.length <= 12
+const validImages = (images) => Array.isArray(images) && images.length > 0 && images.length <= 16
   && images.every((entry) => entry?.image instanceof Uint8Array);
 
 self.onmessage = ({ data }) => {

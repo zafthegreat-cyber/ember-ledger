@@ -713,6 +713,11 @@ async function searchPokemonCatalogOnDemand(options = {}) {
   return catalogSearchModule.searchPokemonCatalog(options);
 }
 
+async function fetchCardsForCluesOnDemand(options = {}) {
+  const catalogSearchModule = await loadPokemonCatalogSearchModule();
+  return catalogSearchModule.fetchCardsForClues(options);
+}
+
 async function analyzeCatalogSearchOnDemand(query = "") {
   if (!catalogAliasModulePromise) {
     catalogAliasModulePromise = import("./data/catalogSearchAliases.mjs");
@@ -5350,6 +5355,7 @@ function getCatalogVariantOptions(product = {}) {
       language: variant.language || "English",
       tcgplayerSkuId: variant.tcgplayerSkuId || variant.tcgplayer_sku_id || "",
       conditionName: variant.conditionName || variant.condition_name || "",
+      marketPrice: Number(variant.marketPrice ?? variant.market_price ?? 0) || 0,
       isDefault: Boolean(variant.isDefault || variant.is_default),
     }));
     if (product.priceSubtype || product.variantNames) {
@@ -5370,6 +5376,32 @@ function getCatalogVariantOptions(product = {}) {
     return product.catalogType === "card"
       ? [{ id: `${product.id}-default`, variantName: "Default", printing: "", finish: "", language: product.language || "English", conditionName: "", isDefault: true }]
       : [];
+  }
+
+// A card with several printings (Normal, Reverse Holofoil, 1st Edition...) keeps
+// one main price. When one printing is chosen, price it from its own row and its
+// matching TCGCSV source instead. Falls back to the card when it has no price.
+function withCatalogVariantPricing(product, variant, variantCount = 0) {
+    if (!product || !variant || variant.sourceProduct || variantCount < 2) return product;
+    const names = [variant.variantName, variant.finish].map((name) => String(name || "").trim().toLowerCase()).filter(Boolean);
+    const sources = (Array.isArray(product.marketSources) ? product.marketSources : [])
+      .filter((source) => names.includes(String(source.priceType || "").trim().toLowerCase()));
+    const source = sources.find((entry) => Number(entry.marketPrice || 0) > 0) || sources[0] || null;
+    const price = Number(variant.marketPrice || source?.marketPrice || 0);
+    if (!(price > 0)) return product;
+    return {
+      ...product,
+      marketPrice: price,
+      marketValue: price,
+      marketValueNearMint: price,
+      lowPrice: Number(source?.lowPrice || 0),
+      midPrice: Number(source?.midPrice || 0) || price,
+      highPrice: Number(source?.highPrice || 0),
+      marketSummary: product.marketSummary
+        ? { ...product.marketSummary, recommended_market_value: price, recommendedMarketValue: price }
+        : product.marketSummary,
+      marketSources: sources,
+    };
   }
 
 function getCatalogVariantDisplayName(product = {}, index = 0) {
@@ -19098,20 +19130,50 @@ export default function App() {
   async function matchScannedCardRow(row) {
     const name = String(row?.cardName || "").trim();
     const number = String(row?.cardNumber || "").trim();
-    if (!name || !number) return { card: null, others: 0 };
     const query = `${name} ${number}`;
-    if (!getCatalogCollectorQuery(query)) return { card: null, others: 0 };
-    let candidates = [];
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const result = await searchPokemonCatalogOnDemand({ supabase, query, mode: "general", page: 1, pageSize: 24, force: true });
-        candidates = (result.rows || []).map(mapCatalog);
-      } catch {
-        candidates = [];
+    if (name && number && getCatalogCollectorQuery(query)) {
+      let candidates = [];
+      if (isSupabaseConfigured && supabase) {
+        try {
+          const result = await searchPokemonCatalogOnDemand({ supabase, query, mode: "general", page: 1, pageSize: 24, force: true });
+          candidates = (result.rows || []).map(mapCatalog);
+        } catch {
+          candidates = [];
+        }
       }
+      if (!candidates.length) candidates = getBestCatalogMatches(query, catalogProducts).map((match) => match.item);
+      const exact = pickScannedCard({ name, number, setName: row.setName }, candidates);
+      if (exact.card) return exact;
     }
-    if (!candidates.length) candidates = getBestCatalogMatches(query, catalogProducts).map((match) => match.item);
-    return pickScannedCard({ name, number, setName: row.setName }, candidates);
+    return matchScannedCardByClues(row, name, number);
+  }
+
+  // Nov 26 2026 (owner's inventory scans): the printed number is often hidden by a
+  // foil pattern, a sleeve or glare, or read one digit off. The reader also hands
+  // over what else it saw on the card (year, HP, attack names, pieces of the number);
+  // those are weighed against every printing of the card and one is picked only when
+  // it clearly fits best. The row then says the number was hard to read.
+  async function matchScannedCardByClues(row, name, number) {
+    const clues = row?.scanClues;
+    const none = { card: null, others: 0 };
+    if (!clues || typeof clues !== "object" || !isSupabaseConfigured || !supabase) return none;
+    const names = [name, ...(Array.isArray(clues.namesInText) ? clues.namesInText : [])].filter(Boolean);
+    if (!names.length) return none;
+    try {
+      const [{ rows, facts }, { cardFactsFromDetails, pickCardByClues }] = await Promise.all([
+        fetchCardsForCluesOnDemand({ supabase, names }),
+        import("./utils/cardClueMatch.mjs"),
+      ]);
+      const factsById = new Map((facts || []).map((detail) => [String(detail.catalog_product_id), cardFactsFromDetails(detail)]));
+      const typedSet = String(row.setName || "").trim().toLowerCase();
+      const cards = (rows || []).map(mapCatalog).filter((card) => !typedSet || String(card.setName || card.expansion || "").toLowerCase().includes(typedSet));
+      const picked = pickCardByClues({ name, otherNames: clues.namesInText, number, clues, text: row.scanText }, cards, factsById);
+      // A pick resting on one kind of clue alone is offered as a choice, not filed.
+      if (picked.card && !picked.sure) return { card: null, others: 0, choices: [picked.card] };
+      return { card: picked.card, others: picked.others, byClues: Boolean(picked.card), choices: picked.choices || [] };
+    } catch {
+      return none;
+    }
   }
 
   async function saveAllCardScanRows() {
@@ -19158,7 +19220,7 @@ export default function App() {
           expansion: known.setName || product.setName || row.setName || "",
           cardNumber: product.cardNumber || row.cardNumber || "",
           variant: row.variant || "",
-          notes: "Added from Scan several cards (Save all).",
+          notes: row.matchedBy === "clues" ? "Added from Scan several cards (Save all). The card number was hard to read, so the card was matched from its name, year and other details." : "Added from Scan several cards (Save all).",
           sourceType: "TideTradr",
           conditionName: row.condition || "Near Mint",
           language: "English",
@@ -19967,14 +20029,20 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   // the row shows its card, set and price, and the list shows a running total.
   async function matchCardScanRows(rows = []) {
     for (const row of rows) {
-      if (!String(row.cardName || "").trim() || !String(row.cardNumber || "").trim()) continue;
+      // A row with no number is still matched when the reader handed over clues.
+      if (!String(row.cardName || "").trim() && !row.scanClues?.namesInText?.length) continue;
+      if (!String(row.cardNumber || "").trim() && !row.scanClues) continue;
       let product = null;
       let others = 0;
-      try { ({ card: product, others } = await matchScannedCardRow(row)); } catch { product = null; }
+      let byClues = false;
+      let choices = [];
+      try { ({ card: product, others, byClues = false, choices = [] } = await matchScannedCardRow(row)); } catch { product = null; }
       const marketValue = product ? Number(getTideTradrMarketInfo(product).currentMarketValue || product.marketPrice || product.midPrice || 0) : 0;
+      const labelOf = (card) => [catalogTitle(card), card.setName || card.expansion, card.cardNumber].filter(Boolean).join(" · ");
+      const valueOf = (card) => { const value = Number(getTideTradrMarketInfo(card).currentMarketValue || card.marketPrice || card.midPrice || 0); return Number.isFinite(value) && value > 0 ? value : 0; };
       const patch = product
-        ? { matchedProduct: product, matchState: "matched", matchedOthers: others || 0, matchedLabel: [catalogTitle(product), product.setName || product.expansion, product.cardNumber].filter(Boolean).join(" · "), matchedValue: Number.isFinite(marketValue) && marketValue > 0 ? marketValue : 0, matchedFor: `${row.cardName}|${row.cardNumber}` }
-        : { matchedProduct: null, matchState: "review", matchedLabel: "", matchedValue: 0, matchedFor: `${row.cardName}|${row.cardNumber}` };
+        ? { matchedProduct: product, matchState: "matched", matchedBy: byClues ? "clues" : "number", matchedChoices: [], matchedOthers: others || 0, matchedLabel: labelOf(product), matchedValue: Number.isFinite(marketValue) && marketValue > 0 ? marketValue : 0, matchedFor: `${row.cardName}|${row.cardNumber}` }
+        : { matchedProduct: null, matchState: "review", matchedBy: "", matchedChoices: (choices || []).slice(0, 4).map((card) => ({ product: card, label: labelOf(card), short: [card.setName || card.expansion, card.cardNumber].filter(Boolean).join(" · "), value: valueOf(card) })), matchedLabel: "", matchedValue: 0, matchedFor: `${row.cardName}|${row.cardNumber}` };
       setQuickAddWizard((current) => ({
         ...current,
         cardScanRows: (current.cardScanRows || []).map((candidate) => (candidate.id === row.id && `${candidate.cardName}|${candidate.cardNumber}` === patch.matchedFor ? { ...candidate, ...patch } : candidate)),
@@ -34908,8 +34976,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     selectedCatalogDetailVariants[0] ||
     null;
   const selectedCatalogDetailMasterCard = selectedCatalogDetailProduct ? buildMarketMasterCardFromCatalogProduct(selectedCatalogDetailProduct) : null;
-  const selectedCatalogDetailPricingProduct = selectedCatalogDetailVariant?.sourceProduct || selectedCatalogDetailProduct;
-  const selectedCatalogDetailMarketInfo = selectedCatalogDetailPricingProduct ? getTideTradrMarketInfo(selectedCatalogDetailPricingProduct) : null;
+  const selectedCatalogDetailPricingProduct = selectedCatalogDetailVariant?.sourceProduct ||
+    withCatalogVariantPricing(selectedCatalogDetailProduct, selectedCatalogDetailVariant, selectedCatalogDetailVariants.length);
+  // A printing's own price must not be replaced by a saved price for the whole card.
+  const selectedCatalogDetailUsesVariantPrice = Boolean(selectedCatalogDetailPricingProduct && selectedCatalogDetailPricingProduct !== selectedCatalogDetailProduct && !selectedCatalogDetailVariant?.sourceProduct);
+  const selectedCatalogDetailMarketInfo = selectedCatalogDetailPricingProduct
+    ? getTideTradrMarketInfo(selectedCatalogDetailUsesVariantPrice ? { ...selectedCatalogDetailPricingProduct, id: `${selectedCatalogDetailPricingProduct.id}::${selectedCatalogDetailVariant.id}` } : selectedCatalogDetailPricingProduct)
+    : null;
   const selectedCatalogDetailCondition = catalogConditionSelection[selectedCatalogDetailProduct?.id] || "Near Mint";
   const selectedCatalogDetailFairRange = selectedCatalogDetailPricingProduct
     ? [
@@ -51983,7 +52056,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       <DetailItem label="Flavor Text" value={catalogCardDetails(selectedCatalogDetailProduct).flavorText} />
                       <DetailItem label="Pokedex #" value={(catalogCardDetails(selectedCatalogDetailProduct).nationalPokedexNumbers || []).join(", ")} />
                       <DetailItem label="Variants" value={selectedCatalogDetailVariants.map((variant) => variant.variantName).join(", ")} />
-                      <DetailItem label="Market Price" value={money(getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).currentMarketValue)} />
+                      <DetailItem label="Market Price" value={money(selectedCatalogDetailMarketInfo?.currentMarketValue)} />
                       <DetailItem label="Low / Mid / High" value={`${money(selectedCatalogDetailPricingProduct?.lowPrice)} / ${money(selectedCatalogDetailPricingProduct?.midPrice)} / ${money(selectedCatalogDetailPricingProduct?.highPrice)}`} />
                       <DetailItem label="Last Price Update" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).lastUpdated} />
                       {shouldShowCatalogRepairLabels() ? <DetailItem label="Source" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).sourceName} /> : null}

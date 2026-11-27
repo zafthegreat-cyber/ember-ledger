@@ -34,7 +34,9 @@ test('all catalog lookups preserve record content and never give a code card or 
   if(/\bcode card\b/i.test(row.name))assert.equal(artwork,null,row.name);
  }
  // The production catalog grows independently of these visual fixtures.
- assert.ok(sealedCatalog.length>=4739);
+ // About 900 single cards (Dratini, Fighting Energy: "tin" in the name) left the sealed file for the
+ // cards file when the catalog stopped filing cards as sealed products; the combined count below holds.
+ assert.ok(sealedCatalog.length>=3800);
  assert.ok(catalog.length>=33125);
 });
 test('non-ETB nested identity metadata rejects a contradictory UPC or physical model',()=>{

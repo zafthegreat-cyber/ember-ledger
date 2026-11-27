@@ -1042,6 +1042,40 @@ async function runSearchAgainstSource({ supabase, sourceName, query, barcode, mo
   return runTextSearchAgainstSource({ supabase, sourceName, query, barcode, mode, filters, sort, page, pageSize, selectFields, textFields, matchMode: "fuzzy", signal });
 }
 
+/**
+ * Every printing of the named cards, with what the catalog knows about each one
+ * (release date, HP, attack names), for picking a card whose printed number could
+ * not be read (Nov 26 2026, see utils/cardClueMatch.mjs). Up to three names. A name
+ * matches the plain card and its variant rows ("Golurk", "Golurk - 123/086",
+ * "Golurk (Master Ball Pattern)"), not other cards that start the same ("Golurk V").
+ * Returns { rows, facts }: catalog rows, and tcg_card_details rows to pass to cardFactsFromDetails.
+ */
+export async function fetchCardsForClues({ supabase, names = [], limit = 240, signal } = {}) {
+  const wanted = [...new Set((Array.isArray(names) ? names : [])
+    .map((name) => String(name || "").replace(/["\\,()*%]/g, " ").replace(/\s+/g, " ").trim())
+    .filter((name) => name.length >= 3))].slice(0, 3);
+  if (!supabase || !wanted.length) return { rows: [], facts: [] };
+  const clauses = wanted.flatMap((name) => [`name.eq."${name}"`, `name.ilike."${name} -%"`, `name.ilike."${name} (%"`]);
+  let request = supabase.from("catalog_search_lightweight").select(CATALOG_SELECT_FIELDS).or(clauses.join(",")).limit(limit);
+  if (signal) request = request.abortSignal(signal);
+  const { data, error } = await request;
+  if (error) throw error;
+  const rows = Array.isArray(data) ? data : [];
+  const ids = [...new Set(rows.map((row) => row.id).filter(Boolean))];
+  const facts = [];
+  for (let at = 0; at < ids.length; at += 100) {
+    let detailRequest = supabase
+      .from("tcg_card_details")
+      .select("catalog_product_id, published:raw_source->group->>publishedOn, facts:raw_source->product->extendedData")
+      .in("catalog_product_id", ids.slice(at, at + 100));
+    if (signal) detailRequest = detailRequest.abortSignal(signal);
+    const { data: details, error: detailError } = await detailRequest;
+    if (detailError) break; // the rows can still be told apart by pieces of the number
+    facts.push(...(details || []));
+  }
+  return { rows, facts };
+}
+
 export async function searchPokemonCatalog({
   supabase,
   query = "",

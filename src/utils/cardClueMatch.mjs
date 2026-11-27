@@ -1,0 +1,201 @@
+// Picks a card when its printed number could not be read (Nov 26 2026, owner's
+// inventory scans: "make it so even the scanner can"). Foil patterns, sleeves, glare
+// and scanner jams hide the small number at the bottom of a card, but the rest of
+// the card still says which printing it is: the name, the year on the copyright
+// line, the HP, the attack names and whatever pieces of the number did come through.
+// This weighs those clues against the catalog's printings of the card and picks one
+// only when it clearly fits best and nothing read from the card disagrees with it.
+// Pure, for tests. The catalog rows and their facts are fetched by cardClueLookup.js.
+
+import {
+  catalogCardNameKey, catalogPrintingKey, catalogRowName, catalogRowNumber, catalogRowSet, isSpecialPrintSet,
+} from "./catalogResultIdentity.mjs";
+
+const plainText = (value = "") => String(value).replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/\r/g, "");
+const lettersOf = (value = "") => String(value).normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^a-z]+/g, " ").trim();
+const stripZeros = (value = "") => String(value).toLowerCase().replace(/^([a-z]*)0+(?=\d)/, "$1");
+
+/**
+ * What the catalog knows about one card, from its tcg_card_details row:
+ * { published: "2021-06-18T00:00:00", facts: [{ name: "HP", value: "150" }, { name: "Attack 1", value: "[2P] Reinforced Punch (60+)..." }] }
+ * becomes { year: 2021, hp: 150, attacks: ["Reinforced Punch", "Megaton Fall"] }.
+ */
+export function cardFactsFromDetails(row = {}) {
+  const list = Array.isArray(row?.facts) ? row.facts.filter((entry) => entry && typeof entry === "object") : [];
+  const valueOf = (name) => list.find((entry) => entry.name === name)?.value;
+  const attacks = [];
+  const addAttack = (name) => {
+    const tidy = String(name || "").replace(/\s+/g, " ").trim();
+    if (lettersOf(tidy).replace(/ /g, "").length < 4 || tidy.split(" ").length > 4) return;
+    if (!attacks.some((known) => known.toLowerCase() === tidy.toLowerCase())) attacks.push(tidy);
+  };
+  for (const entry of list) {
+    if (/^Attack \d$/.test(String(entry.name || ""))) {
+      // "[2P] Reinforced Punch (60+)", "C][C][C] Fighting Fist (120+)", "<b>Gentle Slap -- 40</b>"
+      addAttack(plainText(entry.value).split("\n")[0].trim().replace(/^(?:\[[^\]]*\]|[A-Z0-9]{1,6}\])+\s*/, "").replace(/\s*(?:\(|--|—|–).*$/, ""));
+    } else if (entry.name === "CardText") {
+      for (const match of plainText(entry.value).matchAll(/(?:Ability|Pok[eé]-?\s?(?:Power|Body)|Ancient Trait)\s*[—–:-]+\s*([^\n]+)/gi)) addAttack(match[1]);
+    }
+  }
+  const year = Number(String(row?.published || "").slice(0, 4));
+  return { year: year >= 1996 && year <= 2099 ? year : 0, hp: Number(valueOf("HP")) || 0, attacks };
+}
+
+function editsWithin(a, b, limit) {
+  if (Math.abs(a.length - b.length) > limit) return false;
+  let previous = Array.from({ length: b.length + 1 }, (_, index) => index);
+  for (let i = 1; i <= a.length; i += 1) {
+    const current = [i];
+    for (let j = 1; j <= b.length; j += 1) current[j] = Math.min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    previous = current;
+  }
+  return previous[b.length] <= limit;
+}
+
+/** True when an attack or ability name is in the text read from the card, allowing one misread letter in a long word. */
+export function attackIsInText(attack = "", textLetters = "", textWords = new Set()) {
+  const phrase = lettersOf(attack);
+  if (phrase.replace(/ /g, "").length < 5) return false;
+  if (textLetters.includes(phrase)) return true;
+  // A long name broken up by stray spaces ("Mega Pun ch").
+  const joined = phrase.replace(/ /g, "");
+  if (joined.length >= 8 && textLetters.replace(/ /g, "").includes(joined)) return true;
+  const words = phrase.split(" ").filter((word) => word.length >= 3);
+  if (!words.length || !words.some((word) => word.length >= 5)) return false;
+  return words.every((word) => textWords.has(word) || (word.length >= 6 && [...textWords].some((seen) => editsWithin(word, seen, 1))));
+}
+
+const differingPlaces = (a, b) => (a.length === b.length ? [...a].filter((ch, index) => ch !== b[index]).length : Infinity);
+
+/**
+ * How well the pieces of a number read from the card fit a catalog number.
+ * 8 the whole number; 5 the card's own number with a total one digit off ("185/208"
+ * for 185/202) or the number and total run together ("12877198" for 128/198);
+ * 4 one digit off in the card's own number, or the total cut short ("73/1" for 73/106);
+ * 3 the end of the number with the whole total ("4/102" for 34/102); 2 the total alone.
+ */
+export function numberPieceScore(cardNumber = "", parts = [], digitRuns = []) {
+  const [rawNumber = "", rawTotal = ""] = String(cardNumber || "").toLowerCase().replace(/\s+/g, "").split("/");
+  const own = stripZeros(rawNumber), total = stripZeros(rawTotal);
+  if (!own) return 0;
+  let best = 0;
+  for (const part of parts) {
+    const [readNumber = "", readTotal = ""] = String(part || "").toLowerCase().replace(/\s+/g, "").split("/");
+    const n = stripZeros(readNumber), t = stripZeros(readTotal);
+    let points = 0;
+    if (n && t && total) {
+      if (n === own && t === total) points = 8;
+      else if (n === own && n.length >= 2 && differingPlaces(t, total) === 1) points = 5;
+      else if (t === total && t.length >= 2 && differingPlaces(n, own) === 1 && own.length >= 2) points = 4;
+      else if (n === own && n.length >= 2 && t.length < total.length && total.startsWith(t)) points = 4;
+      else if (t === total && t.length >= 2 && n.length < own.length && own.endsWith(n)) points = 3;
+      else if (t === total && t.length >= 2) points = 2;
+    } else if (t && total) {
+      if (t === total && t.length >= 2) points = 2;
+    } else if (n && !readTotal) {
+      if (n === own && n.length >= 2) points = 2;
+    }
+    best = Math.max(best, points);
+  }
+  if (total.length >= 2 && /^\d+$/.test(total)) {
+    for (const run of digitRuns) {
+      const digits = String(run || "");
+      if (total.length >= 3 && digits === rawTotal) best = Math.max(best, 2);
+      const joined = rawNumber.length + rawTotal.length;
+      if (rawNumber.length >= 2 && digits.length >= joined && digits.length <= joined + 2 && digits.startsWith(rawNumber) && digits.endsWith(rawTotal)) best = Math.max(best, 5);
+    }
+  }
+  return best;
+}
+
+// A first print or stamped run of a card that also has a main printing.
+const VARIANT_SET = /\(shadowless\)|shadowless|1st edition/i;
+
+/**
+ * The catalog card that the clues point to.
+ *   read        { name, otherNames, number, clues, text } from the card reader. otherNames are
+ *               card names found in the card's text; a card found under one of those needs
+ *               an attack name or a number piece to agree, because a card's text also names other cards.
+ *   candidates  catalog rows (mapped or raw) for those names
+ *   factsById   Map of catalog id -> cardFactsFromDetails()
+ * Returns { card, sure, others, why, choices, nameFromText }. card is null when no printing
+ * stands out; choices then lists up to four printings that fit equally well.
+ * sure is true when a piece of the number agrees, or two different kinds of clue do.
+ * A pick resting on one kind alone (only the year, say) is right when the catalog has
+ * every printing of the card, and the catalog does not: it is offered, not filed.
+ * A printing the catalog has no facts for (a new set) cannot be ruled out by year, HP
+ * or attacks, so it stays level with the best fit on those and only a number piece separates them.
+ */
+export function pickCardByClues({ name = "", otherNames = [], number = "", clues = {}, text = "" } = {}, candidates = [], factsById = new Map()) {
+  const none = { card: null, sure: false, others: 0, why: [], choices: [], nameFromText: false };
+  const mainKey = catalogCardNameKey(name);
+  const textKeys = new Set((otherNames || []).map((other) => catalogCardNameKey(other)).filter((key) => key && key !== mainKey));
+  if (!mainKey && !textKeys.size) return none;
+  const textLetters = lettersOf(text);
+  const textWords = new Set(textLetters.split(" ").filter((word) => word.length >= 3));
+  const years = (clues?.years || []).map(Number).filter(Boolean);
+  const parts = [...(clues?.numberParts || []), ...(String(number).includes("/") ? [number] : [])];
+  const digitRuns = clues?.digitRuns || [];
+
+  const byPrinting = new Map();
+  for (const row of candidates) {
+    if (!row) continue;
+    const nameKey = catalogCardNameKey(catalogRowName(row));
+    const fromText = nameKey !== mainKey;
+    if (fromText && !textKeys.has(nameKey)) continue;
+    if (!String(catalogRowNumber(row) || "").trim()) continue; // sealed products and rows with no number are not cards to pick here
+    const facts = factsById.get(String(row.id)) || factsById.get(row.id) || null;
+    const key = `${catalogPrintingKey(row)}|${String(catalogRowName(row)).includes("(") ? catalogRowName(row) : ""}`;
+    const known = byPrinting.get(key);
+    if (!known || (!known.facts && facts)) byPrinting.set(key, { row, facts, fromText });
+  }
+  if (!byPrinting.size) return none;
+
+  const scoredAll = [...byPrinting.values()].map((entry) => {
+    const why = new Set();
+    let score = 0, conflicts = 0;
+    const numberPoints = numberPieceScore(catalogRowNumber(entry.row), parts, digitRuns);
+    if (numberPoints) { score += numberPoints; why.add(numberPoints >= 3 ? "number" : "total"); }
+    const facts = entry.facts;
+    if (facts?.year) {
+      if (years.length) {
+        const gap = Math.min(...years.map((year) => Math.abs(year - facts.year)));
+        if (gap === 0) { score += 3; why.add("year"); }
+        else if (gap >= 2) { score -= 4; conflicts += 1; }
+      } else if (clues?.wizards) {
+        if (facts.year >= 1999 && facts.year <= 2003) { score += 2; why.add("year"); }
+        else { score -= 4; conflicts += 1; }
+      }
+    }
+    if (facts?.hp && clues?.hp) {
+      if (facts.hp === Number(clues.hp)) { score += 2; why.add("hp"); }
+      else { score -= 3; conflicts += 1; }
+    }
+    const attackHits = (facts?.attacks || []).filter((attack) => attackIsInText(attack, textLetters, textWords)).length;
+    if (attackHits) { score += Math.min(2, attackHits) * 3; why.add("attack"); }
+    const blind = !facts || (!facts.year && !facts.hp && !(facts.attacks || []).length);
+    return { ...entry, score, conflicts, why, numberPoints, blind };
+  });
+  const bestOther = Math.max(0, ...scoredAll.filter((entry) => !entry.blind && !entry.fromText).map((entry) => entry.score - entry.numberPoints));
+  const scored = scoredAll.map((entry) => (entry.blind && !entry.fromText && bestOther > 0 ? { ...entry, score: entry.numberPoints + bestOther } : entry)).filter((entry) => !entry.fromText || ((entry.why.has("attack") || entry.why.has("number")) && entry.score >= 5));
+  if (!scored.length) return none;
+
+  const top = Math.max(...scored.map((entry) => entry.score));
+  if (top < 3) return none;
+  // Every printing within two points of the best one still fits about as well.
+  const close = scored.filter((entry) => entry.score > top - 2);
+  const narrow = (list, keep) => { const kept = list.filter(keep); return kept.length ? kept : list; };
+  let list = close;
+  // The plain card rather than a variant row, the main set rather than a stamped
+  // reprint or first print run: the same order of choices pickScannedCard makes.
+  list = narrow(list, (entry) => !String(catalogRowName(entry.row)).includes("("));
+  list = narrow(list, (entry) => !isSpecialPrintSet(entry.row));
+  list = narrow(list, (entry) => !VARIANT_SET.test(catalogRowSet(entry.row)));
+  const choices = [...list].sort((a, b) => b.score - a.score).slice(0, 4).map((entry) => entry.row);
+  // Picked only when one printing is left and nothing read from the card disagrees with it.
+  if (list.length !== 1 || list[0].conflicts) return { ...none, choices: list.length > 1 ? choices : [] };
+  const picked = list[0];
+  const others = new Set(close.filter((entry) => entry !== picked).map((entry) => catalogPrintingKey(entry.row))).size;
+  const sure = picked.why.has("number") || picked.why.size >= 2;
+  return { card: picked.row, sure, others, why: [...picked.why], choices: [], nameFromText: picked.fromText };
+}
