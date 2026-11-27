@@ -412,6 +412,14 @@ test("a reprint under another number is offered beside the main-set card, not dr
   assert.ok(!unsure.choices.some((card) => /Electabuzz/.test(card.name)), "the card it evolves from is not a candidate");
   const withNumber = await matchScanRowByClues(scanned("Electivire", { ...jam, numberParts: ["4/30"] }, { scanText: text }), { fetchCards: lookup([], [BLIND_ELECTIVIRE]) });
   assert.equal(named(withNumber.card), "Electivire (4) | XY Trainer Kit: Pikachu Libre & Suicune 4/30");
+  // Seen on the live catalog, Nov 27 2026: a World Championship copy with no card details. It
+  // ties only because nothing is known about it, so the main-set card is still filed.
+  const zangoose = [
+    { row: { id: "zangoose-main", name: "Zangoose", setName: "SWSH06: Chilling Reign", cardNumber: "120/198", setCode: "SWSH06" }, year: 2021, hp: 110, attacks: ["Gale Claws"] },
+    { row: { id: "zangoose-deck", name: "Zangoose - 2011 (David Cohen)", setName: "World Championship Decks", cardNumber: "66/127", setCode: "WCD" }, year: 0, hp: 0, attacks: [] },
+  ];
+  const filed = await matchScanRowByClues(scanned("Zangoose", { years: [2021], hp: 110 }), { fetchCards: lookup([], zangoose) });
+  assert.equal(named(filed.card), "Zangoose | SWSH06: Chilling Reign 120/198");
 });
 
 test("the newer Pokédex line rules out the 1999-2003 printings of a reprinted card", async () => {

@@ -210,10 +210,13 @@ export function pickCardByClues({ name = "", otherNames = [], number = "", clues
   // Nov 26 2026: a reprint under another number that fits just as well (a trainer-kit copy
   // of a main-set card) is set aside above, but with no piece of the number read it cannot
   // be told from the main-set card, so it is offered beside it instead of being dropped.
+  // Only a reprint the catalog has facts for: one it knows nothing about (a World
+  // Championship copy with no card details) ties on the benefit of the doubt alone, and
+  // stays set aside as before.
   const numberOf = (entry) => String(catalogRowNumber(entry.row) || "").toLowerCase().replace(/\s+/g, "").split("/").map(stripZeros).join("/");
   const listed = new Set(list);
   const listedNumbers = new Set(list.map(numberOf));
-  const setAside = close.filter((entry) => !listed.has(entry) && !entry.conflicts && entry.score >= top && !listedNumbers.has(numberOf(entry)));
+  const setAside = close.filter((entry) => !listed.has(entry) && !entry.blind && !entry.conflicts && entry.score >= top && !listedNumbers.has(numberOf(entry)));
   // Cards the catalog has facts for come before ones it knows nothing about.
   const choicesOf = (entries) => [...entries].sort((a, b) => Number(a.blind) - Number(b.blind) || b.score - a.score).slice(0, 4).map((entry) => entry.row);
   // The HP alone, or the set total alone: never a pick, but a few printings that fit equally are worth offering.
