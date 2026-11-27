@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { readFileSync } from "node:fs";
-import { attackIsInText, cardFactsFromDetails, numberPieceScore, pickCardByClues } from "../src/utils/cardClueMatch.mjs";
+import { attackIsInText, cardFactsFromDetails, matchScanRowByClues, numberPieceScore, pickCardByClues, pickCardByNumber } from "../src/utils/cardClueMatch.mjs";
 import { createNameIndex, snapCardName, trimToCardName } from "../src/utils/cardNameSnap.mjs";
 import { findCardClues, isGenericCardWord, parseCardPhotoText } from "../src/utils/cardPhotoText.mjs";
 import { findUnsmearedSpan } from "../src/utils/cardPhotoReader.mjs";
@@ -261,4 +261,174 @@ test("a jammed scan: only the part that is still a picture is kept", () => {
   const picture = Uint8Array.from({ length: width * height }, () => Math.round(random() * 255));
   assert.equal(findUnsmearedSpan(picture, width, height), null, "an ordinary picture is left alone");
   assert.equal(findUnsmearedSpan(new Uint8Array(width * height), width, height), null, "a blank picture has nothing to keep");
+});
+
+// Nov 26 2026: ten more hard scans. Dark full-foil cards whose name bar cannot be read, and
+// scans the feeder stretched. The rows are the catalog's own on that day; a row with no
+// year, HP or attacks is one the catalog had no facts for (the newest sets).
+// name | set | number | year | hp | attacks | set code
+const HIDDEN = `
+Skitty|ME: Ascended Heroes|165/217|2026|60|Cat Kick|ASC
+Skitty (Energy Symbol Pattern)|ME: Ascended Heroes|165/217|2026|60|Cat Kick|ASC
+Skitty (Love Ball)|ME: Ascended Heroes|165/217|2026|60|Cat Kick|ASC
+Skitty|SV05: Temporal Forces|130/162|2024|60|Call for Family;Tackle|TEF
+Skitty|SWSH03: Darkness Ablaze|141/189|2020|60|Drawup Power;Cat Kick|SWSH03
+Skitty|SWSH08: Fusion Strike|210/264|2021|60|Whimsy Tackle|SWSH08
+Skitty|EX Trainer Kit 1: Latias & Latios|6/10|2026|50|Tackle;Lunge|PR
+Togepi|ME: Ascended Heroes|080/217|2026|50|Pound|ASC
+Togepi (Love Ball)|ME: Ascended Heroes|080/217|2026|50|Pound|ASC
+Togepi|SV08: Surging Sparks|070/191|2024|50|Pound|SSP
+Togepi|SWSH10: Astral Radiance|055/189|2022|50|Rollout|SWSH10
+Togepi & Cleffa & Igglybuff GX - 143a/236|Alternate Art Promos|143a/236|2026|240|Rolling Panic;Supreme Puff GX|PR
+Togepi & Cleffa & Igglybuff-GX|Cosmic Eclipse|143a|0|0||sm12
+Clefable|ME: Ascended Heroes|075/217|2026|120|Metronome;Magical Shot|ASC
+Clefable (Love Ball)|ME: Ascended Heroes|075/217|2026|120|Metronome;Magical Shot|ASC
+Clefable|SV06: Twilight Masquerade|079/167|2024|120|Metronome;Magical Shot|TWM
+Clefable|Hidden Fates|40/68|2019|120|Pound;Moon Impact|HIF
+Mega Clefable ex - 031/088|ME03: Perfect Order|031/088|2026|320|Shooting Moons|POR
+Mega Clefable ex - 072|ME: Mega Evolution Promo|072|0|0||MEP
+Minccino|ME04: Chaos Rising|072/086|0|0||CRI
+Minccino|SV09: Journey Together|125/159|2025|70|Slap|JTG
+Minccino - 136/162|SV05: Temporal Forces|136/162|2024|70|Beat;Cleaning Up|TEF
+Minccino|SV: Black Bolt|075/086|2025|60|Tail Slap|BLK
+Minccino (145)|SWSH01: Sword & Shield Base Set|145/202|2020|70|Glance;Tail Slap|SWSH01
+Kakuna|XY - Evolutions|6/108|2016|80|Stiffen;Poison Powder|EVO
+Kakuna|Base Set|033/102|1999|80|Stiffen;Poisonpowder|BS
+Kakuna|Base Set 2|047/130|2000|80|Stiffen;Poisonpowder|BS2
+Kakuna|Legendary Collection|050/110|2002|80|Stiffen;Poisonpowder|LC
+Kakuna|SWSH06: Chilling Reign|002/198|2021|80|Stiffen|SWSH06
+Kakuna|Great Encounters|73/106|2008|80|Stiffen;Spit Poison|GE
+Pecharunt|ME: Ascended Heroes|143/217|2026|80|Mochi Rush|ASC
+Pecharunt (Poke Ball)|ME: Ascended Heroes|143/217|2026|80|Mochi Rush|ASC
+Pecharunt - 129|SV: Scarlet & Violet Promo Cards|129|2023|80|Poison Chain|SVP
+Electivire|XY - BREAKpoint|43/122|2016|70|Knuckle Punch;Electroslug|BKP
+Electivire (4)|XY Trainer Kit: Pikachu Libre & Suicune|4/30|2016|110|Knuckle Punch;Electroslug|PR
+Electivire (25)|XY Trainer Kit: Pikachu Libre & Suicune|25/30|2016|110|Knuckle Punch;Electroslug|PR
+Electivire|SV05: Temporal Forces|054/162|2024|140|Short-Circuit Knuckle;Electroslug|TEF
+Electabuzz|XY - BREAKpoint|42/122|2016|70|Knuckle Punch|BKP
+Electabuzz (15)|XY Trainer Kit: Pikachu Libre & Suicune|15/30|2016|70|Knuckle Punch|PR
+Piplup - 027/094|ME02: Phantasmal Flames|027/094|2025|70|Call for Support;Tackle|PFL
+Piplup - 098/094|ME02: Phantasmal Flames|098/094|2025|70|Call for Support;Tackle|PFL
+Piplup - 042|ME: Mega Evolution Promo|042|2025|70|Peck|MEP
+`.trim().split("\n").map((line, at) => {
+  const [name, setName, cardNumber, year, hp, attacks, setCode] = line.split("|");
+  return { row: { id: `hidden-${at}`, name, setName, cardNumber, setCode }, year: Number(year), hp: Number(hp), attacks: attacks ? attacks.split(";") : [] };
+});
+const BLIND_KAKUNA = { row: { id: "hidden-kakuna-new", name: "Kakuna", setName: "ME04: Chaos Rising", cardNumber: "002/086", setCode: "CRI" }, year: 0, hp: 0, attacks: [] };
+const BLIND_ELECTIVIRE = { row: { id: "hidden-electivire-new", name: "Electivire - 031/103", setName: "ME06: Delta Reign", cardNumber: "031/103", setCode: "DLR" }, year: 0, hp: 0, attacks: [] };
+// The catalog lookup, the way the app's own makes it: a name exactly or with a " -" or " (" tail,
+// or any card of a species. Facts come back as detail rows.
+const detailsOf = (found) => found.filter((entry) => entry.year || entry.hp || entry.attacks.length).map((entry) => ({
+  catalog_product_id: entry.row.id, published: `${entry.year}-03-27T00:00:00`,
+  facts: [{ name: "HP", value: String(entry.hp) }, ...entry.attacks.map((attack, at) => ({ name: `Attack ${at + 1}`, value: `[1C] ${attack} (20)\r\nFlip a coin.` }))],
+}));
+const lookup = (seen = [], extra = []) => async ({ names = [], species = "", setCodes = [] } = {}) => {
+  seen.push({ names, species, setCodes });
+  const found = [...HIDDEN, ...extra].filter(({ row }) => names.some((name) => row.name === name || row.name.startsWith(`${name} -`) || row.name.startsWith(`${name} (`))
+    || (species && row.name.toLowerCase().includes(species.toLowerCase())));
+  return { rows: found.map((entry) => entry.row), facts: detailsOf(found) };
+};
+const scanned = (cardName, clues, extra = {}) => ({ cardName, cardNumber: "", scanText: "", scanClues: { years: [], hp: 0, numberParts: [], digitRuns: [], namesInText: [], setCodes: [], species: "", ...clues }, ...extra });
+const named = (card) => (card ? `${card.name} | ${card.setName} ${card.cardNumber}` : "");
+
+test("the Pokédex line gives the species, in one piece or several, and a stray NO. does not", () => {
+  const dexNames = JSON.parse(readFileSync(new URL("../src/data/pokedexNames.json", import.meta.url), "utf8"));
+  assert.equal(dexNames.length, 1025);
+  const speciesOf = (text) => findCardClues(text, { nameIndex: index, dexNames }).species;
+  assert.equal(speciesOf("BASIC\nNO. 0300 Kitten Pokemon HT. 2' WI. 24.3 Ibs.\n©2026 Pokémon / Nintendo"), "Skitty");
+  assert.equal(speciesOf("WN 4 pr\n10.0036 Fay Pokémon HT. 4.3 582 los"), "Clefable", "NO. read as 10.");
+  assert.equal(speciesOf("NO _\n[9] 572 _\nhinchilia P\némon_ HT: 1"), "Minccino", "the line read in pieces, its first 0 lost");
+  assert.equal(speciesOf("NO. 014 Cocoon Pokémon HT: 2'00\" WT: 22.0 Ibs."), "Kakuna", "the three-figure number of older cards");
+  assert.equal(speciesOf("NO. 102 nH b: Subjugation. f If this Pokémon is Knocked Out by damage"), "", "not a Pokédex line");
+  assert.equal(speciesOf("Mouse Pokémon. Length: 1' 4\", Weight: 13 lbs."), "", "1999 cards print no number");
+  assert.equal(findCardClues("NO. 0300 Kitten Pokemon HT. 2'", { nameIndex: index }).dex, 300, "the number is kept even without the list of species");
+});
+
+test("set codes, the newer layout and a cut-off Evolves from are read as clues", () => {
+  assert.deepEqual(findCardClues("lillusYokolHishidal\nASCen 165 2717", { nameIndex: index }).setCodes, ["ASC"]);
+  assert.deepEqual(findCardClues("wT OSH 143/217 %\n[0 ASC 43/217 fe\nI ASC EN 143/217", { nameIndex: index }).setCodes, ["ASC", "OSH"], "a misread code is kept beside the real one");
+  assert.deepEqual(findCardClues("BASIC EN THE EN 20/30", { nameIndex: index }).setCodes, [], "ordinary words are not set codes");
+  assert.equal(findCardClues("NO. 014 Cocoon Pokémon HT: 2'00\" WT: 22.0 Ibs.", { nameIndex: index }).modern, true);
+  assert.equal(findCardClues("Cocoon Pokémon. Length: 2' 0\", Weight: 22 lbs.", { nameIndex: index }).modern, false);
+  const jammed = findCardClues("y STAGE] Electivire wl10 4\nves from Electabuzz EN\nNO. 466 Thunderbolt Pokémon HT. 5'11\nKnuckle Punch 30", { nameIndex: index, bodyText: "y STAGE] Electivire wl10 4\nves from Electabuzz EN\nKnuckle Punch 30" });
+  assert.equal(jammed.evolvesFrom, "Electabuzz");
+  assert.deepEqual(jammed.namesInText, ["Electivire"], "the card it evolves from is not offered as its name");
+});
+
+test("a dark foil card is found by its species, and filed when two kinds of clue agree", async () => {
+  const seen = [];
+  const skitty = await matchScanRowByClues(scanned("Skitty", { species: "Skitty", years: [2026], hp: 60, setCodes: ["ASC"], digitRuns: ["165", "2717"] }), { fetchCards: lookup(seen) });
+  assert.equal(named(skitty.card), "Skitty | ME: Ascended Heroes 165/217");
+  assert.equal(skitty.byClues, true);
+  assert.deepEqual(seen, [{ names: ["Skitty"], species: "Skitty", setCodes: ["ASC"] }]);
+  // The year alone: offered, not filed. The three-Pokémon cards that only mention Togepi are not candidates.
+  const togepi = await matchScanRowByClues(scanned("Togepi", { species: "Togepi", years: [2026] }), { fetchCards: lookup() });
+  assert.equal(togepi.card, null);
+  assert.deepEqual(togepi.choices.map(named), ["Togepi | ME: Ascended Heroes 080/217"]);
+  // A set code that is this set's own counts with the year as one kind of clue, not two.
+  const coded = await matchScanRowByClues(scanned("Togepi", { species: "Togepi", years: [2026], setCodes: ["ASC"] }), { fetchCards: lookup() });
+  assert.equal(coded.card, null);
+  assert.deepEqual(coded.choices.map(named), ["Togepi | ME: Ascended Heroes 080/217"]);
+});
+
+test("a card the catalog has no facts for stays beside the best fit, real facts first", async () => {
+  const clefable = await matchScanRowByClues(scanned("Clefable", { species: "Clefable", years: [2026], hp: 120, evolvesFrom: "Clefairy" }), { fetchCards: lookup() });
+  assert.equal(clefable.card, null, "the promo with no facts cannot be ruled out, so nothing is filed");
+  assert.deepEqual(clefable.choices.map(named), ["Clefable | ME: Ascended Heroes 075/217", "Mega Clefable ex - 072 | ME: Mega Evolution Promo 072"]);
+  // Only the HP agrees with anything: never a pick, but the few printings that fit are offered.
+  const minccino = await matchScanRowByClues(scanned("Minccino", { species: "Minccino", years: [2026], hp: 70 }), { fetchCards: lookup() });
+  assert.equal(minccino.card, null);
+  assert.deepEqual(minccino.choices.map(named), ["Minccino | SV09: Journey Together 125/159", "Minccino | ME04: Chaos Rising 072/086"]);
+});
+
+test("no name and no species: the clue match leaves the card to the number match", async () => {
+  // "Rees" is what the scan left of Pecharunt's name bar; the number was read whole.
+  const seen = [];
+  const row = scanned("Rees", { years: [2026], numberParts: ["143/217", "43/217"], setCodes: ["OSH", "ASC"] }, { cardNumber: "143/217" });
+  const byClues = await matchScanRowByClues(row, { fetchCards: lookup(seen) });
+  assert.equal(byClues.card, null);
+  assert.deepEqual(byClues.choices, []);
+  assert.deepEqual(seen, [{ names: ["Rees"], species: "", setCodes: ["OSH", "ASC"] }]);
+  // The number match (pickCardByNumber) then finds it among the cards numbered 143/217.
+  const numbered = HIDDEN.filter((entry) => entry.row.cardNumber === "143/217");
+  const facts = new Map(detailsOf(numbered).map((detail) => [detail.catalog_product_id, cardFactsFromDetails(detail)]));
+  const byNumber = pickCardByNumber({ name: "Rees", number: "143/217", clues: row.scanClues, text: "" }, numbered.map((entry) => entry.row), facts);
+  assert.equal(named(byNumber.card), "Pecharunt | ME: Ascended Heroes 143/217");
+  assert.equal(byNumber.sure, false, "only the year agrees, so it is offered and not filed");
+  assert.deepEqual(await matchScanRowByClues({ cardName: "Rees" }, { fetchCards: lookup() }), { card: null, others: 0, byClues: false, choices: [] }, "a row with no clues is left alone");
+});
+
+test("a reprint under another number is offered beside the main-set card, not dropped", async () => {
+  const jam = { species: "Electivire", years: [2016], modern: true, evolvesFrom: "Electabuzz" };
+  const text = "stage electivire ves from electabuzz knuckle punch electroslug it pushes the tips of its two tails";
+  const unsure = await matchScanRowByClues(scanned("Electivire", jam, { scanText: text }), { fetchCards: lookup([], [BLIND_ELECTIVIRE]) });
+  assert.equal(unsure.card, null, "the main-set card and its trainer-kit copies read the same without the number");
+  assert.deepEqual(unsure.choices.map(named), [
+    "Electivire | XY - BREAKpoint 43/122",
+    "Electivire (4) | XY Trainer Kit: Pikachu Libre & Suicune 4/30",
+    "Electivire (25) | XY Trainer Kit: Pikachu Libre & Suicune 25/30",
+    "Electivire - 031/103 | ME06: Delta Reign 031/103",
+  ]);
+  assert.ok(!unsure.choices.some((card) => /Electabuzz/.test(card.name)), "the card it evolves from is not a candidate");
+  const withNumber = await matchScanRowByClues(scanned("Electivire", { ...jam, numberParts: ["4/30"] }, { scanText: text }), { fetchCards: lookup([], [BLIND_ELECTIVIRE]) });
+  assert.equal(named(withNumber.card), "Electivire (4) | XY Trainer Kit: Pikachu Libre & Suicune 4/30");
+});
+
+test("the newer Pokédex line rules out the 1999-2003 printings of a reprinted card", async () => {
+  const jam = { species: "Kakuna", hp: 80, modern: true, evolvesFrom: "Weedle" };
+  const text = "stage evolves from weedle put kakuna on the basic pokemon kakuna hp stiffen poison powder flip a coin";
+  const kakuna = await matchScanRowByClues(scanned("Kakuna", jam, { scanText: text }), { fetchCards: lookup() });
+  assert.equal(named(kakuna.card), "Kakuna | XY - Evolutions 6/108");
+  const old = await matchScanRowByClues(scanned("Kakuna", { ...jam, modern: false }, { scanText: text }), { fetchCards: lookup() });
+  assert.equal(old.card, null, "without it the Base Set printings fit as well");
+  assert.ok(old.choices.length >= 2);
+  const newSet = await matchScanRowByClues(scanned("Kakuna", jam, { scanText: text }), { fetchCards: lookup([], [BLIND_KAKUNA]) });
+  assert.equal(newSet.card, null);
+  assert.deepEqual(newSet.choices.map(named), ["Kakuna | XY - Evolutions 6/108", "Kakuna | ME04: Chaos Rising 002/086"]);
+});
+
+test("two printings with the same text in one set are both offered", async () => {
+  const piplup = await matchScanRowByClues(scanned("Piplup", { hp: 70 }, { scanText: "basic piplup call for support search your deck for a supporter card tackle" }), { fetchCards: lookup() });
+  assert.equal(piplup.card, null);
+  assert.deepEqual(piplup.choices.map(named), ["Piplup - 027/094 | ME02: Phantasmal Flames 027/094", "Piplup - 098/094 | ME02: Phantasmal Flames 098/094"]);
 });

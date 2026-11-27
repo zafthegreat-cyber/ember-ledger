@@ -160,8 +160,13 @@ export function rankCardNames(candidateLists = []) {
  * the card turned around: a number in it is upside down, so it is turned back ("861/821" is 128/198).
  * bodyText, when given, is where names are looked for: the card's text without its name bar, so a
  * stray word read from the name bar cannot vouch for itself.
+ * Nov 26 2026 (dark foil cards whose name bar cannot be read):
+ *   dex, species   the number on the Pokédex line under the picture ("NO. 0300 Kitten Pokémon HT: 2'00"")
+ *                  and, with dexNames (index 0 is number 1), the species it stands for
+ *   setCodes       set codes printed beside the number on current cards ("ASC EN 165/217"), as read
+ *   modern         true when the Pokédex line has "HT:" and "WT:", which no 1999-2003 card has
  */
-export function findCardClues(text = "", { nameIndex = null, nameStripText = "", numberStripText = "", turnedText = "", bodyText = null, readName = "" } = {}) {
+export function findCardClues(text = "", { nameIndex = null, nameStripText = "", numberStripText = "", turnedText = "", bodyText = null, readName = "", dexNames = null } = {}) {
   const body = clean(text);
   const years = new Set();
   const addYears = (first, second) => {
@@ -203,11 +208,32 @@ export function findCardClues(text = "", { nameIndex = null, nameStripText = "",
   }
   let evolvesFrom = "";
   // Old cards go on with "Put Machoke on the Basic Pokémon": the name ends before "Put".
-  const evolves = body.match(/Evolves\s+from\s+((?!Put\b)[A-Z][A-Za-zÀ-ž'’.\-]*(?: (?!Put\b)[A-Z][A-Za-zÀ-ž'’.\-]*){0,2})/);
+  // The start of "Evolves" is often lost ("ves from Electabuzz"); what follows "from" is still not this card.
+  const evolves = body.match(/(?:\bEvolves|\b[A-Za-z]{0,3}ves)\s+from\s+((?!Put\b)[A-Z][A-Za-zÀ-ž'’.\-]*(?: (?!Put\b)[A-Z][A-Za-zÀ-ž'’.\-]*){0,2})/);
   if (evolves) {
     evolvesFrom = squash(evolves[1]).replace(/[.,]+$/, "");
-    if (nameIndex) evolvesFrom = snapCardName(evolvesFrom, nameIndex) || evolvesFrom;
+    if (nameIndex) {
+      // "Electabuzz EN": short stray words after a name that is a card on its own are dropped.
+      const [first, ...rest] = evolvesFrom.split(" ");
+      evolvesFrom = rest.length && rest.every((word) => word.length <= 3) && isKnownCardName(first, nameIndex) ? first : snapCardName(evolvesFrom, nameIndex) || evolvesFrom;
+    }
   }
+  // The Pokédex line: "NO. 0300 Kitten Pokémon HT: 2'00"". The number must be followed closely by
+  // the species phrase, "Pokémon" and "HT" with no sentence mark between (the line is often read
+  // in pieces), so a stray "NO. 102 ... : ... this Pokémon" elsewhere is not taken.
+  let dex = 0;
+  const dexLine = body.match(/(?:\bN[Oo0]|\b[1Il]0)[\s.,:_]{0,5}(?:\[\d\][\s_]{0,2})?(\d{3,4})\b[^.:;,]{0,28}?(?:Pok[eé]mon|[eé]mon)[\s._]{0,3}H[T1I]\b/);
+  if (dexLine && Number(dexLine[1]) >= 1 && Number(dexLine[1]) <= 1025) dex = Number(dexLine[1]);
+  const species = dex && Array.isArray(dexNames) ? String(dexNames[dex - 1] || "") : "";
+  const modern = /\bH[T1][.:]\s?\d[^\n]{0,16}\bW[TI1][.:]/.test(body);
+  // Set codes: three capitals straight before "EN" or before the number. A misread one ("OSH")
+  // matches no set and does no harm, so every one seen is kept, the most often seen first.
+  const codes = new Map();
+  for (const match of body.matchAll(/\b([A-Z]{3})(?:\s?EN\b|en\b)|\b([A-Z]{3})\s\d{1,3}\s?\/\s?\d{2,3}\b/g)) {
+    const code = match[1] || match[2];
+    if (!NOT_A_SET_CODE.test(code)) codes.set(code, (codes.get(code) || 0) + 1);
+  }
+  const setCodes = [...codes.entries()].sort((a, b) => b[1] - a[1]).map(([code]) => code).slice(0, 4);
   // Pieces of a collector number. A full "125/197" is here too, so one rule weighs them all.
   const numberParts = [];
   const seenParts = new Set();
@@ -233,7 +259,7 @@ export function findCardClues(text = "", { nameIndex = null, nameStripText = "",
   if (nameIndex) {
     const words = (bodyText === null ? body : clean(bodyText)).replace(/[^A-Za-zÀ-ž'’ \n-]/g, " ").split(/\s+/).map((word) => word.replace(/^-+|-+$/g, "")).filter(Boolean);
     const counts = new Map();
-    const skip = new Set([evolvesFrom.toLowerCase(), String(readName || "").toLowerCase(), "pokemon", "pokémon"]);
+    const skip = new Set([evolvesFrom.toLowerCase(), evolvesFrom.split(" ")[0].toLowerCase(), String(readName || "").toLowerCase(), "pokemon", "pokémon"]);
     for (let i = 0; i < words.length; i += 1) {
       // Two words first ("Galarian Slowpoke"), a near miss allowed ("Gatarian Slowpoke"); then one word, exact.
       const pair = words.slice(i, i + 2).join(" ");
@@ -259,8 +285,11 @@ export function findCardClues(text = "", { nameIndex = null, nameStripText = "",
       void count;
     }
   }
-  return { years: [...years].sort((a, b) => a - b), wizards: wizardsEra, hp, evolvesFrom, numberParts: numberParts.slice(0, 10), digitRuns, namesInText };
+  return { years: [...years].sort((a, b) => a - b), wizards: wizardsEra, hp, evolvesFrom, numberParts: numberParts.slice(0, 10), digitRuns, namesInText, dex, species, setCodes, modern };
 }
+
+// Three capitals before "EN" that are words, not set codes.
+const NOT_A_SET_CODE = /^(?:THE|AND|FOR|YOU|ALL|ANY|ONE|TWO|PUT|HAS|NOT|ITS|MAY|CAN|GET|END|HIT|ASK|USE|OWN|OUT|OFF|NEW|OLD|BIG|TOP|GEN)$/;
 
 // One word against another: the same letters, or one letter off in a word of six or more.
 function closeWord(a = "", b = "") {

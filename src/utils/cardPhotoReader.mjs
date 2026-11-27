@@ -483,6 +483,16 @@ function loadCardNameIndex() {
   return cardNameIndex;
 }
 
+// The species for each Pokédex number (about 5 KB compressed), for cards whose name bar
+// cannot be read but whose Pokédex line can. Without it the reader still works.
+let dexNameList = null;
+function loadDexNames() {
+  dexNameList ||= import("../data/pokedexNames.json")
+    .then((names) => (Array.isArray(names.default || names) ? names.default || names : null))
+    .catch(() => { dexNameList = null; return null; });
+  return dexNameList;
+}
+
 export async function readCardPhoto(file, { signal, onProgress, timeoutMs = readers.size ? CARD_PHOTO_READER.cardTimeoutMs : CARD_PHOTO_READER.cardColdTimeoutMs, workerUrl, framed = false, debug = false } = {}) {
   const invalid = validateProductPhotoFile(file);
   if (invalid) return result("invalid", "file_invalid", invalid);
@@ -522,8 +532,10 @@ export async function readCardPhoto(file, { signal, onProgress, timeoutMs = read
       let nameIndex = null;
       const parse = () => parseCardPhotoText({ nameIndex, nameText: byKey.name0, extraNameTexts: [byKey.nameWide0, byKey.name1, byKey.nameWide1].filter(Boolean), numberText: [byKey.numberLeft0, byKey.numberRight0, byKey.number0, byKey.number1].filter(Boolean).join("\n"), fullText: byKey.full });
       const namesReady = loadCardNameIndex();
+      const dexReady = loadDexNames();
       await read(prepared.images, "Reading the card", 0, 0.5);
       nameIndex = await namesReady;
+      const dexNames = await dexReady;
       let parsed = parse();
       if (!stageOneIsEnough(parsed)) {
         if (stopped) throw fail("cancelled");
@@ -584,6 +596,7 @@ export async function readCardPhoto(file, { signal, onProgress, timeoutMs = read
       const isTurned = (key) => /Flip$/.test(key);
       const cluesFor = (turned) => findCardClues(textOf((key) => isTurned(key) === turned), {
         nameIndex,
+        dexNames,
         nameStripText: textOf((key) => /^name/.test(key) && isTurned(key) === turned),
         numberStripText: textOf((key) => /^number/.test(key) && isTurned(key) === turned),
         turnedText: textOf((key) => /^name/.test(key) && isTurned(key) !== turned),
@@ -593,18 +606,29 @@ export async function readCardPhoto(file, { signal, onProgress, timeoutMs = read
       let clues = cluesFor(upsideDown);
       if (nameIndex && !upsideDown && byKey.fullFlip && (prepared.partial || !nameKnown())) {
         // No name either way up: the way up that reads like a card (a year, HP, card names) is the right one.
-        const weight = (found) => found.namesInText.length * 2 + (found.years.length ? 2 : 0) + (found.hp ? 1 : 0) + (found.evolvesFrom ? 2 : 0);
+        const weight = (found) => found.namesInText.length * 2 + (found.years.length ? 2 : 0) + (found.hp ? 1 : 0) + (found.evolvesFrom ? 2 : 0) + (found.species ? 3 : 0);
         const other = cluesFor(true);
         if (weight(other) > weight(clues)) { clues = other; upsideDown = true; }
+      }
+      const lettersIn = (value) => String(value || "").toLowerCase().replace(/[^a-zà-ž]/g, "");
+      let nameSource = "name-bar";
+      // Nov 26 2026 (dark foil cards): the name bar gave no real name, but the Pokédex line
+      // under the picture was read ("NO. 0300 Kitten Pokémon" is Skitty). The species is the
+      // name to search by; the catalog match then settles which card of that species it is.
+      // On a piece of a jammed scan the Pokédex line also outranks a name taken from loose text.
+      if (clues.species && (!nameKnown() || (prepared.partial && !lettersIn(parsed.name).includes(lettersIn(clues.species))))) {
+        const numberKept = parsed.certainty === "name-and-number" || parsed.certainty === "number-only" ? parsed.number : "";
+        parsed = { ...parsed, name: clues.species, number: numberKept, query: [clues.species, numberKept].filter(Boolean).join(" "), certainty: numberKept ? "name-and-number" : "name-only" };
+        nameSource = "dex-line";
       }
       // The name bar gave no real name, but the card's own text names it ("...except any
       // Abomasnow", "Galarian Slowpoke eat the seeds"). On a whole card the name bar must
       // at least start the same way; a piece of a jammed scan has no name bar to ask.
-      let nameSource = "name-bar";
-      if (nameIndex && clues.namesInText.length && (prepared.partial || !nameKnown())) {
+      // A piece whose own name was read is left alone: its text also names the card it
+      // evolves from (a jammed Electivire came back as "Electabuzz").
+      if (nameIndex && clues.namesInText.length && !nameKnown()) {
         const strips = textOf((key) => /^name/.test(key) && isTurned(key) === upsideDown).toLowerCase();
         // A name bar that already holds the whole name and more ("Ethan's Pikachu") is the fuller name: kept.
-        const lettersIn = (value) => String(value || "").toLowerCase().replace(/[^a-zà-ž]/g, "");
         const fromText = clues.namesInText.find((candidate) => {
           const first = candidate.split(" ")[0].toLowerCase();
           if (prepared.partial) return true;
@@ -624,7 +648,7 @@ export async function readCardPhoto(file, { signal, onProgress, timeoutMs = read
             ? "Found the name but not the card number. Add the number from the bottom of the card for an exact match."
             : "Could not read this card. Try a closer, straight-on photo in good light, or type the name and number.";
       const everything = textOf((key) => isTurned(key) === upsideDown);
-      return { ...parsed, clues, nameSource, upsideDown, text: everything.slice(0, 6000), ...(debug ? { reads: { ...byKey } } : {}), status: parsed.certainty === "none" ? "low_confidence" : "complete", code: "card_read", foundCard, message, query: parsed.query.slice(0, PRODUCT_PHOTO_LIMITS.maxQueryLength) };
+      return { ...parsed, clues, nameSource, nameKnown: nameKnown() || nameSource === "dex-line", upsideDown, text: everything.slice(0, 6000), ...(debug ? { reads: { ...byKey } } : {}), status: parsed.certainty === "none" ? "low_confidence" : "complete", code: "card_read", foundCard, message, query: parsed.query.slice(0, PRODUCT_PHOTO_LIMITS.maxQueryLength) };
     })()]);
   } catch (error) {
     const code = error?.code || "ocr_failed";

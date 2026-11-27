@@ -107,7 +107,7 @@ function score(answer, read) {
       const file = new File([binary], label, { type });
       const { readCardPhoto } = await import("/src/utils/cardPhotoReader.mjs");
       const value = await readCardPhoto(file, { framed, debug: true });
-      return { status: value.status, query: value.query, name: value.name || "", number: value.number || "", certainty: value.certainty || "", foundCard: value.foundCard, message: value.message, text: String(value.text || "").slice(0, 8000), nameSource: value.nameSource || "", upsideDown: Boolean(value.upsideDown), clues: value.clues || null, reads: value.reads || null };
+      return { status: value.status, query: value.query, name: value.name || "", number: value.number || "", certainty: value.certainty || "", foundCard: value.foundCard, message: value.message, text: String(value.text || "").slice(0, 8000), nameSource: value.nameSource || "", nameKnown: Boolean(value.nameKnown), upsideDown: Boolean(value.upsideDown), clues: value.clues || null, reads: value.reads || null };
     }, { ...item, framed: args.framed === "true" });
     const ms = Date.now() - started;
     const verdict = score(item.answer, read);

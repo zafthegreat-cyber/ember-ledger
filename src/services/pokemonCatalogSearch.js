@@ -1050,18 +1050,33 @@ async function runSearchAgainstSource({ supabase, sourceName, query, barcode, mo
  * "Golurk (Master Ball Pattern)"), not other cards that start the same ("Golurk V").
  * Returns { rows, facts }: catalog rows, and tcg_card_details rows to pass to cardFactsFromDetails.
  */
-export async function fetchCardsForClues({ supabase, names = [], limit = 240, signal } = {}) {
-  const wanted = [...new Set((Array.isArray(names) ? names : [])
-    .map((name) => String(name || "").replace(/["\\,()*%]/g, " ").replace(/\s+/g, " ").trim())
-    .filter((name) => name.length >= 3))].slice(0, 3);
-  if (!supabase || !wanted.length) return { rows: [], facts: [] };
+// Nov 26 2026 (dark foil cards): species is the name from the card's Pokédex line, so any
+// card of that species is fetched ("Skitty" and "Erika's Skitty"), first from the sets whose
+// code was read from the card.
+export async function fetchCardsForClues({ supabase, names = [], species = "", setCodes = [], limit = 240, signal } = {}) {
+  const tidy = (name) => String(name || "").replace(/["\\,()*%]/g, " ").replace(/\s+/g, " ").trim();
+  const wanted = [...new Set((Array.isArray(names) ? names : []).map(tidy).filter((name) => name.length >= 3))].slice(0, 3);
+  const kind = tidy(species);
+  const codes = [...new Set((Array.isArray(setCodes) ? setCodes : []).map((code) => String(code || "").toUpperCase()).filter((code) => /^[A-Z0-9]{2,6}$/.test(code)))].slice(0, 4);
+  if (!supabase || (!wanted.length && kind.length < 3)) return { rows: [], facts: [] };
+  const run = async (build) => {
+    let request = build(supabase.from("catalog_search_lightweight").select(CATALOG_SELECT_FIELDS));
+    if (signal) request = request.abortSignal(signal);
+    const { data, error } = await request;
+    if (error) throw error;
+    return Array.isArray(data) ? data : [];
+  };
+  const found = [];
   const clauses = wanted.flatMap((name) => [`name.eq."${name}"`, `name.ilike."${name} -%"`, `name.ilike."${name} (%"`]);
-  let request = supabase.from("catalog_search_lightweight").select(CATALOG_SELECT_FIELDS).or(clauses.join(",")).limit(limit);
-  if (signal) request = request.abortSignal(signal);
-  const { data, error } = await request;
-  if (error) throw error;
-  const rows = Array.isArray(data) ? data : [];
-  const ids = [...new Set(rows.map((row) => row.id).filter(Boolean))];
+  if (kind.length >= 3) {
+    // The read set first, so a much-printed species (Pikachu) cannot crowd the right card out of the limit.
+    if (codes.length) found.push(...await run((query) => query.in("set_code", codes).ilike("name", `%${kind}%`).limit(60)).catch(() => []));
+    clauses.push(`name.ilike."%${kind}%"`);
+  }
+  if (clauses.length) found.push(...await run((query) => query.or(clauses.join(",")).limit(limit)));
+  const seenIds = new Set();
+  const rows = found.filter((row) => row?.id && !seenIds.has(row.id) && seenIds.add(row.id));
+  const ids = [...seenIds];
   const facts = [];
   for (let at = 0; at < ids.length; at += 100) {
     let detailRequest = supabase

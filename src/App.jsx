@@ -19192,20 +19192,13 @@ export default function App() {
     const clues = row?.scanClues;
     const none = { card: null, others: 0 };
     if (!clues || typeof clues !== "object" || !isSupabaseConfigured || !supabase) return none;
-    const names = [name, ...(Array.isArray(clues.namesInText) ? clues.namesInText : [])].filter(Boolean);
-    if (!names.length) return none;
+    // Which rows to fetch and what to make of them is in matchScanRowByClues (tested on its own).
     try {
-      const [{ rows, facts }, { cardFactsFromDetails, pickCardByClues }] = await Promise.all([
-        fetchCardsForCluesOnDemand({ supabase, names }),
-        import("./utils/cardClueMatch.mjs"),
-      ]);
-      const factsById = new Map((facts || []).map((detail) => [String(detail.catalog_product_id), cardFactsFromDetails(detail)]));
-      const typedSet = String(row.setName || "").trim().toLowerCase();
-      const cards = (rows || []).map(mapCatalog).filter((card) => !typedSet || String(card.setName || card.expansion || "").toLowerCase().includes(typedSet));
-      const picked = pickCardByClues({ name, otherNames: clues.namesInText, number, clues, text: row.scanText }, cards, factsById);
-      // A pick resting on one kind of clue alone is offered as a choice, not filed.
-      if (picked.card && !picked.sure) return { card: null, others: 0, choices: [picked.card] };
-      return { card: picked.card, others: picked.others, byClues: Boolean(picked.card), choices: picked.choices || [] };
+      const { matchScanRowByClues } = await import("./utils/cardClueMatch.mjs");
+      return await matchScanRowByClues({ ...row, cardName: name, cardNumber: number }, {
+        fetchCards: (lookup) => fetchCardsForCluesOnDemand({ supabase, ...lookup }),
+        mapCard: mapCatalog,
+      });
     } catch {
       return none;
     }

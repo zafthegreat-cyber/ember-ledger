@@ -125,12 +125,24 @@ const VARIANT_SET = /\(shadowless\)|shadowless|1st edition/i;
  * every printing of the card, and the catalog does not: it is offered, not filed.
  * A printing the catalog has no facts for (a new set) cannot be ruled out by year, HP
  * or attacks, so it stays level with the best fit on those and only a number piece separates them.
+ *
+ * Nov 26 2026 (dark foil cards whose name bar cannot be read):
+ *   species   read.species is the species from the card's Pokédex line. When the name read is
+ *             just that species, any card of it is a candidate ("Skitty" also fits "Erika's Skitty").
+ *   set       a set code read from the card that is the candidate's own set counts for it; a
+ *             code that matches nothing was misread and counts for nothing.
+ *   modern    clues.modern (a Pokédex line with "HT:" and "WT:") rules out 1999-2003 printings.
  */
-export function pickCardByClues({ name = "", otherNames = [], number = "", clues = {}, text = "" } = {}, candidates = [], factsById = new Map()) {
+export function pickCardByClues({ name = "", otherNames = [], number = "", clues = {}, text = "", species = "" } = {}, candidates = [], factsById = new Map()) {
   const none = { card: null, sure: false, others: 0, why: [], choices: [], nameFromText: false };
   const mainKey = catalogCardNameKey(name);
   const textKeys = new Set((otherNames || []).map((other) => catalogCardNameKey(other)).filter((key) => key && key !== mainKey));
-  if (!mainKey && !textKeys.size) return none;
+  const speciesWords = lettersOf(species);
+  const bySpecies = Boolean(speciesWords) && (!mainKey || mainKey === catalogCardNameKey(species));
+  // A card of several Pokémon ("Togepi & Cleffa & Igglybuff-GX") has no Pokédex line of its own.
+  const ofSpecies = (row) => bySpecies && !String(catalogRowName(row)).includes("&") && ` ${lettersOf(catalogRowName(row).replace(/\s*\([^)]*\)/g, ""))} `.includes(` ${speciesWords} `);
+  if (!mainKey && !textKeys.size && !bySpecies) return none;
+  const setCodes = new Set((clues?.setCodes || []).map((code) => String(code).toUpperCase()));
   const textLetters = lettersOf(text);
   const textWords = new Set(textLetters.split(" ").filter((word) => word.length >= 3));
   const years = (clues?.years || []).map(Number).filter(Boolean);
@@ -141,7 +153,8 @@ export function pickCardByClues({ name = "", otherNames = [], number = "", clues
   for (const row of candidates) {
     if (!row) continue;
     const nameKey = catalogCardNameKey(catalogRowName(row));
-    const fromText = nameKey !== mainKey;
+    const named = nameKey === mainKey || ofSpecies(row);
+    const fromText = !named;
     if (fromText && !textKeys.has(nameKey)) continue;
     if (!String(catalogRowNumber(row) || "").trim()) continue; // sealed products and rows with no number are not cards to pick here
     const facts = factsById.get(String(row.id)) || factsById.get(row.id) || null;
@@ -165,8 +178,10 @@ export function pickCardByClues({ name = "", otherNames = [], number = "", clues
       } else if (clues?.wizards) {
         if (facts.year >= 1999 && facts.year <= 2003) { score += 2; why.add("year"); }
         else { score -= 4; conflicts += 1; }
-      }
+      } else if (clues?.modern && facts.year <= 2003) { score -= 4; conflicts += 1; }
     }
+    const rowCode = String(entry.row.setCode ?? entry.row.set_code ?? "").toUpperCase();
+    if (rowCode && setCodes.has(rowCode)) { score += 3; why.add("set"); }
     if (facts?.hp && clues?.hp) {
       if (facts.hp === Number(clues.hp)) { score += 2; why.add("hp"); }
       else { score -= 3; conflicts += 1; }
@@ -177,11 +192,12 @@ export function pickCardByClues({ name = "", otherNames = [], number = "", clues
     return { ...entry, score, conflicts, why, numberPoints, blind };
   });
   const bestOther = Math.max(0, ...scoredAll.filter((entry) => !entry.blind && !entry.fromText).map((entry) => entry.score - entry.numberPoints));
-  const scored = scoredAll.map((entry) => (entry.blind && !entry.fromText && bestOther > 0 ? { ...entry, score: entry.numberPoints + bestOther } : entry)).filter((entry) => !entry.fromText || ((entry.why.has("attack") || entry.why.has("number")) && entry.score >= 5));
+  const scored = scoredAll.map((entry) => (entry.blind && !entry.fromText && bestOther > 0 ? { ...entry, score: entry.numberPoints + bestOther } : entry))
+    .filter((entry) => !entry.fromText || ((entry.why.has("attack") || entry.why.has("number")) && entry.score >= 5));
   if (!scored.length) return none;
 
   const top = Math.max(...scored.map((entry) => entry.score));
-  if (top < 3) return none;
+  if (top < 2) return none;
   // Every printing within two points of the best one still fits about as well.
   const close = scored.filter((entry) => entry.score > top - 2);
   const narrow = (list, keep) => { const kept = list.filter(keep); return kept.length ? kept : list; };
@@ -191,12 +207,25 @@ export function pickCardByClues({ name = "", otherNames = [], number = "", clues
   list = narrow(list, (entry) => !String(catalogRowName(entry.row)).includes("("));
   list = narrow(list, (entry) => !isSpecialPrintSet(entry.row));
   list = narrow(list, (entry) => !VARIANT_SET.test(catalogRowSet(entry.row)));
-  const choices = [...list].sort((a, b) => b.score - a.score).slice(0, 4).map((entry) => entry.row);
+  // Nov 26 2026: a reprint under another number that fits just as well (a trainer-kit copy
+  // of a main-set card) is set aside above, but with no piece of the number read it cannot
+  // be told from the main-set card, so it is offered beside it instead of being dropped.
+  const numberOf = (entry) => String(catalogRowNumber(entry.row) || "").toLowerCase().replace(/\s+/g, "").split("/").map(stripZeros).join("/");
+  const listed = new Set(list);
+  const listedNumbers = new Set(list.map(numberOf));
+  const setAside = close.filter((entry) => !listed.has(entry) && !entry.conflicts && entry.score >= top && !listedNumbers.has(numberOf(entry)));
+  // Cards the catalog has facts for come before ones it knows nothing about.
+  const choicesOf = (entries) => [...entries].sort((a, b) => Number(a.blind) - Number(b.blind) || b.score - a.score).slice(0, 4).map((entry) => entry.row);
+  // The HP alone, or the set total alone: never a pick, but a few printings that fit equally are worth offering.
+  if (top < 3) return { ...none, choices: list.length <= 4 ? choicesOf(list) : [] };
   // Picked only when one printing is left and nothing read from the card disagrees with it.
-  if (list.length !== 1 || list[0].conflicts) return { ...none, choices: list.length > 1 ? choices : [] };
+  if (list.length !== 1 || list[0].conflicts) return { ...none, choices: list.length > 1 ? choicesOf([...list, ...setAside]) : [] };
   const picked = list[0];
+  if (setAside.length && !picked.why.has("number")) return { ...none, choices: choicesOf([picked, ...setAside]) };
   const others = new Set(close.filter((entry) => entry !== picked).map((entry) => catalogPrintingKey(entry.row))).size;
-  const sure = picked.why.has("number") || picked.why.size >= 2;
+  // The year and the set code say the same thing (which set), so together they are one kind.
+  const kinds = new Set([...picked.why].map((kind) => (kind === "set" ? "year" : kind)));
+  const sure = picked.why.has("number") || kinds.size >= 2;
   return { card: picked.row, sure, others, why: [...picked.why], choices: [], nameFromText: picked.fromText };
 }
 
@@ -301,4 +330,36 @@ export function pickCardByNumber({ name = "", number = "", clues = {}, text = ""
   const others = new Set(scored.filter((entry) => entry !== picked && entry.score > top - 2).map((entry) => catalogPrintingKey(entry.row))).size;
   const sure = picked.why.has("name") || picked.why.size >= 2;
   return { card: picked.row, sure, others, why: [...picked.why], choices: [] };
+}
+
+/**
+ * The clue match for one scanned row: which catalog rows to fetch, and what to make of them.
+ *   row         the scan list's row: cardName, cardNumber, setName (typed by the person), scanClues, scanText
+ *   fetchCards  ({ names, species, setCodes }) => Promise<{ rows, facts }>
+ *   mapCard     turns a catalog row into the app's card
+ * Returns { card, others, byClues, choices }. card is set only for a sure pick; an unsure one
+ * is the single entry of choices.
+ *
+ * Two ways in: the name read from the card with the names found in its text, and (Nov 26
+ * 2026, dark foil cards) the species from the Pokédex line when the name read is just that
+ * species or missing. A card whose number was read and whose name was not is pickCardByNumber's.
+ */
+export async function matchScanRowByClues(row = {}, { fetchCards, mapCard = (card) => card } = {}) {
+  const none = { card: null, others: 0, byClues: false, choices: [] };
+  const clues = row?.scanClues;
+  if (!clues || typeof clues !== "object" || typeof fetchCards !== "function") return none;
+  const name = String(row.cardName || "").trim();
+  const number = String(row.cardNumber || "").trim();
+  const species = String(clues.species || "").trim();
+  const bySpecies = Boolean(species) && (!name || name.toLowerCase() === species.toLowerCase());
+  const names = [name, ...(Array.isArray(clues.namesInText) ? clues.namesInText : [])].filter(Boolean);
+  if (!names.length && !bySpecies) return none;
+  const typedSet = String(row.setName || "").trim().toLowerCase();
+  const { rows, facts } = await fetchCards({ names, species: bySpecies ? species : "", setCodes: clues.setCodes || [] });
+  const factsById = new Map((facts || []).map((detail) => [String(detail.catalog_product_id), cardFactsFromDetails(detail)]));
+  const cards = (rows || []).map(mapCard).filter((card) => !typedSet || String(card.setName || card.set_name || card.expansion || "").toLowerCase().includes(typedSet));
+  const picked = pickCardByClues({ name, otherNames: clues.namesInText, number, clues, text: row.scanText, species: bySpecies ? species : "" }, cards, factsById);
+  // A pick resting on one kind of clue alone is offered as a choice, not filed.
+  if (picked.card && !picked.sure) return { ...none, choices: [picked.card] };
+  return { card: picked.card, others: picked.others, byClues: Boolean(picked.card), choices: picked.choices || [] };
 }
