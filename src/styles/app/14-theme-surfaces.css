@@ -603,6 +603,34 @@ html body .app[data-theme] .help-utility-page .settings-feedback-option strong {
 html body .app[data-theme] .help-utility-page .settings-feedback-option span { color: var(--text-secondary); font-size: 13px; font-weight: 400; line-height: 1.5; }
 html body .app[data-theme] .help-utility-page .settings-feedback-option:hover { background: var(--selection-background); border-color: var(--action-primary); }
 
+/* The other pages built on the same header-only board (You, Collections, System
+   map, Coming Soon, Parent Center, Moderator): the board holds just the page
+   header and the page itself follows it. It kept the full-screen height meant
+   for boards that hold the whole page, so the first screen was an empty panel
+   and the page began below it. Size it to its header at every width, as Account
+   and Help already are above. */
+html body .app[data-theme] .utility-page-command-board,
+html body .app[data-theme] .utility-page-command-board :is(.command-board-v4-frame, .command-board-v4-stage) {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  padding-bottom: 0 !important;
+}
+/* A little air before the page, so its first card does not touch the header
+   (Account and Help space their own content above). */
+html body .app[data-theme] .utility-page:not(.account-utility-page):not(.help-utility-page) > .utility-page-command-board { margin-bottom: 16px; }
+/* Wide screens: the header's own side rail sat behind the app sidebar (and stuck
+   out beside it on very wide screens), and so did the left of the page under it.
+   Drop that rail and start the page after the sidebar, again as Account and Help
+   do. Those two only got the sidebar offset from 1181px; the sidebar shows from
+   1180px, so this covers them at that one width too. */
+html body .app[data-theme] .utility-page-command-board .command-board-v4-stage { display: block !important; }
+html body .app[data-theme] .utility-page-command-board .command-board-v4-frame { grid-template-columns: minmax(0, 1fr) !important; }
+html body .app[data-theme] .utility-page-command-board .command-board-v4-rail { display: none !important; }
+@media (min-width: 1180px) {
+  html body .app.app-command-shell.ops-app-shell[data-theme]:has(> .ops-desktop-sidebar):has(.utility-page-command-board) > .main { width: calc(100% - 236px) !important; margin-left: 236px !important; }
+}
+
 html body .app[data-theme] .topbar:has(.notification-center-panel) { z-index: 1250; }
 html body .app.app-command-shell.ops-app-shell[data-theme]:has(.command-board-v4) > .topbar:has(.notification-center-panel),
 html body .app.app-command-shell.ops-app-shell[data-theme]:has(.command-board-v4) > .topbar:has(.notification-center-panel) > .topbar-command-actions,

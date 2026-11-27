@@ -3,7 +3,8 @@
 // and number from the text on a slab label (PSA, CGC, Beckett/BGS, SGC, TAG,
 // ACE, AGS, GMA). Pure. The person confirms every value before saving; the
 // cert number can be checked on the grader's own site.
-import { findCardNumbers } from "./cardPhotoText.mjs";
+import { findCardNumbers, isGenericCardWord } from "./cardPhotoText.mjs";
+import { snapCardName } from "./cardNameSnap.mjs";
 
 const clean = (value = "") => String(value).replace(/\r\n?/g, "\n").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "").slice(0, 20_000);
 const linesOf = (value = "") => clean(value).split("\n").map((line) => line.replace(/\s+/g, " ").trim()).filter(Boolean);
@@ -121,4 +122,84 @@ export function parseSlabLabel(text = "") {
     certainty: found >= 3 ? "most" : found ? "some" : "none",
     text: all.trim(),
   };
+}
+
+// --- A slab shown to the card camera (Nov 27 2026, owner's slab photos) ---------------
+// "Scan several cards" reads whatever it is shown as a card. A slab held up to it puts the
+// grading label where a card's name bar would be, so the label is what gets read there
+// ("ILLUSTRATION RARE" for a PSA 9 Palafin ex). These rules tell a label from a card's own
+// text and take what the label says. A raw card must never come out graded, so a label
+// needs a grader named on it, or PSA's own wording, and a grade or a certificate number.
+
+// Grader names that a raw card's own text never has. TAG and ACE only with "grading":
+// "TAG TEAM" and "ACE SPEC" are printed on cards.
+const LABEL_GRADERS = Object.freeze([
+  ["PSA", /\bPSA\b|PROFESSIONAL\s*SPORTS\s*AUTHENTICATOR/i],
+  ["CGC", /\bCGC\b|CERTIFIED\s*GUARANTY/i],
+  ["BGS", /\bBGS\b|\bBECKETT\b/i],
+  ["SGC", /\bSGC\b/],
+  ["TAG", /\bTAG\s*GRADING\b/i],
+  ["ACE", /\bACE\s*GRADING\b/i],
+]);
+// PSA's first label line, "2025 POKEMON PRE EN", in capitals. A card's copyright line
+// reads "©2025 Pokémon": the sign before the year and the small letters rule it out.
+const PSA_TOP_LINE = /(?:^|[ \t#])(?:19|20)\d{2}[ \t]+POKEMON\b/m;
+// Grade words only PSA prints in short ("GEM MT"; Beckett and CGC write "GEM MINT").
+const PSA_ONLY_WORDING = /\bGEM\s*-?\s*MT\b/;
+const GRADE_WORDING = /\bGEM\s*-?\s*MT\b|\bNM\s*-\s*MT\b|\bEX\s*-\s*MT\b|\bVG\s*-\s*EX\b/;
+// PSA puts the grade's word and its number on two lines ("MINT" over "9"); when only the
+// word was read, the word says the grade.
+const PSA_GRADE_WORDS = Object.freeze([[/\bGEM\s*-?\s*MT\b/, "10"], [/\bNM\s*-\s*MT\b/, "8"], [/\bEX\s*-\s*MT\b/, "6"], [/\bVG\s*-\s*EX\b/, "4"], [/\bMINT\b/, "9"]]);
+// Label lines that are not the card's name, and the words around a name on its line.
+const NOT_A_NAME_LINE = /CERTIFIED|GUARANTY|PROFESSIONAL|AUTHENTICATOR|BECKETT|GRADING|COLLECTIBLES|POK[EÉ]MON|\bPROMO\b/i;
+const LABEL_WORDS = /\b(?:GEM\s*-?\s*(?:MT|MINT)|NM\s*-?\s*MT\s*\+?|EX\s*-?\s*MT|VG\s*-?\s*EX|MINT\s*\+?|PRISTINE|BLACK\s*LABEL|AUTHENTIC|(?:SPECIAL\s*)?ILLUSTRATION\s*RARE|(?:ULTRA|HYPER|SECRET|DOUBLE|CHARACTER|RAINBOW|SHINY|ART)\s*RARE|FULL\s*ART|ALT(?:ERNATE)?\.?\s*ART|REV(?:ERSE)?\.?\s*(?:HOLO|FOIL)|HOLO(?:FOIL)?|1ST\s*EDITION|SHADOWLESS|JAPANESE|ENGLISH)\b/gi;
+
+/** The card's name on a label: the first label line whose words are a printed card name. */
+export function findSlabCardName(text = "", nameIndex = null) {
+  if (!nameIndex) return "";
+  for (const line of linesOf(text)) {
+    if (NOT_A_NAME_LINE.test(line)) continue;
+    const words = line
+      .replace(/#\s?[A-Z]{0,4}\d{1,3}[a-z]?\b/gi, " ")
+      .replace(/\s[-–]\s.*$/, " ") // "Dark Phantasma - 077/071": the set and number after a dash
+      .replace(LABEL_WORDS, " ")
+      .replace(/[^A-Za-zÀ-ž' .-]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (words.replace(/[^A-Za-zÀ-ž]/g, "").length < 4) continue;
+    const name = snapCardName(words, nameIndex);
+    if (name && !isGenericCardWord(name) && name.replace(/[^A-Za-zÀ-ž]/g, "").length >= 4) return name;
+  }
+  return "";
+}
+
+/** The label's card number as the scanner searches it: "151", "077/071", or "SVP051" for a promo. */
+function labelCardNumber(all) {
+  const { number } = findSlabCard(all);
+  if (!number || /\//.test(number) || /^[A-Z]/.test(number)) return number;
+  const series = /\bBLACK\s*STAR\b|\bPROMO\b/i.test(all) ? (all.match(/\b(SVP|SV|SWSH|SM|XY|BW)\b(?=[^\n]*\b(?:BLACK\s*STAR|PROMO)\b)/i)?.[1] || "").toUpperCase() : "";
+  return series ? (series === "SV" ? "SVP" : series) + number : number;
+}
+
+/**
+ * A grading label in text the card reader took from the top of a picture, or null when it
+ * is not clearly one. Returns { gradingCompany, grade, certificationNumber, name, number };
+ * gradingCompany is one of the scan rows' companies (PSA, CGC, BGS, SGC, TAG, ACE) or "".
+ * nameIndex: the printed card names (cardNameSnap), so the name line is read as a real name.
+ */
+export function findSlabInCardText(text = "", { nameIndex = null } = {}) {
+  const all = clean(text);
+  if (!all.trim()) return null;
+  const named = LABEL_GRADERS.find(([, pattern]) => pattern.test(all))?.[0] || "";
+  const psaLine = PSA_TOP_LINE.test(all);
+  const wording = GRADE_WORDING.test(all);
+  const company = named || (psaLine || PSA_ONLY_WORDING.test(all) ? "PSA" : "");
+  const certificationNumber = findCertNumber(all, company);
+  let grade = findGrade(all);
+  if (!grade && company === "PSA") grade = PSA_GRADE_WORDS.find(([pattern]) => pattern.test(all))?.[1] || "";
+  const isLabel = named ? Boolean(grade || certificationNumber)
+    : wording ? Boolean(grade || certificationNumber || psaLine)
+      : psaLine && Boolean(certificationNumber && grade);
+  if (!isLabel) return null;
+  return { gradingCompany: company, grade, certificationNumber, name: findSlabCardName(all, nameIndex), number: labelCardNumber(all) };
 }

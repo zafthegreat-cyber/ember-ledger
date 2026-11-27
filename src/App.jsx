@@ -1,7 +1,8 @@
 import { reconcileLegacyQuoteEdit, mergeLegacySavedQuoteRecord } from "./utils/legacyQuoteEdit.mjs";
 import { readLegacyCatalogIdentity, buildLegacyCatalogIdentityUpdate } from "./utils/legacyCatalogIdentity.mjs";
 import ProductPhotoLookup from "./components/ProductPhotoLookup.jsx";
-import { gradingDetails } from "./utils/gradedCopies.mjs";
+import { gradingDetails, gradedCertificateError } from "./utils/gradedCopies.mjs";
+import { cardScanSavedDetails } from "./utils/cardScanDetails.mjs";
 import { readLegacyGradingMetadata, reconcileLegacyGradingEdit } from "./utils/legacyGradingMetadata.mjs";
 import PasswordInput from "./features/auth/PasswordInput.jsx";
 import NotificationInbox from "./components/NotificationInbox.jsx";
@@ -19264,6 +19265,12 @@ export default function App() {
         const known = buildCatalogAutofillDetails(product);
         const marketInfo = getTideTradrMarketInfo(product);
         const copies = Math.max(1, Math.floor(Number(row.quantity) || 1));
+        const scanNotes = row.matchedBy === "clues" ? "Added from Scan several cards (Save all). The card number was hard to read, so the card was matched from its name, year and other details."
+          : row.matchedBy === "numberOnly" ? "Added from Scan several cards (Save all). The card name was hard to read, so the card was matched from its number and other details."
+            : "Added from Scan several cards (Save all).";
+        // Nov 27 2026: the condition, printing and grade picked on the row. The printing also goes in
+        // "printing" (the column the server keeps) and grading in the notes line the app reads back.
+        const details = cardScanSavedDetails(row, scanNotes);
         const shared = {
           name: catalogTitle(product),
           category: "Pokemon",
@@ -19281,15 +19288,16 @@ export default function App() {
           setName: known.setName || product.setName || row.setName || "",
           expansion: known.setName || product.setName || row.setName || "",
           cardNumber: product.cardNumber || row.cardNumber || "",
-          variant: row.variant || "",
-          notes: row.matchedBy === "clues" ? "Added from Scan several cards (Save all). The card number was hard to read, so the card was matched from its name, year and other details."
-            : row.matchedBy === "numberOnly" ? "Added from Scan several cards (Save all). The card name was hard to read, so the card was matched from its number and other details."
-              : "Added from Scan several cards (Save all).",
+          notes: scanNotes,
           sourceType: "TideTradr",
-          conditionName: row.condition || "Near Mint",
+          ...details,
           language: "English",
           createdAt: now,
         };
+        const certificateProblem = details.graded && details.certificationNumber && copies > 1
+          ? "One certificate number is one slab. Set How many to 1, or clear the certificate number."
+          : details.graded ? gradedCertificateError({ id: row.id, ...shared }, [...items, ...records]) : "";
+        if (certificateProblem) { unsure.set(row.id, certificateProblem); continue; }
         const record = destination === "forge"
           ? applyWorkspaceToRecord({ id: makeId("item"), ...shared, destinationScope: ["forge"], recordType: "forge_inventory", businessInventory: true, ownedItemPurpose: OWNED_ITEM_PURPOSES.FOR_RESALE, quantity: copies, forgeQuantity: copies, ownedQuantity: 0, unitCost: 0, salePrice: 0, physicalLocation: DEFAULT_FORGE_PHYSICAL_LOCATION, status: "In Stock" }, workspace)
           : applyWorkspaceToRecord({ id: makeId("vault"), ...shared, destinationScope: ["vault"], recordType: "vault_item", businessInventory: false, ownedItemPurpose: OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION, isWishlist: false, quantity: copies, ownedQuantity: copies, forgeQuantity: 0, unitCost: 0, status: vaultStatusLabel("personal_collection"), vaultStatus: "personal_collection", storageLocation: vaultStatusLabel("personal_collection") }, workspace);

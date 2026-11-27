@@ -24,6 +24,21 @@ function standInCamera() {
     context.fillStyle = "#39403b"; context.fillRect(0, 0, canvas.width, canvas.height);
     if (card.hidden) return; // an empty table: the card was taken away
     const height = 1010, width = Math.round(height * 63 / 88), x = (canvas.width - width) / 2 + (card.dx || 0), y = (canvas.height - height) / 2;
+    if (card.slab) {
+      // Nov 27 2026: a graded slab, drawn generically: grey plastic, a label at the top
+      // (card.slab: its lines, left and right), and a plain card under it.
+      context.fillStyle = "#cfd3d6"; context.beginPath(); context.roundRect(x, y, width, height, 26); context.fill();
+      context.fillStyle = "#b3202a"; context.fillRect(x + 24, y + 24, width - 48, 216);
+      context.fillStyle = "#ffffff"; context.fillRect(x + 36, y + 36, width - 72, 192);
+      context.fillStyle = "#101010"; context.textBaseline = "top"; context.font = "bold 30px Arial";
+      card.slab.forEach(([left, right], line) => {
+        context.fillText(left, x + 52, y + 46 + line * 44);
+        if (right) context.fillText(right, x + width - 52 - context.measureText(right).width, y + 46 + line * 44);
+      });
+      context.fillStyle = "#e3cf4a"; context.fillRect(x + 70, y + 290, width - 140, height - 350);
+      context.fillStyle = `hsl(${card.hue} 60% 45%)`; context.fillRect(x + 100, y + 330, width - 200, 330);
+      return;
+    }
     context.fillStyle = "#e3cf4a"; context.beginPath(); context.roundRect(x, y, width, height, 34); context.fill();
     context.fillStyle = "#f3f0e4"; context.fillRect(x + 30, y + 30, width - 60, height - 60);
     const art = context.createLinearGradient(x, y + 150, x + width, y + 150 + height * 0.4);
@@ -137,19 +152,66 @@ function standInCamera() {
     await last.getByRole("button", { name: "Undo", exact: true }).click();
     await expect(rows.first().locator("strong").first()).not.toContainText("×2");
 
+    // Nov 27 2026 (owner's slab photos): a slab's label fills in its card and grading.
+    step = "A slab shown to the camera is read from its label, graded";
+    const label = [["2023 POKEMON MEW EN", "#025"], ["PIKACHU", "GEM MT"], ["ILLUSTRATION RARE", "10"], ["", "84512367"]];
+    await page.evaluate(() => { window.__card = { hidden: true }; });
+    await page.waitForTimeout(1500);
+    await page.evaluate((lines) => { window.__card = { slab: lines, hue: 300 }; }, label);
+    await expect(last).toContainText("PSA 10", { timeout: READ_TIMEOUT });
+    await expect(last).toContainText("Pikachu");
+    await expect(rows).toHaveCount(3);
+    await expect(rows.nth(2).locator(".card-scan-details__pill")).toHaveText([/^Printing/, /^PSA 10/]);
+    await expect(last.getByRole("button", { name: /^One more copy of/ })).toHaveCount(0);
+    await scan.locator(".card-camera-frame").evaluate((element) => element.scrollIntoView({ block: "start" }));
+    await page.screenshot({ path: path.join(output, "slab.png") });
+
+    step = "The same slab again is not a second copy";
+    await page.evaluate(() => { window.__card = { hidden: true }; });
+    await page.waitForTimeout(1500);
+    await page.evaluate((lines) => { window.__card = { slab: lines, hue: 300 }; }, label);
+    await expect(scan.locator(".multi-card-scanner__status")).toContainText("That slab is already in the list.", { timeout: READ_TIMEOUT });
+    await expect(rows).toHaveCount(3);
+
     step = "A card that cannot be read adds nothing";
     await page.evaluate(() => { window.__card = { name: "", number: "", hue: 200, blank: true }; });
     await expect(scan.locator(".multi-card-scanner__status")).toContainText(/couldn't read/i, { timeout: READ_TIMEOUT });
-    await expect(rows).toHaveCount(2);
+    await expect(rows).toHaveCount(3);
     await expect(scan.locator(".multi-card-scanner__status")).toContainText("Still couldn't read that card", { timeout: READ_TIMEOUT });
-    await expect(rows).toHaveCount(2);
+    await expect(rows).toHaveCount(3);
 
     step = "Done scanning closes the camera and keeps the list";
     await scan.getByRole("button", { name: "Done scanning", exact: true }).click();
     await expect(scan.locator(".card-camera-frame")).toHaveCount(0);
-    await expect(rows).toHaveCount(2);
+    await expect(rows).toHaveCount(3);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, "No sideways scroll");
-    console.log("PASS continuous scan: auto-take, background reads, same card x2, Undo, drift ignored, One more, second copy, unreadable card adds nothing");
+
+    // Nov 27 2026 (owner: "very simple"): condition, printing and grading are one tap away on each card.
+    step = "Condition, printing and grading change in a tap or two";
+    const pill = (row, text) => row.locator(".card-scan-details__pill", { hasText: text });
+    await expect(rows.first().locator(".card-scan-details__pill")).toHaveText([/^Near Mint/, /^Printing/, /^Not graded/]);
+    await pill(rows.first(), "Near Mint").click();
+    await rows.first().getByRole("radiogroup", { name: /^Condition of/ }).getByRole("radio", { name: "Lightly Played" }).click();
+    await rows.first().getByRole("button", { name: "Use Lightly Played for the other card" }).click();
+    await expect(pill(rows.nth(1), "Lightly Played")).toBeVisible();
+    await pill(rows.first(), "Printing").click();
+    await rows.first().getByRole("radiogroup", { name: /^Printing of/ }).getByRole("radio", { name: "Reverse Holo" }).click();
+    await expect(pill(rows.first(), "Reverse Holo")).toBeVisible();
+    await pill(rows.nth(1), "Not graded").click();
+    await rows.nth(1).getByRole("radiogroup", { name: /^Grading company for/ }).getByRole("radio", { name: "PSA" }).click();
+    await rows.nth(1).getByRole("radiogroup", { name: /^Grade of/ }).getByRole("radio", { name: "10", exact: true }).click();
+    await rows.nth(1).getByRole("button", { name: "Done", exact: true }).click();
+    await expect(rows.nth(1).locator(".card-scan-details__pill")).toHaveText([/^Printing/, /^PSA 10/]);
+    // The slab's certificate number was read from its label.
+    await pill(rows.nth(2), "PSA 10").click();
+    await expect(rows.nth(2).getByLabel("Certificate number (optional)")).toHaveValue("84512367");
+    await rows.nth(2).getByRole("button", { name: "Done", exact: true }).click();
+    await expect(rows.nth(2).locator(".card-scan-details__pill")).toHaveText([/^Printing/, /^PSA 10/]);
+    for (const box of await rows.first().locator(".card-scan-details__pill").evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().toJSON()))) {
+      assert.ok(box.width >= 44 && box.height >= 44, "Touch target is at least 44px");
+    }
+    await page.screenshot({ path: path.join(output, "card-details.png") });
+    console.log("PASS continuous scan: auto-take, background reads, same card x2, Undo, drift ignored, One more, second copy, slab read from its label (once), unreadable card adds nothing, one-tap condition, printing and grade");
   } catch (error) {
     await page.screenshot({ path: path.join(output, "failure.png"), fullPage: true }).catch(() => {});
     const text = await page.locator(".add-anything-card-page-review").innerText().catch(() => "");

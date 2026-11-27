@@ -151,4 +151,116 @@ assert.match(app, /mergeScannedCardRows\(/);
 assert.match(app, /undoScannedCardRow\(/);
 assert.match(app, /quantity: copies, ownedQuantity: copies/, "Save all saves each line's copies");
 
+// Condition, printing and grading in one tap (Nov 27 2026, owner: "Make changing the condition
+// or marking it as a graded or changing the type (holo, reverse holo) if needed very simple").
+{
+  const details = await import("../src/utils/cardScanDetails.mjs");
+  const { readLegacyGradingMetadata } = await import("../src/utils/legacyGradingMetadata.mjs");
+  const {
+    applyCardScanDetailToAll, cardScanCondition, cardScanDetailsKey, cardScanFinishChoices, cardScanGradeLabel,
+    cardScanGradingPatch, cardScanPrinting, cardScanPrintingParts, cardScanPrintingWith, cardScanRowsToChange,
+    cardScanSavedDetails, isCardScanGraded,
+  } = details;
+  // What the buttons say before anything is picked: what Save stores.
+  assert.equal(cardScanCondition({}), "Near Mint");
+  assert.equal(cardScanCondition({ condition: "lp" }), "Lightly Played", "short forms read as the button names");
+  assert.equal(cardScanCondition({ condition: " damaged " }), "Damaged");
+  assert.equal(cardScanCondition({ condition: "Signed" }), "Signed", "typed words are kept");
+  assert.equal(cardScanPrinting({}), "", "no printing chosen: none is claimed");
+  assert.equal(cardScanPrinting({ variant: "reverse holofoil" }), "Reverse Holo");
+  assert.equal(cardScanGradeLabel({}), "Not graded");
+  assert.equal(cardScanGradeLabel({ graded: true, gradingCompany: "PSA", grade: "10" }), "PSA 10");
+  assert.equal(cardScanGradeLabel({ gradingCompany: "CGC" }), "CGC");
+  assert.equal(cardScanGradeLabel({ grade: "9" }), "Grade 9");
+  assert.equal(cardScanGradeLabel({ graded: true }), "Graded");
+  assert.equal(isCardScanGraded({ certificationNumber: "123" }), true);
+  assert.equal(isCardScanGraded({ graded: false }), false);
+  // Picking a company marks it graded; Not graded clears every grading detail.
+  assert.deepEqual(cardScanGradingPatch({}, "PSA"), { graded: true, gradingCompany: "PSA" });
+  assert.deepEqual(cardScanGradingPatch({ gradingCompany: "PSA", grade: "10" }, ""), { graded: false, gradingCompany: "", grade: "", certificationNumber: "" });
+  // Finishes: the card's own printings first, then Normal, Holo, Reverse Holo.
+  assert.deepEqual(cardScanFinishChoices(null), ["Normal", "Holo", "Reverse Holo"]);
+  assert.deepEqual(cardScanFinishChoices({ variants: [{ variant: "1stEditionHolofoil" }, { variant: "holofoil" }] }), ["1st Edition Holo", "Holo", "Normal", "Reverse Holo"]);
+  // A finish keeps a stamp, a stamp keeps the finish, None takes the stamp off.
+  assert.deepEqual(cardScanPrintingParts("Reverse Holo · Trick or Treat"), { finish: "Reverse Holo", special: "trick-or-treat" });
+  assert.deepEqual(cardScanPrintingParts("Poké Ball reverse holo"), { finish: "Reverse Holo", special: "poke-ball-reverse" });
+  assert.deepEqual(cardScanPrintingParts("1st Edition Holo"), { finish: "Holo", special: "first-edition" });
+  assert.equal(cardScanPrintingWith("", { finish: "Holo" }), "Holo");
+  assert.equal(cardScanPrintingWith("Reverse Holo", { special: "trick-or-treat" }), "Reverse Holo · Trick or Treat");
+  assert.equal(cardScanPrintingWith("Reverse Holo · Trick or Treat", { finish: "Normal" }), "Normal · Trick or Treat");
+  assert.equal(cardScanPrintingWith("Reverse Holo · Trick or Treat", { special: "" }), "Reverse Holo");
+  assert.equal(cardScanPrintingWith("Holo", { special: "first-edition" }), "1st Edition Holo");
+  assert.equal(cardScanPrinting({ variant: "Reverse Holo · Trick or Treat" }), "Reverse Holo · Trick or Treat", "a stamp is shown as written");
+  // "Use ... for the other cards": condition and printing only, graded rows keep their grade.
+  const list = [{ id: "a", condition: "Lightly Played" }, { id: "b" }, { id: "c", gradingCompany: "PSA", grade: "10" }];
+  assert.equal(cardScanRowsToChange(list, "a", "condition", "Lightly Played"), 1, "only the raw card that differs");
+  const all = applyCardScanDetailToAll(list, "condition", "Lightly Played");
+  assert.equal(all[0], list[0], "a row already set is left as it is");
+  assert.equal(all[1].condition, "Lightly Played");
+  assert.equal(all[2], list[2], "a slab's condition is not changed");
+  assert.deepEqual(applyCardScanDetailToAll(list, "variant", "Reverse Holo").map((entry) => entry.variant), ["Reverse Holo", "Reverse Holo", "Reverse Holo"]);
+  assert.equal(applyCardScanDetailToAll(list, "grade", "10")[2], list[2], "a grade is never copied to other cards");
+  // Save: the printing reaches the server column, grading reaches the notes line the app reads back.
+  assert.deepEqual(cardScanSavedDetails({}), { variant: "", printing: "", conditionName: "Near Mint" }, "nothing picked saves as before");
+  assert.deepEqual(cardScanSavedDetails({ variant: "reverse holo", condition: "MP" }), { variant: "Reverse Holo", printing: "Reverse Holo", conditionName: "Moderately Played" });
+  const slab = cardScanSavedDetails({ variant: "Holo", gradingCompany: " PSA ", grade: "9", certificationNumber: "81234567" }, "Added from Scan several cards (Save all).");
+  assert.equal(slab.graded, true);
+  assert.deepEqual([slab.gradingCompany, slab.grade, slab.certificationNumber], ["PSA", "9", "81234567"]);
+  assert.ok(slab.actionNotes.startsWith("Added from Scan several cards (Save all).\n"), "the scan note is kept");
+  assert.deepEqual(readLegacyGradingMetadata(slab.actionNotes), { gradingCompany: "PSA", grade: "9", certificationNumber: "81234567", graded: true }, "the grade comes back after a reload");
+  // A copy marked another way is its own line when the same card is scanned again.
+  assert.equal(cardScanDetailsKey({}), cardScanDetailsKey({ condition: "near mint" }), "Near Mint picked is the same as nothing picked");
+  assert.notEqual(cardScanDetailsKey({}), cardScanDetailsKey({ variant: "Reverse Holo" }));
+  const slabLine = mergeScannedCardRows([row("a", "Pikachu", "025/165", { gradingCompany: "PSA", grade: "10" })], [row("b", "Pikachu", "025/165", { scanned: true })]);
+  assert.deepEqual(slabLine.map((entry) => [entry.id, entry.quantity]), [["a", undefined], ["b", undefined]], "a raw copy never joins a PSA 10 line");
+  const reverseLine = mergeScannedCardRows([row("a", "Pikachu", "025/165", { variant: "Reverse Holo" }), row("n", "Pikachu", "025/165")], [row("b", "Pikachu", "025/165", { scanned: true })]);
+  assert.deepEqual(reverseLine.map((entry) => [entry.id, entry.quantity]), [["a", undefined], ["n", 2]], "it joins the line it matches");
+  // Wiring: the buttons sit on every row, outside Edit details, and Save uses the tested details.
+  const flatScreen = readFileSync(new URL("../src/features/deferredViews/AddAnythingContent.jsx", import.meta.url), "utf8").replace(/\s+/g, " ");
+  const flatApp = app.replace(/\s+/g, " ");
+  const flatRowDetails = readFileSync(new URL("../src/components/CardScanRowDetails.jsx", import.meta.url), "utf8").replace(/\s+/g, " ");
+  const has = (source, piece, why) => assert.ok(source.includes(piece), `${why}: missing "${piece}"`);
+  has(flatScreen, `<CardScanRowDetails row={row} rows={rows} cardTitle={title} onChange={(patch) => updateCardScanRow(row.id, patch)} onApplyToAll={applyCardScanDetailToAllRows} /> <details className="quick-add-card-scan-edit"`, "the buttons come before Edit details");
+  assert.ok(!flatScreen.includes('<Field label="Variant">') && !flatScreen.includes('<Field label="Condition">'), "no second, typed copy of the same fields");
+  has(flatApp, "const details = cardScanSavedDetails(row, scanNotes);", "Save stores what the row shows");
+  has(flatApp, '...details, language: "English",', "the details go on the saved copy");
+  has(flatApp, "gradedCertificateError({ id: row.id, ...shared }, [...items, ...records])", "a certificate already saved is not added twice");
+  has(flatRowDetails, "{!graded ? (", "a slab shows its grade instead of a condition");
+  has(flatRowDetails, 'aria-expanded={open === "printing"}', "each button says when its choices are open");
+}
+
+// A slab shown to the camera (Nov 27 2026, owner's slab photos): its label fills in the grading.
+{
+  const { sameSlabListed } = await import("../src/utils/cardScanRows.mjs");
+  const slab = (id, extra = {}) => row(id, "Palafin ex", "151", { scanned: true, graded: true, gradingCompany: "PSA", grade: "9", certificationNumber: "138296840", ...extra });
+  assert.equal(sameSlabListed([slab("a")], slab("b")), true);
+  assert.equal(sameSlabListed([slab("a")], slab("b", { certificationNumber: " 138 296 840 " })), true, "spaces in a certificate do not make it another slab");
+  assert.equal(sameSlabListed([slab("a")], slab("b", { certificationNumber: "138296841" })), false);
+  assert.equal(sameSlabListed([slab("a", { certificationNumber: "" })], slab("b", { certificationNumber: "" })), false, "no certificate read: nothing to compare");
+  // The same slab again adds nothing; another slab of the same card is its own line, never a second copy.
+  let slabs = mergeScannedCardRows([], [slab("a")]);
+  slabs = mergeScannedCardRows(slabs, [slab("b")]);
+  assert.deepEqual(slabs.map((entry) => [entry.id, entry.quantity]), [["a", undefined]]);
+  slabs = mergeScannedCardRows(slabs, [slab("c", { certificationNumber: "99887766" })]);
+  assert.deepEqual(slabs.map((entry) => entry.id), ["a", "c"]);
+  // The raw card scanned after it is a line of its own too.
+  slabs = mergeScannedCardRows(slabs, [row("d", "Palafin ex", "151", { scanned: true })]);
+  assert.deepEqual(slabs.map((entry) => entry.id), ["a", "c", "d"]);
+  // The strip under the camera names the grade with the card.
+  assert.equal(lastScanSummary(slab("a")).title, "Palafin ex · 151 · PSA 9");
+  assert.equal(lastScanSummary(slab("a", { matchedFor: "Palafin ex|151", matchState: "matched", matchedProduct: { name: "Palafin ex", cardNumber: "151/131", setName: "SV: Prismatic Evolutions" } })).title, "Palafin ex · 151/131 · PSA 9");
+  assert.equal(lastScanSummary(row("e", "Pikachu", "025/165")).title, "Pikachu · 025/165", "a raw card's strip is as before");
+  // Wiring: the reader's label goes on the row, a slab has no One more, and a listed slab is not added again.
+  const scanner = readFileSync(new URL("../src/components/MultiCardScanner.jsx", import.meta.url), "utf8").replace(/\s+/g, " ");
+  const reader = readFileSync(new URL("../src/utils/cardPhotoReader.mjs", import.meta.url), "utf8").replace(/\s+/g, " ");
+  const lookup = readFileSync(new URL("../src/components/ProductPhotoLookup.jsx", import.meta.url), "utf8").replace(/\s+/g, " ");
+  const has = (source, piece, why) => assert.ok(source.includes(piece), `${why}: missing "${piece}"`);
+  has(scanner, "...(read.gradedSlab ? { graded: true, gradingCompany: read.gradedSlab.gradingCompany", "the label's grading goes on the row");
+  has(scanner, 'if (sameSlabListed(rowsRef.current, row)) { setStatus("That slab is already in the list."); continue; }', "a listed slab is not added again");
+  has(scanner, ": isCardScanGraded(lastRow) ? null : <button", "a slab has no One more");
+  has(reader, "findSlabInCardText(topKeys.map((key) => byKey[key]).join(\"\\n\"), { nameIndex })", "the reader looks for a label at the top of the picture");
+  has(reader, "gradedSlab: graded,", "the reader hands the grading over");
+  has(lookup, "else if(kind==='card'&&result.gradedSlab)", "the one-card scanner ticks its slab box");
+}
+
 console.log("Card scan rows checks passed.");

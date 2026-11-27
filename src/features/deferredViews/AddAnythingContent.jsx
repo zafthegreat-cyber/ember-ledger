@@ -1,6 +1,7 @@
 import MultiCardScanner from "../../components/MultiCardScanner.jsx";
 import { cardScanCopies } from "../../utils/cardScanRows.mjs";
-import { COMMON_FINISHES, SPECIAL_PRINTINGS } from "../../utils/cardPrintings.mjs";
+import CardScanRowDetails from "../../components/CardScanRowDetails.jsx";
+import { applyCardScanDetailToAll } from "../../utils/cardScanDetails.mjs";
 import "./add-anything.css";
 import { useMemo } from "react";
 import { PrivateReceiptImage, PrivateStorageImage } from "../../components/PrivateReceipt.jsx";
@@ -261,6 +262,11 @@ export default function AddAnythingContent({ scope }) {
         cardScanRows: rows.map((row) => String(row.id) === String(rowId) ? { ...row, ...patch } : row),
         message: "",
       });
+    };
+    // "Use Reverse Holo for the other cards" (Nov 27 2026): condition or printing on every row.
+    const applyCardScanDetailToAllRows = (field, value) => {
+      const rows = Array.isArray(quickAddWizard.cardScanRows) ? quickAddWizard.cardScanRows : [];
+      updateQuickAddWizard({ cardScanRows: applyCardScanDetailToAll(rows, field, value), message: "" });
     };
     // Picking one of the cards offered for a scanned row: from the list, or from the
     // "Is this ...? Yes" strip under the camera (Nov 27 2026).
@@ -548,7 +554,6 @@ export default function AddAnythingContent({ scope }) {
               <p className="quick-add-card-scan-total" role="status">{matched.length} of {rows.length} card{rows.length === 1 ? "" : "s"} matched{total > 0 ? ` · about ${money(total)} market value` : ""}</p>
             ) : null;
           })()}
-          <datalist id="card-scan-printings">{[...COMMON_FINISHES, "1st Edition", "1st Edition Holo", "Unlimited", ...SPECIAL_PRINTINGS.map((item) => item.label.replace(/ (.*)$/, ""))].map((value) => <option key={value} value={value} />)}</datalist>
           {!rows.length ? <p className="quick-add-card-scan-empty">Cards you scan show up here with their prices. You can also add a card by hand.</p> : null}
           <div className="quick-add-card-scan-list">
             {rows.map((row, index) => {
@@ -584,6 +589,8 @@ export default function AddAnythingContent({ scope }) {
                     <p className="quick-add-card-scan-match quick-add-card-scan-match--review">Not sure which card this is. Tap Pick the card.</p>
                   )
                 ) : null}
+                {/* Nov 27 2026 (owner: "very simple"): condition, printing and grading are one tap each, not inside Edit details. */}
+                <CardScanRowDetails row={row} rows={rows} cardTitle={title} onChange={(patch) => updateCardScanRow(row.id, patch)} onApplyToAll={applyCardScanDetailToAllRows} />
                 <details className="quick-add-card-scan-edit" open={!isMatched && !String(row.cardName || "").trim()}>
                 <summary>Edit details</summary>
                 <div className="flow-form-grid quick-add-card-scan-grid">
@@ -595,12 +602,6 @@ export default function AddAnythingContent({ scope }) {
                   </Field>
                   <Field label="Card number">
                     <input value={row.cardNumber} onChange={(event) => updateCardScanRow(row.id, { cardNumber: event.target.value })} placeholder="025/165, SVP..." />
-                  </Field>
-                  <Field label="Variant">
-                    <input list="card-scan-printings" value={row.variant} onChange={(event) => updateCardScanRow(row.id, { variant: event.target.value })} placeholder="Normal, Holo, Reverse Holo, Trick or Treat..." />
-                  </Field>
-                  <Field label="Condition">
-                    <input value={row.condition} onChange={(event) => updateCardScanRow(row.id, { condition: event.target.value })} placeholder="Near mint, played..." />
                   </Field>
                   <Field label="How many">
                     <input type="number" min="1" step="1" inputMode="numeric" value={row.quantity ?? 1} onChange={(event) => updateCardScanRow(row.id, { quantity: event.target.value })} />

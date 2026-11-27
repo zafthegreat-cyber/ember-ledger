@@ -9,7 +9,7 @@
 import { validateProductPhotoFile, PRODUCT_PHOTO_LIMITS } from "./productPhotoLookup.mjs";
 import { findCardClues, isGenericCardWord, parseCardPhotoText } from "./cardPhotoText.mjs";
 import { isKnownCardName } from "./cardNameSnap.mjs";
-import { parseSlabLabel } from "./slabLabelText.mjs";
+import { findSlabInCardText, parseSlabLabel } from "./slabLabelText.mjs";
 
 export const CARD_PHOTO_READER = Object.freeze({
   timeoutMs: 120_000,
@@ -640,7 +640,26 @@ export async function readCardPhoto(file, { signal, onProgress, timeoutMs = read
           nameSource = "card-text";
         }
       }
-      const message = parsed.certainty === "name-and-number"
+      // Nov 27 2026 (owner's slab photos): a graded slab held up to the card camera. Its label
+      // sits where a card's name bar would be, so the label is what was read there. The label
+      // says the card's name and number better than the card behind the plastic does, and the
+      // grader, grade and certificate besides (findSlabInCardText: a raw card never has a label).
+      // The reads of the top of the picture go first line by line (psm 6), then the wide ones.
+      const topKeys = Object.keys(byKey).filter((key) => /^name/.test(key) && !isTurned(key)).sort((a, b) => Number(/Wide/.test(a)) - Number(/Wide/.test(b)));
+      const slab = upsideDown ? null : findSlabInCardText(topKeys.map((key) => byKey[key]).join("\n"), { nameIndex });
+      if (slab && (slab.name || slab.number)) {
+        // The card's own full number ("151/131") says more than the label's "#151".
+        const ownNumber = (parsed.certainty === "name-and-number" || parsed.certainty === "number-only") && parsed.number.includes("/") ? parsed.number : "";
+        const name = slab.name || (nameKnown() ? parsed.name : "");
+        const number = ownNumber || slab.number;
+        parsed = { ...parsed, name, number, query: [name, number].filter(Boolean).join(" "), certainty: name && number ? "name-and-number" : name ? "name-only" : number ? "number-only" : "none" };
+        nameSource = "slab-label";
+      }
+      const graded = slab ? { gradingCompany: slab.gradingCompany, grade: slab.grade, certificationNumber: slab.certificationNumber } : null;
+      const gradedWords = graded ? [graded.gradingCompany, graded.grade].filter(Boolean).join(" ") || "graded" : "";
+      const message = graded
+        ? `Read a graded slab (${gradedWords}). Check the card, grade and certificate number, then review the matches.`
+        : parsed.certainty === "name-and-number"
         ? "Found a name and card number. Check them, then review the matches."
         : parsed.certainty === "number-only"
           ? "Found the card number but not the name. Add the name if you can, then review the matches."
@@ -648,7 +667,7 @@ export async function readCardPhoto(file, { signal, onProgress, timeoutMs = read
             ? "Found the name but not the card number. Add the number from the bottom of the card for an exact match."
             : "Could not read this card. Try a closer, straight-on photo in good light, or type the name and number.";
       const everything = textOf((key) => isTurned(key) === upsideDown);
-      return { ...parsed, clues, nameSource, nameKnown: nameKnown() || nameSource === "dex-line", upsideDown, text: everything.slice(0, 6000), ...(debug ? { reads: { ...byKey } } : {}), status: parsed.certainty === "none" ? "low_confidence" : "complete", code: "card_read", foundCard, message, query: parsed.query.slice(0, PRODUCT_PHOTO_LIMITS.maxQueryLength) };
+      return { ...parsed, clues, nameSource, nameKnown: nameKnown() || nameSource === "dex-line" || Boolean(slab?.name), gradedSlab: graded, upsideDown, text: everything.slice(0, 6000), ...(debug ? { reads: { ...byKey } } : {}), status: parsed.certainty === "none" ? "low_confidence" : "complete", code: "card_read", foundCard, message, query: parsed.query.slice(0, PRODUCT_PHOTO_LIMITS.maxQueryLength) };
     })()]);
   } catch (error) {
     const code = error?.code || "ocr_failed";
