@@ -1,0 +1,31 @@
+-- Local PostgreSQL schema-replay fixture only. This does not emulate hosted Auth.
+-- Scheduler/HTTP functions cannot run jobs or contact any network endpoint.
+create schema auth;
+create schema extensions;
+create schema storage;
+do $$begin create role anon;exception when duplicate_object then null;end$$;
+do $$begin create role authenticated;exception when duplicate_object then null;end$$;
+do $$begin create role service_role bypassrls;exception when duplicate_object then null;end$$;
+create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz,deleted_at timestamptz,banned_until timestamptz,raw_user_meta_data jsonb default '{}',raw_app_meta_data jsonb default '{}',created_at timestamptz default now(),updated_at timestamptz default now());
+create table auth.sessions(id uuid primary key,user_id uuid references auth.users(id),not_after timestamptz);
+create function auth.uid()returns uuid language sql stable as $$select (nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub')::uuid$$;
+create function auth.jwt()returns jsonb language sql stable as $$select coalesce(nullif(current_setting('request.jwt.claims',true),'')::jsonb,'{}'::jsonb)$$;
+create function auth.role()returns text language sql stable as $$select auth.jwt()->>'role'$$;
+grant usage on schema auth,storage to anon,authenticated,service_role;
+create table storage.buckets(id text primary key,name text,public boolean default false,file_size_limit bigint,allowed_mime_types text[]);
+create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text,owner uuid,owner_id text,name text);
+alter table storage.objects enable row level security;
+create function storage.foldername(text)returns text[] language sql as $$select (string_to_array($1,'/'))[1:array_length(string_to_array($1,'/'),1)-1]$$;
+create schema cron;
+create table cron.job(jobid bigserial primary key,jobname text unique,schedule text,command text,active boolean default true);
+create function cron.schedule(text,text,text) returns bigint language plpgsql as $$declare i bigint;begin insert into cron.job(jobname,schedule,command)values($1,$2,$3) on conflict(jobname) do update set schedule=$2,command=$3 returning jobid into i;return i;end$$;
+create function cron.unschedule(bigint)returns boolean language sql as $$delete from cron.job where jobid=$1 returning true$$;
+create function cron.alter_job(job_id bigint,active boolean)returns void language sql as $$update cron.job set active=$2 where jobid=$1$$;
+create schema vault;
+create table vault.secrets(id uuid primary key default gen_random_uuid(),secret text,name text);
+create view vault.decrypted_secrets as select id,name,secret as decrypted_secret from vault.secrets;
+create function vault.create_secret(text,text)returns uuid language sql as $$insert into vault.secrets(secret,name)values($1,$2)returning id$$;
+create schema net;
+create table net._http_response(id bigint,status_code integer,content text,error_msg text,timed_out boolean);
+create function net.http_get(url text,headers jsonb default '{}',timeout_milliseconds integer default 5000)returns bigint language plpgsql as $$begin raise exception 'Network disabled in replay fixture';end$$;
+create function net.http_post(url text,body jsonb default '{}',params jsonb default '{}',headers jsonb default '{}',timeout_milliseconds integer default 5000)returns bigint language plpgsql as $$begin raise exception 'Network disabled in replay fixture';end$$;

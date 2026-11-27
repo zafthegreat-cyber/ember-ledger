@@ -55,6 +55,14 @@ CORS, anonymous denial and demotion/revocation checks remain required.
 
 ## Real Auth acceptance still required
 
+Update, November 27: a separately approved temporary branch subsequently passed
+65 real hosted backend Auth/API checks and was deleted. The full browser run is
+still pending. The failed clean migration replay now has a locally verified
+isolated recovery path and a secure browser runner; see
+[PR50 secure staging](./PR50_SECURE_STAGING.md). No additional paid branch has
+been created for that follow-up. The original checklist below remains useful;
+it is not evidence that the new browser run has passed.
+
 Use a separately approved isolated backend, never the production project above.
 Review the existing schema and session functions before applying PR migrations;
 hosted migration timestamps differ from repository filenames. Do not replay the

@@ -185,6 +185,13 @@ jobs:
           --health-retries 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Staging containment contracts
+        run: node --test scripts/test-isolated-staging.mjs
       - name: Validate migration, private defaults and session-scoped RLS
         env:
           PGHOST: 127.0.0.1
@@ -200,3 +207,9 @@ jobs:
           psql -X -v ON_ERROR_STOP=1 -f scripts/qa/stock_preferences_fixture.sql
           psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/20261124221500_stock_alert_preferences.sql
           psql -X -v ON_ERROR_STOP=1 -f scripts/qa/stock_preferences_rls.sql
+      - name: Fresh and failed-branch migration replay (no outbound network)
+        env:
+          CODE3_TEST_PG_PORT: '5432'
+          CODE3_TEST_PG_USER: postgres
+          CODE3_TEST_PG_PASSWORD: ci_fixture_password
+        run: node scripts/test-isolated-staging-postgres.mjs

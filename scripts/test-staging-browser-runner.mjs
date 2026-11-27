@@ -1,0 +1,10 @@
+import assert from "node:assert/strict";
+import {runStagingBrowser} from "./test-stock-staging-browser.mjs";
+import {stagingBrowserFixture} from "./qa/staging-browser-fixture.mjs";
+const ref="abcdefghijklmnopqrst";
+const token=claims=>"test."+Buffer.from(JSON.stringify(claims)).toString("base64url")+".fixture";
+const config={ref,origin:`https://${ref}.supabase.co`,anon:token({ref,role:"anon"}),service:token({ref,role:"service_role"})};
+const transport=stagingBrowserFixture(config);
+const results=await runStagingBrowser(config,transport);
+assert.equal(results.length,2);assert.equal(transport.remainingUsers(),0);
+console.log("Offline browser-runner rehearsal passed at 390px and 1440px. This is not hosted Auth evidence.");
