@@ -500,7 +500,8 @@ export default function AddAnythingContent({ scope }) {
       const rows = (Array.isArray(quickAddWizard.cardScanRows) ? quickAddWizard.cardScanRows : [])
         .filter((row) => row.byHand || String(row.cardName || "").trim() || String(row.cardNumber || "").trim());
       const copiesOf = cardScanCopies;
-      const filledCount = rows.filter((row) => String(row.cardName || "").trim()).reduce((sum, row) => sum + copiesOf(row), 0);
+      // A row with no name still counts when its number was read in full: the number can find the card.
+      const filledCount = rows.filter((row) => String(row.cardName || "").trim() || row.matchedProduct || String(row.cardNumber || "").includes("/")).reduce((sum, row) => sum + copiesOf(row), 0);
       return (
         <div className="add-anything-flow add-anything-card-page-review">
           {renderFlowHeader("Scan cards", "Scan one card or a whole stack. Each card is matched with its price. Check the list, then tap Save.")}

@@ -19213,7 +19213,8 @@ export default function App() {
 
   async function saveAllCardScanRows() {
     if (cardScanSaving || blockGuestSave()) return;
-    const rows = (quickAddWizard.cardScanRows || []).filter((row) => String(row.cardName || "").trim());
+    // A row whose name was not read is saved too when its number found the card (Nov 27 2026).
+    const rows = (quickAddWizard.cardScanRows || []).filter((row) => String(row.cardName || "").trim() || row.matchedProduct || String(row.cardNumber || "").includes("/"));
     if (!rows.length) {
       updateQuickAddWizard({ message: "Add at least one card before saving." });
       return;
