@@ -31,7 +31,8 @@ export function stagingBrowserFixture(config){
       if(!actor)return body(401,{message:"Sign in required"});
       if(method==="POST"){if(input.user_id!==actor.id)return body(403,{});preferences.set(actor.id,input);return body(201,null);}
       if(method==="DELETE"){preferences.delete(actor.id);return body(204,null);}
-      return body(200,preferences.has(actor.id)?[preferences.get(actor.id)]:[]);
+      const requested=url.searchParams.get('user_id');
+      return body(200,(!requested||requested===`eq.${actor.id}`)&&preferences.has(actor.id)?[preferences.get(actor.id)]:[]);
     }
     if(path==="/functions/v1/code3-stock-inbound"){
       if(!staff)return body(403,{error:"Staff access required"});

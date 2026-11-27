@@ -13,6 +13,7 @@ test("production and malformed project references fail before requests",()=>{
 test("database identity and verified TLS cannot be overridden",()=>{
   for(const value of [`postgres://postgres@db.${PRODUCTION_REF}.supabase.co/postgres`,`postgres://postgres@localhost/postgres`,`postgres://postgres@db.${ref}.supabase.co/postgres?sslmode=disable`,`https://db.${ref}.supabase.co/`])assert.throws(()=>stagingDatabase(value,ref));
   assert.equal(stagingDatabase(`postgres://postgres@db.${ref}.supabase.co/postgres`,ref).ssl.rejectUnauthorized,true);
+  assert.equal(stagingDatabase(`postgres://postgres@db.${ref}.supabase.co/postgres?connect_timeout=15`,ref).connectionTimeoutMillis,15000);
   assert.equal(stagingDatabase(`postgres://postgres.${ref}@aws-0-us-east-1.pooler.supabase.com:5432/postgres`,ref).ssl.rejectUnauthorized,true);
 });
 test("SQL transaction wrapper preserves bodies, strings and nested comments",()=>{

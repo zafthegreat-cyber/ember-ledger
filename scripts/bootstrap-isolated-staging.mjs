@@ -1,5 +1,6 @@
 import {readFile,readdir,writeFile} from "node:fs/promises";
 import pg from "pg";
+import {X509Certificate} from "node:crypto";
 import {stagingOrigin,stagingDatabase,migrationPlan,buildStagingSql} from "./lib/isolated-staging.mjs";
 import {cliCredentials} from "./lib/staging-credentials.mjs";
 
@@ -12,7 +13,13 @@ if(!["--plan","--apply"].includes(args[0])||!(args.length===1||(args.length===3&
 const ref=process.env.CODE3_STAGING_PROJECT_REF;
 stagingOrigin(ref);
 const credentials=args.length===3?cliCredentials(args[2],ref):process.env;
-const db=new pg.Client(stagingDatabase(credentials.CODE3_STAGING_DB_URL,ref));
+const databaseConfig=stagingDatabase(credentials.CODE3_STAGING_DB_URL,ref);
+if(process.env.CODE3_STAGING_CA_FILE){
+  const ca=await readFile(process.env.CODE3_STAGING_CA_FILE,"utf8");
+  if(ca.includes("PRIVATE KEY")||!new X509Certificate(ca).ca)throw new Error("A public database CA certificate is required.");
+  databaseConfig.ssl.ca=ca;
+}
+const db=new pg.Client(databaseConfig);
 const root=new URL("../supabase/",import.meta.url);
 const files=await Promise.all((await readdir(new URL("migrations/",root))).filter(name=>name.endsWith(".sql")).map(async name=>({name,sql:await readFile(new URL("migrations/"+name,root),"utf8")})));
 await db.connect();

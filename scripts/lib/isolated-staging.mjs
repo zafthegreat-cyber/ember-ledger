@@ -8,12 +8,14 @@ export function stagingOrigin(ref){
 export function stagingDatabase(url,ref){
   stagingOrigin(ref);
   let parsed;try{parsed=new URL(url);}catch{throw new Error("A valid staging database URL is required; credentials omitted.");}
-  if(!["postgres:","postgresql:"].includes(parsed.protocol)||[...parsed.searchParams].some(([key,value])=>key!=="sslmode"||!["require","verify-full"].includes(value)))throw new Error("Use an explicit staging database URL without connection overrides.");
+  const allowedOption=(key,value)=>key==="sslmode"?["require","verify-full"].includes(value):key==="connect_timeout"&&/^\d+$/u.test(value)&&Number(value)>=1&&Number(value)<=30;
+  if(!["postgres:","postgresql:"].includes(parsed.protocol)||[...parsed.searchParams].some(([key,value])=>!allowedOption(key,value)))throw new Error("Use an explicit staging database URL without connection overrides.");
   const direct=parsed.hostname===`db.${ref}.supabase.co`&&decodeURIComponent(parsed.username)==="postgres";
   const pool=parsed.hostname.endsWith(".pooler.supabase.com")&&decodeURIComponent(parsed.username)===`postgres.${ref}`;
   if(!direct&&!pool)throw new Error("Database connection does not identify the approved staging project.");
+  const connectionTimeoutMillis=Number(parsed.searchParams.get("connect_timeout")||15)*1000;
   parsed.search=""; // pg must not replace the verified TLS settings below.
-  return {connectionString:parsed.toString(),ssl:{rejectUnauthorized:true}};
+  return {connectionString:parsed.toString(),connectionTimeoutMillis,ssl:{rejectUnauthorized:true}};
 }
 
 // Split only at top-level semicolons: function bodies and quoted SQL stay intact.
@@ -74,7 +76,7 @@ export function buildStagingSql(foundation,files){
     "grant select on public.profiles to authenticated,service_role;",
     "grant update on public.profiles to service_role;",
     "grant usage on schema code3_private to service_role;",
-    "grant execute on function public.code3_current_session_valid(),code3_private.current_session_id() to service_role;",
+    "grant execute on function public.code3_current_session_valid(),code3_private.current_session_id(),public.is_admin_or_moderator(),public.is_admin(),public.current_app_role(),public.normalized_app_role(text) to service_role;",
     "notify pgrst,'reload schema';","commit;"].join("\n");
   return {sql,manifest,foundationSha256:createHash("sha256").update(foundation).digest("hex")};
 }

@@ -81,6 +81,11 @@ the entire branch must also be deleted afterward, including synthetic reports.
 
    If CLI credentials are unavailable, stop for normal CLI authentication. Do not
    substitute production keys, disable TLS, or deploy a credential-returning helper.
+   If the database requires the Supabase root certificate, set
+   `CODE3_STAGING_CA_FILE` to its public PEM certificate downloaded from the
+   dashboard's certificate link. The runner accepts only a CA certificate and
+   always verifies the server certificate. CLI `connect_timeout` values from
+   1 to 30 seconds are supported without weakening TLS.
 4. Deploy the reviewed PR's warehouse/review functions to the returned staging
    reference only. Keep gateway JWT verification enabled. Their existing exact
    `http://localhost:5173` allowlist entry supports this test. Do not deploy source
@@ -97,9 +102,10 @@ the entire branch must also be deleted afterward, including synthetic reports.
 
 ## Local verification and limits
 
-`test-isolated-staging-postgres.mjs` replays all 87 migrations on a fresh local
-PostgreSQL database and the remaining 77 from the observed failed-branch prefix.
-Its 27 checks cover containment, RLS/grants, missing-table recovery, catalog column
+`test-isolated-staging-postgres.mjs` now replays all 88 migrations on a fresh local
+PostgreSQL database and the remaining 78 from the observed failed-branch prefix,
+including the catalog-only main migration added after the hosted branch run.
+Its 29 checks cover containment, RLS/grants, missing-table recovery, catalog column
 parity, preservation of existing records and rollback.
 Auth/Storage platform structure and inert cron/net/Vault APIs are fixtures; this
 does not establish hosted platform-extension or real Auth behavior. Network fixture
@@ -111,5 +117,40 @@ and verifies test-account cleanup at both sizes. It is explicitly labelled offli
 and is **not** a new hosted Auth/browser pass.
 
 The previous disposable branch's 65 real hosted backend checks remain valid for
-their original commit. A new paid branch is still required for a real hosted run
-of this browser workflow. Keep PR #50 draft until that evidence is complete.
+their original commit.
+
+## Hosted browser result — November 27, 2026
+
+The separately approved data-less branch `pr50-browser-validation-20261127`
+(`rggmtsywhpemgjbslgyq`) was created at 19:55:33 UTC and deleted at 20:14:18 UTC.
+The deletion succeeded and a follow-up inventory contained only the original main
+branch. At the approved $0.01344/hour rate, that observed lifetime represents
+approximately **$0.0042 compute plus usage/rounding**, not a finalized invoice.
+
+The recovery runner applied all 77 remaining repository migrations in one
+transaction, after the historical ten-migration prefix. Real strict TLS required
+the official Supabase Root 2021 CA. Hosted setup revealed an additional missing
+service-role authorization-helper grant; the narrow grant is now included in
+the recovery bundle and exercised by both local schema-replay paths.
+
+The actual frontend Auth client and preference/warehouse components passed the
+browser sequence at **390px and 1440px**, with real password sign-ins and hosted
+Auth sessions. Both runs covered opt-in/quiet-hours persistence, account switching,
+opt-out, preference deletion, owner warehouse creation, member/moderator UI denial,
+admin UI visibility and fresh demotion denial, sign-out cleanup, network isolation
+and absence of administrator credentials in browser requests. Additional in-page
+requests proved another account's saved preferences could not be read or changed,
+and the member could not access the private warehouse endpoint.
+
+Before branch deletion, direct verification found zero Auth users, zero sessions,
+zero preferences, zero active jobs, zero connected sources, and two synthetic
+warehouse reports (removed with the branch). No cleanup failures were recorded.
+Production still had six disconnected sources, zero signals/reports, no preference
+table, and unchanged stock function versions (feed v4/review v3/inbound v2).
+
+This was a local browser fixture using real PR modules and hosted staging APIs.
+The shared Vercel preview was not retargeted. Social OAuth, email delivery and
+anonymous end-user sign-up were not exercised. The native parent migration
+baseline remains unchanged; standard empty-branch replay still requires a
+separately reviewed baseline repair. Inherited project-wide advisor warnings are
+not a clean whole-project security audit.

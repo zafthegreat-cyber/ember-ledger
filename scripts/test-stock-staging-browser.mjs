@@ -9,7 +9,7 @@ import react from "@vitejs/plugin-react";
 import {chromium,expect} from "@playwright/test";
 import {browserConfig,cliCredentials} from "./lib/staging-credentials.mjs";
 
-export async function runStagingBrowser(supplied,{adminFetch=fetch,routeStaging}={}){
+export async function runStagingBrowser(supplied,{adminFetch=fetch,routeStaging,onProgress=()=>{}}={}){
 const config=browserConfig({CODE3_STAGING_PROJECT_REF:supplied.ref,CODE3_STAGING_ANON_KEY:supplied.anon,CODE3_STAGING_SERVICE_ROLE_KEY:supplied.service});
 const created=[],results=[];
 const root=fileURLToPath(new URL("../",import.meta.url));
@@ -46,6 +46,7 @@ try{
     if(["owner","admin","moderator"].includes(role))await admin(`/rest/v1/profiles?id=eq.${user.id}`,"PATCH",{app_role:role,user_role:role==="owner"?"user":role});
   }
   const by=Object.fromEntries(created.map(account=>[account.role,account]));
+  onProgress("Disposable accounts prepared");
   await writeFile(file,`<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><div id="root"></div><script type="module">
 import React,{useState} from "react";import {createRoot} from "react-dom/client";
 import {supabase} from "/src/supabaseClient.js";
@@ -59,6 +60,7 @@ React.createElement("p",{"data-testid":"test-auth-status"},status),React.createE
 createRoot(document.getElementById("root")).render(React.createElement(Fixture));</script>`);
   server=await createServer({root,cacheDir,configFile:false,envFile:false,envDir:false,logLevel:"silent",plugins:[react()],define:{"import.meta.env.VITE_SUPABASE_URL":JSON.stringify(config.origin),"import.meta.env.VITE_SUPABASE_ANON_KEY":JSON.stringify(config.anon)},server:{host:"127.0.0.1",port:5173,strictPort:true,allowedHosts:["localhost"]}});
   await server.listen();
+  onProgress("Local fixture listening");
   browser=await chromium.launch({headless:true});
   for(const width of [390,1440]){
     const context=await browser.newContext({viewport:{width,height:900},serviceWorkers:"block",acceptDownloads:false});
@@ -74,7 +76,8 @@ createRoot(document.getElementById("root")).render(React.createElement(Fixture))
     const page=await context.newPage();const errors=[];
     page.on("pageerror",()=>errors.push("Browser script error"));
     try{
-      await page.goto(`${local}/${filename}`);
+      await page.goto(`${local}/${filename}`,{waitUntil:"domcontentloaded",timeout:60000});
+      onProgress(`Browser fixture opened at ${width}px`);
       const panel=page.getByRole("region",{name:"Stock alert preferences"});
       const optIn=panel.getByRole("checkbox",{name:/Save my future alert opt-in/});
       const target=panel.getByRole("checkbox",{name:"Target",exact:true});
@@ -85,7 +88,16 @@ createRoot(document.getElementById("root")).render(React.createElement(Fixture))
       await panel.getByRole("button",{name:"Save preferences",exact:true}).click();await expect(panel.getByText(/Saved to your account/)).toBeVisible();
       await page.reload();await expect(optIn).toBeChecked();await expect(target).toBeChecked();await expect(panel.getByRole("checkbox",{name:/Hold future notifications/})).toBeChecked();
       await signOut(page);await expect(staff).toHaveCount(0);
-      await signIn(page,by.memberB);await expect(optIn).not.toBeChecked();await expect(target).not.toBeChecked();await signOut(page);
+      await signIn(page,by.memberB);await expect(optIn).not.toBeChecked();await expect(target).not.toBeChecked();
+      const isolation=await page.evaluate(async ({otherUser,origin,anon})=>{
+        const {supabase}=await import('/src/supabaseClient.js');
+        const read=await supabase.from('stock_alert_preferences').select('user_id').eq('user_id',otherUser);
+        const write=await supabase.from('stock_alert_preferences').upsert({user_id:otherUser,enabled:false},{onConflict:'user_id'});
+        const {data:{session}}=await supabase.auth.getSession();
+        const denial=await fetch(new URL('/functions/v1/code3-stock-inbound',origin),{headers:{apikey:anon,Authorization:`Bearer ${session.access_token}`}});
+        return {readDenied:!read.error&&read.data.length===0,writeDenied:Boolean(write.error),staffDenied:[401,403].includes(denial.status)};
+      },{otherUser:by.memberA.id,origin:config.origin,anon:config.anon});
+      assert.deepEqual(isolation,{readDenied:true,writeDenied:true,staffDenied:true});await signOut(page);
       await signIn(page,by.memberA);await expect(optIn).toBeChecked();await optIn.uncheck();await panel.getByRole("button",{name:"Save preferences",exact:true}).click();await expect(panel.getByText(/Saved to your account/)).toBeVisible();
       await page.reload();await expect(optIn).not.toBeChecked();await panel.getByRole("button",{name:"Clear my preferences"}).click();await expect(panel.getByText(/have been cleared/)).toBeVisible();await signOut(page);
       await signIn(page,by.moderator);await expect(optIn).toBeVisible();await expect(staff).toHaveCount(0);await signOut(page);

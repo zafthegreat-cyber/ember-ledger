@@ -37,6 +37,9 @@ try{
       await db.query("insert into auth.users(id,email)values($1,'fixture@example.invalid')",[actor]);
       await db.query("insert into public.product_catalog(id,user_id,name,image_source)values($1,$2,'Preserved fixture','manual')",[product,actor]);
       await db.query("commit");
+      await db.query("begin;set local role service_role;select set_config('request.jwt.claims','{\"role\":\"service_role\"}',true);");
+      await db.query("update public.profiles set app_role='owner' where id=$1",[actor]);
+      await db.query("commit");checks++;
       await db.query("select set_config('app.code3_isolated_validation','on',false)");await db.query(foundation);
       assert.deepEqual((await db.query("select name,image_source from public.product_catalog where id=$1",[product])).rows,[{name:"Preserved fixture",image_source:"manual"}]);checks++;
       await db.query("delete from public.product_catalog where id=$1",[product]);await db.query("delete from auth.users where id=$1",[actor]);
