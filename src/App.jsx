@@ -15659,6 +15659,9 @@ export default function App() {
   );
   const storeSeedWarmNeeded = Boolean(
     activeTab === "scout" ||
+    // The restock map on Find > Restocks shows the state's stores (Nov 27 2026: it showed
+    // only five hand-typed stores, at guessed spots, unless Scout had been opened first).
+    (activeTab === "flipScout" && flipScoutView === "restocks") ||
     (activeTab === "adminReview" && adminHeavyDataVisible) ||
     (activeTab === "dashboard" && scoutSubTabTarget?.tab === "stores")
   );
@@ -50894,7 +50897,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
         {activeTab === "flipScout" && (
           <LazyToolBoundary label="Loading Deal Finder...">
-            <FlipScoutPage restockMap={flipScoutView === "restocks" ? { stores: getScoutQuickStores(), reports: scoutSnapshot.reports || [], isFollowed: isWatchedEmberStore, onOpenStore: (store) => openCommunityRestockReports({ storeId: store.id }), onReportAtStore: (store) => openScoutSubmitFlow({ source: "restock-map", store }), onFollowStore: (store) => favoriteSearchStore(store) } : null} experiencePresentation={experiencePresentation} initialScreen={flipScoutView} onViewChange={(view) => { prepareRouteNavigation(); setFlipScoutView(view); }} featureControls={ownerFeatureControls} onExit={() => { prepareRouteNavigation(); setActiveTab("dashboard"); }} onReportRestock={() => openScoutSubmitFlow({ source: "restocks-page" })} onOpenRestocks={() => { prepareRouteNavigation(); setScoutView("reports"); setScoutSubTabTarget({ tab: "reports", id: Date.now() }); setActiveTab("scout"); }} />
+            <FlipScoutPage restockMap={flipScoutView === "restocks" ? { stores: getScoutQuickStores(), reports: scoutSnapshot.reports || [], isFollowed: isWatchedEmberStore, onOpenStore: (store) => openCommunityRestockReports({ storeId: store.id }), onReportAtStore: (store) => openScoutSubmitFlow({ source: "restock-map", store }), onFollowStore: (store) => favoriteSearchStore(store), storesLoading: storeDirectorySeedStatus === "idle" || storeDirectorySeedStatus === "loading" } : null} experiencePresentation={experiencePresentation} initialScreen={flipScoutView} onViewChange={(view) => { prepareRouteNavigation(); setFlipScoutView(view); }} featureControls={ownerFeatureControls} onExit={() => { prepareRouteNavigation(); setActiveTab("dashboard"); }} onReportRestock={() => openScoutSubmitFlow({ source: "restocks-page" })} onOpenRestocks={() => { prepareRouteNavigation(); setScoutView("reports"); setScoutSubTabTarget({ tab: "reports", id: Date.now() }); setActiveTab("scout"); }} />
           </LazyToolBoundary>
         )}
 

@@ -2,6 +2,9 @@
 // Checks what was wrong with the old one: it opens close in on the stores, pins do
 // not sit on top of each other, it drags any distance, zooms, groups open when
 // tapped, a tapped store shows its card, the list follows the map, and "near me" works.
+// Nov 27 2026: the state's store directory is on the map (not five hand-typed stores),
+// two fingers and Ctrl + wheel zoom smoothly and settle on a whole level, and the pins
+// follow the map to wherever "near me" takes it.
 // Map pictures are answered locally so the test never calls the map server.
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -36,6 +39,20 @@ const cases = [{ width: 390, height: 844, theme: "dark" }, { width: 320, height:
       await expect(card.locator(".restock-pin").first()).toBeVisible({ timeout: 30000 });
       const zoom = async () => Number(await map.getAttribute("data-zoom"));
       const center = async () => (await map.getAttribute("data-center")).split(",").map(Number);
+      // Pins near the edge are drawn half outside the map; a tap goes to one whose middle is well inside.
+      const insideMap = async (selector) => {
+        const frame = await canvas.boundingBox();
+        const pins = card.locator(selector);
+        for (let index = 0; index < await pins.count(); index += 1) {
+          const pin = await pins.nth(index).boundingBox();
+          if (!pin) continue;
+          const x = pin.x + pin.width / 2, y = pin.y + pin.height / 2;
+          if (x > frame.x + 30 && x < frame.x + frame.width - 70 && y > frame.y + 30 && y < frame.y + frame.height - 60) return pins.nth(index);
+        }
+        return null;
+      };
+      // Every store on screen, counting the ones inside group circles.
+      const storesInView = () => card.locator(".restock-pin").evaluateAll((pins) => pins.reduce((sum, pin) => sum + (pin.classList.contains("restock-pin--group") ? Number(/^(\d+)/.exec(pin.getAttribute("aria-label"))?.[1] || 0) : 1), 0));
 
       step = `${prefix}: big enough, and opened on the stores`;
       const box = await canvas.boundingBox();
@@ -44,6 +61,10 @@ const cases = [{ width: 390, height: 844, theme: "dark" }, { width: 320, height:
       const openingZoom = await zoom();
       assert.ok(openingZoom >= 9, `Opens on the stores' own area, not on a whole state (zoom ${openingZoom})`);
       assert.ok(tileRequests > 0, "Map pictures are requested");
+      // Nov 27 2026: Find > Restocks loads the state's store directory. Before, a fresh visit
+      // showed only the five hand-typed Virginia Beach stores, at guessed spots.
+      const opened = await storesInView();
+      assert.ok(opened >= 20, `The map shows the state's stores, not a handful (${opened} in view)`);
 
       step = `${prefix}: pins do not sit on top of each other`;
       const pinBoxes = await card.locator(".restock-pin").evaluateAll((pins) => pins.map((pin) => { const rect = pin.getBoundingClientRect(); return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2, width: rect.width, height: rect.height }; }));
@@ -60,6 +81,41 @@ const cases = [{ width: 390, height: 844, theme: "dark" }, { width: 320, height:
       }
       await card.getByRole("button", { name: "Zoom in", exact: true }).click();
       assert.equal(await zoom(), openingZoom + 1);
+      await card.getByRole("button", { name: "Zoom out", exact: true }).click();
+      assert.equal(await zoom(), openingZoom);
+
+      step = `${prefix}: a trackpad pinch (Ctrl + wheel) zooms smoothly, then settles on a whole level`;
+      // Read inside the page two frames after the wheel, before the map settles (220 ms later).
+      const wheel = (deltaY) => canvas.evaluate(async (element, delta) => {
+        const box = element.getBoundingClientRect();
+        element.dispatchEvent(new WheelEvent("wheel", { deltaY: delta, ctrlKey: true, clientX: box.x + box.width / 2, clientY: box.y + box.height / 2, bubbles: true, cancelable: true }));
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        return Number(element.closest(".restock-slippy").getAttribute("data-zoom"));
+      }, deltaY);
+      const between = await wheel(-30);
+      assert.ok(between > openingZoom && between < openingZoom + 1, `Zooms part of a level with the fingers (zoom ${between})`);
+      await expect.poll(zoom, { timeout: 3000 }).toBe(openingZoom);
+      await wheel(-80);
+      await expect.poll(zoom, { timeout: 3000 }).toBe(openingZoom + 1);
+      await card.getByRole("button", { name: "Zoom out", exact: true }).click();
+      assert.equal(await zoom(), openingZoom);
+
+      step = `${prefix}: two fingers zoom smoothly with the fingers, then settle on a whole level`;
+      const pinchedTo = await canvas.evaluate(async (element) => {
+        const box = element.getBoundingClientRect();
+        const x = box.x + box.width / 2, y = box.y + box.height / 2;
+        const fire = (type, id, at) => element.dispatchEvent(new PointerEvent(type, { pointerId: id, pointerType: "touch", isPrimary: id === 1, button: 0, clientX: at, clientY: y, bubbles: true, cancelable: true }));
+        const frames = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        fire("pointerdown", 1, x - 30); fire("pointerdown", 2, x + 30);
+        for (let spread = 1; spread <= 3; spread += 1) { fire("pointermove", 1, x - 30 - spread * 5); fire("pointermove", 2, x + 30 + spread * 5); }
+        await frames();
+        const during = Number(element.closest(".restock-slippy").getAttribute("data-zoom"));
+        fire("pointerup", 1, x - 45); fire("pointerup", 2, x + 45);
+        return during;
+      });
+      // Fingers 60 px apart spread to 90 px: half again as big, a little over half a level.
+      assert.ok(Math.abs(pinchedTo - (openingZoom + Math.log2(1.5))) < 0.05, `The map grows with the fingers (zoom ${pinchedTo})`);
+      await expect.poll(zoom, { timeout: 3000 }).toBe(openingZoom + 1);
       await card.getByRole("button", { name: "Zoom out", exact: true }).click();
       assert.equal(await zoom(), openingZoom);
 
@@ -121,17 +177,17 @@ const cases = [{ width: 390, height: 844, theme: "dark" }, { width: 320, height:
       assert.doesNotMatch(await store.innerText(), /^\d+ - /m, "Store names are not shown as directory codes");
 
       step = `${prefix}: tapping a pin picks that store`;
-      const single = card.locator(".restock-pin:not(.restock-pin--group):not(.is-selected)").first();
-      if (await single.count()) {
+      const single = await insideMap(".restock-pin:not(.restock-pin--group):not(.is-selected)");
+      if (single) {
         const label = await single.getAttribute("aria-label");
         await single.click();
         await expect(card.locator(".restock-pin.is-selected")).toHaveAttribute("aria-label", label);
       }
 
       step = `${prefix}: a group of stores opens when tapped`;
-      for (let out = 0; out < 6 && !(await card.locator(".restock-pin--group").count()); out += 1) await card.getByRole("button", { name: "Zoom out", exact: true }).click();
-      const group = card.locator(".restock-pin--group").first();
-      if (await group.count()) {
+      for (let out = 0; out < 6 && !(await insideMap(".restock-pin--group")); out += 1) await card.getByRole("button", { name: "Zoom out", exact: true }).click();
+      const group = await insideMap(".restock-pin--group");
+      if (group) {
         const groupZoom = await zoom();
         await expect(group).toHaveAttribute("aria-label", /^\d+ stores here\. Zoom in to see them\.$/);
         await group.click();
@@ -144,6 +200,8 @@ const cases = [{ width: 390, height: 844, theme: "dark" }, { width: 320, height:
       const here = await center();
       assert.ok(Math.abs(here[0] - 38.3032) < 0.01 && Math.abs(here[1] + 77.4605) < 0.01, "The map moves to where you are");
       assert.equal(await zoom(), 12);
+      // The pins follow the map: wherever it goes, that town's stores are there (not a fixed 60).
+      await expect.poll(storesInView, { timeout: 5000 }).toBeGreaterThan(3);
 
       step = `${prefix}: fits the screen`;
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, "No sideways scroll");
