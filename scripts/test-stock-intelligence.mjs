@@ -207,7 +207,7 @@ test("Client feed reads only a validated JSON response without cookies",async()=
     request={url,options};
     return {ok:true,headers:{get:()=>"application/json"},json:async()=>feed()};
   };
-  const result=await loadStockIntelligence({publicGatewayKey:"test-public",now:NOW,fetchImpl:fakeFetch});
+  const result=await loadStockIntelligence({project:"https://abcdefghijklmnopqrst.supabase.co",publicGatewayKey:"test-public",now:NOW,fetchImpl:fakeFetch});
   assert.equal(result.targets.length,1);
   assert.equal(request.options.credentials,"omit");
   assert.equal(request.options.headers.Authorization,"Bearer test-public");

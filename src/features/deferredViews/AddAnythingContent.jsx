@@ -500,7 +500,8 @@ export default function AddAnythingContent({ scope }) {
       const rows = (Array.isArray(quickAddWizard.cardScanRows) ? quickAddWizard.cardScanRows : [])
         .filter((row) => row.byHand || String(row.cardName || "").trim() || String(row.cardNumber || "").trim());
       const copiesOf = cardScanCopies;
-      const filledCount = rows.filter((row) => String(row.cardName || "").trim()).reduce((sum, row) => sum + copiesOf(row), 0);
+      // A row with no name still counts when its number was read in full: the number can find the card.
+      const filledCount = rows.filter((row) => String(row.cardName || "").trim() || row.matchedProduct || String(row.cardNumber || "").includes("/")).reduce((sum, row) => sum + copiesOf(row), 0);
       return (
         <div className="add-anything-flow add-anything-card-page-review">
           {renderFlowHeader("Scan cards", "Scan one card or a whole stack. Each card is matched with its price. Check the list, then tap Save.")}
@@ -549,9 +550,25 @@ export default function AddAnythingContent({ scope }) {
                   </div>
                 </div>
                 {row.matchedFor === `${row.cardName}|${row.cardNumber}` && row.matchState === "matched" ? (
-                  <p className="quick-add-card-scan-match">Matched: {row.matchedLabel}{row.matchedValue ? ` · ${money(row.matchedValue)}` : ""}{row.matchedOthers ? ` · ${row.matchedOthers} other printing${row.matchedOthers === 1 ? "" : "s"}: tap Change to pick another` : ""}</p>
+                  <p className="quick-add-card-scan-match">Matched: {row.matchedLabel}{row.matchedValue ? ` · ${money(row.matchedValue)}` : ""}{row.matchedBy === "clues" ? " · The number was hard to read, so check this is your card" : row.matchedBy === "numberOnly" ? " · The name was hard to read, so check this is your card" : ""}{row.matchedOthers ? ` · ${row.matchedOthers} other printing${row.matchedOthers === 1 ? "" : "s"}: tap Change to pick another` : ""}</p>
                 ) : row.matchedFor === `${row.cardName}|${row.cardNumber}` && row.matchState === "review" ? (
-                  <p className="quick-add-card-scan-match quick-add-card-scan-match--review">Not sure which card this is. Tap Pick the card.</p>
+                  Array.isArray(row.matchedChoices) && row.matchedChoices.some((choice) => choice?.product) ? (
+                    <div className="quick-add-card-scan-choices">
+                      <p className="quick-add-card-scan-match quick-add-card-scan-match--review">{row.matchedChoicesBy === "either"
+                        ? "This card was hard to read. Which one is your card?"
+                        : row.matchedChoicesBy === "number"
+                        ? (row.matchedChoices.length === 1 ? "The name was hard to read. Is this your card?" : "The name was hard to read. Which one is your card?")
+                        : (row.matchedChoices.length === 1 ? "The number was hard to read. Is this your card?" : "The number was hard to read. Which one is your card?")}</p>
+                      {row.matchedChoices.filter((choice) => choice?.product).map((choice) => (
+                        <button type="button" className="secondary-button" key={String(choice.product.id)} onClick={() => updateCardScanRow(row.id, { matchedProduct: choice.product, matchState: "matched", matchedBy: "picked", matchedOthers: 0, matchedLabel: choice.label, matchedValue: choice.value || 0, matchedChoices: [], matchedFor: `${row.cardName}|${row.cardNumber}` })}>
+                          {/* Nov 27 2026: the name is the part the person needs when the name was hard to read. */}
+                          {(row.matchedChoicesBy === "number" || row.matchedChoicesBy === "either") && choice.name ? `${choice.name} · ` : ""}{choice.short}{choice.value ? ` · ${money(choice.value)}` : ""}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="quick-add-card-scan-match quick-add-card-scan-match--review">Not sure which card this is. Tap Pick the card.</p>
+                  )
                 ) : null}
                 <details className="quick-add-card-scan-edit" open={!isMatched && !String(row.cardName || "").trim()}>
                 <summary>Edit details</summary>

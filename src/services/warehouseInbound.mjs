@@ -1,4 +1,4 @@
-export const INBOUND_API_URL="https://gxsfququorfczvhrkudl.supabase.co/functions/v1/code3-stock-inbound";
+import {stockApiUrl} from "./stockApi.mjs";
 export const INBOUND_STAGES=Object.freeze([
   {key:"ordered",label:"Ordered",description:"A purchase order or retailer replenishment order has been reported."},
   {key:"en_route",label:"En route",description:"A reported shipment is moving toward a warehouse."},
@@ -38,9 +38,9 @@ export function parseInboundEvents(payload,now=Date.now()){
   });
   return events;
 }
-async function requestInbound({accessToken,method,body,fetchImpl=fetch}){
+async function requestInbound({accessToken,method,body,fetchImpl=fetch,project=import.meta.env?.VITE_SUPABASE_URL}){
   if(typeof accessToken!=="string"||accessToken.length<20)throw new Error("Staff sign-in is required.");
-  const response=await fetchImpl(INBOUND_API_URL,{
+  const response=await fetchImpl(stockApiUrl("code3-stock-inbound",project),{
     method,credentials:"omit",redirect:"error",cache:"no-store",
     headers:{
       "Content-Type":"application/json",
@@ -53,11 +53,11 @@ async function requestInbound({accessToken,method,body,fetchImpl=fetch}){
   if(!response.ok)throw new Error(typeof result.error==="string"?result.error:"Warehouse request failed.");
   return result;
 }
-export async function loadPrivateInbound({accessToken,fetchImpl,now=Date.now()}={}){
-  return parseInboundEvents(await requestInbound({accessToken,method:"GET",fetchImpl}),now);
+export async function loadPrivateInbound({accessToken,fetchImpl,now=Date.now(),project}={}){
+  return parseInboundEvents(await requestInbound({accessToken,method:"GET",fetchImpl,project}),now);
 }
-export async function submitPrivateInbound({accessToken,report,fetchImpl}={}){
-  const result=await requestInbound({accessToken,method:"POST",body:report,fetchImpl});
+export async function submitPrivateInbound({accessToken,report,fetchImpl,project}={}){
+  const result=await requestInbound({accessToken,method:"POST",body:report,fetchImpl,project});
   if(result.ok!==true||!uuid.test(result.id||""))throw new Error("Warehouse report could not be confirmed.");
   return result;
 }

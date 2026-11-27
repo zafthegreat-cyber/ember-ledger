@@ -69,6 +69,10 @@ html body .app[data-theme] .flow-modal[data-flow="addActionSheet"] .scan-anythin
 .quick-add-card-scan-match::before { content: "✓ "; color: var(--gold, #E8C86B); }
 .quick-add-card-scan-match--review { color: var(--text-secondary); }
 .quick-add-card-scan-match--review::before { content: "• "; color: var(--text-secondary); }
+/* Nov 26 2026: the printings a card could be when its number was hard to read, one tap each. */
+.quick-add-card-scan-choices { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 10px; }
+.quick-add-card-scan-choices .quick-add-card-scan-match { flex: 1 0 100%; margin: 0; }
+.quick-add-card-scan-choices button { min-height: 44px; text-align: left; white-space: normal; }
 
 /* Scan cards, simpler list (Nov 25 2026) */
 .quick-add-card-scan-empty { margin: 8px 0; padding: 14px; border: 1px dashed var(--border-strong, #6b5a5e); border-radius: 14px; font-size: 15px; line-height: 1.45; color: var(--text-secondary, inherit); }

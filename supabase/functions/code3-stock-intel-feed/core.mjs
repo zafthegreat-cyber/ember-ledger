@@ -1,5 +1,5 @@
+import {stockProjectOrigin} from "../_shared/stockProject.mjs";
 import {parseStockIntelligence} from "../_shared/stockContract.mjs";
-const projectOrigin = 'https://gxsfququorfczvhrkudl.supabase.co';
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
@@ -34,8 +34,9 @@ export function createStockIntelHandler({ load,clock=()=>Date.now() }) {
     }
   };
 }
-export async function fetchStockIntel({project = projectOrigin, key, fetchImpl = fetch}) {
-  if (project !== projectOrigin || !key) throw new Error('Project configuration unavailable');
+export async function fetchStockIntel({project, key, fetchImpl = fetch}) {
+  stockProjectOrigin(project);
+  if (!key) throw new Error('Project configuration unavailable');
   const upstream = await fetchImpl(project + '/rest/v1/rpc/code3_stock_intelligence_feed', {
     method: 'POST', redirect: 'error', signal: AbortSignal.timeout(8000),
     headers: { 'apikey': key, 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' },

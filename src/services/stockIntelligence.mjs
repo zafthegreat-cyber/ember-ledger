@@ -1,12 +1,13 @@
-export const STOCK_INTELLIGENCE_URL = "https://gxsfququorfczvhrkudl.supabase.co/functions/v1/code3-stock-intel-feed";
+import {stockApiUrl} from "./stockApi.mjs";
 import {parseStockIntelligence} from "../../supabase/functions/_shared/stockContract.mjs";
 export {RETAILER_NAMES,SIGNAL_KINDS,EVIDENCE_LABELS,parseStockIntelligence,sourceHealth,currentStockSignals} from "../../supabase/functions/_shared/stockContract.mjs";
 export async function loadStockIntelligence({
   signal, fetchImpl=fetch, now,
   publicGatewayKey=import.meta.env?.VITE_SUPABASE_ANON_KEY,
+  project=import.meta.env?.VITE_SUPABASE_URL,
 }={}) {
   if (typeof publicGatewayKey !== "string" || !publicGatewayKey) throw new Error("Stock intelligence connection is not configured.");
-  const result = await fetchImpl(STOCK_INTELLIGENCE_URL, {
+  const result = await fetchImpl(stockApiUrl("code3-stock-intel-feed",project), {
     method:"GET", credentials:"omit", redirect:"error", cache:"no-store", signal,
     headers:{Accept:"application/json",apikey:publicGatewayKey,Authorization:"Bearer "+publicGatewayKey},
   });
@@ -20,10 +21,9 @@ export function filterStockIntelligence(snapshot,{retailer="All",query=""}={}) {
   return {targets:snapshot.targets.filter(matches),signals:snapshot.signals.filter(matches),discoveryWatches:(snapshot.discoveryWatches||[]).filter(matches)};
 }
 
-export const STOCK_REVIEW_URL = "https://gxsfququorfczvhrkudl.supabase.co/functions/v1/code3-stock-intel-review";
-export async function submitStockReview({accessToken,review,fetchImpl=fetch}) {
+export async function submitStockReview({accessToken,review,fetchImpl=fetch,project=import.meta.env?.VITE_SUPABASE_URL}) {
   if (!accessToken || typeof accessToken !== "string") throw new Error("Sign in as an admin before submitting.");
-  const response=await fetchImpl(STOCK_REVIEW_URL,{
+  const response=await fetchImpl(stockApiUrl("code3-stock-intel-review",project),{
     method:"POST",credentials:"omit",redirect:"error",cache:"no-store",
     headers:{
       "Content-Type":"application/json",

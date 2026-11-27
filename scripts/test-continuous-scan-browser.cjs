@@ -29,6 +29,13 @@ function standInCamera() {
     const art = context.createLinearGradient(x, y + 150, x + width, y + 150 + height * 0.4);
     art.addColorStop(0, `hsl(${card.hue} 70% 55%)`); art.addColorStop(1, `hsl(${(card.hue + 40) % 360} 60% 35%)`);
     context.fillStyle = art; context.fillRect(x + 56, y + 150, width - 112, height * 0.4);
+    // Nov 26 2026: each drawn card has a picture of its own, placed by its hue. Real cards differ by far
+    // more than colour (two real cards in a row score 19.5 or more for 99 in 100 pairs on the camera's
+    // same-card check; the old drawings, alike but for colour, scored 13 against a cut-off of 14).
+    const spot = ((card.hue * 37) % 100) / 100;
+    context.fillStyle = "rgba(20, 16, 12, 0.8)";
+    context.beginPath(); context.ellipse(x + 56 + 120 + spot * (width - 112 - 240), y + 150 + height * 0.2, 120, 160, 0, 0, Math.PI * 2); context.fill();
+    context.fillRect(x + 56, y + 150 + height * (0.02 + 0.3 * spot), width - 112, height * 0.06);
     if (card.blank) return;
     context.fillStyle = "#101010"; context.textBaseline = "top";
     context.font = "bold 62px Arial"; context.fillText(card.name, x + 58, y + 56);

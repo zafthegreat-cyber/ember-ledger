@@ -48,13 +48,34 @@ export function snapCardName(read = "", index) {
   if (exact) return /['’]/.test(read) ? String(read).replace(/\s+/g, " ").trim() : exact;
   const limit = allowedNameEdits(key.length);
   if (!limit) return "";
-  let best = limit + 1, bestKey = "", tie = false;
+  let best = limit + 1, tied = [];
   for (const candidate of index.keys) {
     const d = distance(key, candidate, Math.min(limit, best));
-    if (d < best) { best = d; bestKey = candidate; tie = false; }
-    else if (d === best && d <= limit) tie = true;
+    if (d < best) { best = d; tied = [candidate]; }
+    else if (d === best && d <= limit) tied.push(candidate);
   }
-  return best <= limit && !tie ? index.byKey.get(bestKey) : "";
+  if (best > limit) return trimToCardName(read, index);
+  if (tied.length === 1) return index.byKey.get(tied[0]);
+  // Nov 26 2026: "Greedentxk" is as close to "Greedent ex" and "Greedent V" as to
+  // "Greedent". When one of the tied names starts both the read and every other tied
+  // name, the extra letters are stray marks after it (foil pattern, energy symbols).
+  const base = tied.find((candidate) => key.startsWith(candidate) && tied.every((other) => other.startsWith(candidate)));
+  return base ? index.byKey.get(base) : "";
+}
+
+/**
+ * A name with stray letters stuck on its end ("Greedenty IA" from the foil pattern
+ * beside the name): the known name of six or more letters that the read starts
+ * with, when at most three extra letters follow it. "" when there is none.
+ */
+export function trimToCardName(read = "", index) {
+  if (!index?.byKey) return "";
+  const key = keyOf(read);
+  for (let cut = 1; cut <= 3 && key.length - cut >= 6; cut += 1) {
+    const exact = index.byKey.get(key.slice(0, key.length - cut));
+    if (exact) return exact;
+  }
+  return "";
 }
 
 export const isKnownCardName = (name = "", index) => Boolean(index?.byKey?.has(keyOf(name)));

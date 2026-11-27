@@ -1,3 +1,4 @@
+import {stockProjectOrigin} from "../_shared/stockProject.mjs";
 import {stockStaffAuthorizer,stockAllowedOrigins} from "../_shared/stockStaff.mjs";
 const retailers = {
   Target: "target.com",
@@ -103,8 +104,8 @@ export function createReviewHandler({authorize,findProduct,write,clock=()=>new D
   };
 }
 export function createDependencies({project,key,anon,fetchImpl=fetch}) {
-  const origin="https://gxsfququorfczvhrkudl.supabase.co";
-  if (project!==origin||!key||!anon) throw new Error("Service configuration unavailable");
+  const origin=stockProjectOrigin(project);
+  if (!key||!anon) throw new Error("Service configuration unavailable");
   const serviceHeaders={"apikey":key,"Authorization":"Bearer "+key};
   return {
     authorize:stockStaffAuthorizer({project,anon,fetchImpl}),

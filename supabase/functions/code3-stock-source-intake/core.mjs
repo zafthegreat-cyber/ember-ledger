@@ -1,7 +1,7 @@
+import {stockProjectOrigin} from "../_shared/stockProject.mjs";
 import {createApprovedStockAdapter} from "../_shared/stockAdapter.mjs";
 import {RETAILER_NAMES,sourceHealth} from "../_shared/stockContract.mjs";
 
-const PROJECT="https://gxsfququorfczvhrkudl.supabase.co";
 const MAX_BODY=4096;
 const MAX_SKEW=300000;
 const SKU=/^[A-Za-z0-9_-]{1,64}$/u;
@@ -204,10 +204,11 @@ export function createStockSourceHandler({
 }
 
 export function createStockSourceDependencies({project,serviceKey,fetchImpl=fetch}){
-  if(project!==PROJECT||!serviceKey)throw Error("Private storage credentials not configured");
+  const origin=stockProjectOrigin(project);
+  if(!serviceKey)throw Error("Private storage credentials not configured");
   const headers={apikey:serviceKey,Authorization:"Bearer "+serviceKey};
   async function rows(resource,params){
-    const url=new URL(PROJECT+"/rest/v1/"+resource);
+    const url=new URL(origin+"/rest/v1/"+resource);
     for(const [key,value] of Object.entries(params))url.searchParams.set(key,value);
     const response=await fetchImpl(url,{method:"GET",headers,redirect:"error",signal:AbortSignal.timeout(8000)});
     if(!response.ok)throw Error("Private source read failed");
@@ -216,7 +217,7 @@ export function createStockSourceDependencies({project,serviceKey,fetchImpl=fetc
     return parsed;
   }
   async function write(table,record){
-    const response=await fetchImpl(PROJECT+"/rest/v1/"+table+"?select=id",{
+    const response=await fetchImpl(origin+"/rest/v1/"+table+"?select=id",{
       method:"POST",headers:{...headers,"Content-Type":"application/json","Prefer":"return=representation"},
       redirect:"error",signal:AbortSignal.timeout(8000),body:JSON.stringify(record)
     });

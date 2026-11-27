@@ -12,7 +12,10 @@ test("the name list is real printed names, small enough to load on a phone", () 
   assert.ok(names.length > 3000, "covers the catalog");
   assert.ok(JSON.stringify(names).length < 200_000);
   for (const name of ["Charizard ex", "Pikachu", "Rare Candy", "Iono", "Umbreon VMAX"]) assert.equal(isKnownCardName(name, index), true, name);
-  assert.equal(names.some((name) => /\d|\bbox\b|\bpack\b/i.test(name)), false, "no numbers or sealed products");
+  // Real cards can hold a product word (Secret Box, Tool Box, Iron Bundle), so sealed products are
+  // told by their phrases, not by one word.
+  assert.equal(names.some((name) => /\d|\b(?:booster|elite trainer|collection|display|deck) box\b|\b(?:booster|blister|value) packs?\b|\bbooster bundle\b|\bmini tin\b/i.test(name)), false, "no numbers or sealed products");
+  for (const name of ["Secret Box", "Tool Box", "Iron Bundle"]) assert.equal(isKnownCardName(name, index), true, name);
 });
 
 test("misread letters snap to the one close real name; junk and short reads do not", () => {

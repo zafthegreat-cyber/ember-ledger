@@ -1,5 +1,5 @@
+import {stockProjectOrigin} from "../_shared/stockProject.mjs";
 import {stockStaffAuthorizer,stockAllowedOrigins} from "../_shared/stockStaff.mjs";
-const PROJECT='https://gxsfququorfczvhrkudl.supabase.co';
 const RETAILERS=Object.freeze(["Target","Walmart","Pokémon Center","Best Buy","Sam's Club","Costco"]);
 export const INBOUND_STAGES=Object.freeze({
   ordered: "Ordered",
@@ -100,7 +100,8 @@ export function createInboundHandler({authorize,list,findProduct,save,clock=()=>
   };
 }
 export function createInboundDependencies({project,key,anon,fetchImpl=fetch}){
-  if(project!==PROJECT||!key||!anon)throw new Error("Inbound credentials unavailable");
+  const origin=stockProjectOrigin(project);
+  if(!key||!anon)throw new Error("Inbound credentials unavailable");
   const serviceHeaders={apikey:key,Authorization:"Bearer "+key};
   const doFetch=async(url,opts)=>{
     const res=await fetchImpl(url,{redirect:"error",signal:AbortSignal.timeout(8000),...opts});
@@ -109,19 +110,19 @@ export function createInboundDependencies({project,key,anon,fetchImpl=fetch}){
   return {
     authorize:stockStaffAuthorizer({project,anon,fetchImpl}),
     findProduct:async(retailer,sku)=>{
-      const url=PROJECT+"/rest/v1/retailer_products?select=id&retailer=eq."+encodeURIComponent(retailer)+"&external_id=eq."+encodeURIComponent(sku)+"&limit=1";
+      const url=origin+"/rest/v1/retailer_products?select=id&retailer=eq."+encodeURIComponent(retailer)+"&external_id=eq."+encodeURIComponent(sku)+"&limit=1";
       const response=await doFetch(url,{method:"GET",headers:serviceHeaders});
       if(!response.ok)throw new Error("Product unavailable");
       return(await response.json())[0]||null;
     },
     list:async()=>{
-      const url=PROJECT+"/rest/v1/retailer_inbound_events?select=id,retailer,stage,summary,observed_at,expires_at,evidence_level,source_type,retailer_products(external_id,name)&order=observed_at.desc&limit=40";
+      const url=origin+"/rest/v1/retailer_inbound_events?select=id,retailer,stage,summary,observed_at,expires_at,evidence_level,source_type,retailer_products(external_id,name)&order=observed_at.desc&limit=40";
       const response=await doFetch(url,{method:"GET",headers:serviceHeaders});
       if(!response.ok)throw new Error("Events unavailable");
       return response.json();
     },
     save:async item=>{
-      const response=await doFetch(PROJECT+"/rest/v1/retailer_inbound_events?select=id",{
+      const response=await doFetch(origin+"/rest/v1/retailer_inbound_events?select=id",{
         method:"POST",headers:{...serviceHeaders,"Content-Type":"application/json","Prefer":"return=representation"},
         body:JSON.stringify(item)
       });

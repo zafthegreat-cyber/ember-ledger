@@ -37,9 +37,9 @@ onAuthStateChange:(cb)=>{const listener=()=>cb('SIGNED_OUT');window.addEventList
       await context.route('**/*',async route=>{
         const req=route.request(),url=new URL(req.url());
         if(url.origin===base.origin&&url.pathname==='/src/supabaseClient.js')return route.fulfill({contentType:'application/javascript',body:mockAuth});
-        if(url.origin===base.origin&&url.pathname==='/src/services/stockIntelligence.mjs') {
+        if(url.origin===base.origin&&['/src/services/stockIntelligence.mjs','/src/services/stockApi.mjs'].includes(url.pathname)) {
           const response=await route.fetch();
-          return route.fulfill({response,body:(await response.text()).replaceAll('import.meta.env?.VITE_SUPABASE_ANON_KEY','"synthetic-public-key"')});
+          return route.fulfill({response,body:(await response.text()).replaceAll('import.meta.env?.VITE_SUPABASE_ANON_KEY','"synthetic-public-key"').replaceAll('import.meta.env?.VITE_SUPABASE_URL','"https://abcdefghijklmnopqrst.supabase.co"')});
         }
         if(url.pathname.endsWith('/code3-stock-intel-feed'))return route.fulfill({status:failFeed?503:200,contentType:'application/json',body:JSON.stringify(failFeed?{error:'Synthetic outage'}:feed)});
         if(url.pathname.endsWith('/code3-stock-inbound')) {
