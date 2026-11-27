@@ -45,11 +45,11 @@ function setup(overrides = {}) {
   const stripe = {
     accounts: { async retrieveCurrent() { return { id: state.accountId || "acct_approved" }; } },
     webhooks: realStripe.webhooks,
-    prices: { async retrieve(id) { return { id, active: true, livemode: false, product: { id: "prod_code3", active: true, metadata: { app: state.productApp }, tax_code: "txcd_test" },
+    prices: { async retrieve(id) { return { id, active: true, livemode: false, product: state.productDeleted ? { id: "prod_code3", deleted: true } : { id: "prod_code3", active: true, metadata: { app: state.productApp }, tax_code: "txcd_test" },
       type: id === "price_collector" ? "recurring" : "one_time", recurring: id === "price_collector" ? { interval: "month", interval_count: 1 } : null,
       unit_amount: 199, currency: "usd", billing_scheme: "per_unit", tax_behavior: "exclusive" }; } },
     tax: { registrations: { async list() { return { data: state.registrations }; } } },
-    customers: { async create() { return { id: "cus_created", livemode: false }; }, async retrieve() { return { metadata: { app: state.productApp } }; } },
+    customers: { async create() { return { id: "cus_created", livemode: false }; }, async retrieve() { return state.customerDeleted ? { id: "cus_deleted", deleted: true } : { metadata: { app: state.productApp } }; } },
     subscriptions: { list() { return collection(state.subscriptions); } },
     invoices: { async retrieve() { return { status: state.invoiceStatus }; } },
     checkout: { sessions: {
@@ -78,6 +78,22 @@ test("sandbox configuration rejects live credentials, privileged entitlements an
   for (const change of [ { STRIPE_SECRET_KEY: "sk_live_example" }, { CODE3_BILLING_ORIGIN: "https://code3tcg.com/path" },
     { CODE3_STRIPE_OFFERS_JSON: JSON.stringify([{ ...config.offers[0], entitlement: "admin" }]) },
     { CODE3_STRIPE_OFFERS_JSON: JSON.stringify([config.offers[0], config.offers[0]]) } ]) assert.throws(() => readBillingConfig({ ...env, ...change }));
+});
+
+test("deleted catalog products cannot start checkout or expose billing offers", async () => {
+  const { service, state } = setup({ productDeleted: true });
+  await assert.rejects(service.status(principal), { code: "billing_catalog_invalid" });
+  await assert.rejects(service.checkout(principal, "collector_monthly", attempt), { code: "billing_catalog_invalid" });
+  assert.equal(state.creates.length, 0);
+});
+
+test("deleted customers do not enter the pending-account metadata path", async () => {
+  const deleted = setup({ customerDeleted: true });
+  await deleted.service.webhook(...deleted.event("evt_deleted_customer", "customer.subscription.updated", { customer: "cus_unknown" }));
+  assert.equal(deleted.state.events.size, 0);
+  assert.equal(deleted.state.grants.length, 0);
+  const existing = setup();
+  await assert.rejects(existing.service.webhook(...existing.event("evt_pending_customer", "customer.subscription.updated", { customer: "cus_unknown" })), { code: "billing_account_pending" });
 });
 
 test("checkout uses server prices, account identity, flexible billing and idempotency", async () => {

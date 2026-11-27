@@ -39,6 +39,11 @@ jobs:
       - run: npm ci --ignore-scripts
       - name: Lint
         run: npm run lint:src
+      - name: Backend type checks and billing regressions
+        run: |
+          npm ci --prefix backend --ignore-scripts
+          npm --prefix backend run test:stripe
+          node backend/node_modules/typescript/bin/tsc --project backend/tsconfig.json --strict false --noEmit
       - name: Connected sign-in regression checks
         run: npm run test:social-sign-in
       - name: Optimized image and viewer checks
