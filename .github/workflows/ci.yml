@@ -85,6 +85,7 @@ jobs:
           node --no-warnings scripts/test-empty-states.mjs
           node --no-warnings scripts/test-route-loading.mjs
           node --no-warnings scripts/test-plain-language.mjs
+          node --no-warnings --test scripts/test-reviewed-collection-sell.mjs
           node --no-warnings scripts/test-onboarding.mjs
           node --no-warnings scripts/test-vault-set-mastery.mjs
           node --no-warnings scripts/test-flip-scout.mjs
