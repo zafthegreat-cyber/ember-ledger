@@ -38,6 +38,12 @@
 .restock-start__visits > summary > span { display: inline-grid; vertical-align: middle; gap: 4px; font-size: 14px; font-weight: 600; }
 .restock-start__visits > summary small { color: var(--text-secondary); font-size: 12px; font-weight: 400; }
 .restock-start__visits > summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; border-radius: 4px; }
+/* Nov 27 2026: on phones "Restocks" is the page's visible title, right above the map: its blurb is dropped and
+   the map's own "Restock map" title stays for screen readers only, so more of the map is on the first screen. */
+@media (max-width: 699px) {
+  .app.app-command-shell .restock-start > .ops-section-header p { display: none; }
+  .app.app-command-shell .restock-start .restock-map-card__head h3 { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+}
 @media (max-width: 600px) {
   .restock-start__report { padding: 15px; gap: 12px; }
   .restock-start__actions { grid-column: 1 / -1; }

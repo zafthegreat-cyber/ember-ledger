@@ -249,7 +249,10 @@ export default function FlipScoutPage({ onOpenRestocks, onReportRestock, initial
     return result;
   }, [applySave, repository]);
 
-  const findNavigation = <div className="flip-find-navigation">
+  // A tab bar whose only tab is the screen already open (a collector on Restocks) does nothing;
+  // phones drop it so the map starts higher (flipScout.css, Nov 27 2026).
+  const singleTabNavigation = !resaleTools && visiblePrimaryNavItems.length === 1 && visiblePrimaryNavItems[0][0] === activeScreen;
+  const findNavigation = <div className={singleTabNavigation ? "flip-find-navigation flip-find-navigation--single" : "flip-find-navigation"}>
     <nav className="flip-main-nav ops-find-nav" aria-label="Find navigation" style={{ "--flip-primary-count": visiblePrimaryNavItems.length }}>{visiblePrimaryNavItems.map(([key, label]) => <button type="button" key={key} className={activeScreen === key ? "active" : ""} aria-current={activeScreen === key ? "page" : undefined} onClick={() => navigate(key)}><span>{label}</span></button>)}</nav>
     {resaleTools ? <details ref={moreMenuRef} className="flip-more-menu">
       <summary>More</summary>
@@ -266,7 +269,7 @@ export default function FlipScoutPage({ onOpenRestocks, onReportRestock, initial
   </div>;
 
   return (
-    <div className="flip-scout-page">
+    <div className={activeScreen === "restocks" ? "flip-scout-page flip-scout-page--restocks" : "flip-scout-page"}>
       <PageHeader
         eyebrow={showOperationalTools ? "Sourcing" : "Restocks & finds"}
         title="Find"

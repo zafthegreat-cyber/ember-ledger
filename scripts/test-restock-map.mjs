@@ -61,6 +61,20 @@ test("competitive wiring: follow from the map, wants become alerts, value on Hom
   assert.match(home, /!kidSafeView && collectionWorth\.knownCount > 0/, "no money shown in the kid-safe view");
 });
 
+test("wiring: Find > Restocks loads the state's store directory and the map waits for it", async () => {
+  const { readFileSync } = await import("node:fs");
+  const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
+  const app = read("src/App.jsx");
+  // Nov 27 2026: a fresh visit showed only five hand-typed stores, at guessed spots.
+  assert.match(app, /\(activeTab === "flipScout" && flipScoutView === "restocks"\) \|\|/, "the directory loads on Find > Restocks");
+  assert.match(app, /storesLoading: storeDirectorySeedStatus === "idle" \|\| storeDirectorySeedStatus === "loading"/);
+  assert.match(read("src/features/flipScout/screens/RestocksScreen.jsx"), /storesLoading=\{Boolean\(restockMap\.storesLoading\)\}/);
+  const card = read("src/features/restocks/RestockMapCard.jsx");
+  assert.match(card, /pins=\{storesLoading \? \[\] : pins\}/, "no guessed pins while the directory loads");
+  assert.match(card, /busiestPoints\(/, "with nothing reported or followed it opens on the busiest town");
+  assert.doesNotMatch(card, /maxPins: 60\b/, "pins follow the map instead of a fixed 60");
+});
+
 test("with a chosen area, only nearby stores show, nearest first, followed stores kept", () => {
   const austin = { lat: 30.2672, lng: -97.7431, city: "Austin", state: "TX" };
   const stores = [

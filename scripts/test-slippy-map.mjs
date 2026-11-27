@@ -2,7 +2,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { clampZoom, clusterPins, fitView, focusPoints, fromScreen, MAX_ZOOM, milesBetween, MIN_ZOOM, onScreen, panBy, project, storeMapLabel, toScreen, unproject, visibleTiles, zoomAt, zoomForRadius } from "../src/features/restocks/slippyMap.mjs";
+import { mapTileSettings, mapTileUrl, OSM_CREDIT, OSM_CREDIT_URL, OSM_TILE_URL } from "../src/config/mapTiles.js";
+import { busiestPoints, clampZoom, clusterPins, fitView, focusPoints, fromScreen, groupLabel, MAX_ZOOM, milesBetween, MIN_ZOOM, onScreen, panBy, project, storeMapLabel, toScreen, unproject, visibleTiles, zoomAt, zoomForRadius, zoomTo } from "../src/features/restocks/slippyMap.mjs";
 
 const size = { width: 320, height: 360 };
 const fredericksburg = { lat: 38.3032, lng: -77.4605 };
@@ -91,12 +92,67 @@ test("map pictures cover the whole view wherever it is dragged", () => {
   assert.ok(visibleTiles({ center: { lat: 0, lng: 179.9 }, zoom: 4 }, size).every((tile) => tile.x >= 0 && tile.x < 16), "Wraps around the date line");
 });
 
+// Nov 27 2026 ("improve the map").
+test("two fingers zoom smoothly: any level in between, still keeping the place under them", () => {
+  const view = { center: fredericksburg, zoom: 10 };
+  const anchor = { x: 60, y: 90 };
+  const place = fromScreen(anchor, view, size);
+  const between = zoomTo(view, 10.585, size, anchor);
+  assert.equal(between.zoom, 10.585);
+  const after = toScreen(place, between, size);
+  assert.ok(near(after.x, anchor.x, 1e-3) && near(after.y, anchor.y, 1e-3));
+  assert.equal(zoomTo(view, 99, size).zoom, MAX_ZOOM);
+  assert.equal(zoomTo(view, -3, size).zoom, MIN_ZOOM);
+  assert.equal(zoomAt(between, 1, size).zoom, 12, "A button press from in between goes to a whole level");
+  // Between levels the nearest level's pictures are drawn larger, still covering the map with no gaps.
+  const tiles = visibleTiles(between, size);
+  assert.ok(tiles.every((tile) => tile.z === 11 && tile.size >= 191 && tile.size <= 193), "Level 11 pictures, about 192 px each at 10.585");
+  assert.ok(Math.min(...tiles.map((tile) => tile.left)) <= 0 && Math.max(...tiles.map((tile) => tile.left + tile.size)) >= size.width);
+  assert.ok(Math.min(...tiles.map((tile) => tile.top)) <= 0 && Math.max(...tiles.map((tile) => tile.top + tile.height)) >= size.height);
+  const row = tiles.filter((tile) => tile.top === tiles[0].top).sort((a, b) => a.left - b.left);
+  for (let index = 1; index < row.length; index += 1) assert.equal(row[index].left, row[index - 1].left + row[index - 1].size, "Neighbouring pictures meet exactly");
+  assert.ok(visibleTiles(view, size).every((tile) => tile.size === 256), "At a whole level, pictures are their own size");
+});
+
+test("with nothing reported or followed, the map opens on the busiest town", () => {
+  const richmond = Array.from({ length: 30 }, (_, i) => ({ id: `r${i}`, lat: 37.54 + (i % 6) * 0.01, lng: -77.44 + Math.floor(i / 6) * 0.01 }));
+  const roanoke = Array.from({ length: 8 }, (_, i) => ({ id: `n${i}`, lat: 37.27 + i * 0.005, lng: -79.94 }));
+  const lone = [{ id: "far", lat: 36.6, lng: -82.2 }];
+  // Sorted by name, a far-away store can come first; the opening must not follow it.
+  const picked = busiestPoints([...lone, ...roanoke, ...richmond], { miles: 6 });
+  assert.equal(picked.length, 30);
+  assert.ok(picked.every((point) => point.id.startsWith("r")), "Only the busy town's stores are in the opening view");
+  assert.ok(fitView(picked, size).zoom >= 11, "and it opens close enough to tell stores apart");
+  assert.equal(busiestPoints([fredericksburg, { lat: 37.54, lng: -77.44 }]).length, 2, "Two stores are both shown");
+  assert.equal(busiestPoints([]).length, 0);
+});
+
+test("a whole state on the map: groups never overlap, and it stays quick", () => {
+  // 2,500 stores scattered over a map 1,000 px wide, the size of a state's directory.
+  let seed = 7;
+  const random = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const pins = Array.from({ length: 2500 }, (_, i) => ({ id: `s${i}`, x: random() * 1000, y: random() * 450 }));
+  const started = performance.now();
+  const groups = clusterPins(pins, { selectedId: "s5" });
+  const took = performance.now() - started;
+  assert.ok(took < 250, `Grouping 2,500 stores is quick (${Math.round(took)} ms)`);
+  assert.equal(groups.reduce((sum, group) => sum + group.items.length, 0), 2500, "Every store is in exactly one pin or group");
+  const free = groups.filter((group) => group.key !== "pin-s5");
+  for (let a = 0; a < free.length; a += 1) for (let b = a + 1; b < free.length; b += 1) {
+    assert.ok(Math.hypot(free[a].x - free[b].x, free[a].y - free[b].y) >= 45.9, "No two groups sit on each other");
+  }
+  assert.deepEqual([groupLabel(7), groupLabel(999), groupLabel(1000), groupLabel(2480)], ["7", "999", "1k+", "2k+"], "Big numbers fit the circle");
+});
+
 test("store names read like a person would say them", () => {
   assert.deepEqual(storeMapLabel({ name: "180 - Trade St. / Central Park Blvd. (Target)", retailer: "Target" }), { title: "Target", place: "Trade St. / Central Park Blvd.", initial: "T" });
   assert.equal(storeMapLabel({ name: "413 - Stafford Complex Ctr. (Walmart / Auto Zone)" }).title, "Walmart");
   assert.deepEqual(storeMapLabel({ name: "Arcanas Video Games" }), { title: "Arcanas Video Games", place: "", initial: "A" });
   assert.equal(storeMapLabel({ name: "The Card Shop" }).initial, "C");
   assert.equal(storeMapLabel({}).title, "Store");
+  // The pin's letter is the chain's: every Target is a T (it was "R" for Redmill Target).
+  assert.deepEqual(storeMapLabel({ name: "Redmill Target", retailer: "Target" }), { title: "Redmill Target", place: "", initial: "T" });
+  assert.equal(storeMapLabel({ name: "Corner Cards", retailer: "Store" }).initial, "C", "A placeholder chain name is not used");
 });
 
 test("wiring: the restock page uses the draggable map and keeps the safety rules", () => {
@@ -109,8 +165,39 @@ test("wiring: the restock page uses the draggable map and keeps the safety rules
   const map = read("src/features/restocks/RestockSlippyMap.jsx");
   assert.match(map, /aria-label="Zoom in"/);
   assert.match(map, /aria-label="Show stores near me"/);
-  assert.match(map, /© OpenStreetMap/);
+  // OpenStreetMap's tile policy (Nov 27 2026): the browser's normal Referer and a linked credit, in both maps.
+  for (const file of ["src/features/restocks/RestockSlippyMap.jsx", "src/components/ScoutTileMap.jsx"]) {
+    const source = read(file);
+    assert.doesNotMatch(source, /referrerPolicy="no-referrer"[^>]*\bsrc=\{[^}]*tile/i, `${file}: tiles send the browser's normal Referer`);
+    assert.doesNotMatch(source.replace(/^\s*\/\/.*$/gm, ""), /tile\.openstreetmap\.org/, `${file}: the tile URL comes from src/config/mapTiles.js`);
+    assert.match(source, /href=\{MAP_TILE_CREDIT_URL\}/, `${file}: the credit links to the copyright page`);
+    assert.match(source, /\{MAP_TILE_CREDIT\}/, `${file}: the credit shows the provider's credit text`);
+  }
+  assert.doesNotMatch(map, /referrerPolicy/, "Restock map tiles keep the browser's normal Referer");
   const css = read("src/features/restocks/restock-map-card.css");
   assert.match(css, /touch-action: none/, "One finger drags the map instead of the page");
   assert.doesNotMatch(css, /\b(blue|teal|cyan)\b|#0[0-9a-f]{2}[89a-f][0-9a-f]{2}\b/i, "No blue or teal");
+});
+
+// Map tiles (src/config/mapTiles.js), Nov 27 2026: OpenStreetMap by default, exactly as its tile policy
+// asks; another provider can be set in the hosting settings without an app update.
+test("map tiles default to OpenStreetMap's exact URL and credit", () => {
+  assert.equal(OSM_TILE_URL, "https://tile.openstreetmap.org/{z}/{x}/{y}.png");
+  assert.deepEqual(mapTileSettings({}), { url: OSM_TILE_URL, credit: "© OpenStreetMap contributors", creditUrl: "https://www.openstreetmap.org/copyright" });
+  assert.equal(mapTileUrl(12, 1165, 1574), "https://tile.openstreetmap.org/12/1165/1574.png");
+});
+
+test("another tile provider can be set, but only a safe https template", () => {
+  const custom = mapTileSettings({ VITE_MAP_TILE_URL: " https://tiles.example.com/v1/{z}/{x}/{y}.png?key=public ", VITE_MAP_TILE_CREDIT: "© Example Maps © OpenStreetMap contributors", VITE_MAP_TILE_CREDIT_URL: "https://example.com/copyright" });
+  assert.equal(custom.url, "https://tiles.example.com/v1/{z}/{x}/{y}.png?key=public");
+  assert.equal(custom.credit, "© Example Maps © OpenStreetMap contributors");
+  assert.equal(custom.creditUrl, "https://example.com/copyright");
+  assert.equal(mapTileUrl(3, 2, 1, custom.url), "https://tiles.example.com/v1/3/2/1.png?key=public");
+  // Without its own credit, the OpenStreetMap credit stays.
+  assert.deepEqual(mapTileSettings({ VITE_MAP_TILE_URL: "https://tiles.example.com/{z}/{x}/{y}.png" }), { url: "https://tiles.example.com/{z}/{x}/{y}.png", credit: OSM_CREDIT, creditUrl: OSM_CREDIT_URL });
+  // Plain http, a missing {z}/{x}/{y}, or a credit with no provider fall back to OpenStreetMap.
+  for (const env of [{ VITE_MAP_TILE_URL: "http://tiles.example.com/{z}/{x}/{y}.png" }, { VITE_MAP_TILE_URL: "https://tiles.example.com/{z}/{x}.png" }, { VITE_MAP_TILE_URL: "javascript:alert(1)//{z}{x}{y}" }, { VITE_MAP_TILE_CREDIT: "Someone else", VITE_MAP_TILE_CREDIT_URL: "https://example.com" }]) {
+    assert.deepEqual(mapTileSettings(env), { url: OSM_TILE_URL, credit: OSM_CREDIT, creditUrl: OSM_CREDIT_URL }, JSON.stringify(env));
+  }
+  assert.equal(mapTileSettings({ VITE_MAP_TILE_URL: "https://tiles.example.com/{z}/{x}/{y}.png", VITE_MAP_TILE_CREDIT_URL: "javascript:alert(1)" }).creditUrl, OSM_CREDIT_URL, "the credit link must be https");
 });

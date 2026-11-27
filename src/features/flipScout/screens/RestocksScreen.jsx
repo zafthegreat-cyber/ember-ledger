@@ -8,7 +8,7 @@ export default function RestocksScreen({ onOpenRestocks, onReportRestock, restoc
   return (
     <section className="flip-section restock-start">
       <SectionHeader title="Restocks" description="Find what collectors are seeing. Share what you find." />
-      {restockMap?.stores?.length ? <RestockMapCard stores={restockMap.stores} reports={restockMap.reports} isFollowed={restockMap.isFollowed} onOpenStore={restockMap.onOpenStore} onReportAtStore={restockMap.onReportAtStore} onFollowStore={restockMap.onFollowStore} onBrowseAll={onOpenRestocks} /> : null}
+      {restockMap?.stores?.length ? <RestockMapCard stores={restockMap.stores} reports={restockMap.reports} isFollowed={restockMap.isFollowed} onOpenStore={restockMap.onOpenStore} onReportAtStore={restockMap.onReportAtStore} onFollowStore={restockMap.onFollowStore} onBrowseAll={onOpenRestocks} storesLoading={Boolean(restockMap.storesLoading)} /> : null}
       <div className="restock-start__report">
         <span className="restock-start__icon" aria-hidden="true"><AppNavIcon kind="map" /></span>
         <div className="restock-start__copy">
