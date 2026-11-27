@@ -46,6 +46,8 @@ export default function AddAnythingContent({ scope }) {
     undoQuickAddCardScan,
     saveAllCardScanRows,
     cardScanSaving,
+    scanLookupStale,
+    onRefreshApp,
     createQuickAddWizardState,
     detectCollectorItemVisualType,
     findCatalogProductsByBarcode,
@@ -511,7 +513,13 @@ export default function AddAnythingContent({ scope }) {
       return (
         <div className="add-anything-flow add-anything-card-page-review">
           {renderFlowHeader("Scan cards", "Scan one card or a whole stack. Each card is matched with its price. Check the list, then tap Save.")}
-          {appendQuickAddCardScanRows ? <MultiCardScanner onRows={appendQuickAddCardScanRows} autoStart={!rows.length} rows={rows} onUndo={undoQuickAddCardScan} onPick={pickCardScanChoice} money={money} /> : null}
+          {scanLookupStale ? (
+            <div className="flow-inline-message is-warning" role="alert">
+              <p>Code 3 TCG was updated while this page was open, so it can't look cards up. Refresh to keep scanning.</p>
+              {onRefreshApp ? <button type="button" className="secondary-button" onClick={() => onRefreshApp()}>Refresh</button> : null}
+            </div>
+          ) : null}
+          {appendQuickAddCardScanRows && !scanLookupStale ? <MultiCardScanner onRows={appendQuickAddCardScanRows} autoStart={!rows.length} rows={rows} onUndo={undoQuickAddCardScan} onPick={pickCardScanChoice} money={money} /> : null}
           {cardScanSetProgress?.length ? (
             <section className="card-scan-set-progress" aria-label="Set progress">
               {cardScanSetProgress.map((set) => (

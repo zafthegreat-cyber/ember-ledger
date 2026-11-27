@@ -127,6 +127,26 @@ assert.match(camera, /createNextCardWatcher\(\)/, "A similar-looking next card r
 assert.match(camera, /sameCardGuard: guardNext/);
 assert.match(scanner, /job\.sameCardGuard && key === lastKeyRef\.current/, "A drifted card is not counted twice");
 const app = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
+// Nov 27 2026: a page left open across an update could not load the scanner's catalog code
+// (the old file name is gone) and every card came back "Not sure", with nothing said.
+{
+  const flatApp = app.replace(/\s+/g, " ");
+  const flatScreen = readFileSync(new URL("../src/features/deferredViews/AddAnythingContent.jsx", import.meta.url), "utf8").replace(/\s+/g, " ");
+  const has = (source, piece, why) => assert.ok(source.includes(piece), `${why}: missing "${piece}"`);
+  has(flatApp, 'pokemonCatalogSearchModulePromise = import("./services/pokemonCatalogSearch").catch((error) => { pokemonCatalogSearchModulePromise = null; throw error; });', "a failed load is tried again");
+  has(flatApp, 'Promise.all([loadPokemonCatalogSearchModule(), import("./utils/cardClueMatch.mjs")])', "the catalog code loads as the scanner opens");
+  has(flatApp, "if (active && isLikelyChunkLoadError(error)) setScanLookupStale(true);", "a page too old to load it is noticed");
+  has(flatApp, "scanLookupStale, onRefreshApp: handleSafeAppRefresh,", "the scan screen is told, with the app's safe refresh");
+  has(flatScreen, "{scanLookupStale ? (", "the scan screen says so");
+  has(flatScreen, "{appendQuickAddCardScanRows && !scanLookupStale ? <MultiCardScanner", "without a camera that could not match a card");
+  has(flatScreen, 'onClick={() => onRefreshApp()}>Refresh</button>', "and offers a refresh");
+  // What the browsers say when the file is gone (Chrome, Safari, Firefox).
+  const { isLikelyChunkLoadError } = await import("../src/utils/appFallbackContent.js");
+  assert.ok(isLikelyChunkLoadError(new TypeError("Failed to fetch dynamically imported module: https://code3tcg.app/assets/pokemonCatalogSearch-Czb2WLcx.js")));
+  assert.ok(isLikelyChunkLoadError(new TypeError("Importing a module script failed.")));
+  assert.ok(isLikelyChunkLoadError(new TypeError("error loading dynamically imported module: https://code3tcg.app/assets/cardClueMatch-C3GrI2WB.js")));
+  assert.ok(!isLikelyChunkLoadError(new Error("statement timeout")), "a slow catalog is not an old page");
+}
 assert.match(app, /mergeScannedCardRows\(/);
 assert.match(app, /undoScannedCardRow\(/);
 assert.match(app, /quantity: copies, ownedQuantity: copies/, "Save all saves each line's copies");
