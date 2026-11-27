@@ -5355,6 +5355,7 @@ function getCatalogVariantOptions(product = {}) {
       language: variant.language || "English",
       tcgplayerSkuId: variant.tcgplayerSkuId || variant.tcgplayer_sku_id || "",
       conditionName: variant.conditionName || variant.condition_name || "",
+      marketPrice: Number(variant.marketPrice ?? variant.market_price ?? 0) || 0,
       isDefault: Boolean(variant.isDefault || variant.is_default),
     }));
     if (product.priceSubtype || product.variantNames) {
@@ -5375,6 +5376,32 @@ function getCatalogVariantOptions(product = {}) {
     return product.catalogType === "card"
       ? [{ id: `${product.id}-default`, variantName: "Default", printing: "", finish: "", language: product.language || "English", conditionName: "", isDefault: true }]
       : [];
+  }
+
+// A card with several printings (Normal, Reverse Holofoil, 1st Edition...) keeps
+// one main price. When one printing is chosen, price it from its own row and its
+// matching TCGCSV source instead. Falls back to the card when it has no price.
+function withCatalogVariantPricing(product, variant, variantCount = 0) {
+    if (!product || !variant || variant.sourceProduct || variantCount < 2) return product;
+    const names = [variant.variantName, variant.finish].map((name) => String(name || "").trim().toLowerCase()).filter(Boolean);
+    const sources = (Array.isArray(product.marketSources) ? product.marketSources : [])
+      .filter((source) => names.includes(String(source.priceType || "").trim().toLowerCase()));
+    const source = sources.find((entry) => Number(entry.marketPrice || 0) > 0) || sources[0] || null;
+    const price = Number(variant.marketPrice || source?.marketPrice || 0);
+    if (!(price > 0)) return product;
+    return {
+      ...product,
+      marketPrice: price,
+      marketValue: price,
+      marketValueNearMint: price,
+      lowPrice: Number(source?.lowPrice || 0),
+      midPrice: Number(source?.midPrice || 0) || price,
+      highPrice: Number(source?.highPrice || 0),
+      marketSummary: product.marketSummary
+        ? { ...product.marketSummary, recommended_market_value: price, recommendedMarketValue: price }
+        : product.marketSummary,
+      marketSources: sources,
+    };
   }
 
 function getCatalogVariantDisplayName(product = {}, index = 0) {
@@ -34949,8 +34976,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     selectedCatalogDetailVariants[0] ||
     null;
   const selectedCatalogDetailMasterCard = selectedCatalogDetailProduct ? buildMarketMasterCardFromCatalogProduct(selectedCatalogDetailProduct) : null;
-  const selectedCatalogDetailPricingProduct = selectedCatalogDetailVariant?.sourceProduct || selectedCatalogDetailProduct;
-  const selectedCatalogDetailMarketInfo = selectedCatalogDetailPricingProduct ? getTideTradrMarketInfo(selectedCatalogDetailPricingProduct) : null;
+  const selectedCatalogDetailPricingProduct = selectedCatalogDetailVariant?.sourceProduct ||
+    withCatalogVariantPricing(selectedCatalogDetailProduct, selectedCatalogDetailVariant, selectedCatalogDetailVariants.length);
+  // A printing's own price must not be replaced by a saved price for the whole card.
+  const selectedCatalogDetailUsesVariantPrice = Boolean(selectedCatalogDetailPricingProduct && selectedCatalogDetailPricingProduct !== selectedCatalogDetailProduct && !selectedCatalogDetailVariant?.sourceProduct);
+  const selectedCatalogDetailMarketInfo = selectedCatalogDetailPricingProduct
+    ? getTideTradrMarketInfo(selectedCatalogDetailUsesVariantPrice ? { ...selectedCatalogDetailPricingProduct, id: `${selectedCatalogDetailPricingProduct.id}::${selectedCatalogDetailVariant.id}` } : selectedCatalogDetailPricingProduct)
+    : null;
   const selectedCatalogDetailCondition = catalogConditionSelection[selectedCatalogDetailProduct?.id] || "Near Mint";
   const selectedCatalogDetailFairRange = selectedCatalogDetailPricingProduct
     ? [
@@ -52024,7 +52056,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       <DetailItem label="Flavor Text" value={catalogCardDetails(selectedCatalogDetailProduct).flavorText} />
                       <DetailItem label="Pokedex #" value={(catalogCardDetails(selectedCatalogDetailProduct).nationalPokedexNumbers || []).join(", ")} />
                       <DetailItem label="Variants" value={selectedCatalogDetailVariants.map((variant) => variant.variantName).join(", ")} />
-                      <DetailItem label="Market Price" value={money(getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).currentMarketValue)} />
+                      <DetailItem label="Market Price" value={money(selectedCatalogDetailMarketInfo?.currentMarketValue)} />
                       <DetailItem label="Low / Mid / High" value={`${money(selectedCatalogDetailPricingProduct?.lowPrice)} / ${money(selectedCatalogDetailPricingProduct?.midPrice)} / ${money(selectedCatalogDetailPricingProduct?.highPrice)}`} />
                       <DetailItem label="Last Price Update" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).lastUpdated} />
                       {shouldShowCatalogRepairLabels() ? <DetailItem label="Source" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).sourceName} /> : null}
