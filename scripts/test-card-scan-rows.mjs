@@ -68,7 +68,14 @@ assert.deepEqual(nameOnly.map((entry) => entry.id), ["f"]);
   const lokix = { product: { id: "lokix" }, name: "Lokix", short: "SV09: Journey Together · 100/159", label: "Lokix · SV09: Journey Together · 100/159", value: 0.11 };
   const rayquaza = { product: { id: "ray" }, name: "Rayquaza V", short: "SWSH: Crown Zenith · 100/159", value: 2 };
   const scanned = (extra = {}) => ({ id: "s", cardName: "Nymble", cardNumber: "100/159", matchedFor: "Nymble|100/159", ...extra });
-  assert.deepEqual(lastScanSummary(null), { matched: false, offer: null, detail: "" });
+  assert.deepEqual(lastScanSummary(null), { matched: false, offer: null, detail: "", name: "", title: "" });
+  // The strip names the card that was filed, not the misread name; before that, what was read.
+  const filed = lastScanSummary(scanned({ cardName: "Zqgxv Wopl", cardNumber: "080/091", matchedFor: "Zqgxv Wopl|080/091", matchState: "matched", matchedProduct: { name: "Iono - 080/091", setName: "SV: Paldean Fates", cardNumber: "080/091" } }));
+  assert.deepEqual([filed.title, filed.name, filed.detail], ["Iono · 080/091", "Iono", "SV: Paldean Fates"]);
+  assert.equal(lastScanSummary(scanned({ cardName: "Pikachu", cardNumber: "", matchedFor: "Pikachu|", matchState: "matched", matchedProduct: { cardName: "Pikachu", cardNumber: "025/165" } })).title, "Pikachu · 025/165", "a number the reader missed comes from the card");
+  assert.equal(lastScanSummary(scanned({ matchState: "matched", matchedProduct: {} })).title, "Nymble · 100/159", "a card with no name of its own keeps what was read");
+  assert.equal(lastScanSummary(scanned({ matchState: "review", matchedChoices: [lokix] }), { canPick: true }).title, "Nymble · 100/159", "not filed yet: what was read");
+  assert.equal(lastScanSummary({ cardName: " ", cardNumber: " 12/34 " }).title, "12/34");
   assert.equal(lastScanSummary(scanned({ matchedFor: "" })).detail, "Finding its price…");
   // Matched: the set, as before.
   const matched = lastScanSummary(scanned({ matchState: "matched", matchedProduct: { setName: "SV09: Journey Together" } }), { canPick: true });
@@ -104,6 +111,7 @@ const scanner = readFileSync(new URL("../src/components/MultiCardScanner.jsx", i
   const flatScreen = readFileSync(new URL("../src/features/deferredViews/AddAnythingContent.jsx", import.meta.url), "utf8").replace(/\s+/g, " ");
   const has = (source, piece, why) => assert.ok(source.includes(piece), `${why}: missing "${piece}"`);
   has(flatScanner, "lastScanSummary(lastRow, { canPick: Boolean(onPick) })", "the strip uses the tested summary");
+  has(flatScanner, "<strong>{lastTitle}", "the strip shows the summary's title");
   has(flatScanner, 'className="multi-card-scanner__yes" aria-label={`Yes, this is ${lastOffer.name || "my card"}`} onClick={() => { onPick(lastRow, lastOffer);', "Yes files the offered card");
   has(flatScreen, "onPick={pickCardScanChoice}", "the list hands the scanner its own pick step");
   has(flatScreen, "onClick={() => pickCardScanChoice(row, choice)}", "the list buttons use the same step");

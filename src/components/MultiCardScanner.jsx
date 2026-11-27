@@ -116,19 +116,19 @@ export default function MultiCardScanner({ onRows, autoStart = false, rows = [],
   const lastRow = last ? [...rows].reverse().find((row) => scanKey(row.cardName, row.cardNumber) === scanKey(last.cardName, last.cardNumber)) : null;
   const lastQuantity = Math.max(1, Number(lastRow?.quantity) || 1);
   // One card offered: the question and Yes show here. Two or more are picked in the list.
-  const { matched: lastMatched, offer: lastOffer, detail: lastDetail } = lastScanSummary(lastRow, { canPick: Boolean(onPick) });
+  const { matched: lastMatched, offer: lastOffer, detail: lastDetail, name: lastName, title: lastTitle } = lastScanSummary(lastRow, { canPick: Boolean(onPick) });
   const reading = pending > 0 ? <p className="multi-card-scanner__pending" role="status">Reading {pending === 1 ? "1 card" : `${pending} cards`}…</p> : null;
   const lastCard = lastRow ? <div className="multi-card-scanner__last" role="status">
     <div>
       <small>{lastQuantity > 1 ? `Same card again: you now have ${lastQuantity}` : "Just scanned"}</small>
-      <strong>{[lastRow.cardName, lastRow.cardNumber].map((value) => String(value || "").trim()).filter(Boolean).join(" · ")}{lastQuantity > 1 ? ` ×${lastQuantity}` : ""}</strong>
+      <strong>{lastTitle}{lastQuantity > 1 ? ` ×${lastQuantity}` : ""}</strong>
       <span>{lastDetail}{lastMatched && lastRow.matchedValue && money ? <b className="multi-card-scanner__price"> · {money(lastRow.matchedValue)}{lastQuantity > 1 ? " each" : ""}</b> : null}{lastOffer?.value && money ? <b className="multi-card-scanner__price"> · {money(lastOffer.value)}</b> : null}</span>
     </div>
     <div className="multi-card-scanner__last-actions">
       {/* While the card is in question, Yes takes the place of One more: a copy is added once the card is known. */}
       {lastOffer
         ? <button type="button" className="multi-card-scanner__yes" aria-label={`Yes, this is ${lastOffer.name || "my card"}`} onClick={() => { onPick(lastRow, lastOffer); buzz(30); setStatus(""); }}>Yes</button>
-        : <button type="button" aria-label={`One more copy of ${lastRow.cardName || "this card"}`} onClick={() => { onRowsRef.current?.([{ cardName: lastRow.cardName, cardNumber: lastRow.cardNumber, scanNote: "", scanned: true }]); setCount((value) => value + 1); setStatus(""); }}>One more</button>}
+        : <button type="button" aria-label={`One more copy of ${lastName || "this card"}`} onClick={() => { onRowsRef.current?.([{ cardName: lastRow.cardName, cardNumber: lastRow.cardNumber, scanNote: "", scanned: true }]); setCount((value) => value + 1); setStatus(""); }}>One more</button>}
       {onUndo ? <button type="button" onClick={() => { onUndo(last); if (lastQuantity <= 1) setLast(null); setCount((value) => Math.max(0, value - 1)); setStatus("Removed that scan."); }}>Undo</button> : null}
     </div>
   </div> : null;

@@ -2,6 +2,7 @@
 // Pure helpers so the rules for a stack of cards are tested:
 // - the same card shown to the camera again is one more copy of it (x2), not a new line;
 // - Undo takes back the newest scan of a card (one copy, or the whole line).
+import { cardNameForChoice } from "./catalogResultIdentity.mjs";
 
 const clean = (value) => String(value || "").trim().toLowerCase();
 
@@ -58,6 +59,9 @@ export function undoScannedCardRow(rows = [], read = {}) {
 
 /**
  * What the strip under the camera says about the newest scanned row (Nov 27 2026).
+ *   name, title: the card as the strip names it. Once the row has its card this is the
+ *     card that was filed ("Iono · 080/091"), not what the reader made of the name
+ *     ("Zqgxv Wopl"), so a wrong match can be seen at a glance.
  *   matched: the row has its card; detail is its set.
  *   offer: the one card the list offers for the row ("Is this your card?"), when there is
  *     exactly one and the strip is able to file it (canPick). detail asks the question by
@@ -65,18 +69,23 @@ export function undoScannedCardRow(rows = [], read = {}) {
  * The screen adds the prices.
  */
 export function lastScanSummary(row, { canPick = false } = {}) {
-  if (!row) return { matched: false, offer: null, detail: "" };
+  if (!row) return { matched: false, offer: null, detail: "", name: "", title: "" };
+  const tidy = (value) => String(value || "").trim();
+  const titled = (name, number) => ({ name, title: [name, number].filter(Boolean).join(" · ") });
+  const read = titled(tidy(row.cardName), tidy(row.cardNumber));
   const current = row.matchedFor === `${row.cardName}|${row.cardNumber}`;
   if (current && row.matchState === "matched") {
-    return { matched: true, offer: null, detail: String(row.matchedProduct?.setName || row.matchedProduct?.expansion || row.matchedLabel || "Matched") };
+    const card = row.matchedProduct || {};
+    const filed = titled(cardNameForChoice(card.cardName || card.name) || read.name, tidy(card.cardNumber) || tidy(row.cardNumber));
+    return { matched: true, offer: null, detail: String(card.setName || card.expansion || row.matchedLabel || "Matched"), ...filed };
   }
   const inReview = current && row.matchState === "review";
   const choices = inReview && Array.isArray(row.matchedChoices) ? row.matchedChoices.filter((choice) => choice?.product) : [];
   if (canPick && choices.length === 1) {
     const [offer] = choices;
-    return { matched: false, offer, detail: `Is this ${String(offer.name || "").trim() || "your card"}? ${String(offer.short || "").trim()}`.trim() };
+    return { matched: false, offer, detail: `Is this ${tidy(offer.name) || "your card"}? ${tidy(offer.short)}`.trim(), ...read };
   }
-  if (choices.length > 1) return { matched: false, offer: null, detail: "Not sure which card this is. Pick it in the list below." };
-  if (row.scanNote) return { matched: false, offer: null, detail: `${row.scanNote}. Check it in the list below.` };
-  return { matched: false, offer: null, detail: inReview ? "Not sure which card this is. Check it in the list below." : "Finding its price…" };
+  if (choices.length > 1) return { matched: false, offer: null, detail: "Not sure which card this is. Pick it in the list below.", ...read };
+  if (row.scanNote) return { matched: false, offer: null, detail: `${row.scanNote}. Check it in the list below.`, ...read };
+  return { matched: false, offer: null, detail: inReview ? "Not sure which card this is. Check it in the list below." : "Finding its price…", ...read };
 }
