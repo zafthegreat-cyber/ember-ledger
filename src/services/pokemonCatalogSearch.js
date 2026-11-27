@@ -1081,7 +1081,7 @@ export async function fetchCardsForClues({ supabase, names = [], species = "", s
   for (let at = 0; at < ids.length; at += 100) {
     let detailRequest = supabase
       .from("tcg_card_details")
-      .select("catalog_product_id, published:raw_source->group->>publishedOn, facts:raw_source->product->extendedData")
+      .select("catalog_product_id, published:raw_source->group->>publishedOn, released:raw_source->set->>releaseDate, facts:raw_source->product->extendedData")
       .in("catalog_product_id", ids.slice(at, at + 100));
     if (signal) detailRequest = detailRequest.abortSignal(signal);
     const { data: details, error: detailError } = await detailRequest;
@@ -1111,7 +1111,7 @@ export async function fetchCardsByNumber({ supabase, number = "", limit = 60, si
   for (let at = 0; at < ids.length; at += 100) {
     let detailRequest = supabase
       .from("tcg_card_details")
-      .select("catalog_product_id, published:raw_source->group->>publishedOn, facts:raw_source->product->extendedData")
+      .select("catalog_product_id, published:raw_source->group->>publishedOn, released:raw_source->set->>releaseDate, facts:raw_source->product->extendedData")
       .in("catalog_product_id", ids.slice(at, at + 100));
     if (signal) detailRequest = detailRequest.abortSignal(signal);
     const { data: details, error: detailError } = await detailRequest;

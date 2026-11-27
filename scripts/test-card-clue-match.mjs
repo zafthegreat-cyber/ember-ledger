@@ -84,6 +84,31 @@ test("card facts come out of the catalog's detail row", () => {
   assert.deepEqual(attacksOf("C][C][C][C] Fighting Fist (120+) \nIf your opponent’s Active", "[1] Focus Energy\r\n<br>During your next turn"), ["Fighting Fist", "Focus Energy"]);
   assert.deepEqual(cardFactsFromDetails({}), { year: 0, hp: 0, attacks: [] });
   assert.deepEqual(cardFactsFromDetails({ published: null, facts: null }), { year: 0, hp: 0, attacks: [] });
+  // A row from the other source keeps only its set's release date.
+  assert.deepEqual(cardFactsFromDetails({ published: null, released: "2011/03/01", facts: null }), { year: 2011, hp: 0, attacks: [] });
+  assert.equal(cardFactsFromDetails({ published: "2021-06-18T00:00:00", released: "2011/03/01" }).year, 2021, "the catalog's own date comes first");
+});
+
+test("a card known only by its release year is ruled out when the year read is another", async () => {
+  // Seen on the live catalog, Nov 27 2026: Minccino BW13 (2011) has no HP or attacks on
+  // record, and stood beside Chaos Rising 072/086 for a card read as 2026 with 70 HP.
+  const rows = [
+    { id: "minccino-new", name: "Minccino", setName: "ME04: Chaos Rising", cardNumber: "072/086", setCode: "CRI" },
+    { id: "minccino-promo", name: "Minccino", setName: "BW Black Star Promos", cardNumber: "BW13", setCode: "bwp" },
+    { id: "minccino-2025", name: "Minccino", setName: "SV09: Journey Together", cardNumber: "125/159", setCode: "JTG" },
+  ];
+  const details = [
+    { catalog_product_id: "minccino-new", published: "2026-05-22T00:00:00", released: null, facts: [{ name: "HP", value: "70" }, { name: "Attack 1", value: "[C] Take Down (30)" }] },
+    { catalog_product_id: "minccino-promo", published: null, released: "2011/03/01", facts: null },
+    { catalog_product_id: "minccino-2025", published: "2025-03-28T00:00:00", released: null, facts: [{ name: "HP", value: "70" }, { name: "Attack 1", value: "[C] Slap (20)" }] },
+  ];
+  const row = { cardName: "Minccino", cardNumber: "", scanText: "", scanClues: { species: "Minccino", years: [2026], hp: 70, numberParts: [], digitRuns: [], namesInText: [], setCodes: [] } };
+  const found = await matchScanRowByClues(row, { fetchCards: async () => ({ rows, facts: details }) });
+  assert.equal(found.card?.id, "minccino-new");
+  // With the promo's year unknown it cannot be ruled out, and the card is offered, not filed.
+  const blind = await matchScanRowByClues(row, { fetchCards: async () => ({ rows, facts: details.map((detail) => ({ ...detail, released: null })) }) });
+  assert.equal(blind.card, null);
+  assert.deepEqual(blind.choices.map((card) => card.id), ["minccino-new", "minccino-promo"]);
 });
 
 test("pieces of a number are weighed against a catalog number", () => {

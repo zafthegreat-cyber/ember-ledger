@@ -19,6 +19,7 @@ const stripZeros = (value = "") => String(value).toLowerCase().replace(/^([a-z]*
  * What the catalog knows about one card, from its tcg_card_details row:
  * { published: "2021-06-18T00:00:00", facts: [{ name: "HP", value: "150" }, { name: "Attack 1", value: "[2P] Reinforced Punch (60+)..." }] }
  * becomes { year: 2021, hp: 150, attacks: ["Reinforced Punch", "Megaton Fall"] }.
+ * A row from the other source has { released: "2011/03/01" } and nothing else: { year: 2011, hp: 0, attacks: [] }.
  */
 export function cardFactsFromDetails(row = {}) {
   const list = Array.isArray(row?.facts) ? row.facts.filter((entry) => entry && typeof entry === "object") : [];
@@ -37,7 +38,10 @@ export function cardFactsFromDetails(row = {}) {
       for (const match of plainText(entry.value).matchAll(/(?:Ability|Pok[eé]-?\s?(?:Power|Body)|Ancient Trait)\s*[—–:-]+\s*([^\n]+)/gi)) addAttack(match[1]);
     }
   }
-  const year = Number(String(row?.published || "").slice(0, 4));
+  // Nov 27 2026: about 120 cards have their details from the other source, which keeps only
+  // the set's release date ("2011/03/01" in released) and no HP or attacks. The year alone
+  // still rules such a card in or out (a 2011 promo against a card read as 2026).
+  const year = Number(String(row?.published || row?.released || "").slice(0, 4));
   return { year: year >= 1996 && year <= 2099 ? year : 0, hp: Number(valueOf("HP")) || 0, attacks };
 }
 
