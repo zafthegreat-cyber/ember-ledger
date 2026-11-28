@@ -6,6 +6,11 @@ import type { AuthPrincipal } from "../auth/authPrincipal";
 
 const identifier = (value: unknown): string => typeof value === "string" ? value
   : value && typeof value === "object" && "id" in value ? String(value.id) : "";
+// Explicit predicates also narrow Stripe's optional deleted discriminator when
+// the serverless compiler does not enable strictNullChecks.
+const isExistingProduct = (value: Stripe.Price["product"] | null | undefined): value is Stripe.Product =>
+  Boolean(value && typeof value !== "string" && !value.deleted);
+const isExistingCustomer = (value: Stripe.Customer | Stripe.DeletedCustomer): value is Stripe.Customer => !value.deleted;
 const noPurchase = () => new BillingError("adult_billing_required", 403, "Purchases require an approved adult billing account.");
 // The attempt UUID supplies randomness; hashing keeps retry parameters identical.
 const suffix = (account: string, attempt: string) => [...createHash("sha256").update(`${account}:${attempt}`).digest().subarray(0, 8)].map(byte => String.fromCharCode(97 + byte % 26)).join("");
@@ -26,7 +31,7 @@ export function createBillingService(config: BillingConfig, repository: BillingR
   async function checkedPrice(offer: BillingOffer) {
     const price = await stripe.prices.retrieve(offer.priceId, { expand: ["product"] });
     const product = price.product;
-    if (price.livemode || !price.active || !product || typeof product === "string" || product.deleted
+    if (price.livemode || !price.active || !isExistingProduct(product)
       || !product.active || product.metadata.app !== config.appId
       || price.type !== (offer.mode === "subscription" ? "recurring" : "one_time")
       || price.unit_amount === null || price.billing_scheme !== "per_unit") {
@@ -192,7 +197,7 @@ export function createBillingService(config: BillingConfig, repository: BillingR
       });
       if (processed === null) {
         const customer = await stripe.customers.retrieve(customerId);
-        if (!customer.deleted && customer.metadata.app === config.appId) {
+        if (isExistingCustomer(customer) && customer.metadata.app === config.appId) {
           // A Stripe callback can race a new customer transaction. Ask Stripe to retry it.
           throw new BillingError("billing_account_pending", 503, "The billing account is not ready for synchronization.");
         }

@@ -153,7 +153,9 @@ try {
     do $$ begin create role service_role; exception when duplicate_object then null; end $$;
     create schema extensions;
     create schema cron;
-    create function cron.schedule(text, text, text) returns bigint language sql as 'select 1::bigint';
+    create table cron.job(jobid bigserial primary key,jobname text unique,schedule text,command text,active boolean default true);
+    create function cron.schedule(text,text,text) returns bigint language sql as $$insert into cron.job(jobname,schedule,command)values($1,$2,$3) on conflict(jobname) do update set schedule=$2,command=$3 returning jobid$$;
+    create function cron.alter_job(job_id bigint,active boolean)returns void language sql as $$update cron.job set active=$2 where jobid=$1$$;
     create schema net;
     create sequence net.request_ids;
     create table net.requests(id bigint primary key, url text not null);
@@ -258,6 +260,7 @@ try {
   }
 
   // ---- The single-card rule: what the product carries decides, never its name. ----
+  equal((await one("select count(*)::int n from cron.job where active")).n,0,"fresh catalog jobs require explicit activation");
   const isCard = async (fields) => (await one("select public.catalog_tcgcsv_is_card(public.catalog_tcgcsv_extended_data($1::jsonb)) as v", [JSON.stringify({ extendedData: ext(fields) })])).v;
   equal(await isCard({ Number: "061/103", Rarity: "Rare" }), true, "a rarity and a number make a card");
   equal(await isCard({ Rarity: "None", "Card Type": "Trainer" }), true, "card stats make a card when the rarity says nothing");

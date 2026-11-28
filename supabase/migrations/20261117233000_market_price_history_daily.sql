@@ -1,3 +1,4 @@
+begin;
 -- Popular products daily, everything else weekly (owner, Nov 17 2026).
 -- market_price_history_daily: popular products (newest sets, highest value,
 -- biggest movers), one point a day for the last 120 days. The loader now reads
@@ -163,3 +164,7 @@ revoke all on function public.market_history_apply() from public, anon, authenti
 select cron.unschedule(jobid) from cron.job where jobname in ('market-history-refresh', 'market-history-apply');
 select cron.schedule('market-history-refresh', '15 23 * * *', $$select public.market_history_refresh()$$);
 select cron.schedule('market-history-apply', '*/5 * * * *', $$select public.market_history_apply()$$);
+-- Keep fresh environments offline until an operator explicitly enables jobs.
+select cron.alter_job((select jobid from cron.job where jobname='market-history-refresh'),active:=false);
+select cron.alter_job((select jobid from cron.job where jobname='market-history-apply'),active:=false);
+commit;

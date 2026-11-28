@@ -16,11 +16,11 @@ const shardMatch = /^(\d+)\/(\d+)$/.exec(process.env.SHARD || "");
 const [shardIndex, shardCount] = shardMatch ? [Number(shardMatch[1]), Number(shardMatch[2])] : [1, 1];
 if (shardIndex < 1 || shardIndex > shardCount) throw new Error(`Invalid SHARD "${process.env.SHARD}"`);
 const files = only.length ? only : suite.passing.filter((_, index) => index % shardCount === shardIndex - 1);
-// Each test gets 8 minutes. The slowest ones (Deal Finder, shared feedback) take
-// close to 4 on a normal CI machine; on a slow one (Nov 26 2026) Deal Finder went
-// past the old 5-minute limit and failed the run with every check passing.
+// Keep real layout and navigation assertions; allow slow CI browser setups to finish.
+// This mirrors main's 8-minute per-test budget and reports actual timeouts.
 const TEST_TIMEOUT_MS = 480000;
 const failed = [];
+let executed=0;
 for (const file of files) {
   const started = Date.now();
   const result = spawnSync(process.execPath, ["--no-warnings", `scripts/${file}`], {
@@ -30,22 +30,25 @@ for (const file of files) {
     maxBuffer: 64 * 1024 * 1024,
   });
   const seconds = Math.round((Date.now() - started) / 1000);
+  executed++;
   if (result.status === 0) {
     console.log(`PASS ${file} (${seconds}s)`);
   } else {
     failed.push(file);
-    // A test stopped at the time limit prints no error of its own, so say so.
     const timedOut = result.error?.code === "ETIMEDOUT";
     const stopped = timedOut ? `Stopped at the ${TEST_TIMEOUT_MS / 60000}-minute time limit before it finished.` : "";
     console.log(`FAIL ${file} (${seconds}s)${timedOut ? " - time limit" : ""}`);
-    const tail = `${result.stdout || ""}\n${result.stderr || ""}\n${stopped}`.trim().split("\n").slice(-25).join("\n");
+    const lines = `${result.stdout || ""}\n${result.stderr || ""}\n${stopped}`.trim().split("\n");
+    const roots = lines.filter(line => /^(?:Error:|[a-z]+\/(?:mobile|tablet|desktop):|(?:mobile|tablet|desktop):|AssertionError|TimeoutError|locator\.|Call log:|\s+- waiting for|\s+- element is|\s+at (?:verifyFixture|validateLayout))/.test(line)).slice(0, 10);
+    const tail = [...roots, ...lines.slice(-25)].join("\n");
     console.log(tail);
     // Annotations show on the run page without signing in, unlike the full log.
     if (process.env.GITHUB_ACTIONS) {
       const escape = (text) => text.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
       console.log(`::error title=FAIL ${file}::${escape(tail.split("\n").slice(-12).join("\n"))}`);
     }
+    if(process.env.BROWSER_FAIL_FAST==="1")break;
   }
 }
-console.log(`\n${files.length - failed.length}/${files.length} browser tests passed; ${suite.knownFailing.length} known-failing tests not run.`);
+console.log(`\n${executed - failed.length}/${executed} browser tests passed; ${suite.knownFailing.length} known-failing tests not run.${executed<files.length?` ${files.length-executed} tests not run after failure.`:""}`);
 if (failed.length) process.exit(1);

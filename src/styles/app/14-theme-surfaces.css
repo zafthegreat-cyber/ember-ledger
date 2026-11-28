@@ -266,7 +266,7 @@ html body .app.app-command-shell.ops-app-shell[data-theme] .exchange-command-boa
 @media (max-width: 1180px) {
   html:has(.ops-mobile-nav) { scroll-padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px)); }
   html body .app.app-command-shell.ops-app-shell[data-theme]:has(.ops-mobile-nav) .command-board-v4-mobile-dock { display: none !important; }
-  html body .app.app-command-shell.ops-app-shell[data-theme]:has(.command-board-v4) .main { padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px)) !important; }
+  html body .app.app-command-shell.ops-app-shell[data-theme]:has(.command-board-v4) .main { padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px)) !important; }
   html body .app.app-command-shell.ops-app-shell[data-theme] :is(.scout-command-board-v5, .market-command-board, .exchange-command-board, .spark-command-board, .vault-v4-dashboard, .vault-v4-detail-board) :is(.command-board-v4-stage, .command-board-v4-frame) { padding-bottom: 0 !important; }
   html body .app[data-theme] .command-board-v4 :is(button, a, input, select, textarea) { scroll-margin-block: 12px calc(112px + env(safe-area-inset-bottom, 0px)); }
   html body .app[data-theme] .command-board-v4-route-strip { scroll-padding-inline: 12px; scroll-snap-type: none; }

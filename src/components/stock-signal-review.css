@@ -1,0 +1,15 @@
+.stock-review{border-top:1px solid var(--border-subtle,#ddd);padding:12px 0 0}
+.stock-review>summary{cursor:pointer;min-height:44px;display:flex;align-items:center;color:var(--text-secondary,#666);font-size:13px;font-weight:700;list-style:disclosure-closed inside}
+.stock-review[open]>summary{list-style:disclosure-open inside}
+.stock-review>p{color:var(--text-secondary,#666);font-size:13px;line-height:1.5;margin:6px 0 12px}
+.stock-review form{display:grid;gap:12px}
+.stock-review__fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.stock-review__fields label{display:grid;gap:5px;min-width:0;color:var(--text-secondary,#666);font-size:12px;font-weight:600}
+.stock-review__fields label.stock-review__wide{grid-column:1/-1}
+.stock-review__fields select,.stock-review__fields input{min-height:44px;padding:9px 11px;width:100%;min-width:0;border-radius:10px;border:1px solid var(--border-subtle,#ddd);background:var(--surface-primary,#fff);color:var(--text-primary,#111);font-size:14px}
+.stock-review__actions{display:flex;align-items:center;flex-wrap:wrap;gap:10px}
+.stock-review__actions button{border:0;border-radius:10px;min-height:44px;padding:11px 16px;background:var(--action-primary,#743349);color:#fff;font-weight:700;font-size:13px}
+.stock-review__actions small{color:var(--text-secondary,#666);font-size:11px}
+.stock-review p[role=status]{font-size:13px;color:var(--text-primary,#111);line-height:1.5;margin:0}
+.stock-review p.stock-review__error{color:var(--error,#b42318)}
+@media(max-width:600px){.stock-review__fields{grid-template-columns:minmax(0,1fr)}}

@@ -1,0 +1,54 @@
+name: Native Supabase migration replay
+on:
+  pull_request:
+    paths:
+      - 'supabase/**'
+      - 'scripts/test-native-migration-baseline.mjs'
+      - 'scripts/lib/isolated-staging.mjs'
+      - '.github/workflows/native-supabase-migrations.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: native-migrations-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  fresh-supabase:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Isolate database containers from outbound traffic
+        run: |
+          # An internal Docker network also blocks the CLI's published localhost
+          # port. Keep that port reachable and deny container-initiated egress.
+          docker network create --opt com.docker.network.bridge.name=br-code3-test code3-migration-replay
+          sudo iptables -I DOCKER-USER 1 -i br-code3-test ! -o br-code3-test -j REJECT
+          sudo iptables -I INPUT 1 -i br-code3-test -m conntrack --ctstate NEW -j REJECT
+      - name: Start native local Supabase and replay repository migrations
+        # No project link, hosted credentials, branch creation, repair, push or
+        # production deploy. Images pull via the daemon; DB egress stays closed.
+        run: npx --yes supabase@3.4.0 db start --network-id code3-migration-replay
+      - name: Verify container egress remains blocked
+        run: |
+          sudo iptables -C DOCKER-USER -i br-code3-test ! -o br-code3-test -j REJECT
+          sudo iptables -C INPUT -i br-code3-test -m conntrack --ctstate NEW -j REJECT
+          test "$(docker inspect --format '{{len .NetworkSettings.Networks}}' supabase_db_ember-ledger)" = 1
+      - name: Verify native history, private access and inactive jobs
+        env:
+          CODE3_TEST_PG_PORT: '54322'
+          CODE3_TEST_PG_USER: postgres
+          CODE3_TEST_PG_PASSWORD: postgres
+        run: node scripts/test-native-migration-baseline.mjs --verify-native
+      - name: Confirm standard replay is idempotent
+        run: npx --yes supabase@3.4.0 migration up
+      - name: Inspect local security advisories
+        run: npx --yes supabase@3.4.0 db advisors --type security --level warn
+      - name: Stop local test stack
+        if: always()
+        run: npx --yes supabase@3.4.0 stop

@@ -39,6 +39,11 @@ jobs:
       - run: npm ci --ignore-scripts
       - name: Lint
         run: npm run lint:src
+      - name: Backend type checks and billing regressions
+        run: |
+          npm ci --prefix backend --ignore-scripts
+          npm --prefix backend run test:stripe
+          node backend/node_modules/typescript/bin/tsc --project backend/tsconfig.json --strict false --noEmit
       - name: Connected sign-in regression checks
         run: npm run test:social-sign-in
       - name: Optimized image and viewer checks
@@ -101,6 +106,10 @@ jobs:
           node --no-warnings scripts/test-shared-device-signout.mjs
           node --no-warnings scripts/test-community-server.mjs
           node --no-warnings scripts/test-restock-alerts.mjs
+          node --no-warnings --test scripts/test-stock-alert-preferences.mjs
+          node --no-warnings --test scripts/test-stock-intelligence.mjs
+          node --no-warnings --test scripts/test-stock-project-isolation.mjs
+          node --no-warnings --test scripts/test-stock-source-intake.mjs
           node --no-warnings scripts/test-easy-nationwide-ui.mjs
           node --no-warnings scripts/test-catalog-barcode-evidence.mjs
           node --no-warnings scripts/test-market-search-presentation.mjs
@@ -162,3 +171,51 @@ jobs:
       - name: App server log
         if: failure()
         run: tail -n 200 vite.log
+
+  stock-preferences-db:
+    name: Isolated stock opt-in database / RLS
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:16.6
+        env:
+          POSTGRES_PASSWORD: ci_fixture_password
+          POSTGRES_DB: stock_pref_staging
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d stock_pref_staging"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Staging containment contracts
+        run: node --test scripts/test-isolated-staging.mjs
+      - name: Validate migration, private defaults and session-scoped RLS
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: 5432
+          PGUSER: postgres
+          PGPASSWORD: ci_fixture_password
+          PGDATABASE: stock_pref_staging
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql-client
+          fi
+          psql -X -v ON_ERROR_STOP=1 -f scripts/qa/stock_preferences_fixture.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/20261124221500_stock_alert_preferences.sql
+          psql -X -v ON_ERROR_STOP=1 -f scripts/qa/stock_preferences_rls.sql
+      - name: Fresh and failed-branch migration replay (no outbound network)
+        env:
+          CODE3_TEST_PG_PORT: '5432'
+          CODE3_TEST_PG_USER: postgres
+          CODE3_TEST_PG_PASSWORD: ci_fixture_password
+        run: node scripts/test-isolated-staging-postgres.mjs

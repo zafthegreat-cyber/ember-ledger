@@ -1,6 +1,7 @@
 import { PrimaryButton, SectionHeader, SecondaryButton } from "../../../components/operations/OperationsUI.jsx";
 import { AppNavIcon } from "../../../components/command-system/AppNavIcon.jsx";
 import ManualLifecycles from "../../manualLifecycles/ManualLifecycles.jsx";
+import StockIntelligencePanel from "../../../components/StockIntelligencePanel.jsx";
 import RestockMapCard from "../../restocks/RestockMapCard.jsx";
 import "./restocks-screen.css";
 
@@ -9,6 +10,7 @@ export default function RestocksScreen({ onOpenRestocks, onReportRestock, restoc
     <section className="flip-section restock-start">
       <SectionHeader title="Restocks" description="Find what collectors are seeing. Share what you find." />
       {restockMap?.stores?.length ? <RestockMapCard stores={restockMap.stores} reports={restockMap.reports} isFollowed={restockMap.isFollowed} onOpenStore={restockMap.onOpenStore} onReportAtStore={restockMap.onReportAtStore} onFollowStore={restockMap.onFollowStore} onBrowseAll={onOpenRestocks} /> : null}
+      <StockIntelligencePanel />
       <div className="restock-start__report">
         <span className="restock-start__icon" aria-hidden="true"><AppNavIcon kind="map" /></span>
         <div className="restock-start__copy">

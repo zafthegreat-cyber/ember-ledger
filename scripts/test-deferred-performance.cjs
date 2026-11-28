@@ -19,7 +19,7 @@ const results = [];
       await context.route("**/*", async (route) => {
         const url = new URL(route.request().url());
         if (url.origin !== base.origin || route.request().method() !== "GET") return route.abort();
-        if (newChunks.some((name) => url.pathname.endsWith(`/${name}.jsx`))) await new Promise((resolve) => setTimeout(resolve, 650));
+        if (newChunks.some((name) => url.pathname.endsWith(`/${name}.jsx`)) || url.pathname.endsWith("/SmartCatalogSearchBox.jsx")) await new Promise((resolve) => setTimeout(resolve, 650));
         return route.continue();
       });
       await context.addInitScript(({ theme }) => {
@@ -53,7 +53,18 @@ const results = [];
       await expect(intake.locator("[data-deferred-modal-loading]")).toHaveCount(0);
       assert.equal(await intake.locator(".flow-modal-body").evaluate((node) => node.contains(document.activeElement)), true, "Late-loaded intake receives keyboard focus.");
       const itemName = intake.getByLabel("Item name", { exact: true });
+      await itemName.focus();
+      await expect(itemName).toBeFocused();
+      // A late modal focus handoff must not redirect the user's next keystrokes.
+      await page.evaluate(async () => {
+        const { focusFlowModalContent } = await import("/src/features/deferredViews/flowModalFocus.js");
+        focusFlowModalContent(document.querySelector('.flow-modal[data-flow="multiDestinationAdd"]'), "multiDestinationAdd");
+      });
+      await expect(itemName).toBeFocused();
       await itemName.fill("Synthetic retained deferred draft");
+      await expect(intake.getByRole("combobox", { name: "Card or product name", exact: true })).toBeVisible();
+      await expect(itemName).toBeFocused();
+      await expect(itemName).toHaveValue("Synthetic retained deferred draft");
       page.once("dialog", (dialog) => dialog.dismiss()); await page.keyboard.press("Escape");
       await expect(itemName).toHaveValue("Synthetic retained deferred draft");
       await page.goBack(); await expect(intake).toHaveCount(0);

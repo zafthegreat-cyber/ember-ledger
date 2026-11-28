@@ -949,3 +949,7 @@ and are in `docs/MUST_WEEK1_PC_CHECKLIST.md`.
 - Tasks board: t006/t009/t010/t011/t013/t014/t088/t090/t092/t105/t106/t107 done;
   t008 doing (Firebase setup), t087 done on `main`; t115/t116 added.
 - `test:should-batch2` is 25 tests on the merged tree.
+# Inventory intelligence continuation — November 23, 2026
+
+Rechecked PR #50, its previously successful browser/core CI, READY preview and the healthy Code 3 TCG Supabase project. Merged current main into the feature branch and kept the newer map. Added shared public projection validation, current-session staff authorization, exact preview-origin configuration, source freshness, account-change cleanup, approved adapter normalization and mobile/desktop browser coverage. Removed four dependency advisories with compatible lockfile updates. No production deployment, database mutation, live feed connection or notification was made. [Integration notes and release gates](STOCK_INTELLIGENCE_INTEGRATION.md).
+

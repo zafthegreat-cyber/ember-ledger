@@ -66,7 +66,7 @@
   }
   html:root body .app.app-command-shell[data-theme="light"] .ops-mobile-nav__action-icon { background: #7A0F1E !important; color: #FFF8EE !important; }
   html:root body .app.app-command-shell[data-theme] .ops-mobile-nav__action-icon > * { transform: none !important; }
-  html:root body .app.app-command-shell[data-theme] .main { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important; }
+  html:root body .app.app-command-shell[data-theme] .main { padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px)) !important; }
   html:root:has(.ops-mobile-nav) { scroll-padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
   /* The feedback bubble rests above the bar's right edge instead of on top of the page's last button. */
   html:root body .app[data-theme] .quick-feedback-fab { bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important; }
